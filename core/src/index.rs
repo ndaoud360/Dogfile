@@ -702,7 +702,8 @@ mod tests {
         let t2 = Tree::load(&f).unwrap();
         assert_eq!(t2.live(), t.live());
         assert_eq!(t2.entries[0].size, 1055 + 500 - 500);
-        assert_eq!(t2.path(t2.lookup(&util::path_str(&base.join("a/new/deep/x.bin"))).unwrap()), util::path_str(&base.join("a/new/deep/x.bin")));
+        let x = base.join("a").join("new").join("deep").join("x.bin");
+        assert_eq!(t2.path(t2.lookup(&util::path_str(&x)).unwrap()), util::path_str(&x));
         let _ = std::fs::remove_dir_all(&base);
         let _ = std::fs::remove_file(&f);
     }

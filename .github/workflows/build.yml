@@ -1,0 +1,50 @@
+# Builds atlas-core.exe (the native engine) on Windows, runs its tests, and checks the fast NTFS index on the
+# runner's own C: drive (GitHub's Windows machines run as administrator). The exe is published as the
+# "atlas-core-windows" artifact and on the rolling "core-latest" release.
+name: build
+on:
+  push:
+    branches: [main]
+    paths: ['core/**', '.github/workflows/build.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  core-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain
+        run: rustup toolchain install stable --profile minimal && rustup default stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            core/target
+          key: core-${{ hashFiles('core/Cargo.lock') }}
+      - name: Test
+        working-directory: core
+        run: cargo test --release
+      - name: Build
+        working-directory: core
+        run: cargo build --release
+      - name: Try the engine on this machine
+        working-directory: core
+        shell: pwsh
+        run: |
+          ./target/release/atlas-core.exe --version
+          Measure-Command { ./target/release/atlas-core.exe --build-index "C:" "$env:RUNNER_TEMP/idx" | Out-Host } | Select-Object TotalSeconds | Out-Host
+          '{"id":1,"cmd":"ping","args":{}}' | ./target/release/atlas-core.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: atlas-core-windows
+          path: core/target/release/atlas-core.exe
+      - name: Publish to the core-latest release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view core-latest *> $null
+          if ($LASTEXITCODE -ne 0) { gh release create core-latest --title "Native engine (latest)" --notes "Built automatically from core/." --prerelease }
+          gh release upload core-latest core/target/release/atlas-core.exe --clobber

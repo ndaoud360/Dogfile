@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' atlas:; img-src 'self' atlas: data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' atlas: data:; script-src 'self'">
+  <title>Atlas Notepad</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="editor.css">
+</head>
+<body class="tool editor-app">
+  <header id="ed-title">
+    <div class="ed-brand" title="Atlas Notepad"><span class="ed-logo"></span></div>
+    <div id="ed-tabs" role="tablist"></div>
+    <button id="ed-new" class="icon-btn" title="New (Ctrl+N)"></button>
+    <div class="tab-drag"></div>
+    <div id="win-ctl"></div>
+  </header>
+  <nav id="ed-menubar"></nav>
+  <div id="ed-toolbar"></div>
+  <div id="ed-notice"></div>
+  <div id="ed-body">
+    <div id="ed-host"></div>
+    <div id="ed-split"></div>
+    <div id="ed-preview" class="pv-md"></div>
+    <aside id="ed-ref" aria-label="Feature help"></aside>
+  </div>
+  <footer id="ed-status"></footer>
+  <div id="toasts"></div>
+  <script type="module" src="js/editor.js"></script>
+</body>
+</html>

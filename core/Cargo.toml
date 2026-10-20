@@ -1,0 +1,17 @@
+[package]
+name = "atlas-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+crossbeam-channel = "0.5.17"
+md-5 = "0.11.0"
+memchr = "2.8.3"
+notify = "8.2.0"
+rayon = "1.12.0"
+regex = "1.13.1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+sha1 = "0.11.0"
+sha2 = "0.11.1"
+xxhash-rust = { version = "0.8.19", features = ["xxh3"] }

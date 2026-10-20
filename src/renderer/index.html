@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' atlas:; img-src 'self' atlas: data: blob:; media-src atlas: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' atlas: data: blob:; frame-src atlas:; object-src atlas:; script-src 'self'">
+  <title>Atlas Files</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar" class="sidebar">
+      <div class="side-drag"></div>
+      <nav id="side-list" class="side-list"></nav>
+      <div id="sidebar-resizer"></div>
+    </aside>
+    <main id="main">
+      <header id="tabbar">
+        <div id="tabs" role="tablist"></div>
+        <button id="tab-add" class="icon-btn" title="New tab (Ctrl+T)"></button>
+        <div class="tab-drag"></div>
+        <div id="win-ctl"></div>
+      </header>
+      <div id="menubar">
+        <button class="menu-tab" id="menu-file" data-menu="file">File</button>
+        <button class="menu-tab" data-menu="home">Home</button>
+        <button class="menu-tab" data-menu="organize">Organize</button>
+        <button class="menu-tab" data-menu="tools">Tools</button>
+        <button class="menu-tab" data-menu="view">View</button>
+        <button class="menu-tab ctx" id="menu-ctx" data-menu="ctx" hidden></button>
+        <div class="menubar-spacer"></div>
+        <div id="search-host"></div>
+        <button class="icon-btn top-ic" id="btn-search" title="Search (Ctrl+E)"></button>
+        <button class="icon-btn top-ic" id="btn-layout" title="Split view (up to 4 panes)"></button>
+        <button class="icon-btn top-ic" id="btn-newwin" title="New window (Ctrl+N)"></button>
+      </div>
+      <div id="ribbon"></div>
+      <div id="workspace">
+        <div id="panes" class="panes"></div>
+        <div id="preview-resizer"></div>
+        <aside id="preview"></aside>
+      </div>
+      <footer id="statusbar">
+        <span id="st-left"></span>
+        <span id="st-mid"></span>
+        <div class="st-spacer"></div>
+        <span id="st-right"></span>
+        <button id="ops-btn" class="icon-btn" title="Operations"></button>
+        <button id="btn-preview" class="icon-btn" title="Preview pane (Alt+P)"></button>
+      </footer>
+      <div id="ops-panel"></div>
+    </main>
+  </div>
+  <div id="toasts"></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,5 +1,5 @@
-// Feature browser: share and download Atlas features through GitHub (free). Every shared feature is a public
-// GitHub repository with the topic "atlas-files-feature" and an atlas-feature.json file. Browsing needs no
+// Feature browser: share and download Dogfile features through GitHub (free). Every shared feature is a public
+// GitHub repository with the topic "dogfile-mod" and an dogmod.json file. Browsing needs no
 // account; sharing needs a GitHub account and a token, which is stored encrypted on this PC and only ever sent to
 // GitHub. Before anything installs you see exactly what it may do and its full code.
 import { api, state, bus, h, esc, toast, saveSettings, fmtDate } from './core.js';
@@ -7,7 +7,7 @@ import { modal, prompt, confirm } from './dialogs.js';
 import { icon } from './icons.js';
 import * as X from './extensions.js';
 
-const TOPIC = 'atlas-files-feature';
+const TOPIC = 'dogfile-mod';
 const gh = async (method, path, body, auth = true) => { const r = await api('gh:request', method, path, body ?? null, auth); return r; };
 const b64 = (s) => btoa(unescape(encodeURIComponent(s)));
 const unb64 = (s) => decodeURIComponent(escape(atob(String(s).replace(/\n/g, ''))));
@@ -17,10 +17,10 @@ export async function signIn() {
   tokenIn.addEventListener('keydown', (e) => e.stopPropagation());
   const res = h('div', { class: 'hint' });
   const ok = await modal({ title: 'Sign in to share features', width: 560, body: h('div', { class: 'stack' },
-    h('p', {}, 'Atlas uses GitHub to share features for free. Downloading needs no account. To upload, sign in with a GitHub access token:'),
+    h('p', {}, 'Dogfile uses GitHub to share features for free. Downloading needs no account. To upload, sign in with a GitHub access token:'),
     h('ol', { class: 'fs-steps' },
       h('li', {}, 'Make a free account at github.com if you don’t have one.'),
-      h('li', {}, h('button', { class: 'link', onclick: () => api('shell:openExternal', 'https://github.com/settings/tokens/new?scopes=public_repo&description=Atlas%20Files%20features') }, 'Create a token'), ' (the “public_repo” box is already ticked: Atlas can only create and update public repositories for your features).'),
+      h('li', {}, h('button', { class: 'link', onclick: () => api('shell:openExternal', 'https://github.com/settings/tokens/new?scopes=public_repo&description=Dogfile%20Files%20features') }, 'Create a token'), ' (the “public_repo” box is already ticked: Dogfile can only create and update public repositories for your features).'),
       h('li', {}, 'Paste it here.')),
     tokenIn, res,
     h('div', { class: 'hint' }, 'The token is encrypted with Windows data protection, stays on this PC, and is only sent to GitHub. Sign out any time to delete it.')),
@@ -39,10 +39,10 @@ export async function signIn() {
 export async function signOut() { await api('secret:set', 'github', ''); state.settings.githubUser = null; saveSettings(); toast('Signed out. The token was deleted from this PC.'); }
 
 async function manifestOf(repo) {
-  const r = await gh('GET', `https://raw.githubusercontent.com/${repo.full_name}/${repo.default_branch}/atlas-feature.json`, null, false);
+  const r = await gh('GET', `https://raw.githubusercontent.com/${repo.full_name}/${repo.default_branch}/dogmod.json`, null, false);
   if (r.json?.code) return r.json;
   // fall back to the API (private mirrors, renamed branches)
-  const c = await gh('GET', `/repos/${repo.full_name}/contents/atlas-feature.json`);
+  const c = await gh('GET', `/repos/${repo.full_name}/contents/dogmod.json`);
   if (c.ok && c.json?.content) { try { return JSON.parse(unb64(c.json.content)); } catch {} }
   return null;
 }
@@ -63,14 +63,14 @@ export async function featureBrowser() {
   };
   const card = (repo) => {
     const el = h('div', { class: 'fs-card' }, h('div', { class: 'fs-top' }, h('span', { class: 'ext-ic', html: icon('puzzle') }), h('div', { class: 'hi-main' }, h('b', {}, (repo.name || '').replace(/^atlas-feature-/, '').replace(/-/g, ' ')), h('span', { class: 'hint' }, `by ${repo.owner?.login} · ★ ${repo.stargazers_count} · updated ${fmtDate(Date.parse(repo.pushed_at || repo.updated_at))}`))),
-      h('div', { class: 'fs-desc' }, repo.description || ''), h('div', { class: 'fs-tags' }, ...(repo.topics || []).filter((t) => t.startsWith('atlas-target-')).map((t) => h('span', { class: 'as-chip' }, X.TARGETS[t.slice(13)] || t.slice(13)))));
+      h('div', { class: 'fs-desc' }, repo.description || ''), h('div', { class: 'fs-tags' }, ...(repo.topics || []).filter((t) => t.startsWith('dogfile-target-')).map((t) => h('span', { class: 'as-chip' }, X.TARGETS[t.slice(13)] || t.slice(13)))));
     const acts = h('div', { class: 'fs-acts' });
     const installed = (state.settings.extensions || []).find((f) => f.storeRef?.repo === repo.full_name);
     acts.append(h('button', { class: 'btn small primary', onclick: async (e) => {
       e.target.disabled = true; e.target.textContent = 'Getting it…';
       try {
         const m = await manifestOf(repo);
-        if (!m?.code) throw new Error('This repository has no atlas-feature.json');
+        if (!m?.code) throw new Error('This repository has no dogmod.json');
         const F = await import('./features.js');
         await F.install(m.code, { source: `github.com/${repo.full_name}`, meta: { ...m, author: m.author || repo.owner?.login, storeRef: { repo: repo.full_name, branch: repo.default_branch, version: m.version || '' } } });
       } catch (err) { toast(`Couldn’t get it: ${err.message}`, { error: true }); }
@@ -81,7 +81,7 @@ export async function featureBrowser() {
   };
   const load = async () => {
     grid.innerHTML = ''; status.textContent = 'Loading…';
-    const terms = [`topic:${TOPIC}`, target ? `topic:atlas-target-${target}` : '', q.value.trim()].filter(Boolean).join(' ');
+    const terms = [`topic:${TOPIC}`, target ? `topic:dogfile-target-${target}` : '', q.value.trim()].filter(Boolean).join(' ');
     const r = await gh('GET', `/search/repositories?q=${encodeURIComponent(terms)}&sort=stars&order=desc&per_page=40`, null, true).catch((e) => ({ ok: false, json: { message: e.message } }));
     if (!r.ok) { status.textContent = r.status === 403 ? 'GitHub is limiting searches right now. Wait a minute (or sign in) and try again.' : `Couldn’t reach GitHub: ${r.json?.message || r.status || 'offline?'}`; return; }
     const items = r.json.items || [];
@@ -91,7 +91,7 @@ export async function featureBrowser() {
   drawAccount();
   load();
   await modal({ title: 'Feature browser', width: 900, className: 'fs-modal', body: h('div', { class: 'stack' }, h('div', { class: 'fs-bar' }, q, h('button', { class: 'btn small', onclick: load }, 'Search')), tchips, account, status, grid,
-    h('div', { class: 'hint' }, 'Features are shared by people like you through GitHub and are not checked by Atlas. Before installing you see what each one may do and its full code; features run in a sandbox with only the access you allow.')),
+    h('div', { class: 'hint' }, 'Features are shared by people like you through GitHub and are not checked by Dogfile. Before installing you see what each one may do and its full code; features run in a sandbox with only the access you allow.')),
     buttons: [{ label: 'Close', primary: true, value: true }] });
 }
 
@@ -102,7 +102,7 @@ export async function uploadDialog() {
   const sel = h('select', { class: 'input' }, ...mine.map((f) => h('option', { value: f.id }, `${f.name} (${X.TARGETS[f.target] || f.target})`)));
   const rulesOk = h('input', { type: 'checkbox' });
   const ok = await modal({ title: 'Upload a feature', width: 560, body: h('div', { class: 'stack' }, h('label', { class: 'pp-row' }, h('span', {}, 'Feature'), sel),
-    h('p', { class: 'hint' }, `It will be published publicly as github.com/${state.settings.githubUser}/atlas-feature-<name>, so anyone can find and install it from the feature browser. Uploading again updates it (raise @version so people see the update).`),
+    h('p', { class: 'hint' }, `It will be published publicly as github.com/${state.settings.githubUser}/dogmod-<name>, so anyone can find and install it from the feature browser. Uploading again updates it (raise @version so people see the update).`),
     h('div', { class: 'ext-rules' }, h('b', {}, 'Before you share, check that your feature:'), h('ul', {},
       h('li', {}, 'does what its name and description say'),
       h('li', {}, 'asks only for the permissions it needs'),
@@ -115,7 +115,7 @@ export async function uploadDialog() {
   if (!ok) return;
   const f = mine.find((x) => x.id === sel.value);
   const user = state.settings.githubUser;
-  const slug = 'atlas-feature-' + (f.id || f.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+  const slug = 'dogmod-' + (f.id || f.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
   const full = `${user}/${slug}`;
   try {
     toast('Uploading…');
@@ -125,15 +125,15 @@ export async function uploadDialog() {
       if (!repo.ok) throw new Error(repo.json?.message || `GitHub said ${repo.status}`);
       await new Promise((r) => setTimeout(r, 1500));
     } else if (!repo.ok) throw new Error(repo.json?.message || `GitHub said ${repo.status}`);
-    await gh('PUT', `/repos/${full}/topics`, { names: [TOPIC, `atlas-target-${f.target || 'files'}`] });
+    await gh('PUT', `/repos/${full}/topics`, { names: [TOPIC, `dogfile-target-${f.target || 'files'}`] });
     const put = async (path, text, msg) => {
       const cur = await gh('GET', `/repos/${full}/contents/${path}`);
       const r = await gh('PUT', `/repos/${full}/contents/${path}`, { message: msg, content: b64(text), sha: cur.ok ? cur.json.sha : undefined });
       if (!r.ok) throw new Error(r.json?.message || `GitHub said ${r.status}`);
     };
     const manifest = { ...JSON.parse(X.featureFile(f)), author: f.author || user };
-    await put('atlas-feature.json', JSON.stringify(manifest, null, 2), `${f.name} ${f.version || ''}`.trim());
-    await put('README.md', `# ${f.name}\n\n${f.description || ''}\n\nA feature for **Atlas Files** (${X.TARGETS[f.target] || f.target}).\n\n**Install:** in Atlas, File > Features > Upload / download features…, search for “${f.name}”, press Install.\n\n**It may:** ${(f.permissions || []).length ? f.permissions.map((p) => X.PERMS[p]?.[0]).join(', ') : 'only work inside its own app (no file, internet or command access)'}.\n`, 'Readme');
+    await put('dogmod.json', JSON.stringify(manifest, null, 2), `${f.name} ${f.version || ''}`.trim());
+    await put('README.md', `# ${f.name}\n\n${f.description || ''}\n\nA feature for **Dogfile** (${X.TARGETS[f.target] || f.target}).\n\n**Install:** in Dogfile, File > Features > Upload / download features…, search for “${f.name}”, press Install.\n\n**It may:** ${(f.permissions || []).length ? f.permissions.map((p) => X.PERMS[p]?.[0]).join(', ') : 'only work inside its own app (no file, internet or command access)'}.\n`, 'Readme');
     f.storeRef = { repo: full, branch: repo.json?.default_branch || 'main', version: f.version || '' };
     saveSettings();
     toast(`Uploaded to github.com/${full}`, { action: { label: 'Open', run: () => api('shell:openExternal', `https://github.com/${full}`) }, ms: 8000 });

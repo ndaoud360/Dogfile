@@ -1,4 +1,4 @@
-// The background jobs Atlas used to run in a Node worker, now native and parallel. Messages keep the same
+// The background jobs Dogfile used to run in a Node worker, now native and parallel. Messages keep the same
 // shapes ({type: results | progress | done | error}) so the app treats them exactly as before.
 use crate::matcher::Spec;
 use crate::proto::{self, Batcher, Progress};

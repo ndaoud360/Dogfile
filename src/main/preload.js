@@ -2,7 +2,7 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 const listeners = new Map();
-// only Atlas' own pages (main window, tool windows and the app tabs inside them) get the bridge
+// only Dogfile' own pages (main window, tool windows and the app tabs inside them) get the bridge
 if (location.protocol === 'atlas:' && location.host === 'app') contextBridge.exposeInMainWorld('atlas', {
   invoke: (name, ...args) => ipcRenderer.invoke('invoke', name, ...args),
   on: (channel, fn) => {

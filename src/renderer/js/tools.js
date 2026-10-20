@@ -36,7 +36,7 @@ export async function runSearch(t) {
     return;
   }
   if (q.get('coll')) return runCollection(t, q.get('coll'));
-  if (q.get('assist')) { const { results } = await import('./assistant.js'); const r = results.get(q.get('assist')); t.items = r?.items || []; t.searchInfo = { running: false, text: r ? `${t.items.length.toLocaleString()} files from the assistant · ${fmtSize(t.items.reduce((a, i) => a + (i.size || 0), 0))}` : 'These results are gone (Atlas was restarted). Ask the assistant again.' }; recompute(t); renderTabPanes(t); return; }
+  if (q.get('assist')) { const { results } = await import('./assistant.js'); const r = results.get(q.get('assist')); t.items = r?.items || []; t.searchInfo = { running: false, text: r ? `${t.items.length.toLocaleString()} files from the assistant · ${fmtSize(t.items.reduce((a, i) => a + (i.size || 0), 0))}` : 'These results are gone (Dogfile was restarted). Ask the assistant again.' }; recompute(t); renderTabPanes(t); return; }
   const scopeAll = q.get('scope') === 'all';
   if (scopeAll || !roots.length) { const ds = state.drives.length ? state.drives : await A.refreshDrives(); roots.splice(0, roots.length, ...ds.filter((d) => d.type !== 'network' && d.type !== 'optical').map((d) => d.path)); }
   t.items = [];
@@ -546,7 +546,7 @@ function errorWhy(m) {
   if (/EPERM|EACCES|access is denied|permission/i.test(m)) return 'Windows didn’t allow it (read-only, protected, or needs administrator rights).';
   if (/ENOSPC|no space/i.test(m)) return 'the destination is full.';
   if (/ENAMETOOLONG|name too long/i.test(m)) return 'the path is too long. Shorten folder or file names.';
-  if (/ENOENT|no such file/i.test(m)) return 'it was moved or deleted before Atlas got to it.';
+  if (/ENOENT|no such file/i.test(m)) return 'it was moved or deleted before Dogfile got to it.';
   if (/EIO|i\/o error|CRC|cyclic redundancy/i.test(m)) return 'the disk couldn’t read it (damaged file or drive).';
   if (/ETIMEDOUT|ECONNRESET|network|ENETUNREACH/i.test(m)) return 'the network connection dropped.';
   if (/inside itself/i.test(m)) return 'a folder can’t go inside itself.';

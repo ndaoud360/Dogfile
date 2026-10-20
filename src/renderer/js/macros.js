@@ -221,12 +221,12 @@ export async function editMacro(m0, isNew = false) {
   const trigBox = h('div', { class: 'row-inline wrap' });
   const drawTrig = () => {
     trigBox.innerHTML = '';
-    const tsel = h('select', { class: 'input sm' }, ...[['manual', 'Only when I run it'], ['key', 'With a keyboard shortcut'], ['startup', 'When Atlas starts'], ['schedule', 'On a schedule'], ['folder', 'When new files arrive in a folder']].map(([v, l]) => h('option', { value: v }, l)));
+    const tsel = h('select', { class: 'input sm' }, ...[['manual', 'Only when I run it'], ['key', 'With a keyboard shortcut'], ['startup', 'When Dogfile starts'], ['schedule', 'On a schedule'], ['folder', 'When new files arrive in a folder']].map(([v, l]) => h('option', { value: v }, l)));
     tsel.value = trig.type; tsel.onchange = () => { trig.type = tsel.value; drawTrig(); };
     trigBox.append(tsel);
     const inp = (k, ph, w) => { const x = h('input', { class: 'input sm', placeholder: ph, style: { width: w } }); x.value = trig[k] ?? ''; x.oninput = () => { trig[k] = x.value; }; x.addEventListener('keydown', (e) => e.stopPropagation()); return x; };
     if (trig.type === 'key') { const x = inp('keys', 'e.g. Ctrl+Alt+M', '150px'); x.readOnly = true; x.placeholder = 'press the keys here'; x.addEventListener('keydown', (e) => { e.preventDefault(); if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return; const k = [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift', e.key.length === 1 ? e.key.toUpperCase() : e.key].filter(Boolean).join('+'); trig.keys = k; x.value = k; }); trigBox.append(x); }
-    if (trig.type === 'schedule') { const mode = h('select', { class: 'input sm' }, h('option', { value: 'every' }, 'Every'), h('option', { value: 'daily' }, 'Every day at')); mode.value = trig.mode || 'every'; trig.mode = mode.value; mode.onchange = () => { trig.mode = mode.value; drawTrig(); }; trigBox.append(mode, trig.mode === 'daily' ? inp('at', '08:00', '80px') : inp('minutes', '60', '70px'), trig.mode === 'daily' ? null : h('span', { class: 'hint' }, 'minutes'), h('span', { class: 'hint' }, '(while Atlas is open)')); }
+    if (trig.type === 'schedule') { const mode = h('select', { class: 'input sm' }, h('option', { value: 'every' }, 'Every'), h('option', { value: 'daily' }, 'Every day at')); mode.value = trig.mode || 'every'; trig.mode = mode.value; mode.onchange = () => { trig.mode = mode.value; drawTrig(); }; trigBox.append(mode, trig.mode === 'daily' ? inp('at', '08:00', '80px') : inp('minutes', '60', '70px'), trig.mode === 'daily' ? null : h('span', { class: 'hint' }, 'minutes'), h('span', { class: 'hint' }, '(while Dogfile is open)')); }
     if (trig.type === 'folder') trigBox.append(inp('folder', 'Folder', '260px'), h('button', { class: 'btn small', onclick: async () => { const d = await api('dialog:pickFolder', 'Watch which folder?'); if (d) { trig.folder = d; drawTrig(); } } }, 'Browse…'), h('span', { class: 'hint' }, 'Tip: start with “Select files: Files that just arrived”'));
   };
   drawTrig();
@@ -243,7 +243,7 @@ export async function macrosManager() {
   const list = h('div', { class: 'ws-list' });
   const draw = () => {
     list.innerHTML = '';
-    if (!macros().length) list.append(h('div', { class: 'hint pad' }, 'No macros yet. Press “Record” and do something you repeat often; Atlas writes down the steps.'));
+    if (!macros().length) list.append(h('div', { class: 'hint pad' }, 'No macros yet. Press “Record” and do something you repeat often; Dogfile writes down the steps.'));
     for (const m of macros()) {
       const on = h('input', { type: 'checkbox', class: 'switch' }); on.checked = m.enabled !== false; on.onchange = () => { m.enabled = on.checked; saveSettings(); syncMacros(); };
       const tr = m.trigger || {};

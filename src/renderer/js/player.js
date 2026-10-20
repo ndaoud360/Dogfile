@@ -1,4 +1,4 @@
-// Atlas Player: VLC-style media player.
+// Dogfile Player: VLC-style media player.
 // Plays natively with GPU decoding whenever Chromium can (H.264, HEVC*, VP9, AV1, AAC, MP3, Opus, FLAC…); otherwise
 // the bundled ffmpeg remuxes (video copied, audio → AAC) or transcodes (GPU encoder when available) on the fly.
 import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce, isMediaFile, KINDS, natCmp, fileUrl } from './core.js';
@@ -74,7 +74,7 @@ async function load(i, { startAt = null, autoplay = true } = {}) {
   $('err').classList.remove('show');
   $('empty').style.display = 'none';
   setBusy(true);
-  setTitle(`${item.name} - Atlas Player`);
+  setTitle(`${item.name} - Dogfile Player`);
   $('pl-name').textContent = item.name;
   renderList();
   try { P.info = await api('media:probe', item.path); } catch (e) { P.info = null; }
@@ -355,7 +355,7 @@ function parseVtt(text) {
   return cues;
 }
 function rebuildCues() {
-  if (!track) { track = v.addTextTrack('subtitles', 'Atlas', 'en'); }
+  if (!track) { track = v.addTextTrack('subtitles', 'Dogfile', 'en'); }
   for (const c of [...(track.cues || [])]) track.removeCue(c);
   if (!P.subCues.length) { track.mode = 'hidden'; return; }
   const off = (P.mode === 'direct' ? 0 : P.offset) - P.subDelay;
@@ -526,7 +526,7 @@ $('pl-items').addEventListener('contextmenu', (e) => {
   showMenu([
     { label: 'Play', icon: 'play', run: () => load(i) },
     { label: 'Remove from playlist', icon: 'close', run: () => { P.list.splice(i, 1); if (i < P.idx) P.idx--; else if (i === P.idx) { v.pause(); v.removeAttribute('src'); P.idx = -1; } renderList(); } },
-    { label: 'Show in Atlas Files', icon: 'folder', run: () => showInFiles(it.path) },
+    { label: 'Show in Dogfile', icon: 'folder', run: () => showInFiles(it.path) },
     { label: 'Copy path', icon: 'link', run: () => api('clip:writeText', it.path) },
   ], e.clientX, e.clientY);
 });
@@ -636,7 +636,7 @@ function moreMenu(x, y) {
     { separator: true },
     { label: 'Resume playback', submenu: [['ask', 'Ask'], ['always', 'Always'], ['never', 'Never']].map(([k, l]) => ({ label: l, radio: true, selected: prefs.autoResume === k, run: () => { prefs.autoResume = k; savePrefs(); } })) },
     { label: 'Open with Windows default app', run: () => P.item && api('shell:open', P.item.path) },
-    { label: 'Show in Atlas Files', icon: 'folder', run: () => P.item && showInFiles(P.item.path) },
+    { label: 'Show in Dogfile', icon: 'folder', run: () => P.item && showInFiles(P.item.path) },
     { label: 'Keyboard shortcuts', icon: 'keyboard', keys: 'F1', run: shortcutsHelp },
   ], x, y, { alignRight: true });
 }

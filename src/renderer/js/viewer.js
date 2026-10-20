@@ -1,4 +1,4 @@
-// Atlas Photos: fast photo viewer with a queue, slideshow and fullscreen, plus a basic editor
+// Dogfile Photos: fast photo viewer with a queue, slideshow and fullscreen, plus a basic editor
 // (adjustments, filter presets, crop, rotate/flip, draw & text, resize) that saves as a copy or overwrites.
 import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce, KINDS, natCmp, fileUrl, fmtSize, fmtDate } from './core.js';
 import { icon } from './icons.js';
@@ -40,7 +40,7 @@ async function show(i, { fade = false } = {}) {
   const it = V.list[i];
   const seq = ++V.seq;
   $('vw-empty').style.display = 'none';
-  setTitle(`${it.name} - Atlas Photos`);
+  setTitle(`${it.name} - Dogfile Photos`);
   $('vw-name').textContent = it.name;
   $('vw-count').textContent = `${i + 1} / ${V.list.length}`;
   const next = V.layer === 'a' ? $('img-b') : $('img-a');
@@ -200,7 +200,7 @@ $('q-items').addEventListener('contextmenu', (e) => {
   showMenu([
     { label: 'Show', run: () => show(i) },
     { label: 'Remove from queue', icon: 'close', run: () => { V.list.splice(i, 1); if (i < V.idx) V.idx--; renderQueue(); if (i === V.idx) show(Math.min(i, V.list.length - 1)); } },
-    { label: 'Show in Atlas Files', icon: 'folder', run: () => showInFiles(it.path) },
+    { label: 'Show in Dogfile', icon: 'folder', run: () => showInFiles(it.path) },
     { label: 'Copy path', icon: 'link', run: () => api('clip:writeText', it.path) },
   ], e.clientX, e.clientY);
 });
@@ -627,7 +627,7 @@ function wire() {
       { label: 'Copy text from image', icon: 'scan', keys: 'T', run: runOcr },
       { label: 'Copy image', icon: 'copy', run: async () => { try { const c = document.createElement('canvas'); c.width = V.nat.w; c.height = V.nat.h; c.getContext('2d').drawImage(curImg(), 0, 0); const blob = await new Promise((r) => c.toBlob(r)); await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); toast('Image copied'); } catch { toast('Couldn’t copy this image', { error: true }); } } },
       { label: 'Copy path', icon: 'link', run: () => api('clip:writeText', it.path) },
-      { label: 'Show in Atlas Files', icon: 'folder', run: () => showInFiles(it.path) },
+      { label: 'Show in Dogfile', icon: 'folder', run: () => showInFiles(it.path) },
       { label: 'Open with Windows default app', run: () => api('shell:open', it.path) },
       { label: 'Info', icon: 'info', keys: 'I', run: () => { V.showInfo = !V.showInfo; renderInfo(); } },
       { separator: true },

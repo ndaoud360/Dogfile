@@ -1,4 +1,4 @@
-// atlas-core: Atlas Files' native engine. Atlas starts it once and talks to it over stdin/stdout (see proto.rs):
+// dogfile-core: Dogfile' native engine. Dogfile starts it once and talks to it over stdin/stdout (see proto.rs):
 // the instant file index, folder listings, searches, folder sizes, duplicates, storage inventory and checksums.
 mod index;
 mod jobs;
@@ -55,7 +55,7 @@ fn main() {
         std::process::exit(index::build_cli(&args[2], &args[3]));
     }
     if args.get(1).map(|s| s.as_str()) == Some("--version") {
-        println!("atlas-core {}", env!("CARGO_PKG_VERSION"));
+        println!("dogfile-core {}", env!("CARGO_PKG_VERSION"));
         return;
     }
     let stdin = std::io::stdin();
@@ -70,6 +70,6 @@ fn main() {
         if matches!(cmd.as_str(), "ping" | "cancel" | "index.status" | "index.covers") { handle(id, &cmd, a); continue }
         std::thread::spawn(move || handle(id, &cmd, a));
     }
-    // Atlas closed our input: save and leave
+    // Dogfile closed our input: save and leave
     index::save_all();
 }

@@ -1,6 +1,6 @@
 // File history & recovery: a log of what happened to your files (copies, moves, renames, deletes, automations),
 // with Undo on anything that can still be undone, plus versions of chosen files and folders, and checksum files
-// to prove nothing changed or got corrupted. The log is capped (Settings) so it never slows Atlas down.
+// to prove nothing changed or got corrupted. The log is capped (Settings) so it never slows Dogfile down.
 import { api, state, bus, h, esc, toast, fmtSize, fmtDate, basename, dirname, debounce, IS_WIN, pjoin, uid, saveSettings } from './core.js';
 import { modal, confirm, prompt } from './dialogs.js';
 import { icon } from './icons.js';
@@ -93,7 +93,7 @@ export function explainError(msg = '') {
   if (/EPERM|EACCES|access is denied|permission/i.test(m)) return 'Windows didn’t allow it. The file may be read-only, protected, or need administrator rights.';
   if (/ENOSPC|no space/i.test(m)) return 'the destination drive is full. Free some space and retry.';
   if (/ENAMETOOLONG|name too long/i.test(m)) return 'the full path is too long for Windows. Shorten folder or file names.';
-  if (/ENOENT|no such file/i.test(m)) return 'it was moved or deleted before Atlas got to it.';
+  if (/ENOENT|no such file/i.test(m)) return 'it was moved or deleted before Dogfile got to it.';
   if (/EEXIST/i.test(m)) return 'something with that name is already there.';
   if (/EIO|i\/o error|CRC|cyclic redundancy/i.test(m)) return 'the disk couldn’t read it. The drive or the file may be damaged.';
   if (/ENOTEMPTY/i.test(m)) return 'the folder still has files in it.';
@@ -131,7 +131,7 @@ export async function versionsDialog(p) {
   let closeIt = () => {};
   const p2 = modal({ title: `Versions of “${basename(p)}”`, width: 720, className: 'vs-modal', body: h('div', { class: 'stack' },
     h('div', { class: 'hint' }, p),
-    h('label', { class: 'ru-watch' }, trackBox, h('span', {}, h('b', {}, 'Save a version automatically'), h('span', { class: 'hint' }, isDir ? ' (files only; save folder versions by hand)' : ' every time this file changes (while Atlas is open).'))),
+    h('label', { class: 'ru-watch' }, trackBox, h('span', {}, h('b', {}, 'Save a version automatically'), h('span', { class: 'hint' }, isDir ? ' (files only; save folder versions by hand)' : ' every time this file changes (while Dogfile is open).'))),
     list), buttons: [
     { label: 'Save a version now…', left: true, run: async () => { const note = await prompt('Save a version', '', { label: 'Note (optional)', placeholder: 'e.g. Before big edits' }); if (note === null) return false; try { await api('versions:save', p, note); bus.emit('history', { kind: 'version', title: `Saved a version of ${basename(p)}`, paths: [[p]] }); toast('Version saved'); draw(); } catch (e) { toast(`Couldn’t save a version: ${e.message}`, { error: true }); } return false; } },
     { label: 'Close', primary: true, value: true }] });
@@ -141,7 +141,7 @@ export async function versionsDialog(p) {
 export async function versionsOverview() {
   const all = await api('versions:overview');
   const list = h('div', { class: 'vs-list' }, ...(all.length ? all.map((x) => h('div', { class: 'vs-row' }, h('span', { class: 'hi-ic', html: icon('history') }), h('div', { class: 'hi-main' }, h('b', {}, basename(x.path)), h('span', { class: 'hint' }, `${x.path} · ${x.count} version${x.count === 1 ? '' : 's'} · ${fmtSize(x.size)} · last ${fmtDate(x.last)}${(state.settings.trackedFiles || []).includes(x.path) ? ' · automatic' : ''}`)), h('div', { class: 'hi-acts' }, h('button', { class: 'btn small', onclick: () => versionsDialog(x.path) }, 'Open')))) : [h('div', { class: 'hint pad' }, 'No versions saved yet. Right-click a file > More > Versions… to start.')]));
-  await modal({ title: 'All saved versions', width: 720, body: h('div', { class: 'stack' }, h('div', { class: 'hint' }, `Atlas keeps up to ${state.settings.versionsKeep || 20} versions per file and ${fmtSize((state.settings.versionsMaxMB || 5000) * 1048576)} in total (change this in Settings > Files).`), list), buttons: [{ label: 'Close', primary: true, value: true }] });
+  await modal({ title: 'All saved versions', width: 720, body: h('div', { class: 'stack' }, h('div', { class: 'hint' }, `Dogfile keeps up to ${state.settings.versionsKeep || 20} versions per file and ${fmtSize((state.settings.versionsMaxMB || 5000) * 1048576)} in total (change this in Settings > Files).`), list), buttons: [{ label: 'Close', primary: true, value: true }] });
 }
 setTimeout(() => { if (state.settings.trackedFiles?.length) api('versions:track', state.settings.trackedFiles); }, 3000);
 

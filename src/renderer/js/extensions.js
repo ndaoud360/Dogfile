@@ -1,12 +1,12 @@
-// Atlas features (extensions): install, run, check permissions. Features are small JavaScript files people write
-// in Atlas Notepad (or download from the feature browser). Each one runs in a sandboxed worker (ext-worker.js) and
+// Dogfile features (extensions): install, run, check permissions. Features are small JavaScript files people write
+// in Dogfile Notepad (or download from the feature browser). Each one runs in a sandboxed worker (ext-worker.js) and
 // can only use what it was allowed when installed: read files, change files, use the network, run commands.
 import { api, h, esc, toast, uid } from './core.js';
 import { modal, prompt, confirm } from './dialogs.js';
 import { icon } from './icons.js';
 import * as API from './featureapi.js';
 
-export const TARGETS = { files: 'File browser', notepad: 'Atlas Notepad', photos: 'Atlas Photos', player: 'Atlas Player' };
+export const TARGETS = { files: 'File browser', notepad: 'Dogfile Notepad', photos: 'Dogfile Photos', player: 'Dogfile Player' };
 export const PERMS = {
   read: ['Read files', 'Look at files and folders and read text files'],
   write: ['Change files', 'Create, rename, move, copy, save and recycle files'],
@@ -25,16 +25,16 @@ export function parseFeature(code, fallback = {}) {
     if (k === 'permissions') meta.permissions = v.split(/[\s,]+/).filter((p) => PERMS[p]);
     else if (k === 'target') meta.target = TARGETS[v.trim()] ? v.trim() : meta.target;
     else if (['name', 'description', 'version', 'author', 'icon', 'id'].includes(k)) meta[k] = v.trim();
-    else if (k === 'atlas-feature') meta.isFeature = true;
+    else if (k === 'dogmod' || k === 'atlas-feature') meta.isFeature = true;
   }
-  meta.isFeature = meta.isFeature || /\batlas\.(addCommand|addMenuItem)\b/.test(code);
+  meta.isFeature = meta.isFeature || /\b(?:dogfile|atlas)\.(addCommand|addMenuItem)\b/.test(code);
   meta.permissions = meta.permissions || [];
   meta.target = meta.target || 'files';
   meta.id = meta.id || (meta.name ? meta.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : uid());
   return meta;
 }
 export const TEMPLATES = {
-  files: `// @atlas-feature
+  files: `// @dogmod
 // @name My feature
 // @description What it does, in one sentence
 // @target files
@@ -42,40 +42,40 @@ export const TEMPLATES = {
 // @version 1.0
 
 // Adds a command (Command palette, Features menu) and an item to the right-click menu.
-atlas.addCommand({
+dogfile.addCommand({
   id: 'count-words',
   title: 'Count words in selected text files',
   run: async () => {
-    const files = await atlas.selection();
+    const files = await dogfile.selection();
     let total = 0;
-    for (const f of files) if (!f.isDir) total += ((await atlas.files.readText(f.path)).match(/\\S+/g) || []).length;
-    atlas.ui.toast(\`\${total.toLocaleString()} words in \${files.length} file(s)\`);
+    for (const f of files) if (!f.isDir) total += ((await dogfile.files.readText(f.path)).match(/\\S+/g) || []).length;
+    dogfile.ui.toast(\`\${total.toLocaleString()} words in \${files.length} file(s)\`);
   },
 });
 
-atlas.addMenuItem({
+dogfile.addMenuItem({
   title: 'Add today’s date to the name',
   when: { files: true },
   run: async ({ selection }) => {
     const d = new Date().toISOString().slice(0, 10);
-    for (const f of selection) await atlas.files.rename(f.path, f.path.replace(/([^\\\\/]+?)(\\.[^.\\\\/]*)?$/, \`\${d} $1$2\`));
-    atlas.refresh();
+    for (const f of selection) await dogfile.files.rename(f.path, f.path.replace(/([^\\\\/]+?)(\\.[^.\\\\/]*)?$/, \`\${d} $1$2\`));
+    dogfile.refresh();
   },
 });
 `,
-  notepad: `// @atlas-feature
+  notepad: `// @dogmod
 // @name Screenplay formatter
 // @description Formats a plain-text screenplay: scene headings, character names and transitions in capitals
 // @target notepad
 // @permissions
 // @version 1.0
 
-atlas.addCommand({
+dogfile.addCommand({
   id: 'format-screenplay',
   title: 'Format screenplay',
   toolbar: true,
   run: async () => {
-    const lines = (await atlas.editor.getText()).split(/\\r?\\n/);
+    const lines = (await dogfile.editor.getText()).split(/\\r?\\n/);
     const out = lines.map((l, i) => {
       const t = l.trim();
       if (/^(int|ext|int\\.\\/ext|i\\/e)[. ]/i.test(t)) return t.toUpperCase();          // scene heading
@@ -84,24 +84,24 @@ atlas.addCommand({
       if (t && t.length < 30 && !/[.!?]$/.test(t) && next && lines[i - 1]?.trim() === '') return ' '.repeat(20) + t.toUpperCase(); // character
       return l;
     });
-    await atlas.editor.setText(out.join('\\n'));
-    atlas.ui.toast('Formatted');
+    await dogfile.editor.setText(out.join('\\n'));
+    dogfile.ui.toast('Formatted');
   },
 });
 `,
-  photos: `// @atlas-feature
+  photos: `// @dogmod
 // @name Sepia
 // @description Gives the photo a warm old-photo look
 // @target photos
 // @permissions
 // @version 1.0
 
-atlas.addCommand({
+dogfile.addCommand({
   id: 'sepia',
   title: 'Sepia',
   toolbar: true,
   run: async () => {
-    const img = await atlas.photos.getImageData();
+    const img = await dogfile.photos.getImageData();
     const d = img.data;
     for (let i = 0; i < d.length; i += 4) {
       const r = d[i], g = d[i + 1], b = d[i + 2];
@@ -109,18 +109,18 @@ atlas.addCommand({
       d[i + 1] = Math.min(255, r * 0.349 + g * 0.686 + b * 0.168);
       d[i + 2] = Math.min(255, r * 0.272 + g * 0.534 + b * 0.131);
     }
-    await atlas.photos.putImageData(img);
+    await dogfile.photos.putImageData(img);
   },
 });
 `,
-  player: `// @atlas-feature
+  player: `// @dogmod
 // @name Skip intro
 // @description Jumps 90 seconds ahead
 // @target player
 // @permissions
 // @version 1.0
 
-atlas.addCommand({ id: 'skip-intro', title: 'Skip intro (+90 s)', toolbar: true, run: async () => atlas.player.seek((await atlas.player.time()) + 90) });
+dogfile.addCommand({ id: 'skip-intro', title: 'Skip intro (+90 s)', toolbar: true, run: async () => dogfile.player.seek((await dogfile.player.time()) + 90) });
 `,
 };
 
@@ -142,7 +142,7 @@ export function startFeatures({ target, getSettings, provide = {}, onChange }) {
   async function handle(r, m) {
     const f = r.feature;
     const need = NEEDS[m.method];
-    if (need && !(f.permissions || []).includes(need)) throw new Error(`atlas.${m.method}() needs the “${PERMS[need][0]}” permission. Add “${need}” to the // @permissions line at the top of the feature, then install it again.`);
+    if (need && !(f.permissions || []).includes(need)) throw new Error(`dogfile.${m.method}() needs the “${PERMS[need][0]}” permission. Add “${need}” to the // @permissions line at the top of the feature, then install it again.`);
     const a = m.args;
     switch (m.method) {
       case 'ui.toast': toast(`${f.name}: ${a[0]}`); return null;
@@ -169,7 +169,7 @@ export function startFeatures({ target, getSettings, provide = {}, onChange }) {
       case 'storage.set': { const all = (await api('store:get', 'ext-storage')) || {}; all[f.id] = { ...(all[f.id] || {}), [a[0]]: a[1] }; await api('store:set', 'ext-storage', all); return true; }
       default:
         if (provide[m.method]) return provide[m.method](...a);
-        throw new Error(`atlas.${m.method}() doesn’t work in ${TARGETS[target]}. Check the feature’s // @target line.`);
+        throw new Error(`dogfile.${m.method}() doesn’t work in ${TARGETS[target]}. Check the feature’s // @target line.`);
     }
   }
   function start(feature) {
@@ -206,9 +206,9 @@ export function startFeatures({ target, getSettings, provide = {}, onChange }) {
 // error text a person can act on: "x is not a function" / "doesn't exist" get a suggestion; line numbers point into the feature
 export function friendly(err) {
   let t = String(err || '');
-  const nf = /(atlas(?:\.\w+)+) doesn’t exist/.exec(t) || /(atlas(?:\.\w+)+) is not a function/.exec(t);
-  if (nf) { const s = API.suggest(nf[1]); t = `${nf[1]} doesn’t exist.${s ? ` Did you mean ${s}?` : ''} See Features > API reference in Atlas Notepad.`; }
-  const ln = /atlas-feature-[^:]+\.js:(\d+)/.exec(String(err));
+  const nf = /((?:dogfile|atlas)(?:\.\w+)+) doesn’t exist/.exec(t) || /((?:dogfile|atlas)(?:\.\w+)+) is not a function/.exec(t);
+  if (nf) { const s = API.suggest(nf[1]); t = `${nf[1]} doesn’t exist.${s ? ` Did you mean ${s}?` : ''} See Features > API reference in Dogfile Notepad.`; }
+  const ln = /dogmod-[^:]+\.js:(\d+)/.exec(String(err));
   if (ln && !/line \d+/.test(t)) t = t.split('\n')[0] + ` (line ${Math.max(1, +ln[1] - 3)})`;
   return t.split('\n')[0];
 }
@@ -220,7 +220,7 @@ export function checkCode(code, meta) {
 }
 
 // ---------------- installing ----------------
-export async function reviewInstall(code, { source = 'Atlas Notepad', meta: m0 } = {}) {
+export async function reviewInstall(code, { source = 'Dogfile Notepad', meta: m0 } = {}) {
   const meta = { ...parseFeature(code), ...(m0 || {}) };
   const perms = meta.permissions || [];
   const body = h('div', { class: 'stack' },
@@ -234,10 +234,10 @@ export async function reviewInstall(code, { source = 'Atlas Notepad', meta: m0 }
   return ok ? { ...meta, code, permissions: perms } : null;
 }
 export function featureFile(f) {
-  return JSON.stringify({ atlasFeature: 1, id: f.id, name: f.name, description: f.description || '', version: f.version || '1.0', author: f.author || '', target: f.target, permissions: f.permissions || [], code: f.code }, null, 2);
+  return JSON.stringify({ dogmod: 1, id: f.id, name: f.name, description: f.description || '', version: f.version || '1.0', author: f.author || '', target: f.target, permissions: f.permissions || [], code: f.code }, null, 2);
 }
 export function readFeatureFile(text) {
-  try { const j = JSON.parse(text); if (j.atlasFeature && j.code) return j; } catch {}
+  try { const j = JSON.parse(text); if ((j.dogmod || j.atlasFeature) && j.code) return j; } catch {}
   return { code: text, ...parseFeature(text) };
 }
 

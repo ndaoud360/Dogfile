@@ -1,5 +1,5 @@
-// File & folder versions: copies kept in Atlas's data folder (never next to your files). Save a version by hand,
-// or let Atlas save one whenever a tracked file changes. Old versions are pruned (per file count and total size).
+// File & folder versions: copies kept in Dogfile's data folder (never next to your files). Save a version by hand,
+// or let Dogfile save one whenever a tracked file changes. Old versions are pruned (per file count and total size).
 'use strict';
 const fs = require('fs');
 const fsp = fs.promises;

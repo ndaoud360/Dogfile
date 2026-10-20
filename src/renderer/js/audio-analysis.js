@@ -1,4 +1,4 @@
-// Shared BPM / key analysis (used by Atlas Player and the Audio ribbon tab), cached per file.
+// Shared BPM / key analysis (used by Dogfile Player and the Audio ribbon tab), cached per file.
 import { api } from './core.js';
 
 let worker = null, seq = 0;

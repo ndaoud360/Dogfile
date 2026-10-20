@@ -1,4 +1,4 @@
-// Talking to Atlas: one JSON object per line on stdin (requests) and stdout (replies and events).
+// Talking to Dogfile: one JSON object per line on stdin (requests) and stdout (replies and events).
 //   in:  {"id": 7, "cmd": "search", "args": {...}}
 //   out: {"id": 7, "type": "results" | "progress" | "done" | "error", ...}
 // Every request runs on its own thread; "cancel" stops a running one.

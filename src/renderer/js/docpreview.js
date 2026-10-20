@@ -1,5 +1,5 @@
 // Office / OpenDocument / RTF previews without Office (Word, Excel, PowerPoint and LibreOffice files), document
-// properties you can edit, and personal notes / rating / colour label on any file ("annotations"), kept by Atlas.
+// properties you can edit, and personal notes / rating / colour label on any file ("annotations"), kept by Dogfile.
 import { api, state, bus, h, esc, toast, debounce, IS_WIN, saveSettings } from './core.js';
 import { icon } from './icons.js';
 import { modal } from './dialogs.js';
@@ -73,7 +73,7 @@ export function setNote(p, patch) {
   saveNotes();
   bus.emit('fileNotes', p);
 }
-// notes follow files when Atlas moves or renames them
+// notes follow files when Dogfile moves or renames them
 bus.on('historyAdd', async (rec) => {
   if (!rec.pairs) return;
   await loadNotes();

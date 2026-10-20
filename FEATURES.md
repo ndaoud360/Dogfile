@@ -1,8 +1,8 @@
-# Making features for Atlas Files
+# Making features for Dogfile
 
-Features are small JavaScript files that add your own tools to Atlas: commands in the file browser and its right-click menu, toolbar buttons in Atlas Notepad, filters in Atlas Photos, buttons in Atlas Player. You write them in Atlas Notepad, install them with one click, and can share them as `.atlasfeature` files or through the feature browser.
+Features are small JavaScript files that add your own tools to Dogfile: commands in the file browser and its right-click menu, toolbar buttons in Dogfile Notepad, filters in Dogfile Photos, buttons in Dogfile Player. You write them in Dogfile Notepad, install them with one click, and can share them as `.dogmod` files or through the feature browser.
 
-This guide covers feature API version 1. Atlas keeps version 1 working: functions are never renamed or removed, only added.
+This guide covers feature API version 1. Dogfile keeps version 1 working: functions are never renamed or removed, only added.
 
 ## Contents
 
@@ -19,46 +19,46 @@ This guide covers feature API version 1. Atlas keeps version 1 working: function
 
 ## Your first feature
 
-1. Open **Atlas Notepad** and choose **Features (puzzle-piece button) > Add a feature…**
-2. Pick a blank starter or one of the examples and press **Open in Notepad**. Atlas saves it in its *Features* folder so your work is never lost.
-3. Change the code. Type `atlas.` for suggestions; hover any `atlas.…` name for help; press **F1** for the reference panel.
-4. Press **Features > Install**. Atlas shows what the feature may do and asks you to confirm.
+1. Open **Dogfile Notepad** and choose **Features (puzzle-piece button) > Add a feature…**
+2. Pick a blank starter or one of the examples and press **Open in Notepad**. Dogfile saves it in its *Features* folder so your work is never lost.
+3. Change the code. Type `dogfile.` for suggestions; hover any `dogfile.…` name for help; press **F1** for the reference panel.
+4. Press **Features > Install**. Dogfile shows what the feature may do and asks you to confirm.
 5. Use it: file-browser features appear in the command palette (Ctrl+Shift+P), the **Features** menu and the right-click menu; Notepad, Photos and Player features appear under their **Features** button (and on the toolbar with `toolbar: true`).
 
 To change a feature later, edit the file and press **Install** again; it updates in place. **Manage features** (File > Features) turns features on and off, opens their code, exports and removes them.
 
 ```js
-// @atlas-feature
+// @dogmod
 // @name Copy paths as a list
 // @description Copies the full paths of the selected items, one per line
 // @target files
 // @permissions
 // @version 1.0
 
-atlas.addMenuItem({
+dogfile.addMenuItem({
   title: 'Copy paths as a list',
   icon: 'copy',
   run: async ({ selection }) => {
-    await atlas.clipboard.writeText(selection.map((f) => f.path).join('\n'));
-    atlas.ui.toast(selection.length + ' path(s) copied');
+    await dogfile.clipboard.writeText(selection.map((f) => f.path).join('\n'));
+    dogfile.ui.toast(selection.length + ' path(s) copied');
   },
 });
 ```
 
 ## The header
 
-The `// @` lines at the top describe the feature. Atlas reads the first 40 lines.
+The `// @` lines at the top describe the feature. Dogfile reads the first 40 lines.
 
 | Line | Meaning |
 | --- | --- |
-| `// @atlas-feature` | Marks the file as a feature (first line) |
+| `// @dogmod` | Marks the file as a Dogfile mod (first line) |
 | `// @name` | The feature’s name, shown in menus and the feature browser |
 | `// @description` | One sentence about what it does |
 | `// @target` | Where it runs: files, notepad, photos or player |
 | `// @permissions` | Any of: read write network run (leave empty for none) |
 | `// @version` | Your version number, e.g. 1.0 (raise it when you update) |
 | `// @author` | Your name (optional) |
-| `// @icon` | An Atlas icon name for its button (optional) |
+| `// @icon` | An Dogfile icon name for its button (optional) |
 
 ## Permissions
 
@@ -66,10 +66,10 @@ A feature can always show messages, ask questions, work inside its own app (the 
 
 | Permission | Name people see | Allows |
 | --- | --- | --- |
-| `read` | Read files | `atlas.files.list`, `stat`, `readText` |
-| `write` | Change files | `atlas.files.writeText`, `rename`, `copy`, `move`, `mkdir`, `trash` |
-| `network` | Use the internet | `atlas.net.fetch` |
-| `run` | Run commands | `atlas.run` |
+| `read` | Read files | `dogfile.files.list`, `stat`, `readText` |
+| `write` | Change files | `dogfile.files.writeText`, `rename`, `copy`, `move`, `mkdir`, `trash` |
+| `network` | Use the internet | `dogfile.net.fetch` |
+| `run` | Run commands | `dogfile.run` |
 
 Ask only for what you use: people trust features that ask for less, and the **Check** tab in Notepad (F1) warns about permissions you ask for but don't use. If your code calls something its header doesn't ask for, **Install** offers to add it.
 
@@ -77,16 +77,16 @@ Ask only for what you use: people trust features that ask for less, and the **Ch
 
 Each feature runs in its own sandboxed worker:
 
-- It can't see Atlas's windows or other features, and has no access to Node.js, `require`, `import` or `importScripts`.
-- It can't reach the internet directly (`fetch` and `XMLHttpRequest` are blocked); `atlas.net.fetch` goes through Atlas and needs the `network` permission.
-- Every `atlas.*` call is checked against the permissions the person approved. Deleting always goes to the Recycle Bin, and copies and moves use Atlas's operations queue, so they show progress, ask about name clashes and can be undone.
-- All `atlas.*` functions return Promises: use `await`.
+- It can't see Dogfile's windows or other features, and has no access to Node.js, `require`, `import` or `importScripts`.
+- It can't reach the internet directly (`fetch` and `XMLHttpRequest` are blocked); `dogfile.net.fetch` goes through Dogfile and needs the `network` permission.
+- Every `dogfile.*` call is checked against the permissions the person approved. Deleting always goes to the Recycle Bin, and copies and moves use Dogfile's operations queue, so they show progress, ask about name clashes and can be undone.
+- All `dogfile.*` functions return Promises: use `await`.
 
 ## Testing and the log
 
-- `atlas.log(...)` or `console.log(...)` write to the **Log** tab of the help panel in Notepad (F1). Errors from features show there too, with the line number in your file.
+- `dogfile.log(...)` or `console.log(...)` write to the **Log** tab of the help panel in Notepad (F1). Errors from features show there too, with the line number in your file.
 - The **Check** tab lists problems before you install: missing permissions, names that don't exist (with a suggestion), functions that don't work where the feature runs, and features that add no command.
-- Errors are written for people: `atlas.files.delete doesn't exist. Did you mean atlas.files.trash?`
+- Errors are written for people: `dogfile.files.delete doesn't exist. Did you mean dogfile.files.trash?`
 
 ## API reference
 
@@ -94,7 +94,7 @@ Each feature runs in its own sandboxed worker:
 
 Every feature starts by adding at least one command. Commands appear in the command palette and the Features menu of the app the feature is made for; with toolbar: true they also get a toolbar button (Notepad, Photos, Player).
 
-#### `atlas.addCommand({ id, title, run, icon?, keys?, toolbar? })`
+#### `dogfile.addCommand({ id, title, run, icon?, keys?, toolbar? })`
 
 Adds a command. run(context) is called when the person picks it. In the file browser, context is { selection, folder }; in Notepad, { fileName }.
 
@@ -103,7 +103,7 @@ Adds a command. run(context) is called when the person picks it. In the file bro
 | `id` | Short unique name inside your feature, like "count-words" |
 | `title` | What people see in menus |
 | `run` | async function (context) { … } |
-| `icon` | Optional Atlas icon name, e.g. "star", "image", "code" |
+| `icon` | Optional Dogfile icon name, e.g. "star", "image", "code" |
 | `keys` | Optional shortcut, e.g. "Ctrl+Alt+W" (file browser) |
 | `toolbar` | true to add a toolbar button (Notepad, Photos, Player) |
 
@@ -111,14 +111,14 @@ Adds a command. run(context) is called when the person picks it. In the file bro
 - **Works in:** everywhere
 
 ```js
-atlas.addCommand({
+dogfile.addCommand({
   id: 'hello',
   title: 'Say hello',
-  run: async () => atlas.ui.toast('Hello!'),
+  run: async () => dogfile.ui.toast('Hello!'),
 });
 ```
 
-#### `atlas.addMenuItem({ title, run, when?, icon? })`
+#### `dogfile.addMenuItem({ title, run, when?, icon? })`
 
 Adds an item to the right-click menu of files and folders. run({ selection, folder }) gets the right-clicked items.
 
@@ -132,14 +132,14 @@ Adds an item to the right-click menu of files and folders. run({ selection, fold
 - **Works in:** File browser
 
 ```js
-atlas.addMenuItem({
+dogfile.addMenuItem({
   title: 'Copy name',
   when: { single: true },
-  run: async ({ selection }) => atlas.ui.showText('Name', selection[0].name),
+  run: async ({ selection }) => dogfile.ui.showText('Name', selection[0].name),
 });
 ```
 
-#### `atlas.log(...values)`
+#### `dogfile.log(...values)`
 
 Writes to the feature log (Notepad > Features > API reference > Log). console.log does the same.
 
@@ -147,25 +147,25 @@ Writes to the feature log (Notepad > Features > API reference > Log). console.lo
 - **Works in:** everywhere
 
 ```js
-atlas.log('selected', await atlas.selection());
+dogfile.log('selected', await dogfile.selection());
 ```
 
-#### `atlas.version`
+#### `dogfile.version`
 
-The feature API version (1). Atlas never breaks version 1 features.
+The feature API version (1). Dogfile never breaks version 1 features.
 
 - **Gives:** number
 - **Works in:** everywhere
 
 ```js
-if (atlas.version >= 1) atlas.log('ok');
+if (dogfile.version >= 1) dogfile.log('ok');
 ```
 
 ### Talking to the person
 
 Messages and questions. They work everywhere and need no permission.
 
-#### `atlas.ui.toast(text)`
+#### `dogfile.ui.toast(text)`
 
 Shows a short message at the bottom of the window.
 
@@ -173,10 +173,10 @@ Shows a short message at the bottom of the window.
 - **Works in:** everywhere
 
 ```js
-atlas.ui.toast('Done');
+dogfile.ui.toast('Done');
 ```
 
-#### `atlas.ui.prompt(title, label?, value?)`
+#### `dogfile.ui.prompt(title, label?, value?)`
 
 Asks for a line of text. Gives null if the person cancels.
 
@@ -184,11 +184,11 @@ Asks for a line of text. Gives null if the person cancels.
 - **Works in:** everywhere
 
 ```js
-const name = await atlas.ui.prompt('New name', 'Name', 'Untitled');
+const name = await dogfile.ui.prompt('New name', 'Name', 'Untitled');
 if (name == null) return;
 ```
 
-#### `atlas.ui.confirm(title, message)`
+#### `dogfile.ui.confirm(title, message)`
 
 Asks a yes/no question.
 
@@ -196,10 +196,10 @@ Asks a yes/no question.
 - **Works in:** everywhere
 
 ```js
-if (!(await atlas.ui.confirm('Rename 12 files?', 'This adds the date to each name.'))) return;
+if (!(await dogfile.ui.confirm('Rename 12 files?', 'This adds the date to each name.'))) return;
 ```
 
-#### `atlas.ui.choose(title, options)`
+#### `dogfile.ui.choose(title, options)`
 
 Lets the person pick one of a few buttons. Gives the chosen text, or null.
 
@@ -207,10 +207,10 @@ Lets the person pick one of a few buttons. Gives the chosen text, or null.
 - **Works in:** everywhere
 
 ```js
-const size = await atlas.ui.choose('Size', ['Small', 'Medium', 'Large']);
+const size = await dogfile.ui.choose('Size', ['Small', 'Medium', 'Large']);
 ```
 
-#### `atlas.clipboard.writeText(text)`
+#### `dogfile.clipboard.writeText(text)`
 
 Puts text on the clipboard. Features can’t read the clipboard.
 
@@ -218,11 +218,11 @@ Puts text on the clipboard. Features can’t read the clipboard.
 - **Works in:** everywhere
 
 ```js
-await atlas.clipboard.writeText(paths.join('\n'));
-atlas.ui.toast('Copied');
+await dogfile.clipboard.writeText(paths.join('\n'));
+dogfile.ui.toast('Copied');
 ```
 
-#### `atlas.ui.showText(title, text)`
+#### `dogfile.ui.showText(title, text)`
 
 Shows longer text in a window the person can read and copy.
 
@@ -230,14 +230,14 @@ Shows longer text in a window the person can read and copy.
 - **Works in:** everywhere
 
 ```js
-atlas.ui.showText('Report', lines.join('\n'));
+dogfile.ui.showText('Report', lines.join('\n'));
 ```
 
 ### Where the person is (file browser)
 
 For features made for the file browser (@target files). Items are { path, name, ext, isDir, size, mtime }.
 
-#### `atlas.selection()`
+#### `dogfile.selection()`
 
 The selected files and folders in the active pane.
 
@@ -245,10 +245,10 @@ The selected files and folders in the active pane.
 - **Works in:** File browser
 
 ```js
-const files = (await atlas.selection()).filter((f) => !f.isDir);
+const files = (await dogfile.selection()).filter((f) => !f.isDir);
 ```
 
-#### `atlas.folder()`
+#### `dogfile.folder()`
 
 The folder open in the active pane.
 
@@ -256,10 +256,10 @@ The folder open in the active pane.
 - **Works in:** File browser
 
 ```js
-const here = await atlas.folder();
+const here = await dogfile.folder();
 ```
 
-#### `atlas.navigate(path)`
+#### `dogfile.navigate(path)`
 
 Opens a folder in the active pane.
 
@@ -267,10 +267,10 @@ Opens a folder in the active pane.
 - **Works in:** File browser
 
 ```js
-atlas.navigate('C:\\Users\\Public');
+dogfile.navigate('C:\\Users\\Public');
 ```
 
-#### `atlas.refresh()`
+#### `dogfile.refresh()`
 
 Reloads the active pane, e.g. after renaming files.
 
@@ -278,14 +278,14 @@ Reloads the active pane, e.g. after renaming files.
 - **Works in:** File browser
 
 ```js
-await atlas.refresh();
+await dogfile.refresh();
 ```
 
 ### Files
 
 Reading needs the read permission; anything that changes files needs write. Ask for them in the header: // @permissions read write
 
-#### `atlas.files.list(folder)`
+#### `dogfile.files.list(folder)`
 
 What is inside a folder.
 
@@ -294,10 +294,10 @@ What is inside a folder.
 - **Needs:** `read` (Read files)
 
 ```js
-const items = await atlas.files.list(await atlas.folder());
+const items = await dogfile.files.list(await dogfile.folder());
 ```
 
-#### `atlas.files.stat(path)`
+#### `dogfile.files.stat(path)`
 
 Size and dates of a file or folder, or null if it doesn’t exist.
 
@@ -306,11 +306,11 @@ Size and dates of a file or folder, or null if it doesn’t exist.
 - **Needs:** `read` (Read files)
 
 ```js
-const st = await atlas.files.stat(path);
-if (!st) atlas.ui.toast('Not found');
+const st = await dogfile.files.stat(path);
+if (!st) dogfile.ui.toast('Not found');
 ```
 
-#### `atlas.files.readText(path)`
+#### `dogfile.files.readText(path)`
 
 Reads a text file (up to 20 MB). Fails for pictures, music and other non-text files.
 
@@ -319,10 +319,10 @@ Reads a text file (up to 20 MB). Fails for pictures, music and other non-text fi
 - **Needs:** `read` (Read files)
 
 ```js
-const text = await atlas.files.readText(file.path);
+const text = await dogfile.files.readText(file.path);
 ```
 
-#### `atlas.files.writeText(path, text)`
+#### `dogfile.files.writeText(path, text)`
 
 Creates or replaces a text file (UTF-8).
 
@@ -331,10 +331,10 @@ Creates or replaces a text file (UTF-8).
 - **Needs:** `write` (Change files)
 
 ```js
-await atlas.files.writeText(folder + '\\notes.txt', 'Hello');
+await dogfile.files.writeText(folder + '\\notes.txt', 'Hello');
 ```
 
-#### `atlas.files.rename(fromPath, toPath)`
+#### `dogfile.files.rename(fromPath, toPath)`
 
 Renames (or moves within a drive). toPath is the full new path.
 
@@ -343,10 +343,10 @@ Renames (or moves within a drive). toPath is the full new path.
 - **Needs:** `write` (Change files)
 
 ```js
-await atlas.files.rename(f.path, f.path.replace(/\.jpeg$/i, '.jpg'));
+await dogfile.files.rename(f.path, f.path.replace(/\.jpeg$/i, '.jpg'));
 ```
 
-#### `atlas.files.copy(paths, destFolder)`
+#### `dogfile.files.copy(paths, destFolder)`
 
 Copies files into a folder using the operations queue (progress, conflicts, undo).
 
@@ -355,10 +355,10 @@ Copies files into a folder using the operations queue (progress, conflicts, undo
 - **Needs:** `write` (Change files)
 
 ```js
-await atlas.files.copy(files.map((f) => f.path), 'D:\\Backup');
+await dogfile.files.copy(files.map((f) => f.path), 'D:\\Backup');
 ```
 
-#### `atlas.files.move(paths, destFolder)`
+#### `dogfile.files.move(paths, destFolder)`
 
 Moves files into a folder using the operations queue.
 
@@ -367,10 +367,10 @@ Moves files into a folder using the operations queue.
 - **Needs:** `write` (Change files)
 
 ```js
-await atlas.files.move(paths, here + '\\Old');
+await dogfile.files.move(paths, here + '\\Old');
 ```
 
-#### `atlas.files.mkdir(path)`
+#### `dogfile.files.mkdir(path)`
 
 Creates a folder.
 
@@ -379,10 +379,10 @@ Creates a folder.
 - **Needs:** `write` (Change files)
 
 ```js
-await atlas.files.mkdir(here + '\\Sorted');
+await dogfile.files.mkdir(here + '\\Sorted');
 ```
 
-#### `atlas.files.trash(paths)`
+#### `dogfile.files.trash(paths)`
 
 Sends files to the Recycle Bin (never deletes for good).
 
@@ -391,10 +391,10 @@ Sends files to the Recycle Bin (never deletes for good).
 - **Needs:** `write` (Change files)
 
 ```js
-await atlas.files.trash([file.path]);
+await dogfile.files.trash([file.path]);
 ```
 
-#### `atlas.files.open(path)`
+#### `dogfile.files.open(path)`
 
 Opens a file the way double-clicking would. Needs no permission.
 
@@ -402,213 +402,213 @@ Opens a file the way double-clicking would. Needs no permission.
 - **Works in:** everywhere
 
 ```js
-atlas.files.open(file.path);
+dogfile.files.open(file.path);
 ```
 
-### Atlas Notepad
+### Dogfile Notepad
 
 For features made for Notepad (@target notepad). They work on the open document.
 
-#### `atlas.editor.getText()`
+#### `dogfile.editor.getText()`
 
 The whole document.
 
 - **Gives:** Promise<string>
-- **Works in:** Atlas Notepad
+- **Works in:** Dogfile Notepad
 
 ```js
-const text = await atlas.editor.getText();
+const text = await dogfile.editor.getText();
 ```
 
-#### `atlas.editor.setText(text)`
+#### `dogfile.editor.setText(text)`
 
 Replaces the whole document (Ctrl+Z undoes it).
 
 - **Gives:** Promise
-- **Works in:** Atlas Notepad
+- **Works in:** Dogfile Notepad
 
 ```js
-await atlas.editor.setText(text.toUpperCase());
+await dogfile.editor.setText(text.toUpperCase());
 ```
 
-#### `atlas.editor.getSelection()`
+#### `dogfile.editor.getSelection()`
 
 The selected text ("" if nothing is selected).
 
 - **Gives:** Promise<string>
-- **Works in:** Atlas Notepad
+- **Works in:** Dogfile Notepad
 
 ```js
-const sel = await atlas.editor.getSelection();
+const sel = await dogfile.editor.getSelection();
 ```
 
-#### `atlas.editor.replaceSelection(text)`
+#### `dogfile.editor.replaceSelection(text)`
 
 Replaces the selected text.
 
 - **Gives:** Promise
-- **Works in:** Atlas Notepad
+- **Works in:** Dogfile Notepad
 
 ```js
-await atlas.editor.replaceSelection(sel.trim());
+await dogfile.editor.replaceSelection(sel.trim());
 ```
 
-#### `atlas.editor.insert(text)`
+#### `dogfile.editor.insert(text)`
 
 Inserts text at the cursor.
 
 - **Gives:** Promise
-- **Works in:** Atlas Notepad
+- **Works in:** Dogfile Notepad
 
 ```js
-await atlas.editor.insert(new Date().toLocaleString());
+await dogfile.editor.insert(new Date().toLocaleString());
 ```
 
-#### `atlas.editor.fileName()`
+#### `dogfile.editor.fileName()`
 
 The document’s path (or its name if it isn’t saved yet).
 
 - **Gives:** Promise<string>
-- **Works in:** Atlas Notepad
+- **Works in:** Dogfile Notepad
 
 ```js
-const name = await atlas.editor.fileName();
+const name = await dogfile.editor.fileName();
 ```
 
-#### `atlas.editor.getLanguage()`
+#### `dogfile.editor.getLanguage()`
 
 The document’s language id, e.g. "javascript", "markdown", "text".
 
 - **Gives:** Promise<string>
-- **Works in:** Atlas Notepad
+- **Works in:** Dogfile Notepad
 
 ```js
-if ((await atlas.editor.getLanguage()) !== 'markdown') return;
+if ((await dogfile.editor.getLanguage()) !== 'markdown') return;
 ```
 
-#### `atlas.editor.setLanguage(id)`
+#### `dogfile.editor.setLanguage(id)`
 
 Changes the highlighting language.
 
 - **Gives:** Promise
-- **Works in:** Atlas Notepad
+- **Works in:** Dogfile Notepad
 
 ```js
-atlas.editor.setLanguage('json');
+dogfile.editor.setLanguage('json');
 ```
 
-### Atlas Photos
+### Dogfile Photos
 
 For features made for the photo editor (@target photos). Pixels are { width, height, data } where data holds 4 numbers per pixel: red, green, blue, alpha (0–255).
 
-#### `atlas.photos.getImageData()`
+#### `dogfile.photos.getImageData()`
 
 The picture’s pixels (opens edit mode if needed).
 
 - **Gives:** Promise<{ width, height, data }>
-- **Works in:** Atlas Photos
+- **Works in:** Dogfile Photos
 
 ```js
-const img = await atlas.photos.getImageData();
+const img = await dogfile.photos.getImageData();
 ```
 
-#### `atlas.photos.putImageData(img)`
+#### `dogfile.photos.putImageData(img)`
 
 Puts changed pixels back (undo works). Save as usual afterwards.
 
 - **Gives:** Promise
-- **Works in:** Atlas Photos
+- **Works in:** Dogfile Photos
 
 ```js
-await atlas.photos.putImageData(img);
+await dogfile.photos.putImageData(img);
 ```
 
-#### `atlas.photos.fileName()`
+#### `dogfile.photos.fileName()`
 
 The picture’s path.
 
 - **Gives:** Promise<string>
-- **Works in:** Atlas Photos
+- **Works in:** Dogfile Photos
 
 ```js
-const p = await atlas.photos.fileName();
+const p = await dogfile.photos.fileName();
 ```
 
-### Atlas Player
+### Dogfile Player
 
 For features made for the player (@target player). Times are in seconds.
 
-#### `atlas.player.currentFile()`
+#### `dogfile.player.currentFile()`
 
 The path of what is playing.
 
 - **Gives:** Promise<string>
-- **Works in:** Atlas Player
+- **Works in:** Dogfile Player
 
 ```js
-const p = await atlas.player.currentFile();
+const p = await dogfile.player.currentFile();
 ```
 
-#### `atlas.player.play()`
+#### `dogfile.player.play()`
 
 Plays.
 
 - **Gives:** Promise
-- **Works in:** Atlas Player
+- **Works in:** Dogfile Player
 
 ```js
-atlas.player.play();
+dogfile.player.play();
 ```
 
-#### `atlas.player.pause()`
+#### `dogfile.player.pause()`
 
 Pauses.
 
 - **Gives:** Promise
-- **Works in:** Atlas Player
+- **Works in:** Dogfile Player
 
 ```js
-atlas.player.pause();
+dogfile.player.pause();
 ```
 
-#### `atlas.player.seek(seconds)`
+#### `dogfile.player.seek(seconds)`
 
 Jumps to a time.
 
 - **Gives:** Promise
-- **Works in:** Atlas Player
+- **Works in:** Dogfile Player
 
 ```js
-atlas.player.seek(90);
+dogfile.player.seek(90);
 ```
 
-#### `atlas.player.time()`
+#### `dogfile.player.time()`
 
 The current time.
 
 - **Gives:** Promise<number>
-- **Works in:** Atlas Player
+- **Works in:** Dogfile Player
 
 ```js
-const t = await atlas.player.time();
+const t = await dogfile.player.time();
 ```
 
-#### `atlas.player.duration()`
+#### `dogfile.player.duration()`
 
 How long the file is.
 
 - **Gives:** Promise<number>
-- **Works in:** Atlas Player
+- **Works in:** Dogfile Player
 
 ```js
-const d = await atlas.player.duration();
+const d = await dogfile.player.duration();
 ```
 
 ### Internet
 
-Features can’t reach the internet directly; they ask Atlas, which needs the network permission.
+Features can’t reach the internet directly; they ask Dogfile, which needs the network permission.
 
-#### `atlas.net.fetch(url, { method?, headers?, body? })`
+#### `dogfile.net.fetch(url, { method?, headers?, body? })`
 
 Downloads from a web address (http/https, up to 5 MB, 30 s). Unlike the browser’s fetch it gives back text: use JSON.parse(r.text) for JSON.
 
@@ -617,15 +617,15 @@ Downloads from a web address (http/https, up to 5 MB, 30 s). Unlike the browser�
 - **Needs:** `network` (Use the internet)
 
 ```js
-const r = await atlas.net.fetch('https://api.github.com/zen');
-if (r.ok) atlas.ui.toast(r.text);
+const r = await dogfile.net.fetch('https://api.github.com/zen');
+if (r.ok) dogfile.ui.toast(r.text);
 ```
 
 ### Running commands
 
 Needs the run permission. In the file browser the command runs in the built-in terminal so the person sees it; elsewhere it starts in the background.
 
-#### `atlas.run(command, folder?)`
+#### `dogfile.run(command, folder?)`
 
 Runs a command line, optionally in a folder.
 
@@ -634,14 +634,14 @@ Runs a command line, optionally in a folder.
 - **Needs:** `run` (Run commands)
 
 ```js
-atlas.run('git status', await atlas.folder());
+dogfile.run('git status', await dogfile.folder());
 ```
 
 ### Remembering things
 
 A small private store for each feature (settings, last used values). Survives restarts.
 
-#### `atlas.storage.get(key)`
+#### `dogfile.storage.get(key)`
 
 Reads a value you saved, or null.
 
@@ -649,10 +649,10 @@ Reads a value you saved, or null.
 - **Works in:** everywhere
 
 ```js
-const last = (await atlas.storage.get('lastName')) || 'Untitled';
+const last = (await dogfile.storage.get('lastName')) || 'Untitled';
 ```
 
-#### `atlas.storage.set(key, value)`
+#### `dogfile.storage.set(key, value)`
 
 Saves a value (anything JSON can hold).
 
@@ -660,31 +660,31 @@ Saves a value (anything JSON can hold).
 - **Works in:** everywhere
 
 ```js
-await atlas.storage.set('lastName', name);
+await dogfile.storage.set('lastName', name);
 ```
 
 ## Examples
 
-All of these are in Atlas: **Features > Add a feature…** in Notepad, or the **Examples** tab of the help panel (F1).
+All of these are in Dogfile: **Features > Add a feature…** in Notepad, or the **Examples** tab of the help panel (F1).
 
 ### Copy paths as a list (File browser)
 
 Right-click files to copy their full paths, one per line.
 
 ```js
-// @atlas-feature
+// @dogmod
 // @name Copy paths as a list
 // @description Copies the full paths of the selected items, one per line
 // @target files
 // @permissions
 // @version 1.0
 
-atlas.addMenuItem({
+dogfile.addMenuItem({
   title: 'Copy paths as a list',
   icon: 'copy',
   run: async ({ selection }) => {
-    await atlas.clipboard.writeText(selection.map((f) => f.path).join('\n'));
-    atlas.ui.toast(selection.length + ' path(s) copied');
+    await dogfile.clipboard.writeText(selection.map((f) => f.path).join('\n'));
+    dogfile.ui.toast(selection.length + ' path(s) copied');
   },
 });
 ```
@@ -694,38 +694,38 @@ atlas.addMenuItem({
 Asks what to find and what to put instead, shows a preview, then renames.
 
 ```js
-// @atlas-feature
+// @dogmod
 // @name Find and replace in names
 // @description Replaces text in the names of the selected files, after showing a preview
 // @target files
 // @permissions write
 // @version 1.0
 
-atlas.addCommand({
+dogfile.addCommand({
   id: 'find-replace-names',
   title: 'Find and replace in names…',
   run: async () => {
-    const items = await atlas.selection();
-    if (!items.length) return atlas.ui.toast('Select some files first');
-    const find = await atlas.ui.prompt('Find and replace in names', 'Find');
+    const items = await dogfile.selection();
+    if (!items.length) return dogfile.ui.toast('Select some files first');
+    const find = await dogfile.ui.prompt('Find and replace in names', 'Find');
     if (!find) return;
-    const repl = await atlas.ui.prompt('Find and replace in names', 'Replace with', '');
+    const repl = await dogfile.ui.prompt('Find and replace in names', 'Replace with', '');
     if (repl == null) return;
 
     // work out the new names first, so the person can check them
     const changes = items
       .map((f) => ({ f, name: f.name.split(find).join(repl) }))
       .filter((c) => c.name !== c.f.name && c.name.trim());
-    if (!changes.length) return atlas.ui.toast('No names contain “' + find + '”');
+    if (!changes.length) return dogfile.ui.toast('No names contain “' + find + '”');
     const preview = changes.slice(0, 15).map((c) => c.f.name + '  →  ' + c.name).join('\n');
-    if (!(await atlas.ui.confirm('Rename ' + changes.length + ' item(s)?', preview + (changes.length > 15 ? '\n…' : '')))) return;
+    if (!(await dogfile.ui.confirm('Rename ' + changes.length + ' item(s)?', preview + (changes.length > 15 ? '\n…' : '')))) return;
 
     for (const c of changes) {
       const folder = c.f.path.slice(0, c.f.path.length - c.f.name.length);
-      await atlas.files.rename(c.f.path, folder + c.name);
+      await dogfile.files.rename(c.f.path, folder + c.name);
     }
-    await atlas.refresh();
-    atlas.ui.toast('Renamed ' + changes.length + ' item(s)');
+    await dogfile.refresh();
+    dogfile.ui.toast('Renamed ' + changes.length + ' item(s)');
   },
 });
 ```
@@ -735,14 +735,14 @@ atlas.addCommand({
 Right-click files to put today’s date (like 2026-10-19) in front of their names.
 
 ```js
-// @atlas-feature
+// @dogmod
 // @name Add today's date to names
 // @description Puts today's date (YYYY-MM-DD) in front of the selected files' names
 // @target files
 // @permissions write
 // @version 1.0
 
-atlas.addMenuItem({
+dogfile.addMenuItem({
   title: 'Add today’s date to the name',
   when: { files: true },
   run: async ({ selection }) => {
@@ -750,9 +750,9 @@ atlas.addMenuItem({
     const today = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     for (const f of selection) {
       const folder = f.path.slice(0, f.path.length - f.name.length);
-      await atlas.files.rename(f.path, folder + today + ' ' + f.name);
+      await dogfile.files.rename(f.path, folder + today + ' ' + f.name);
     }
-    await atlas.refresh();
+    await dogfile.refresh();
   },
 });
 ```
@@ -762,30 +762,30 @@ atlas.addMenuItem({
 Totals the words in the selected text files.
 
 ```js
-// @atlas-feature
+// @dogmod
 // @name Count words
 // @description Counts the words in the selected text files
 // @target files
 // @permissions read
 // @version 1.0
 
-atlas.addCommand({
+dogfile.addCommand({
   id: 'count-words',
   title: 'Count words in selected files',
   run: async () => {
-    const files = (await atlas.selection()).filter((f) => !f.isDir);
+    const files = (await dogfile.selection()).filter((f) => !f.isDir);
     const lines = [];
     let total = 0;
     for (const f of files) {
       try {
-        const n = ((await atlas.files.readText(f.path)).match(/\S+/g) || []).length;
+        const n = ((await dogfile.files.readText(f.path)).match(/\S+/g) || []).length;
         total += n;
         lines.push(n.toLocaleString().padStart(10) + '  ' + f.name);
       } catch {
         lines.push('   (skipped)  ' + f.name + ' isn’t a text file');
       }
     }
-    atlas.ui.showText('Word count', lines.join('\n') + '\n\n' + total.toLocaleString().padStart(10) + '  total');
+    dogfile.ui.showText('Word count', lines.join('\n') + '\n\n' + total.toLocaleString().padStart(10) + '  total');
   },
 });
 ```
@@ -795,14 +795,14 @@ atlas.addCommand({
 Makes a folder named after each selected file and moves the file into it.
 
 ```js
-// @atlas-feature
+// @dogmod
 // @name Folder for each file
 // @description Makes a folder named after each selected file and moves the file into it
 // @target files
 // @permissions read write
 // @version 1.0
 
-atlas.addMenuItem({
+dogfile.addMenuItem({
   title: 'Put each in its own folder',
   when: { files: true },
   run: async ({ selection, folder }) => {
@@ -810,10 +810,10 @@ atlas.addMenuItem({
     for (const f of selection) {
       const base = f.name.replace(/\.[^.]*$/, '');      // name without the extension
       const target = folder + sep + base;
-      if (!(await atlas.files.stat(target))) await atlas.files.mkdir(target);
-      await atlas.files.move([f.path], target);
+      if (!(await dogfile.files.stat(target))) await dogfile.files.mkdir(target);
+      await dogfile.files.move([f.path], target);
     }
-    await atlas.refresh();
+    await dogfile.refresh();
   },
 });
 ```
@@ -823,7 +823,7 @@ atlas.addMenuItem({
 Lists the 20 biggest files in the current folder.
 
 ```js
-// @atlas-feature
+// @dogmod
 // @name Largest files
 // @description Lists the 20 biggest files in the current folder
 // @target files
@@ -832,36 +832,36 @@ Lists the 20 biggest files in the current folder.
 
 const size = (b) => b > 1e9 ? (b / 1e9).toFixed(1) + ' GB' : b > 1e6 ? (b / 1e6).toFixed(1) + ' MB' : b >= 1e3 ? Math.round(b / 1e3) + ' KB' : b + ' bytes';
 
-atlas.addCommand({
+dogfile.addCommand({
   id: 'largest-files',
   title: 'Show the largest files here',
   run: async () => {
-    const items = (await atlas.files.list(await atlas.folder())).filter((i) => !i.isDir);
+    const items = (await dogfile.files.list(await dogfile.folder())).filter((i) => !i.isDir);
     items.sort((a, b) => b.size - a.size);
     const top = items.slice(0, 20).map((i) => size(i.size).padStart(9) + '  ' + i.name);
-    atlas.ui.showText('Largest files', top.join('\n') || 'No files here');
+    dogfile.ui.showText('Largest files', top.join('\n') || 'No files here');
   },
 });
 ```
 
-### Screenplay formatter (Atlas Notepad)
+### Screenplay formatter (Dogfile Notepad)
 
 Puts scene headings, character names and transitions in capitals and lines them up.
 
 ```js
-// @atlas-feature
+// @dogmod
 // @name Screenplay formatter
 // @description Formats a plain-text screenplay: scene headings, character names and transitions in capitals
 // @target notepad
 // @permissions
 // @version 1.0
 
-atlas.addCommand({
+dogfile.addCommand({
   id: 'format-screenplay',
   title: 'Format screenplay',
   toolbar: true,
   run: async () => {
-    const lines = (await atlas.editor.getText()).split(/\r?\n/);
+    const lines = (await dogfile.editor.getText()).split(/\r?\n/);
     const out = lines.map((l, i) => {
       const t = l.trim();
       if (/^(int|ext|int\.\/ext|i\/e)[. ]/i.test(t)) return t.toUpperCase();                         // scene heading
@@ -870,112 +870,112 @@ atlas.addCommand({
       if (t && t.length < 30 && !/[.!?]$/.test(t) && next && (lines[i - 1] || '').trim() === '') return ' '.repeat(20) + t.toUpperCase(); // character
       return l;
     });
-    await atlas.editor.setText(out.join('\n'));
-    atlas.ui.toast('Formatted');
+    await dogfile.editor.setText(out.join('\n'));
+    dogfile.ui.toast('Formatted');
   },
 });
 ```
 
-### CSV to Markdown table (Atlas Notepad)
+### CSV to Markdown table (Dogfile Notepad)
 
 Turns selected comma-separated lines into a Markdown table.
 
 ```js
-// @atlas-feature
+// @dogmod
 // @name CSV to Markdown table
 // @description Turns the selected comma-separated lines into a Markdown table
 // @target notepad
 // @permissions
 // @version 1.0
 
-atlas.addCommand({
+dogfile.addCommand({
   id: 'csv-to-table',
   title: 'CSV to Markdown table',
   icon: 'viewGrid',
   run: async () => {
-    const text = (await atlas.editor.getSelection()) || (await atlas.editor.getText());
+    const text = (await dogfile.editor.getSelection()) || (await dogfile.editor.getText());
     const rows = text.trim().split(/\r?\n/).map((l) => l.split(',').map((c) => c.trim()));
-    if (rows.length < 2) return atlas.ui.toast('Select at least two lines of CSV');
+    if (rows.length < 2) return dogfile.ui.toast('Select at least two lines of CSV');
     const line = (r) => '| ' + r.join(' | ') + ' |';
     const table = [line(rows[0]), line(rows[0].map(() => '---')), ...rows.slice(1).map(line)].join('\n');
-    if (await atlas.editor.getSelection()) await atlas.editor.replaceSelection(table);
-    else await atlas.editor.setText(table);
-    await atlas.editor.setLanguage('markdown');
+    if (await dogfile.editor.getSelection()) await dogfile.editor.replaceSelection(table);
+    else await dogfile.editor.setText(table);
+    await dogfile.editor.setLanguage('markdown');
   },
 });
 ```
 
-### Insert date and time (Atlas Notepad)
+### Insert date and time (Dogfile Notepad)
 
 A toolbar button that types the current date and time at the cursor.
 
 ```js
-// @atlas-feature
+// @dogmod
 // @name Insert date and time
 // @description Inserts the current date and time at the cursor
 // @target notepad
 // @permissions
 // @version 1.0
 
-atlas.addCommand({
+dogfile.addCommand({
   id: 'insert-now',
   title: 'Insert date and time',
   icon: 'clock',
   toolbar: true,
-  run: () => atlas.editor.insert(new Date().toLocaleString()),
+  run: () => dogfile.editor.insert(new Date().toLocaleString()),
 });
 ```
 
-### Look up a word (Atlas Notepad)
+### Look up a word (Dogfile Notepad)
 
 Looks up the selected word in a free online dictionary (uses the internet).
 
 ```js
-// @atlas-feature
+// @dogmod
 // @name Look up a word
 // @description Shows the dictionary meaning of the selected word (dictionaryapi.dev, free)
 // @target notepad
 // @permissions network
 // @version 1.0
 
-atlas.addCommand({
+dogfile.addCommand({
   id: 'define',
   title: 'Look up the selected word',
   icon: 'search',
   run: async () => {
-    const word = (await atlas.editor.getSelection()).trim();
-    if (!word) return atlas.ui.toast('Select a word first');
-    const r = await atlas.net.fetch('https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(word));
-    if (!r.ok) return atlas.ui.toast('No meaning found for “' + word + '”');
+    const word = (await dogfile.editor.getSelection()).trim();
+    if (!word) return dogfile.ui.toast('Select a word first');
+    const r = await dogfile.net.fetch('https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(word));
+    if (!r.ok) return dogfile.ui.toast('No meaning found for “' + word + '”');
     const entries = JSON.parse(r.text);                 // net.fetch gives text: parse JSON yourself
     const out = [];
     for (const e of entries) for (const m of e.meanings) {
       out.push(m.partOfSpeech.toUpperCase());
       m.definitions.slice(0, 3).forEach((d, i) => out.push('  ' + (i + 1) + '. ' + d.definition));
     }
-    atlas.ui.showText(word, out.join('\n'));
+    dogfile.ui.showText(word, out.join('\n'));
   },
 });
 ```
 
-### Sepia (Atlas Photos)
+### Sepia (Dogfile Photos)
 
 Gives the photo a warm old-photo look.
 
 ```js
-// @atlas-feature
+// @dogmod
 // @name Sepia
 // @description Gives the photo a warm old-photo look
 // @target photos
 // @permissions
 // @version 1.0
 
-atlas.addCommand({
+dogfile.addCommand({
   id: 'sepia',
   title: 'Sepia',
   toolbar: true,
   run: async () => {
-    const img = await atlas.photos.getImageData();
+    const img = await dogfile.photos.getImageData();
     const d = img.data;                                  // red, green, blue, alpha for each pixel
     for (let i = 0; i < d.length; i += 4) {
       const r = d[i], g = d[i + 1], b = d[i + 2];
@@ -983,31 +983,31 @@ atlas.addCommand({
       d[i + 1] = Math.min(255, r * 0.349 + g * 0.686 + b * 0.168);
       d[i + 2] = Math.min(255, r * 0.272 + g * 0.534 + b * 0.131);
     }
-    await atlas.photos.putImageData(img);
+    await dogfile.photos.putImageData(img);
   },
 });
 ```
 
-### Pixelate (Atlas Photos)
+### Pixelate (Dogfile Photos)
 
 Turns the photo into big square blocks; asks how big.
 
 ```js
-// @atlas-feature
+// @dogmod
 // @name Pixelate
 // @description Turns the photo into square blocks
 // @target photos
 // @permissions
 // @version 1.0
 
-atlas.addCommand({
+dogfile.addCommand({
   id: 'pixelate',
   title: 'Pixelate',
   toolbar: true,
   run: async () => {
-    const pick = await atlas.ui.choose('Block size', ['Small', 'Medium', 'Large']);
+    const pick = await dogfile.ui.choose('Block size', ['Small', 'Medium', 'Large']);
     if (!pick) return;
-    const img = await atlas.photos.getImageData();
+    const img = await dogfile.photos.getImageData();
     const { width: w, height: h, data: d } = img;
     const size = Math.max(2, Math.round(Math.max(w, h) / { Small: 120, Medium: 60, Large: 25 }[pick]));
     for (let y = 0; y < h; y += size) for (let x = 0; x < w; x += size) {
@@ -1017,74 +1017,74 @@ atlas.addCommand({
         d[j] = d[i]; d[j + 1] = d[i + 1]; d[j + 2] = d[i + 2];
       }
     }
-    await atlas.photos.putImageData(img);
+    await dogfile.photos.putImageData(img);
   },
 });
 ```
 
-### Skip intro (Atlas Player)
+### Skip intro (Dogfile Player)
 
 A button that jumps ahead; remembers how far you like to skip.
 
 ```js
-// @atlas-feature
+// @dogmod
 // @name Skip intro
 // @description Jumps ahead by a number of seconds you choose (remembered)
 // @target player
 // @permissions
 // @version 1.1
 
-atlas.addCommand({
+dogfile.addCommand({
   id: 'skip-intro',
   title: 'Skip intro',
   toolbar: true,
   run: async () => {
-    const secs = (await atlas.storage.get('seconds')) || 90;
-    atlas.player.seek((await atlas.player.time()) + secs);
+    const secs = (await dogfile.storage.get('seconds')) || 90;
+    dogfile.player.seek((await dogfile.player.time()) + secs);
   },
 });
 
-atlas.addCommand({
+dogfile.addCommand({
   id: 'skip-intro-set',
   title: 'Skip intro: change how far',
   run: async () => {
-    const v = await atlas.ui.prompt('Skip intro', 'Seconds to skip', (await atlas.storage.get('seconds')) || 90);
-    if (v && +v > 0) { await atlas.storage.set('seconds', +v); atlas.ui.toast('Skips ' + v + ' seconds'); }
+    const v = await dogfile.ui.prompt('Skip intro', 'Seconds to skip', (await dogfile.storage.get('seconds')) || 90);
+    if (v && +v > 0) { await dogfile.storage.set('seconds', +v); dogfile.ui.toast('Skips ' + v + ' seconds'); }
   },
 });
 ```
 
-### Jump to 10% steps (Atlas Player)
+### Jump to 10% steps (Dogfile Player)
 
 Jumps to 10%, 20%, 30%… of the file, like quick chapters.
 
 ```js
-// @atlas-feature
+// @dogmod
 // @name Jump by tenths
 // @description Jumps to 10%, 20%, 30%… of what's playing
 // @target player
 // @permissions
 // @version 1.0
 
-atlas.addCommand({
+dogfile.addCommand({
   id: 'jump-tenths',
   title: 'Jump to…',
   toolbar: true,
   icon: 'forward',
   run: async () => {
     const options = ['10%', '20%', '30%', '40%', '50%', '60%', '70%', '80%', '90%'];
-    const pick = await atlas.ui.choose('Jump to', options);
+    const pick = await dogfile.ui.choose('Jump to', options);
     if (!pick) return;
-    atlas.player.seek((await atlas.player.duration()) * parseInt(pick) / 100);
+    dogfile.player.seek((await dogfile.player.duration()) * parseInt(pick) / 100);
   },
 });
 ```
 
 ## Sharing: export, import and the feature browser
 
-- **Export:** Notepad > Features > *Export this feature…*, or the export button in Manage features, saves a `.atlasfeature` file (JSON with the code and header details). Send it to anyone.
-- **Import:** double-click a `.atlasfeature` file, or Manage features > *Import…*. Atlas always shows the permissions and the code before installing.
-- **Feature browser** (File > Features > Browse features): finds features published on GitHub (free). To publish, sign in under Settings > Features with a GitHub token (stored encrypted on your PC), then use *Upload*. Atlas creates a public repository with your feature and tags it so others can find it. To update, raise `@version` and upload again; people who installed it can press *Check for an update*.
+- **Export:** Notepad > Features > *Export this feature…*, or the export button in Manage features, saves a `.dogmod` file (JSON with the code and header details). Send it to anyone.
+- **Import:** double-click a `.dogmod` file, or Manage features > *Import…*. Dogfile always shows the permissions and the code before installing.
+- **Feature browser** (File > Features > Browse features): finds features published on GitHub (free). To publish, sign in under Settings > Features with a GitHub token (stored encrypted on your PC), then use *Upload*. Dogfile creates a public repository with your feature and tags it so others can find it. To update, raise `@version` and upload again; people who installed it can press *Check for an update*.
 
 ## Rules for the feature browser
 
@@ -1101,9 +1101,9 @@ Features that break these rules may be reported and removed. Remember that anyon
 
 | Message | What to do |
 | --- | --- |
-| `atlas.files.writeText() needs the "Change files" permission` | Add `write` to `// @permissions`, then Install again (Notepad offers to do it). |
-| `atlas.x.y doesn't exist. Did you mean …?` | Use the suggested name, or look it up with F1. |
-| `atlas.editor.getText() doesn't work in File browser` | The function belongs to another app: change `// @target`, or use a function for this app. |
+| `dogfile.files.writeText() needs the "Change files" permission` | Add `write` to `// @permissions`, then Install again (Notepad offers to do it). |
+| `dogfile.x.y doesn't exist. Did you mean …?` | Use the suggested name, or look it up with F1. |
+| `dogfile.editor.getText() doesn't work in File browser` | The function belongs to another app: change `// @target`, or use a function for this app. |
 | `Not a text file` | `readText` only reads text; skip pictures, music and other files (`try { … } catch {}`). |
 | `addCommand needs { id, title, run }` | Give every command an id, a title and a run function. |
 | Nothing happens | Check the Log tab (F1) for errors, and that the feature is turned on in Manage features. |

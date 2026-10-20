@@ -71,7 +71,7 @@ export function describeCollection(c) {
   if (+c.olderThan) bits.push(`not changed for ${c.olderThan} days`);
   if (+c.created) bits.push(`added in the last ${c.created} days`);
   if (+c.notOpened) bits.push(`not opened for ${c.notOpened} days`);
-  if (c.unwatched) bits.push('not played in Atlas yet');
+  if (c.unwatched) bits.push('not played in Dogfile yet');
   bits.push({ downloads: 'in Downloads', drives: 'on all drives', folders: `in ${(c.folders || []).map(basename).join(', ') || 'chosen folders'}`, personal: 'in your personal folders' }[c.where || 'personal']);
   return bits.join(' · ');
 }
@@ -112,7 +112,7 @@ export async function editCollection(c) {
       row('Changed', sel('modified', [['', 'any time'], ['week', 'this week'], ['month', 'this month'], ['30', 'in the last 30 days'], ['90', 'in the last 90 days'], ['365', 'in the last year']]), h('span', { class: 'hint' }, 'or not changed for'), num('olderThan', 'days'), h('span', { class: 'hint' }, 'days')),
       row('Added', h('span', { class: 'hint' }, 'in the last'), num('created', ''), h('span', { class: 'hint' }, 'days')),
       row('Not opened for', num('notOpened', ''), h('span', { class: 'hint' }, 'days (Windows keeps “last opened” loosely, so this is approximate)')),
-      row('', h('label', { class: 'check' }, watched, ' Only videos and songs I haven’t played in Atlas')),
+      row('', h('label', { class: 'check' }, watched, ' Only videos and songs I haven’t played in Dogfile')),
       desc);
     drawFolders(); upd();
   };

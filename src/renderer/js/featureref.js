@@ -1,4 +1,4 @@
-// Help for people writing features in Atlas Notepad: autocomplete and hover hints for atlas.*, a searchable API
+// Help for people writing features in Dogfile Notepad: autocomplete and hover hints for dogfile.*, a searchable API
 // reference panel (with examples to insert), a live check of the open feature (missing permissions, names that
 // don't exist), and the feature log (what features print, and their errors).
 import * as API from './featureapi.js';
@@ -9,9 +9,9 @@ import { icon } from './icons.js';
 const TARGET_NAMES = { files: 'File browser', notepad: 'Notepad', photos: 'Photos', player: 'Player' };
 const whereText = (it) => (it.where === 'all' ? 'Works everywhere' : 'Only in ' + it.where.map((w) => TARGET_NAMES[w]).join(', '));
 
-// is this document a feature? (name or header, or uses atlas.addCommand)
+// is this document a feature? (name or header, or uses dogfile.addCommand)
 export function isFeatureText(text, name = '') {
-  return /\.atlasfeature(\.js)?$/i.test(name) || /@atlas-feature|\batlas\.add(Command|MenuItem)\b/.test(text.slice(0, 20000));
+  return /\.dogmod(\.js)?$/i.test(name) || /@dogmod|@atlas-feature|\b(?:dogfile|atlas)\.add(Command|MenuItem)\b/.test(text.slice(0, 20000));
 }
 
 // ---------------- autocomplete ----------------
@@ -33,29 +33,29 @@ export function completionSource(context) {
   if (m) return { from: context.pos - m[1].length, options: Object.entries(TARGET_NAMES).map(([k, d]) => ({ label: k, type: 'enum', detail: d })) };
   m = /^\s*\/\/\s*@permissions\b.*?(\w*)$/.exec(before);
   if (m) return { from: context.pos - m[1].length, options: Object.entries(API.PERM_NAMES).map(([k, d]) => ({ label: k, type: 'enum', detail: d })) };
-  // atlas.something.
-  m = /\b(atlas(?:\.\w+)*)\.(\w*)$/.exec(before);
+  // dogfile.something.
+  m = /\b((?:dogfile|atlas)(?:\.\w+)*)\.(\w*)$/.exec(before);
   if (m) {
     const opts = API.membersOf(m[1]).map((o) => o.item
       ? { label: o.label, type: o.type, detail: o.item.perm ? `needs ${o.item.perm}` : '', info: () => infoNode(o.item), boost: o.item.where === 'all' ? 1 : 0 }
       : { label: o.label, type: 'namespace', detail: o.detail });
     return opts.length ? { from: context.pos - m[2].length, options: opts, validFor: /^\w*$/ } : null;
   }
-  // "atl" → atlas
-  m = /\b(at|atl|atla|atlas)$/.exec(before);
-  if (m && context.explicit !== false) return { from: context.pos - m[1].length, options: [{ label: 'atlas', type: 'variable', detail: 'Atlas feature API', boost: 5 }] };
+  // "dog" → dogfile
+  m = /\b(do|dog|dogf|dogfi|dogfil|dogfile)$/.exec(before);
+  if (m && context.explicit !== false) return { from: context.pos - m[1].length, options: [{ label: 'dogfile', type: 'variable', detail: 'Dogfile mod API', boost: 5 }] };
   return null;
 }
 
 // ---------------- hover ----------------
 export function hoverAt(view, pos) {
   const line = view.state.doc.lineAt(pos);
-  const re = /\batlas(?:\.\w+)+/g;
+  const re = /\b(?:dogfile|atlas)(?:\.\w+)+/g;
   let m;
   while ((m = re.exec(line.text))) {
     const from = line.from + m.index, to = from + m[0].length;
     if (pos < from || pos > to) continue;
-    // the part up to the hovered word: atlas.files.readText → hover on "files" shows the section
+    // the part up to the hovered word: dogfile.files.readText → hover on "files" shows the section
     const upto = line.text.slice(m.index, pos - line.from).length;
     const rest = m[0].slice(upto).split('.')[0];
     const name = m[0].slice(0, upto) + rest;
@@ -89,7 +89,7 @@ export function addPermissions(text, perms) {
     lines[i] = '// @permissions ' + [...new Set([...have, ...perms])].join(' ');
   } else {
     const t = lines.findIndex((l, n) => n < 40 && /^\s*\/\/\s*@target\b/.test(l));
-    lines.splice(t >= 0 ? t + 1 : (/@atlas-feature/.test(lines[0]) ? 1 : 0), 0, '// @permissions ' + perms.join(' '));
+    lines.splice(t >= 0 ? t + 1 : (/@dogmod|@atlas-feature/.test(lines[0]) ? 1 : 0), 0, '// @permissions ' + perms.join(' '));
   }
   return lines.join('\n');
 }
@@ -99,7 +99,7 @@ export function checkDoc(text) {
   const used = API.permsUsed(text);
   const missing = [...used].filter(([p]) => !meta.permissions.includes(p)).map(([perm, fn]) => ({ perm, fn }));
   const unused = meta.permissions.filter((p) => !used.has(p) && !(p === 'read' && /files\.(list|stat|readText)/.test(text)));
-  return { meta, target, missing, unused, problems: API.problems(text, target), noCommand: !/\batlas\.add(Command|MenuItem)\s*\(/.test(text) };
+  return { meta, target, missing, unused, problems: API.problems(text, target), noCommand: !/\b(?:dogfile|atlas)\.add(Command|MenuItem)\s*\(/.test(text) };
 }
 
 // ---------------- the panel ----------------
@@ -134,7 +134,7 @@ export function createPanel(host, opts) {
       const q = query.trim().toLowerCase();
       if (!q) {
         out.append(h('div', { class: 'fr-intro' },
-          h('p', {}, 'A feature is a small JavaScript file. The lines starting with // @ at the top describe it; the code adds commands with ', h('code', {}, 'atlas.addCommand'), '. Type ', h('code', {}, 'atlas.'), ' for suggestions, and hover a name for help.'),
+          h('p', {}, 'A feature is a small JavaScript file. The lines starting with // @ at the top describe it; the code adds commands with ', h('code', {}, 'dogfile.addCommand'), '. Type ', h('code', {}, 'dogfile.'), ' for suggestions, and hover a name for help.'),
           h('div', { class: 'fr-sec-title' }, 'Header lines'),
           h('table', { class: 'fr-table' }, ...API.HEADER.map(([k, d]) => h('tr', {}, h('td', {}, h('code', {}, k)), h('td', {}, d)))),
           h('div', { class: 'fr-guide' }, h('button', { class: 'btn small', onclick: () => opts.openGuide?.() }, 'Read the full guide'), h('span', { class: 'hint' }, 'Permissions, the sandbox, sharing, and rules for the feature browser.'))));
@@ -175,7 +175,7 @@ export function createPanel(host, opts) {
     body.append(h('div', { class: 'fr-list' },
       row(c.meta.name ? true : false, c.meta.name ? `Name: ${c.meta.name}` : 'No name', c.meta.name ? null : 'Add a line: // @name My feature'),
       row(true, `Runs in: ${TARGET_NAMES[c.target] || c.target}`, c.meta.target ? null : 'No @target line, so it runs in the file browser.'),
-      row(c.noCommand ? false : true, c.noCommand ? 'It doesn’t add any command' : 'Adds commands', c.noCommand ? 'Use atlas.addCommand({ id, title, run }) so people can run it.' : null),
+      row(c.noCommand ? false : true, c.noCommand ? 'It doesn’t add any command' : 'Adds commands', c.noCommand ? 'Use dogfile.addCommand({ id, title, run }) so people can run it.' : null),
       row(c.missing.length ? false : true, c.missing.length ? 'Missing permissions' : `Permissions: ${c.meta.permissions.length ? c.meta.permissions.map((p) => API.PERM_NAMES[p]).join(', ') : 'none needed'}`,
         c.missing.length ? c.missing.map((x) => `${x.fn}() needs “${API.PERM_NAMES[x.perm]}”`).join('. ') + '.' : null,
         c.missing.length ? h('button', { class: 'btn small', onclick: () => { opts.setText(addPermissions(opts.getText(), c.missing.map((x) => x.perm))); draw(); } }, 'Add to the header') : null),
@@ -200,7 +200,7 @@ export function createPanel(host, opts) {
   function drawLog() {
     const out = h('div', { class: 'fr-log' });
     logs.forEach((l) => { l.seen = true; });
-    if (!logs.length) out.append(h('div', { class: 'hint pad' }, 'Nothing yet. What features print with atlas.log() or console.log(), and any errors they hit, appear here.'));
+    if (!logs.length) out.append(h('div', { class: 'hint pad' }, 'Nothing yet. What features print with dogfile.log() or console.log(), and any errors they hit, appear here.'));
     for (const l of logs.slice(-300)) out.append(h('div', { class: 'fr-logline ' + l.level }, h('span', { class: 'fr-time' }, new Date(l.t).toLocaleTimeString()), h('b', {}, l.feature), h('span', {}, l.text)));
     body.append(h('div', { class: 'fr-log-acts' }, h('button', { class: 'btn small', onclick: () => api('ext:clearLogs') }, 'Clear')), out);
     setTimeout(() => { out.scrollTop = out.scrollHeight; }, 0);

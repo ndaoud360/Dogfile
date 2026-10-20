@@ -1,4 +1,4 @@
-/* Atlas Photos: always-dark photo chrome */
+/* Dogfile Photos: always-dark photo chrome */
 body.viewer-app { background: #0b0b0d; color: #e9e9ea; }
 #vw-title { height: 40px; flex: none; display: flex; align-items: center; gap: 10px; padding-left: 14px; background: #101012; -webkit-app-region: drag; z-index: 5; }
 body.win-overlay #vw-title { padding-right: 140px; }

@@ -305,7 +305,7 @@ function fileMenu(btn) {
     { label: 'Help', icon: 'info', submenu: [C('shortcuts'), { label: 'Welcome tour', icon: 'info', run: () => import('./welcome.js').then((m) => m.showWelcome()) }, { label: 'Feature guide (for making features)', icon: 'book', run: async () => { const p = await api('docs:featureGuide'); (await import('./apptabs.js')).openTool('editor', [p]); } }] },
     IS_WIN() && C('setDefault'),
     { separator: true },
-    C('closeWindow', 'Close window'), C('quit', 'Quit Atlas'),
+    C('closeWindow', 'Close window'), C('quit', 'Quit Dogfile'),
   ].filter(Boolean), r.left, r.bottom + 2);
 }
 function initMenubar() {

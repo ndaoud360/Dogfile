@@ -1,7 +1,7 @@
 // Reading an NTFS drive's master file table ($MFT) directly, the way the Everything search tool does: one big
 // sequential read gives every file's name, folder, size, date and attributes in a few seconds, instead of
 // opening millions of folders. Needs administrator rights on Windows (the drive is opened as a device), so
-// Atlas uses it when it has them and otherwise walks the folders.
+// Dogfile uses it when it has them and otherwise walks the folders.
 use crate::index::{Tree, F_DIR, F_HIDDEN, F_LINK, F_SYSTEM};
 use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};

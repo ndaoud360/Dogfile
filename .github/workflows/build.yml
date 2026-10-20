@@ -1,6 +1,6 @@
-# Builds atlas-core.exe (the native engine) on Windows, runs its tests, and checks the fast NTFS index on the
+# Builds dogfile-core.exe (the native engine) on Windows, runs its tests, and checks the fast NTFS index on the
 # runner's own C: drive (GitHub's Windows machines run as administrator). The exe is published as the
-# "atlas-core-windows" artifact and on the rolling "core-latest" release.
+# "dogfile-core-windows" artifact and on the rolling "core-latest" release.
 name: build
 on:
   push:
@@ -33,13 +33,13 @@ jobs:
         working-directory: core
         shell: pwsh
         run: |
-          ./target/release/atlas-core.exe --version
-          Measure-Command { ./target/release/atlas-core.exe --build-index "C:" "$env:RUNNER_TEMP/idx" | Out-Host } | Select-Object TotalSeconds | Out-Host
-          '{"id":1,"cmd":"ping","args":{}}' | ./target/release/atlas-core.exe
+          ./target/release/dogfile-core.exe --version
+          Measure-Command { ./target/release/dogfile-core.exe --build-index "C:" "$env:RUNNER_TEMP/idx" | Out-Host } | Select-Object TotalSeconds | Out-Host
+          '{"id":1,"cmd":"ping","args":{}}' | ./target/release/dogfile-core.exe
       - uses: actions/upload-artifact@v4
         with:
-          name: atlas-core-windows
-          path: core/target/release/atlas-core.exe
+          name: dogfile-core-windows
+          path: core/target/release/dogfile-core.exe
       - name: Publish to the core-latest release
         shell: pwsh
         env:
@@ -47,4 +47,4 @@ jobs:
         run: |
           gh release view core-latest *> $null
           if ($LASTEXITCODE -ne 0) { gh release create core-latest --title "Native engine (latest)" --notes "Built automatically from core/." --prerelease }
-          gh release upload core-latest core/target/release/atlas-core.exe --clobber
+          gh release upload core-latest core/target/release/dogfile-core.exe --clobber

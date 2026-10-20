@@ -9,7 +9,7 @@ const os = require('os');
 const { net } = require('electron');
 const media = require('./media');
 
-const UA = 'AtlasFiles/1.2 ( https://github.com/ )';
+const UA = 'Dogfile/1.2 ( https://github.com/ )';
 const ext = (p) => path.extname(p).slice(1).toLowerCase();
 const COVER_OK = new Set(['mp3', 'flac', 'm4a', 'mp4', 'aac', 'alac', 'm4b']);
 

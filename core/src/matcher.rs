@@ -1,4 +1,4 @@
-// What a search looks for. Built from Atlas's search options (the same fields the old Node worker took) and,
+// What a search looks for. Built from Dogfile's search options (the same fields the old Node worker took) and,
 // for the instant index, from a typed query with a few operators:
 //   words (all must appear)   -word (must not)   "exact phrase"   *.jpg / report?.doc (wildcards)
 //   ext:jpg;png   size:>10mb  size:1mb..50mb   dm:today|yesterday|week|month|year|2024|>2024-01-31
@@ -56,7 +56,7 @@ fn strs(v: &Value) -> Vec<String> {
 }
 
 impl Spec {
-    /// From the options Atlas's search sends (same names as the old worker).
+    /// From the options Dogfile's search sends (same names as the old worker).
     pub fn from_job(j: &Value) -> Result<Spec, String> {
         let cs = j["caseSensitive"].as_bool().unwrap_or(false);
         let mut s = Spec { case_sensitive: cs, include_hidden: j["includeHidden"].as_bool().unwrap_or(false), ..Default::default() };

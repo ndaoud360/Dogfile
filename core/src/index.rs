@@ -3,9 +3,9 @@
 //
 // One Tree per indexed root (usually a drive). Entries live in flat arrays (about 32 bytes each plus the name);
 // names are stored once, with an ASCII-lowercase copy for fast case-insensitive matching. Folder sizes are kept
-// up to date as files change. A watcher keeps the tree in sync while Atlas runs; on start the saved index loads
+// up to date as files change. A watcher keeps the tree in sync while Dogfile runs; on start the saved index loads
 // at once and a background rescan (or, with administrator rights on NTFS, a read of the master file table)
-// catches up with anything that changed while Atlas was closed.
+// catches up with anything that changed while Dogfile was closed.
 use crate::matcher::Spec;
 use crate::proto;
 use crate::util;
@@ -616,7 +616,7 @@ pub fn sizes(j: &Value) -> Value {
     Value::Object(out)
 }
 
-/// The elevated helper (`atlas-core --build-index C:\ <dataDir>`) wrote a fresh index file: load it.
+/// The elevated helper (`dogfile-core --build-index C:\ <dataDir>`) wrote a fresh index file: load it.
 pub fn reload(j: &Value) -> Value {
     let want = j["root"].as_str().unwrap_or("").to_string();
     let dir = service().data_dir.lock().unwrap().clone();

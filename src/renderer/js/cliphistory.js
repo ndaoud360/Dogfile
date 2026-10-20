@@ -1,5 +1,5 @@
-// Clipboard history (Ctrl+Shift+V): files and folders you copied or cut in Atlas, and paths / text you copied
-// anywhere. Private by default: only paths are kept, nothing is kept after Atlas closes unless you ask for it,
+// Clipboard history (Ctrl+Shift+V): files and folders you copied or cut in Dogfile, and paths / text you copied
+// anywhere. Private by default: only paths are kept, nothing is kept after Dogfile closes unless you ask for it,
 // and anything a password manager marks as private is never recorded. Settings > Privacy.
 import { api, state, bus, h, esc, toast, basename, onMain, fmtDate, saveSettings } from './core.js';
 import { icon } from './icons.js';
@@ -51,7 +51,7 @@ export async function showHistory() {
     const arr = shown();
     sel = Math.min(sel, Math.max(0, arr.length - 1));
     list.innerHTML = '';
-    if (!arr.length) list.append(h('div', { class: 'hint pad' }, items.length ? 'Nothing matches.' : 'Nothing yet. Copy or cut files in Atlas, or copy a path anywhere.'));
+    if (!arr.length) list.append(h('div', { class: 'hint pad' }, items.length ? 'Nothing matches.' : 'Nothing yet. Copy or cut files in Dogfile, or copy a path anywhere.'));
     arr.forEach((x, i) => {
       const isFiles = x.kind === 'files' || x.kind === 'paths';
       const title = isFiles ? (x.paths.length === 1 ? basename(x.paths[0]) || x.paths[0] : `${x.paths.length} items: ${x.paths.slice(0, 3).map((p) => basename(p)).join(', ')}${x.paths.length > 3 ? '…' : ''}`) : x.text.replace(/\s+/g, ' ').slice(0, 140);
@@ -78,7 +78,7 @@ export async function showHistory() {
   });
   draw();
   let closeIt = () => {};
-  const p = modal({ title: 'Clipboard history', width: 640, className: 'ch-modal', body: h('div', { class: 'stack' }, q, list, h('div', { class: 'hint' }, `Keeping: ${{ paths: 'files and paths', all: 'files, paths and text', off: 'nothing' }[mode()]}${state.settings.clipRemember ? ', remembered after Atlas closes' : ', until Atlas closes'}. Change this in Settings > Privacy. Enter pastes, click copies.`)),
+  const p = modal({ title: 'Clipboard history', width: 640, className: 'ch-modal', body: h('div', { class: 'stack' }, q, list, h('div', { class: 'hint' }, `Keeping: ${{ paths: 'files and paths', all: 'files, paths and text', off: 'nothing' }[mode()]}${state.settings.clipRemember ? ', remembered after Dogfile closes' : ', until Dogfile closes'}. Change this in Settings > Privacy. Enter pastes, click copies.`)),
     buttons: [{ label: 'Clear', left: true, run: () => { items = items.filter((x) => x.pinned); save(); draw(); return false; } }, { label: 'Close', primary: true, value: true }] });
   setTimeout(() => { closeIt = () => document.querySelector('.ch-modal')?._close?.(null); q.focus(); }, 30);
   return p;

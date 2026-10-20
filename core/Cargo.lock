@@ -12,23 +12,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "atlas-core"
-version = "0.1.0"
-dependencies = [
- "crossbeam-channel",
- "md-5",
- "memchr",
- "notify",
- "rayon",
- "regex",
- "serde",
- "serde_json",
- "sha1",
- "sha2",
- "xxhash-rust",
-]
-
-[[package]]
 name = "bitflags"
 version = "2.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -116,6 +99,23 @@ dependencies = [
  "block-buffer",
  "const-oid",
  "crypto-common",
+]
+
+[[package]]
+name = "dogfile-core"
+version = "0.1.0"
+dependencies = [
+ "crossbeam-channel",
+ "md-5",
+ "memchr",
+ "notify",
+ "rayon",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha1",
+ "sha2",
+ "xxhash-rust",
 ]
 
 [[package]]

@@ -1,4 +1,4 @@
-/* Atlas Player: always-dark media chrome */
+/* Dogfile Player: always-dark media chrome */
 body.player-app { background: #000; color: #e9e9ea; --sub-size: 2.6vh; }
 #pl-title { height: 40px; flex: none; display: flex; align-items: center; gap: 10px; padding-left: 14px; background: #101012; -webkit-app-region: drag; transition: margin .25s, opacity .25s; z-index: 5; }
 body.win-overlay #pl-title { padding-right: 140px; }

@@ -9,7 +9,7 @@ import * as PELibrary from 'pe-library';
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const zip = process.argv[2];
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-const outDir = path.join(root, 'dist', 'AtlasFiles');
+const outDir = path.join(root, 'dist', 'Dogfile');
 fs.rmSync(path.join(root, 'dist'), { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
 execFileSync('unzip', ['-q', zip, '-d', outDir]);
@@ -22,7 +22,7 @@ fs.cpSync(path.join(root, 'src'), path.join(app, 'src'), { recursive: true });
 fs.writeFileSync(path.join(app, 'package.json'), JSON.stringify({ name: pkg.name, productName: pkg.productName, version: pkg.version, description: pkg.description, main: pkg.main, author: pkg.author, license: pkg.license }, null, 2));
 
 // exe: rename + icon + version info
-const exe = path.join(outDir, 'AtlasFiles.exe');
+const exe = path.join(outDir, 'Dogfile.exe');
 fs.renameSync(path.join(outDir, 'electron.exe'), exe);
 const exeData = PELibrary.NtExecutable.from(fs.readFileSync(exe), { ignoreCert: true });
 const resData = PELibrary.NtExecutableResource.from(exeData);
@@ -33,8 +33,8 @@ const [a, b, c] = pkg.version.split('.').map(Number);
 vi.setFileVersion(a, b, c, 0, 1033);
 vi.setProductVersion(a, b, c, 0, 1033);
 vi.setStringValues({ lang: 1033, codepage: 1200 }, {
-  FileDescription: 'Atlas Files', ProductName: 'Atlas Files', CompanyName: 'Atlas', InternalName: 'AtlasFiles',
-  OriginalFilename: 'AtlasFiles.exe', LegalCopyright: 'MIT License', FileVersion: pkg.version, ProductVersion: pkg.version,
+  FileDescription: 'Dogfile', ProductName: 'Dogfile', CompanyName: 'Dogfile', InternalName: 'Dogfile',
+  OriginalFilename: 'Dogfile.exe', LegalCopyright: 'MIT License', FileVersion: pkg.version, ProductVersion: pkg.version,
 });
 vi.outputToResourceEntries(resData.entries);
 resData.outputResource(exeData);
@@ -48,7 +48,7 @@ for (const f of ['package.json', 'LICENSE']) if (fs.existsSync(path.join(ptySrc,
 fs.cpSync(path.join(ptySrc, 'lib'), path.join(ptyDst, 'lib'), { recursive: true, filter: (s) => !s.endsWith('.map') && !s.includes('.test.') });
 fs.cpSync(path.join(ptySrc, 'prebuilds', 'win32-x64'), path.join(ptyDst, 'prebuilds', 'win32-x64'), { recursive: true, filter: (s) => !s.endsWith('.pdb') });
 
-// media engine: ffmpeg + ffprobe (shared build) for Atlas Player
+// media engine: ffmpeg + ffprobe (shared build) for Dogfile Player
 const ffZip = process.argv[3];
 if (ffZip) {
   const tmp = path.join(root, 'dist', '_ff');
@@ -58,7 +58,7 @@ if (ffZip) {
   fs.mkdirSync(ffOut, { recursive: true });
   for (const f of fs.readdirSync(path.join(base, 'bin'))) if (f !== 'ffplay.exe') fs.copyFileSync(path.join(base, 'bin', f), path.join(ffOut, f));
   if (fs.existsSync(path.join(base, 'LICENSE.txt'))) fs.copyFileSync(path.join(base, 'LICENSE.txt'), path.join(ffOut, 'LICENSE-ffmpeg.txt'));
-  fs.writeFileSync(path.join(ffOut, 'README.txt'), 'FFmpeg (https://ffmpeg.org) builds by BtbN (https://github.com/BtbN/FFmpeg-Builds), licensed under the GPL. Used by Atlas Player to play formats Chromium cannot decode natively.\r\n');
+  fs.writeFileSync(path.join(ffOut, 'README.txt'), 'FFmpeg (https://ffmpeg.org) builds by BtbN (https://github.com/BtbN/FFmpeg-Builds), licensed under the GPL. Used by Dogfile Player to play formats Chromium cannot decode natively.\r\n');
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 
@@ -68,16 +68,16 @@ if (ffZip) {
   fs.mkdirSync(zOut, { recursive: true });
   fs.copyFileSync(path.join(root, 'vendor', '7zip', 'win32', '7za.exe'), path.join(zOut, '7za.exe'));
   fs.copyFileSync(path.join(root, 'vendor', '7zip', 'LICENSE.txt'), path.join(zOut, 'LICENSE.txt'));
-  fs.writeFileSync(path.join(zOut, 'README.txt'), '7-Zip standalone console (7za) by Igor Pavlov, https://www.7-zip.org, GNU LGPL. Used by Atlas for creating and editing archives. Installing the full 7-Zip adds more formats (RAR, ISO and others) automatically.\r\n');
+  fs.writeFileSync(path.join(zOut, 'README.txt'), '7-Zip standalone console (7za) by Igor Pavlov, https://www.7-zip.org, GNU LGPL. Used by Dogfile for creating and editing archives. Installing the full 7-Zip adds more formats (RAR, ISO and others) automatically.\r\n');
 }
 
 // native engine (core/, built for Windows by GitHub Actions; see .github/workflows/build.yml)
 {
-  const coreExe = [path.join(root, 'bin', 'atlas-core.exe'), process.argv[4]].filter(Boolean).find((p) => fs.existsSync(p));
-  if (coreExe) { fs.mkdirSync(path.join(app, 'bin'), { recursive: true }); fs.copyFileSync(coreExe, path.join(app, 'bin', 'atlas-core.exe')); }
-  else console.warn('warning: bin/atlas-core.exe not found; the app will use the JavaScript fallback');
+  const coreExe = [path.join(root, 'bin', 'dogfile-core.exe'), process.argv[4]].filter(Boolean).find((p) => fs.existsSync(p));
+  if (coreExe) { fs.mkdirSync(path.join(app, 'bin'), { recursive: true }); fs.copyFileSync(coreExe, path.join(app, 'bin', 'dogfile-core.exe')); }
+  else console.warn('warning: bin/dogfile-core.exe not found; the app will use the JavaScript fallback');
 }
 
 // installer helpers
-for (const f of ['Install Atlas Files.cmd', 'Uninstall Atlas Files.cmd', 'installer.ps1', 'README.txt']) fs.copyFileSync(path.join(root, 'build', 'win', f), path.join(outDir, f));
+for (const f of ['Install Dogfile.cmd', 'Uninstall Dogfile.cmd', 'installer.ps1', 'README.txt']) fs.copyFileSync(path.join(root, 'build', 'win', f), path.join(outDir, f));
 console.log('built', outDir);

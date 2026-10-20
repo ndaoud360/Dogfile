@@ -1,18 +1,18 @@
-ATLAS FILES: a power-user file manager for Windows 10/11
+DOGFILE: a power-user file manager for Windows 10/11
 ==========================================================
 
 RUN IT
-  * Portable: just double-click AtlasFiles.exe (put an empty file named
+  * Portable: just double-click Dogfile.exe (put an empty file named
     portable.txt next to it to keep settings in a "data" folder beside it).
-  * Install:  double-click "Install Atlas Files.cmd". It installs per-user (no
-    admin), adds a Start-menu entry and asks if Atlas should replace File
+  * Install:  double-click "Install Dogfile.cmd". It installs per-user (no
+    admin), adds a Start-menu entry and asks if Dogfile should replace File
     Explorer as the default (folders, Win+E, "Open folder" buttons).
   * Default can also be toggled any time: File > Settings > General.
-  * Uninstall: Settings > Apps, or "Uninstall Atlas Files.cmd". Uninstalling
+  * Uninstall: Settings > Apps, or "Uninstall Dogfile.cmd". Uninstalling
     always restores Windows File Explorer as the default.
 
-NEW TO ATLAS?
-  The first time it opens, Atlas asks whether you want Simple or Full menus.
+NEW TO DOGFILE?
+  The first time it opens, Dogfile asks whether you want Simple or Full menus.
   Simple keeps the ribbon and right-click menus short; everything else waits
   under "More options" and in the command palette (Ctrl+Shift+P). Switch any
   time in Settings > General > Interface. File > Welcome tour shows it again,
@@ -31,18 +31,18 @@ FIRST THINGS TO TRY
   F1             all shortcuts (remappable in Settings)
 
 BUILT-IN APPS
-  Atlas Notepad  Notepad++-style editor for every text/code file: tabs, 55+
+  Dogfile Notepad  Notepad++-style editor for every text/code file: tabs, 55+
                  languages, find/replace (regex), multi-cursor + Alt-drag column
                  select, bookmarks (Ctrl+F2/F2), encodings (UTF-8/BOM, UTF-16,
                  ANSI), CRLF/LF, Markdown/HTML preview, unsaved-tab backup.
-  Atlas Player   VLC-style player: MKV/MP4/AVI/WebM/MPEG/WMV, 4K HEVC/AV1/VP9 on
+  Dogfile Player   VLC-style player: MKV/MP4/AVI/WebM/MPEG/WMV, 4K HEVC/AV1/VP9 on
                  the GPU, AC3/DTS/TrueHD/FLAC/WMA/APE audio, subtitles (embedded
                  + .srt/.ass), audio/sub tracks, 10-band EQ, 200% volume,
                  A-B repeat, frame step, screenshots, resume, playlists.
                  New: Edit button (Ctrl+K) to trim, remove or extract audio and
                  convert, then save a copy or overwrite. Songs show BPM, key
                  (with Camelot code) and loudness.
-  Atlas Photos   Photo viewer with a queue, slideshow (shuffle, 2-30 s), full
+  Dogfile Photos   Photo viewer with a queue, slideshow (shuffle, 2-30 s), full
                  screen, zoom/pan, EXIF info, and an editor: adjustments, filter
                  presets, crop (aspect presets), rotate/flip, draw, highlighter,
                  text, resize. Save as a copy or overwrite the original.
@@ -87,7 +87,7 @@ AI SEARCH (free, private)
   "videos of people at the beach", "songs with piano", "photos taken at sunset",
   "find the video where I'm riding a bicycle". Sentences like these switch to
   AI automatically (the AI chip in the search box can force it on or off).
-  The first time, Atlas downloads two open models once (about 330 MB): CLIP
+  The first time, Dogfile downloads two open models once (about 330 MB): CLIP
   for pictures and video frames, CLAP for music and sounds. Everything runs on
   this PC; nothing about your files is uploaded. Each file is analyzed once and
   remembered, so later searches are fast. Settings > Tools & apps > AI search.
@@ -131,7 +131,7 @@ SIDEBAR ACTIONS
   sidebar into the right-click menu for whatever you select.
 
 OPTIONAL EXTRAS
-  * Atlas ships with 7-Zip's 7za for zip/7z/tar/gz/xz. Installing the full
+  * Dogfile ships with 7-Zip's 7za for zip/7z/tar/gz/xz. Installing the full
     7-Zip adds reading RAR, ISO and more.
   * Everything (voidtools) + es.exe -> instant whole-disk search.
   * Windows 11 23H2+ already opens .7z/.rar via the built-in tar.exe.

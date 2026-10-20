@@ -1,4 +1,4 @@
-// Lets Atlas Notepad / Player / Viewer run either in their own window or inside a tab of the main window.
+// Lets Dogfile Notepad / Player / Viewer run either in their own window or inside a tab of the main window.
 import { api } from './core.js';
 
 const params = new URLSearchParams(location.search);

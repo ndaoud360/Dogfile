@@ -1,6 +1,6 @@
 // Folder automations: "when a file lands in this folder, do this". Each folder gets a list of when→then rules
 // (by extension, type, size, name, age; move/copy into a subfolder, tag, recycle, or sort by type / topic / month).
-// Atlas watches the folders while it is running and applies the rules to new files once they finish downloading
+// Dogfile watches the folders while it is running and applies the rules to new files once they finish downloading
 // or copying. "Run now" previews what would happen to the files already there.
 import { api, onMain, state, bus, h, esc, toast, pjoin, basename, isVirtual, saveSettings, uid, fmtSize, setTags, sys } from './core.js';
 import { modal, confirm } from './dialogs.js';
@@ -182,7 +182,7 @@ export async function automationDialog(folder, { preset } = {}) {
   const presets = h('div', { class: 'ru-presets' }, h('span', { class: 'hint' }, 'Examples:'), ...Object.entries(PRESETS).map(([k, p]) => h('button', { class: 'chip', onclick: () => { auto.rules.push({ id: uid(), ...JSON.parse(JSON.stringify(p)) }); draw(); list.lastElementChild?.scrollIntoView({ block: 'nearest' }); } }, p.name)));
   const body = h('div', { class: 'ru' },
     h('div', { class: 'hint' }, `Folder: ${folder}`),
-    h('label', { class: 'ru-watch' }, watch, h('span', {}, h('b', {}, 'Run automatically'), h('span', { class: 'hint' }, ' when new files arrive in this folder (while Atlas is open). Downloads are left alone until they finish.'))),
+    h('label', { class: 'ru-watch' }, watch, h('span', {}, h('b', {}, 'Run automatically'), h('span', { class: 'hint' }, ' when new files arrive in this folder (while Dogfile is open). Downloads are left alone until they finish.'))),
     list,
     h('div', { class: 'row-inline wrap' }, h('button', { class: 'btn small with-ic', html: icon('plus') + '<span>Add rule</span>', onclick: () => { auto.rules.push({ id: uid(), on: true, match: 'all', conditions: [{ field: 'ext', value: '' }], action: { type: 'move', target: '' } }); draw(); list.lastElementChild?.scrollIntoView({ block: 'nearest' }); } }), presets));
   const save = () => { auto.watch = watch.checked; const all = autos().filter((a) => a.folder !== folder); all.push(auto); state.settings.automations = all; saveSettings(); syncWatches(); bus.emit('automations'); };

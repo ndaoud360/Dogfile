@@ -223,20 +223,22 @@ async function whoLocks(paths) {
 }
 async function killProcess(pid) { if (!IS_WIN) return false; await run('taskkill.exe', ['/PID', String(pid), '/F']); return true; }
 
-// ---------- "Edit with Atlas Notepad" / "Play with Atlas Player" in the Windows right-click menu ----------
+// ---------- "Edit with Dogfile Notepad" / "Play with Dogfile Player" in the Windows right-click menu ----------
 async function setShellVerbs(exe, enable) {
   if (!IS_WIN) return false;
-  const edit = 'HKCU\\Software\\Classes\\*\\shell\\AtlasEdit', play = 'HKCU\\Software\\Classes\\SystemFileAssociations\\video\\shell\\AtlasPlay', playA = 'HKCU\\Software\\Classes\\SystemFileAssociations\\audio\\shell\\AtlasPlay', view = 'HKCU\\Software\\Classes\\SystemFileAssociations\\image\\shell\\AtlasView';
+  const edit = 'HKCU\\Software\\Classes\\*\\shell\\DogfileEdit', play = 'HKCU\\Software\\Classes\\SystemFileAssociations\\video\\shell\\DogfilePlay', playA = 'HKCU\\Software\\Classes\\SystemFileAssociations\\audio\\shell\\DogfilePlay', view = 'HKCU\\Software\\Classes\\SystemFileAssociations\\image\\shell\\DogfileView';
+  // the old Atlas Files entries go either way
+  for (const k of ['HKCU\\Software\\Classes\\*\\shell\\AtlasEdit', 'HKCU\\Software\\Classes\\SystemFileAssociations\\video\\shell\\AtlasPlay', 'HKCU\\Software\\Classes\\SystemFileAssociations\\audio\\shell\\AtlasPlay', 'HKCU\\Software\\Classes\\SystemFileAssociations\\image\\shell\\AtlasView']) await run('reg.exe', ['delete', k, '/f']);
   if (enable) {
-    await run('reg.exe', ['add', edit, '/ve', '/d', 'Edit with Atlas Notepad', '/f']);
+    await run('reg.exe', ['add', edit, '/ve', '/d', 'Edit with Dogfile Notepad', '/f']);
     await run('reg.exe', ['add', edit, '/v', 'Icon', '/d', `"${exe}",0`, '/f']);
     await run('reg.exe', ['add', edit + '\\command', '/ve', '/d', `"${exe}" --edit "%1"`, '/f']);
     for (const k of [play, playA]) {
-      await run('reg.exe', ['add', k, '/ve', '/d', 'Play with Atlas Player', '/f']);
+      await run('reg.exe', ['add', k, '/ve', '/d', 'Play with Dogfile Player', '/f']);
       await run('reg.exe', ['add', k, '/v', 'Icon', '/d', `"${exe}",0`, '/f']);
       await run('reg.exe', ['add', k + '\\command', '/ve', '/d', `"${exe}" --play "%1"`, '/f']);
     }
-    await run('reg.exe', ['add', view, '/ve', '/d', 'View with Atlas Photos', '/f']);
+    await run('reg.exe', ['add', view, '/ve', '/d', 'View with Dogfile Photos', '/f']);
     await run('reg.exe', ['add', view, '/v', 'Icon', '/d', `"${exe}",0`, '/f']);
     await run('reg.exe', ['add', view + '\\command', '/ve', '/d', `"${exe}" --view "%1"`, '/f']);
   } else for (const k of [edit, play, playA, view]) await run('reg.exe', ['delete', k, '/f']);

@@ -1,4 +1,4 @@
-// Syntax colors shared by Atlas Notepad and the preview pane (colors come from --hl-* CSS variables).
+// Syntax colors shared by Dogfile Notepad and the preview pane (colors come from --hl-* CSS variables).
 import * as CM from '../vendor/cm.js';
 
 const T = CM.tags;

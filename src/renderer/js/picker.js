@@ -1,4 +1,4 @@
-// Atlas's own file / folder picker and message box, used everywhere instead of the Windows dialogs
+// Dogfile's own file / folder picker and message box, used everywhere instead of the Windows dialogs
 // (Move to, Copy to, Extract to, Open, Save as, Import, Add files…). Works in the main window and in the
 // built-in apps. Settings > Behavior > "Use Windows dialogs" switches back to the system ones.
 import { h, esc, fmtSize, fmtDate, natCmp, toast } from './core.js';
@@ -223,7 +223,7 @@ export function messageBox({ title, message, detail, buttons = ['OK', 'Cancel'],
   const cancel = cancelId ?? buttons.length - 1;
   return new Promise((resolve) => {
     modal({
-      title: title || 'Atlas', width: 460,
+      title: title || 'Dogfile', width: 460,
       body: h('div', { class: 'confirm-msg' }, h('div', { class: 'mb-msg' + (type === 'warning' ? ' warn' : '') }, message || ''), detail ? h('div', { class: 'hint', style: { marginTop: '6px' } }, detail) : null),
       buttons: buttons.map((b, i) => ({ label: b, primary: i === 0, value: i })),
       onClose: (v) => resolve(v == null ? cancel : v),

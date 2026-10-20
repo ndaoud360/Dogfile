@@ -26,7 +26,7 @@ export async function openItems(items, { pane = state.activePane, newTab = false
   const dirs = items.filter((i) => i.isDir);
   let files = items.filter((i) => !i.isDir);
   if (items.length === 1 && items[0].netdev) { const d = items[0].netdev; if (d.url) api('shell:openExternal', d.url); else if (d.source === 'ssdp') toast(`${d.name}${d.model ? ` (${d.model})` : ''} at ${d.ip}. This device has no web page to open.`); else api('net:open', d.name); return; }
-  const feats = files.filter((f) => /\.atlasfeature$/i.test(f.name || f.path));
+  const feats = files.filter((f) => /\.(dogmod|atlasfeature)$/i.test(f.name || f.path));
   if (feats.length) { files = files.filter((f) => !feats.includes(f)); const F = await import('./features.js'); for (const f of feats) await F.importFeature(f.path); if (!files.length && !dirs.length) return; }
   const rem = files.filter((f) => f.remote);
   if (rem.length) {
@@ -56,7 +56,7 @@ export async function openItems(items, { pane = state.activePane, newTab = false
     files = files.filter((f) => !done.has(f));
     if (!files.length) return;
   }
-  // Built-in apps: Atlas Notepad for text, Atlas Player for audio/video
+  // Built-in apps: Dogfile Notepad for text, Dogfile Player for audio/video
   const local = files.filter((f) => !f.archive && !f.recycle && !f.mtp);
   const texts = state.settings.useAtlasEditor !== false ? local.filter((f) => isTextFile(f) && !(state.settings.useAtlasViewer !== false && isImageFile(f))) : [];
   const medias = state.settings.useAtlasPlayer !== false ? local.filter(isMediaFile) : [];
@@ -639,7 +639,7 @@ export async function convertArchive(items, format) {
   const t = activeTab();
   if (!arcs.length && arcOf(t.path)) arcs = [arcOf(t.path).arc];
   if (!arcs.length) return toast('Select an archive to convert');
-  if (format === 'rar' && !(await api('archive:caps')).rar) return alertBox('RAR needs WinRAR', 'RAR is a closed format, so creating .rar files needs WinRAR installed (Atlas uses its Rar.exe). Atlas can still <b>open and extract</b> RAR files. For sharing, 7z or zip are good open alternatives.');
+  if (format === 'rar' && !(await api('archive:caps')).rar) return alertBox('RAR needs WinRAR', 'RAR is a closed format, so creating .rar files needs WinRAR installed (Dogfile uses its Rar.exe). Dogfile can still <b>open and extract</b> RAR files. For sharing, 7z or zip are good open alternatives.');
   for (const a of arcs) {
     const base = basename(a).replace(/\.(tar\.(gz|bz2|xz|zst)|tgz|txz|tbz2?|[^.]+)$/i, '');
     const out = await api('fs:uniqueName', dirname(a), `${base}.${format}`, 'number');
@@ -849,7 +849,7 @@ function tagMenu(paths) {
 }
 
 async function openWithMenu(it) {
-  const builtin = [{ label: 'Atlas Notepad', icon: 'notepad', run: () => openTool('editor', [it.path]) }, isMediaFile(it) && { label: 'Atlas Player', icon: 'film', run: () => openTool('player', [it.path], { play: true }) }, isImageFile(it) && { label: 'Atlas Photos', icon: 'image', run: () => openTool('viewer', [it.path]) }, { label: 'Windows default app', icon: 'monitor', run: () => api('shell:open', it.path) }, { separator: true }];
+  const builtin = [{ label: 'Dogfile Notepad', icon: 'notepad', run: () => openTool('editor', [it.path]) }, isMediaFile(it) && { label: 'Dogfile Player', icon: 'film', run: () => openTool('player', [it.path], { play: true }) }, isImageFile(it) && { label: 'Dogfile Photos', icon: 'image', run: () => openTool('viewer', [it.path]) }, { label: 'Windows default app', icon: 'monitor', run: () => api('shell:open', it.path) }, { separator: true }];
   const apps = (state.settings.openWithApps || []).map((a) => ({ label: a.name, icon: 'open', run: () => api('shell:launch', a.command, [it.path]) }));
   const { openWithEntries } = await import('./assoc.js');
   return [...builtin, ...apps, apps.length && { separator: true }, { label: 'Code editor', icon: 'code', run: () => openInEditor([it]) }, IS_WIN() && { label: 'Choose another app…', run: () => api('shell:openWith', it.path) }, { separator: true }, ...openWithEntries(it).filter((x) => !/^Set the Windows default/.test(x.label || ''))];
@@ -858,7 +858,7 @@ async function openWithMenu(it) {
 const WIN_DUP_VERBS = /^(open|open with|edit|cut|copy|paste|delete|rename|properties|create shortcut|open in new (window|tab|process)|open file location|open folder location|(un)?pin (to|from) quick access|copy as path|compress to( zip file)?|compress to zip|extract all|extract here|open in (windows )?terminal|open powershell window here|open command window here|send to|run as administrator|open with (visual studio )?code|set as desktop background|play|add to (windows media player|vlc media player's) playlist|show more options|share|preview)$/i;
 async function windowsVerbsMenu(it) {
   const verbs = await api('shell:verbs', it.path).catch(() => []);
-  // only what Atlas doesn't already offer in its own menu (Open, Cut, Copy, Rename, Properties… are left out)
+  // only what Dogfile doesn't already offer in its own menu (Open, Cut, Copy, Rename, Properties… are left out)
   const clean = (v) => v.replace(/&(.)/g, '$1').replace(/\s*(\.\.\.|…)\s*$/, '').trim();
   const seen = new Set();
   const list = verbs.filter((v) => { const c = clean(v); const k = c.toLowerCase(); if (!c || seen.has(k) || WIN_DUP_VERBS.test(c)) return false; seen.add(k); return true; });
@@ -896,9 +896,9 @@ export function openAllEntries(paths) {
   const its = paths.map((p) => ({ path: p, name: basename(p), ext: extname(p), isDir: false }));
   const out = [];
   const txt = its.filter((i) => isTextFile(i) && !isImageFile(i)), med = its.filter(isMediaFile), img = its.filter(isImageFile);
-  if (txt.length) out.push({ label: txt.length > 1 ? `Open all ${txt.length} in Atlas Notepad` : 'Open in Atlas Notepad', icon: 'notepad', run: () => openAllIn('editor', txt.map((i) => i.path)) });
-  if (med.length) out.push({ label: med.length > 1 ? `Play all ${med.length} in Atlas Player` : 'Play in Atlas Player', icon: 'film', run: () => openAllIn('player', med.map((i) => i.path)) });
-  if (img.length) out.push({ label: img.length > 1 ? `View all ${img.length} in Atlas Photos` : 'View in Atlas Photos', icon: 'image', run: () => openAllIn('viewer', img.map((i) => i.path)) });
+  if (txt.length) out.push({ label: txt.length > 1 ? `Open all ${txt.length} in Dogfile Notepad` : 'Open in Dogfile Notepad', icon: 'notepad', run: () => openAllIn('editor', txt.map((i) => i.path)) });
+  if (med.length) out.push({ label: med.length > 1 ? `Play all ${med.length} in Dogfile Player` : 'Play in Dogfile Player', icon: 'film', run: () => openAllIn('player', med.map((i) => i.path)) });
+  if (img.length) out.push({ label: img.length > 1 ? `View all ${img.length} in Dogfile Photos` : 'View in Dogfile Photos', icon: 'image', run: () => openAllIn('viewer', img.map((i) => i.path)) });
   return out;
 }
 export function buildItemsMenu(t, items) {
@@ -938,7 +938,7 @@ export function buildItemsMenu(t, items) {
     allDirs && { label: 'Open in other pane', icon: 'split', run: () => openInOtherPane(items) },
     allDirs && { label: 'Open in new window', icon: 'newWindow', run: () => items.forEach((i) => api('win:new', { path: i.path })) },
     one && !one.isDir && { label: 'Open with', icon: 'apps', submenu: () => openWithMenu(one) },
-    one && !one.isDir && !one.virtual && !one.archive && !one.recycle && !one.mtp && ![...KINDS.image, ...KINDS.video, ...KINDS.audio, ...KINDS.archive].includes(one.ext) && { label: 'Edit with Atlas Notepad', icon: 'notepad', run: () => openTool('editor', [one.path]) },
+    one && !one.isDir && !one.virtual && !one.archive && !one.recycle && !one.mtp && ![...KINDS.image, ...KINDS.video, ...KINDS.audio, ...KINDS.archive].includes(one.ext) && { label: 'Edit with Dogfile Notepad', icon: 'notepad', run: () => openTool('editor', [one.path]) },
     real.length === 2 && real.every((i) => !i.isDir) && { label: 'Compare these two files', icon: 'compare', run: () => openTool('editor', real.map((i) => i.path), { compare: true }) },
     ...(real.length > 1 || (one && !one.isDir && !isTextFile(one)) ? openAllEntries(real.filter((i) => !i.isDir).map((i) => i.path)).filter((x) => real.length > 1 || !/Notepad/.test(x.label)) : []),
     real.length && real.some((i) => KINDS.audio.includes(i.ext)) && { label: real.filter((i) => KINDS.audio.includes(i.ext)).length > 1 ? 'Edit tags of all…' : 'Edit tags…', icon: 'tag', run: () => import('./tageditor.js').then((m) => m.openTagEditor(real.filter((i) => KINDS.audio.includes(i.ext)).map((i) => i.path))) },

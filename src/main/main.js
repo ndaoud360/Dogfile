@@ -21,7 +21,21 @@ if (TEST_MODE) console.log('[args]', JSON.stringify(process.argv));
 if (process.env.ATLAS_PORTABLE === '1' || fs.existsSync(path.join(path.dirname(process.execPath), 'portable.txt'))) {
   app.setPath('userData', path.join(path.dirname(process.execPath), 'data'));
 }
-app.setAppUserModelId('AtlasFiles');
+// Atlas Files is now Dogfile: bring settings, tags, workspaces, features and the index over the first time
+else {
+  try {
+    const now = app.getPath('userData');
+    const old = path.join(path.dirname(now), 'Atlas Files');
+    if (!fs.existsSync(path.join(now, 'settings.json')) && fs.existsSync(path.join(old, 'settings.json'))) {
+      fs.mkdirSync(now, { recursive: true });
+      for (const f of fs.readdirSync(old)) {
+        if (/^(Cache|Code Cache|GPUCache|DawnCache|DawnGraphiteCache|Crashpad|blob_storage|Service Worker|Session Storage|Local Storage|IndexedDB|Shared Dictionary|SharedStorage|Network|logs|.*\.log|lockfile|SingletonLock|SingletonCookie|SingletonSocket)$/i.test(f)) continue;
+        try { fs.cpSync(path.join(old, f), path.join(now, f), { recursive: true, errorOnExist: false }); } catch {}
+      }
+    }
+  } catch {}
+}
+app.setAppUserModelId('Dogfile');
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'atlas', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, corsEnabled: true, bypassCSP: false } },
@@ -156,11 +170,11 @@ async function runTestScript(w) {
 function ensureTray() {
   if (tray) return;
   tray = new Tray(nativeImage.createFromPath(path.join(RENDERER, 'assets', 'icon.png')).resize({ width: 16, height: 16 }));
-  tray.setToolTip('Atlas Files');
+  tray.setToolTip('Dogfile');
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'New window', click: () => openPathAnywhere({ path: null, newWindow: true }) },
     { type: 'separator' },
-    { label: 'Quit Atlas Files', click: () => { quitting = true; app.quit(); } },
+    { label: 'Quit Dogfile', click: () => { quitting = true; app.quit(); } },
   ]));
   tray.on('click', () => openPathAnywhere({ path: null }));
 }
@@ -182,7 +196,7 @@ function openPathAnywhere(launch) {
 
 function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
-// ---------------- tool windows: Atlas Notepad & Atlas Player ----------------
+// ---------------- tool windows: Dogfile Notepad & Dogfile Player ----------------
 const tools = { editor: null, player: null, viewer: null };
 function allWindows() { return BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed()); }
 function broadcast(ch, data) { for (const w of allWindows()) w.webContents.send(ch, data); }
@@ -584,7 +598,7 @@ on('work:start', async (e, spec) => {
 });
 on('work:cancel', async (e, id) => { const wk = workers.get(id); if (wk) { wk.terminate(); workers.delete(id); } const c = coreJobs.get(id); if (c) { core.cancel(c); coreJobs.delete(id); } return true; });
 
-// ---------- instant index (atlas-core) ----------
+// ---------- instant index (dogfile-core) ----------
 async function indexRoots() {
   if (settingsCache.indexEnabled === false) return [];
   if (Array.isArray(settingsCache.indexRoots) && settingsCache.indexRoots.length) return settingsCache.indexRoots;
@@ -791,7 +805,7 @@ on('secret:has', async (e, name) => !!getSecretValue(name));
 on('gh:request', async (e, method, pathOrUrl, body, auth = true) => {
   const url = /^https:\/\/(api\.github\.com|raw\.githubusercontent\.com)\//.test(pathOrUrl) ? pathOrUrl : 'https://api.github.com' + pathOrUrl;
   if (!/^https:\/\/(api\.github\.com|raw\.githubusercontent\.com)\//.test(url)) throw new Error('Not a GitHub address');
-  const headers = { 'User-Agent': 'AtlasFiles', Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+  const headers = { 'User-Agent': 'Dogfile', Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
   const tok = auth ? getSecretValue('github') : '';
   if (tok && url.startsWith('https://api.github.com')) headers.Authorization = 'Bearer ' + tok;
   if (body != null) headers['Content-Type'] = 'application/json';
@@ -881,7 +895,7 @@ on('dialog:saveFile', async (e, opts = {}) => {
 });
 on('dialog:confirm', async (e, opts) => {
   const w = BrowserWindow.fromWebContents(e.sender);
-  const r = await dialog.showMessageBox(w, { type: opts.type || 'question', buttons: opts.buttons || ['OK', 'Cancel'], defaultId: 0, cancelId: opts.cancelId ?? (opts.buttons ? opts.buttons.length - 1 : 1), title: opts.title || 'Atlas', message: opts.message, detail: opts.detail, noLink: true });
+  const r = await dialog.showMessageBox(w, { type: opts.type || 'question', buttons: opts.buttons || ['OK', 'Cancel'], defaultId: 0, cancelId: opts.cancelId ?? (opts.buttons ? opts.buttons.length - 1 : 1), title: opts.title || 'Dogfile', message: opts.message, detail: opts.detail, noLink: true });
   return r.response;
 });
 
@@ -941,7 +955,7 @@ on('fs:trash', async (e, p) => { await shell.trashItem(p); return true; });
 on('fs:copyFile', async (e, a, b) => { await fsp.copyFile(a, b); return b; });
 on('fs:writeDataUrl', async (e, p, dataUrl) => { await fsp.writeFile(p, Buffer.from(dataUrl.split(',')[1], 'base64')); return p; });
 
-// Text files with encodings (Atlas Notepad)
+// Text files with encodings (Dogfile Notepad)
 on('fs:readBuffer', async (e, p, max = 64 * 1024 * 1024) => {
   const st = await fsp.stat(p);
   if (st.size > max) throw new Error(`File is too large to edit (${Math.round(st.size / 1048576)} MB)`);

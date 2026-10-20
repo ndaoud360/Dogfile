@@ -1,11 +1,11 @@
-// File types: choose what opens each extension inside Atlas (Atlas Notepad / Player / Photos, the Windows
+// File types: choose what opens each extension inside Dogfile (Dogfile Notepad / Player / Photos, the Windows
 // default, or any program), with extra "Open with" choices per type. Windows' own defaults are untouched, and
 // "Set the Windows default…" opens Windows' chooser for that type.
 import { api, state, bus, h, esc, toast, saveSettings, extname, basename, IS_WIN } from './core.js';
 import { modal, prompt } from './dialogs.js';
 import { icon } from './icons.js';
 
-export const HANDLERS = [['', 'Atlas decides (built-in apps first)'], ['notepad', 'Atlas Notepad'], ['player', 'Atlas Player'], ['photos', 'Atlas Photos'], ['windows', 'Windows default app']];
+export const HANDLERS = [['', 'Dogfile decides (built-in apps first)'], ['notepad', 'Dogfile Notepad'], ['player', 'Dogfile Player'], ['photos', 'Dogfile Photos'], ['windows', 'Windows default app']];
 const map = () => (state.settings.fileAssoc ||= {});
 export const assocFor = (ext) => map()[(ext || '').toLowerCase()] || null;
 export function appLabel(h0) {
@@ -47,9 +47,9 @@ export function openWithEntries(it) {
   const apps = state.settings.openWithApps || [];
   const alts = (a.alts || []).map((c) => apps.find((x) => x.command === c) || { name: basename(c), command: c });
   const items = alts.map((x) => ({ label: x.name, icon: 'open', run: () => openWith('app:' + x.command, [it.path]) }));
-  const always = [...HANDLERS.slice(1).map(([v, l]) => ({ label: l, radio: true, selected: a.open === v, run: () => { setAssoc(ext, v); toast(`.${ext} files now open with ${l} in Atlas`); } })),
-    ...apps.map((x) => ({ label: x.name, radio: true, selected: a.open === 'app:' + x.command, run: () => { setAssoc(ext, 'app:' + x.command); toast(`.${ext} files now open with ${x.name} in Atlas`); } })),
-    { separator: true }, { label: 'Let Atlas decide', radio: true, selected: !a.open, run: () => setAssoc(ext, '') },
+  const always = [...HANDLERS.slice(1).map(([v, l]) => ({ label: l, radio: true, selected: a.open === v, run: () => { setAssoc(ext, v); toast(`.${ext} files now open with ${l} in Dogfile`); } })),
+    ...apps.map((x) => ({ label: x.name, radio: true, selected: a.open === 'app:' + x.command, run: () => { setAssoc(ext, 'app:' + x.command); toast(`.${ext} files now open with ${x.name} in Dogfile`); } })),
+    { separator: true }, { label: 'Let Dogfile decide', radio: true, selected: !a.open, run: () => setAssoc(ext, '') },
     { label: 'Choose a program…', icon: 'plus', run: () => pickProgram(ext, true) }];
   return [...items, items.length && { separator: true }, { label: `Always open .${ext || '(no extension)'} files with`, icon: 'pin', submenu: always }, { label: 'Add a program to this list…', icon: 'plus', run: () => pickProgram(ext, false, it) }, IS_WIN() && { label: 'Set the Windows default…', icon: 'monitor', run: () => api('shell:openWith', it.path) }].filter(Boolean);
 }
@@ -71,7 +71,7 @@ export async function fileTypesDialog() {
     list.innerHTML = '';
     const m = map();
     const keys = Object.keys(m).sort();
-    if (!keys.length) list.append(h('div', { class: 'hint pad' }, 'No custom choices yet: Atlas opens text in Atlas Notepad, music and video in Atlas Player, pictures in Atlas Photos (if those are on in Settings) and everything else with the Windows default.'));
+    if (!keys.length) list.append(h('div', { class: 'hint pad' }, 'No custom choices yet: Dogfile opens text in Dogfile Notepad, music and video in Dogfile Player, pictures in Dogfile Photos (if those are on in Settings) and everything else with the Windows default.'));
     for (const ext of keys) {
       const sel = h('select', { class: 'input sm' }, ...HANDLERS.map(([v, l]) => h('option', { value: v }, l)), ...(state.settings.openWithApps || []).map((x) => h('option', { value: 'app:' + x.command }, x.name)));
       sel.value = m[ext].open || '';
@@ -80,7 +80,7 @@ export async function fileTypesDialog() {
     }
   };
   draw();
-  await modal({ title: 'File types', width: 640, body: h('div', { class: 'stack' }, h('div', { class: 'hint' }, 'What opens each kind of file when you open it in Atlas. Right-click a file > Open with > “Always open … with” also sets this.'), list), buttons: [
+  await modal({ title: 'File types', width: 640, body: h('div', { class: 'stack' }, h('div', { class: 'hint' }, 'What opens each kind of file when you open it in Dogfile. Right-click a file > Open with > “Always open … with” also sets this.'), list), buttons: [
     { label: 'Add a file type…', left: true, run: async () => { const e = await prompt('Add a file type', '', { label: 'Extension', placeholder: 'e.g. psd' }); if (!e) return false; setAssoc(e, 'windows'); draw(); return false; } },
     { label: 'Add a program…', left: true, run: async () => { await pickProgram(null, false); draw(); return false; } },
     { label: 'Close', primary: true, value: true }] });

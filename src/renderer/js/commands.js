@@ -180,8 +180,8 @@ def('aiModels', 'AI models…', { icon: 'wand', cat: 'Tools', run: () => import(
 def('flatten', 'Flatten this folder (all files in subfolders)', { icon: 'flatten', keys: ['Ctrl+Alt+B'], cat: 'View', run: () => { const t = T_(); if (isVirtual(t.path)) return toast('Open a folder first'); navigate(t, T.searchUrl({ root: t.path, kind: 'file', flatten: 1 })); } });
 def('flattenSel', 'Flatten selected folder', { icon: 'flatten', cat: 'View', hidden: true, run: () => { const d = S_().find((i) => i.isDir && !i.virtual); if (d) navigate(T_(), T.searchUrl({ root: d.path, kind: 'file', flatten: 1 })); } });
 def('gotoFile', 'Go to file…', { icon: 'search', keys: ['Ctrl+P'], cat: 'Navigate', run: () => palette('', 'files') });
-def('notepad', 'Open Atlas Notepad', { icon: 'notepad', cat: 'Tools', run: () => { const s = S_().filter((i) => !i.isDir && !i.virtual); openTool('editor', s.map((i) => i.path)); } });
-def('player', 'Open Atlas Player', { icon: 'film', cat: 'Tools', run: () => { const s = S_().filter((i) => !i.isDir && !i.virtual); openTool('player', s.map((i) => i.path), { play: true }); } });
+def('notepad', 'Open Dogfile Notepad', { icon: 'notepad', cat: 'Tools', run: () => { const s = S_().filter((i) => !i.isDir && !i.virtual); openTool('editor', s.map((i) => i.path)); } });
+def('player', 'Open Dogfile Player', { icon: 'film', cat: 'Tools', run: () => { const s = S_().filter((i) => !i.isDir && !i.virtual); openTool('player', s.map((i) => i.path), { play: true }); } });
 def('whoLocks', 'What’s locking this?', { icon: 'lock', cat: 'Tools', run: () => { const s = S_(); if (s.length) bus.emit('whoLocks', s.map((i) => i.path)); } });
 def('terminalAdmin', 'Open terminal as administrator', { icon: 'admin', keys: ['Ctrl+Shift+`'], cat: 'Tools', run: () => A.openTerminal(T_(), null, true) });
 def('cmdHere', 'Open Command Prompt here', { icon: 'terminal', cat: 'Tools', run: () => A.openTerminal(T_(), 'cmd') });
@@ -196,7 +196,7 @@ def('hashes', 'Compute file hashes', { icon: 'hash', cat: 'Tools', run: () => A.
 def('palette', 'Command palette', { icon: 'command', keys: ['Ctrl+Shift+P', 'Ctrl+K'], cat: 'App', run: () => palette() });
 def('settings', 'Settings', { icon: 'settings', keys: ['Ctrl+,'], cat: 'App', run: () => bus.emit('openSettings') });
 def('shortcuts', 'Keyboard shortcuts', { icon: 'keyboard', keys: ['F1', 'Ctrl+/'], cat: 'App', run: () => bus.emit('openSettings', 'keys') });
-def('setDefault', 'Make Atlas the default file manager', { icon: 'shield', cat: 'App', run: () => bus.emit('openSettings', 'general') });
+def('setDefault', 'Make Dogfile the default file manager', { icon: 'shield', cat: 'App', run: () => bus.emit('openSettings', 'general') });
 def('devtools', 'Toggle developer tools', { keys: ['Ctrl+Shift+I'], cat: 'App', run: () => api('win:control', 'devtools') });
 def('quit', 'Quit', { keys: ['Ctrl+Q'], cat: 'App', run: () => api('win:control', 'quit') });
 def('closeWindow', 'Close window', { keys: ['Ctrl+Shift+W', 'Alt+F4'], cat: 'App', run: () => api('win:control', 'close') });

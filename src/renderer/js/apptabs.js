@@ -1,13 +1,13 @@
-// Built-in apps (Atlas Notepad, Atlas Player, Atlas Photos) either in their own window or as tabs inside the
+// Built-in apps (Dogfile Notepad, Dogfile Player, Dogfile Photos) either in their own window or as tabs inside the
 // main window (Settings > General > "Open built-in apps as tabs"). Each app tab owns one persistent <iframe>
 // that floats over whichever pane is showing the tab, so switching tabs or changing the split never reloads it.
 import { api, onMain, state, bus, h, toast } from './core.js';
 import { paneEls, paneCount, newTabState, showTabInPane, openTab, navigate, tabById, closeTab } from './pane.js';
 
 export const APPS = {
-  editor: { title: 'Atlas Notepad', icon: 'notepad' },
-  player: { title: 'Atlas Player', icon: 'film' },
-  viewer: { title: 'Atlas Photos', icon: 'image' },
+  editor: { title: 'Dogfile Notepad', icon: 'notepad' },
+  player: { title: 'Dogfile Player', icon: 'film' },
+  viewer: { title: 'Dogfile Photos', icon: 'image' },
 };
 const frames = new Map(); // tabId -> iframe
 let host = null;
@@ -29,7 +29,7 @@ function newAppTab(kind, pending, { activate = true, after = null } = {}) {
 }
 export function openTool(kind, files = [], opts = {}) {
   if (!state.settings.toolsInTabs) return api('tool:open', kind, files, opts);
-  // Atlas Notepad: every document is its own tab, like a browser
+  // Dogfile Notepad: every document is its own tab, like a browser
   if (kind === 'editor') {
     if (opts.compare) { const t = newAppTab('editor', { files, compare: true }); t.appTitle = files.map((f) => f.split(/[\\/]/).pop()).join(' ↔ '); return t; }
     if (!files.length) return newAppTab('editor', {});
@@ -109,7 +109,7 @@ window.addEventListener('message', (e) => {
   if (!m.atlasFrame) return;
   const t = tabById(m.atlasFrame);
   if (!t) return;
-  if (m.type === 'title') { t.appTitle = m.title.replace(/ - Atlas (Notepad|Player|Photos)$/, '') || APPS[t.app].title; bus.emit('tabs'); }
+  if (m.type === 'title') { t.appTitle = m.title.replace(/ - Dogfile (Notepad|Player|Photos)$/, '') || APPS[t.app].title; bus.emit('tabs'); }
   else if (m.type === 'state') { t.appState = m; if (m.path) t.appPath = m.path; bus.emit('appState', t); }
   else if (m.type === 'open') openTool(m.kind || t.app, m.files || [], m.opts || {});
   else if (m.type === 'dirty') { t.appDirty = !!m.dirty; bus.emit('tabs'); }
@@ -122,7 +122,7 @@ window.addEventListener('message', (e) => {
   else if (m.type === 'toast') toast(m.text, { error: m.error });
 });
 
-// file watching for Atlas Notepad tabs is delivered to the main frame: pass it on
+// file watching for Dogfile Notepad tabs is delivered to the main frame: pass it on
 onMain('file:changed', (p) => { for (const id of frames.keys()) { const t = tabById(id); if (t?.app === 'editor') post(t, { type: 'fileChanged', path: p }); } });
 
 // closing a Notepad tab with unsaved changes: let the editor ask Save / Don't save / Cancel first

@@ -84,13 +84,13 @@ export async function renderPreview(box, it, { large = false } = {}) {
       v.onloadedmetadata = () => addMeta([...baseRows(), ['Dimensions', `${v.videoWidth} × ${v.videoHeight}`], ['Duration', fmtDur(v.duration)]]);
       v.onerror = () => thumbOrArt(stage, it);
       stage.append(v);
-      if (!large) meta.append(h('div', { class: 'pv-actions' }, h('button', { class: 'btn small', onclick: () => openTool('player', [it.path], { play: true }) }, 'Play in Atlas Player')));
+      if (!large) meta.append(h('div', { class: 'pv-actions' }, h('button', { class: 'btn small', onclick: () => openTool('player', [it.path], { play: true }) }, 'Play in Dogfile Player')));
     } else if (k === 'audio') {
       const a = h('audio', { class: 'pv-audio', src: url, controls: true, preload: 'metadata', autoplay: large ? true : null });
       const wave = h('canvas', { class: 'pv-wave', title: 'Click to seek' });
       a.onloadedmetadata = () => addMeta([...baseRows(), ['Duration', fmtDur(a.duration)]]);
       stage.append(wave, a);
-      const playBtn = () => { if (!large) meta.append(h('div', { class: 'pv-actions' }, h('button', { class: 'btn small', onclick: () => openTool('player', [it.path], { play: true }) }, 'Play in Atlas Player'))); };
+      const playBtn = () => { if (!large) meta.append(h('div', { class: 'pv-actions' }, h('button', { class: 'btn small', onclick: () => openTool('player', [it.path], { play: true }) }, 'Play in Dogfile Player'))); };
       playBtn();
       waveform(wave, a, url, it, (info) => { if (my === seq) { addMeta([...baseRows(), ['Duration', fmtDur(info.duration)], ['Sample rate', `${(info.sampleRate / 1000).toFixed(1)} kHz`], ['Channels', info.channels === 1 ? 'Mono' : info.channels === 2 ? 'Stereo' : String(info.channels)], ['Peak level', `${info.peakDb.toFixed(1)} dBFS`]]); playBtn(); } });
     } else if (it.ext === 'pdf') {
@@ -126,7 +126,7 @@ export async function renderPreview(box, it, { large = false } = {}) {
       else if (it.ext === 'json') { let t = r.text; try { t = JSON.stringify(JSON.parse(r.text), null, 2); } catch {} stage.append(await codeViewHL(t, it.name)); }
       else stage.append(await codeViewHL(r.text, it.name));
       if (my !== seq) return;
-      const editBtn = () => { if (!large) meta.append(h('div', { class: 'pv-actions' }, h('button', { class: 'btn small', onclick: () => openTool('editor', [it.path]) }, 'Edit in Atlas Notepad'))); };
+      const editBtn = () => { if (!large) meta.append(h('div', { class: 'pv-actions' }, h('button', { class: 'btn small', onclick: () => openTool('editor', [it.path]) }, 'Edit in Dogfile Notepad'))); };
       const lines = (r.text.match(/\n/g) || []).length + 1;
       addMeta([...baseRows(), ['Lines', lines.toLocaleString() + (r.truncated ? '+' : '')], ['Encoding', r.text.charCodeAt(0) === 0xfeff ? 'UTF-8 BOM' : 'UTF-8']]);
       if (r.truncated) stage.append(h('div', { class: 'hint center' }, 'Preview truncated'));

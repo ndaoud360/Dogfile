@@ -1,4 +1,4 @@
-// Saved server connections: SFTP and FTP/FTPS browsed as folders inside Atlas (atlas:remote|<id>|/path), plus
+// Saved server connections: SFTP and FTP/FTPS browsed as folders inside Dogfile (atlas:remote|<id>|/path), plus
 // Windows shares (SMB) and WebDAV connected with saved credentials. Passwords are encrypted with Windows' own
 // data protection (Electron safeStorage) and never leave this PC.
 'use strict';

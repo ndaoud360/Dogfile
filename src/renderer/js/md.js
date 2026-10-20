@@ -1,4 +1,4 @@
-// Small, dependency-free Markdown renderer (used by the preview pane and Atlas Notepad).
+// Small, dependency-free Markdown renderer (used by the preview pane and Dogfile Notepad).
 import { esc } from './core.js';
 
 export function markdown(src) {

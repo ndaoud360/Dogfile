@@ -1,4 +1,4 @@
-// Atlas Player media engine.
+// Dogfile Player media engine.
 // Chromium (with GPU decoding) plays H.264 / HEVC* / VP9 / AV1 / AAC / MP3 / Opus / FLAC directly. Everything else
 // (AC3/DTS/TrueHD audio, MPEG-2, VC-1, DivX, WMV, WMA, APE, …) is remuxed or transcoded on the fly by a bundled
 // ffmpeg and streamed as fragmented MP4 over atlas://media/…: the video stream is copied whenever possible, so 4K
@@ -187,7 +187,7 @@ function runBuffer(args, timeout) {
 }
 
 async function screenshotTo(dir) {
-  const d = dir || path.join(app.getPath('pictures'), 'Atlas Screenshots');
+  const d = dir || path.join(app.getPath('pictures'), 'Dogfile Screenshots');
   fs.mkdirSync(d, { recursive: true });
   return d;
 }

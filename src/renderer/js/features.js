@@ -72,21 +72,21 @@ export async function createFeature(target) {
   if (pick.action === 'install') return install(pick.code, { source: 'Example' });
   const base = (await api('store:path')) + (sys.platform === 'win32' ? '\\Features' : '/Features');
   await api('fs:mkdir', base).catch(() => {});
-  const file = await api('fs:uniqueName', base, `${String(pick.name).replace(/[\\/:*?"<>|]/g, '_')}.atlasfeature.js`, 'number');
+  const file = await api('fs:uniqueName', base, `${String(pick.name).replace(/[\\/:*?"<>|]/g, '_')}.dogmod.js`, 'number');
   await api('fs:writeText', file, pick.code);
   const { openTool } = await import('./apptabs.js');
   openTool('editor', [file]);
   toast('Change it in Notepad, then press Features > Install. Press F1 there for help.', { ms: 6000 });
 }
 export async function importFeature(path) {
-  if (!path) { const f = await api('dialog:openFiles', { title: 'Import a feature', filters: [{ name: 'Atlas feature', extensions: ['atlasfeature', 'js', 'json'] }] }); path = f?.[0]; }
+  if (!path) { const f = await api('dialog:openFiles', { title: 'Import a feature', filters: [{ name: 'Dogfile mod', extensions: ['dogmod', 'atlasfeature', 'js', 'json'] }] }); path = f?.[0]; }
   if (!path) return;
   const t = (await api('fs:readText', path, 2 * 1048576)).text;
   const j = X.readFeatureFile(t);
-  return install(j.code, { source: path, meta: j.atlasFeature ? j : null });
+  return install(j.code, { source: path, meta: j.dogmod || j.atlasFeature ? j : null });
 }
 export async function exportFeature(f) {
-  const p = await api('dialog:saveFile', { title: 'Export feature', defaultPath: `${(f.name || 'feature').replace(/[\\/:*?"<>|]/g, '_')}.atlasfeature`, filters: [{ name: 'Atlas feature', extensions: ['atlasfeature'] }] });
+  const p = await api('dialog:saveFile', { title: 'Export feature', defaultPath: `${(f.name || 'feature').replace(/[\\/:*?"<>|]/g, '_')}.dogmod`, filters: [{ name: 'Dogfile mod', extensions: ['atlasfeature'] }] });
   if (!p) return;
   await api('fs:writeText', p, X.featureFile(f));
   toast('Exported', { action: { label: 'Show', run: () => navigate(activeTab(), dirname(p), { select: p }) } });
@@ -97,15 +97,15 @@ export async function featuresManager() {
   const box = h('div', { class: 'ws-list' });
   const draw = () => {
     box.innerHTML = '';
-    if (!list().length) box.append(h('div', { class: 'hint pad' }, 'No features yet. Make one in Atlas Notepad, import a .atlasfeature file, or browse what others made.'));
+    if (!list().length) box.append(h('div', { class: 'hint pad' }, 'No features yet. Make one in Dogfile Notepad, import a .dogmod file, or browse what others made.'));
     for (const f of list()) {
       const on = h('input', { type: 'checkbox', class: 'switch', title: 'On / off' }); on.checked = f.enabled !== false;
       on.onchange = () => { f.enabled = on.checked; saveSettings(); bus.emit('settings'); host.reload(); };
       const err = host.errors.get(f.id);
       box.append(h('div', { class: 'ws-row ext-row' }, on, h('div', { class: 'hi-main' }, h('b', {}, f.name || f.id), h('span', { class: 'hint' }, [X.TARGETS[f.target] || f.target, f.version ? `v${f.version}` : '', f.author ? `by ${f.author}` : '', (f.permissions || []).length ? 'can ' + f.permissions.map((p) => X.PERMS[p]?.[0].toLowerCase()).join(', ') : 'no file or internet access', f.storeRef ? 'from the feature browser' : ''].filter(Boolean).join(' · ')), f.description ? h('span', { class: 'hint' }, f.description) : null, err ? h('span', { class: 'ext-err' }, err.split('\n')[0]) : null),
         h('div', { class: 'hi-acts' },
-          h('button', { class: 'btn small', title: 'Open the code in Atlas Notepad', onclick: async () => { const base = (await api('store:path')) + (sys.platform === 'win32' ? '\\Features' : '/Features'); await api('fs:mkdir', base).catch(() => {}); const p = `${base}${sys.platform === 'win32' ? '\\' : '/'}${(f.name || f.id).replace(/[\\/:*?"<>|]/g, '_')}.atlasfeature.js`; await api('fs:writeText', p, f.code); (await import('./apptabs.js')).openTool('editor', [p]); closeIt(); toast('Edit, then press Features > Install in Notepad to update it'); } }, 'Edit'),
-          h('button', { class: 'icon-btn small', title: 'Export as a .atlasfeature file', html: icon('downloadArrow'), onclick: () => exportFeature(f) }),
+          h('button', { class: 'btn small', title: 'Open the code in Dogfile Notepad', onclick: async () => { const base = (await api('store:path')) + (sys.platform === 'win32' ? '\\Features' : '/Features'); await api('fs:mkdir', base).catch(() => {}); const p = `${base}${sys.platform === 'win32' ? '\\' : '/'}${(f.name || f.id).replace(/[\\/:*?"<>|]/g, '_')}.dogmod.js`; await api('fs:writeText', p, f.code); (await import('./apptabs.js')).openTool('editor', [p]); closeIt(); toast('Edit, then press Features > Install in Notepad to update it'); } }, 'Edit'),
+          h('button', { class: 'icon-btn small', title: 'Export as a .dogmod file', html: icon('downloadArrow'), onclick: () => exportFeature(f) }),
           f.storeRef ? h('button', { class: 'icon-btn small', title: 'Check for an update', html: icon('refresh'), onclick: () => import('./featurestore.js').then((m) => m.checkUpdate(f)) }) : null,
           h('button', { class: 'icon-btn small', title: 'Remove', html: icon('trash'), onclick: async () => { if (await confirm('Remove feature?', `Remove “${esc(f.name)}”?`, { ok: 'Remove', danger: true })) { state.settings.extensions = list().filter((x) => x.id !== f.id); saveSettings(); bus.emit('settings'); host.reload(); draw(); } } }))));
     }
@@ -113,7 +113,7 @@ export async function featuresManager() {
   draw();
   const off = bus.on('featuresChanged', draw);
   let closeIt = () => {};
-  const p = modal({ title: 'Features', width: 720, className: 'ext-modal', onClose: off, body: h('div', { class: 'stack' }, h('div', { class: 'hint' }, 'Features add your own tools to the file browser, Atlas Notepad, Atlas Photos and Atlas Player. They run in a sandbox and only get the access you allowed.'), box), buttons: [
+  const p = modal({ title: 'Features', width: 720, className: 'ext-modal', onClose: off, body: h('div', { class: 'stack' }, h('div', { class: 'hint' }, 'Features add your own tools to the file browser, Dogfile Notepad, Dogfile Photos and Dogfile Player. They run in a sandbox and only get the access you allowed.'), box), buttons: [
     { label: 'Create…', left: true, run: () => { closeIt(); createFeature(); } },
     { label: 'Import…', left: true, run: async () => { await importFeature(); draw(); return false; } },
     { label: 'Browse features…', left: true, run: () => { closeIt(); import('./featurestore.js').then((m) => m.featureBrowser()); } },

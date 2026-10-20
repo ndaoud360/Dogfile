@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Atlas Files, styled after the reference: charcoal sidebar, airy white
+   Dogfile, styled after the reference: charcoal sidebar, airy white
    content, thin type, quiet gray chrome, gallery-style thumbnails.
    ========================================================================== */
 @font-face { font-family: 'Inter'; font-weight: 300 700; font-style: normal; font-display: swap; src: url('assets/fonts/inter-latin-var.woff2') format('woff2'); }
@@ -715,7 +715,7 @@ body.folding #main { z-index: 1; }
 .szbar { position: absolute; right: 6px; top: 50%; height: 18px; transform: translateY(-50%); border-radius: 3px; background: color-mix(in srgb, var(--accent) 16%, transparent); max-width: calc(100% - 12px); }
 .drow.selected .szbar { background: color-mix(in srgb, var(--accent) 26%, transparent); }
 
-/* tool windows (Atlas Notepad / Atlas Player) */
+/* tool windows (Dogfile Notepad / Dogfile Player) */
 body.tool { display: flex; flex-direction: column; height: 100vh; background: var(--bg); }
 body.tool:not(.ready) > * { opacity: 0; }
 
@@ -758,7 +758,7 @@ body.term-open #term-drawer { display: flex; }
 .tm-name { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
 .tm-size { font-size: 11px; opacity: .85; }
 
-/* syntax colors (Atlas Notepad + previews) */
+/* syntax colors (Dogfile Notepad + previews) */
 :root { --ed-fs: 14px;
   --hl-kw: #a626a4; --hl-name: #383a42; --hl-prop: #4078f2; --hl-fn: #4078f2; --hl-const: #986801; --hl-def: #e45649; --hl-type: #c18401;
   --hl-num: #986801; --hl-op: #0184bc; --hl-comment: #a0a1a7; --hl-heading: #e45649; --hl-atom: #986801; --hl-str: #50a14f; --hl-tag: #e45649; --hl-attr: #986801; --hl-invalid: #ff0000;
@@ -847,7 +847,7 @@ body.folding #app-frames { z-index: 19; }
 .grid-cell .tile > img.thumb-img { flex: none; min-width: 0; min-height: 0; max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
 .grid-cell .tile > img.pending { position: absolute; }
 
-/* Atlas file / folder picker */
+/* Dogfile file / folder picker */
 .pk-modal { height: min(620px, calc(100vh - 40px)); }
 .pk-modal .modal-body { display: flex; min-height: 0; }
 .pk { flex: 1; min-height: 0; min-width: 0; display: grid; grid-template-columns: 200px minmax(0, 1fr); border-top: 1px solid var(--line); }

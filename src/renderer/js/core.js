@@ -1,5 +1,5 @@
 // Core: IPC bridge, path helpers, formatting, settings/state persistence and a tiny event bus.
-// File / folder pickers and message boxes are Atlas's own (see picker.js) unless "Use Windows dialogs" is on.
+// File / folder pickers and message boxes are Dogfile's own (see picker.js) unless "Use Windows dialogs" is on.
 const PICKERS = { 'dialog:pickFolder': (m, a) => m.pickFolder(a[0], { pinned: (typeof state !== 'undefined' && state.pinned) || undefined, ...(a[1] || {}) }), 'dialog:openFiles': (m, a) => m.openFiles(a[0] || {}), 'dialog:saveFile': (m, a) => m.saveFile(a[0] || {}), 'dialog:confirm': (m, a) => m.messageBox(a[0] || {}) };
 let nativeDialogs = null;
 export const setNativeDialogs = (v) => { nativeDialogs = !!v; };

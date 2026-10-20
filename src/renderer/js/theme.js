@@ -1,4 +1,4 @@
-// Theme + color customizer shared by the explorer, Atlas Notepad and Atlas Player.
+// Theme + color customizer shared by the explorer, Dogfile Notepad and Dogfile Player.
 export const DEFAULT_COLORS = {
   light: {
     '--side-bg': '#2f3033', '--side-bg2': '#2a2b2e', '--side-text': '#c4c5c7', '--side-icon': '#8d8e91', '--side-active': '#ffffff', '--side-hover': '#38393c',
@@ -77,7 +77,7 @@ export function currentColor(settings, theme, key) {
   return (settings.colors && settings.colors[theme] && settings.colors[theme][key]) || (key === '--accent' && settings.accent) || DEFAULT_COLORS[theme][key];
 }
 
-// Atlas Player / Atlas Photos: follow the app theme, or always dark / always light
+// Dogfile Player / Dogfile Photos: follow the app theme, or always dark / always light
 export function mediaSettings(settings) {
   const m = settings.mediaTheme || 'app';
   return { ...settings, theme: m === 'app' ? settings.theme : m };

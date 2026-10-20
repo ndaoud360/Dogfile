@@ -1,4 +1,4 @@
-# Atlas Files — source
+# Dogfile — source
 
 Electron app (no build step, no runtime dependencies).
 

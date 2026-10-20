@@ -1,4 +1,4 @@
-// Atlas Notepad: a Notepad++-style editor: document tabs, 55+ languages, find/replace (regex), multi-cursor &
+// Dogfile Notepad: a Notepad++-style editor: document tabs, 55+ languages, find/replace (regex), multi-cursor &
 // column editing, bookmarks, encodings (UTF-8/BOM, UTF-16 LE/BE, ANSI), EOL conversion, session restore with
 // unsaved-change backup, external-change detection, Markdown preview, and a toolbox of text operations.
 import * as CM from '../vendor/cm.js';
@@ -189,7 +189,7 @@ async function openPaths(paths, { activate = true } = {}) {
       const r = await api('fs:readBuffer', p);
       const bytes = b64ToBytes(r.data);
       if (isBinary(bytes) && !(bytes[0] === 0xff || bytes[0] === 0xfe)) {
-        const go = await api('dialog:confirm', { type: 'warning', title: 'Atlas Notepad', message: `“${basename(p)}” looks like a binary file.`, detail: 'Opening it as text may show garbage characters, and saving it can corrupt it.', buttons: ['Open read-only', 'Cancel'] });
+        const go = await api('dialog:confirm', { type: 'warning', title: 'Dogfile Notepad', message: `“${basename(p)}” looks like a binary file.`, detail: 'Opening it as text may show garbage characters, and saving it can corrupt it.', buttons: ['Open read-only', 'Cancel'] });
         if (go !== 0) continue;
         r.readonly = true;
       }
@@ -222,7 +222,7 @@ function activate_(doc) {
   refPanel?.refreshCheck();
   requestAnimationFrame(() => doc.view.requestMeasure());
   renderTabs(); renderStatus(); renderNotice(); updatePreview();
-  setTitle(`${doc.dirty ? '● ' : ''}${doc.name} - Atlas Notepad`);
+  setTitle(`${doc.dirty ? '● ' : ''}${doc.name} - Dogfile Notepad`);
 }
 
 function setLanguage(doc, id, silent) {
@@ -268,7 +268,7 @@ async function saveAll() { for (const d of docs) if (d.dirty) { if (!(await save
 async function closeDoc(doc, { force = false } = {}) {
   if (!doc) return true;
   if (doc.dirty && !force) {
-    const r = await api('dialog:confirm', { type: 'warning', title: 'Atlas Notepad', message: `Save changes to “${doc.name}”?`, buttons: ['Save', "Don't save", 'Cancel'], cancelId: 2 });
+    const r = await api('dialog:confirm', { type: 'warning', title: 'Dogfile Notepad', message: `Save changes to “${doc.name}”?`, buttons: ['Save', "Don't save", 'Cancel'], cancelId: 2 });
     if (r === 2) return false;
     if (r === 0 && !(await save(doc))) return false;
   }
@@ -394,7 +394,7 @@ function renderTabs() {
       { separator: true },
       d.path && { label: 'Copy full path', icon: 'link', run: () => api('clip:writeText', d.path) },
       d.path && { label: 'Copy file name', run: () => api('clip:writeText', d.name) },
-      d.path && { label: 'Show in Atlas Files', icon: 'folder', run: () => showInFiles(d.path) },
+      d.path && { label: 'Show in Dogfile', icon: 'folder', run: () => showInFiles(d.path) },
       d.path && { label: 'Reload from disk', icon: 'refresh', run: () => reloadDoc(d) },
       { label: d.readonly ? 'Make editable' : 'Make read-only', icon: 'lock', run: () => { d.readonly = !d.readonly; d.view.dispatch({ effects: roC.reconfigure(CM.EditorState.readOnly.of(d.readonly)) }); renderTabs(); } },
     ], e.clientX, e.clientY); });
@@ -404,7 +404,7 @@ function renderTabs() {
     host.append(t);
   }
   host.querySelector('.tab.active')?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
-  if (active) setTitle(`${active.dirty ? '● ' : ''}${active.name} - Atlas Notepad`);
+  if (active) setTitle(`${active.dirty ? '● ' : ''}${active.name} - Dogfile Notepad`);
 }
 
 const MENUS = {
@@ -419,7 +419,7 @@ const MENUS = {
     { label: 'Save All', keys: 'Ctrl+Shift+S', run: saveAll },
     { label: 'Reload from disk', icon: 'refresh', run: () => reloadDoc(active), disabled: !active?.path },
     { separator: true },
-    { label: 'Show in Atlas Files', icon: 'folder', run: () => showInFiles(active.path), disabled: !active?.path },
+    { label: 'Show in Dogfile', icon: 'folder', run: () => showInFiles(active.path), disabled: !active?.path },
     { label: 'Print…', run: () => window.print() },
     { separator: true },
     { label: 'Close tab', keys: 'Ctrl+W', run: () => closeDoc(active) },
@@ -588,7 +588,7 @@ async function featuresMenu(e) {
     meta.isFeature && { label: 'Check this feature', icon: 'shieldCheck', run: () => toggleRef(true, 'check') },
     meta.isFeature && { label: 'Export this feature…', icon: 'downloadArrow', run: () => exportFromDoc() },
     meta.isFeature && { separator: true },
-    { label: 'Import a feature…', icon: 'folderOpen', run: async () => { const f = await api('dialog:openFiles', { title: 'Import a feature', filters: [{ name: 'Atlas feature', extensions: ['atlasfeature', 'js', 'json'] }] }); if (!f?.[0]) return; const t = (await api('fs:readText', f[0], 2 * 1048576)).text; const j = X.readFeatureFile(t); api('ext:install', { code: j.code, meta: j.atlasFeature ? j : null, source: f[0] }); } },
+    { label: 'Import a feature…', icon: 'folderOpen', run: async () => { const f = await api('dialog:openFiles', { title: 'Import a feature', filters: [{ name: 'Dogfile mod', extensions: ['dogmod', 'atlasfeature', 'js', 'json'] }] }); if (!f?.[0]) return; const t = (await api('fs:readText', f[0], 2 * 1048576)).text; const j = X.readFeatureFile(t); api('ext:install', { code: j.code, meta: j.dogmod || j.atlasFeature ? j : null, source: f[0] }); } },
     { label: 'Manage features…', icon: 'settings', run: () => api('ext:install', { manage: true }) },
     { label: 'Browse features…', icon: 'store', run: () => api('ext:install', { store: true }) },
   ].filter(Boolean), r.left, r.bottom + 4);
@@ -597,15 +597,15 @@ async function newFeature(prefer) {
   const X = await import('./extensions.js');
   const pick = await X.pickStarter(prefer);
   if (!pick) return;
-  if (pick.action === 'install') return api('ext:install', { code: pick.code, source: 'Example in Atlas Notepad' });
+  if (pick.action === 'install') return api('ext:install', { code: pick.code, source: 'Example in Dogfile Notepad' });
   await openStarter(pick.code, pick.name);
 }
-// the starter is saved as a real file in Atlas's "Features" folder so your work is never lost
+// the starter is saved as a real file in Dogfile's "Features" folder so your work is never lost
 async function openStarter(code, name) {
   const base = (await api('store:path')) + (sys.platform === 'win32' ? '\\Features\\' : '/Features/');
   await api('fs:mkdir', base).catch(() => {});
   const safe = String(name || 'My feature').replace(/[\\/:*?"<>|]/g, '_');
-  const file = await api('fs:uniqueName', base.replace(/[\\/]$/, ''), `${safe}.atlasfeature.js`, 'number').catch(() => base + `${safe}.atlasfeature.js`);
+  const file = await api('fs:uniqueName', base.replace(/[\\/]$/, ''), `${safe}.dogmod.js`, 'number').catch(() => base + `${safe}.dogmod.js`);
   await api('fs:writeText', file, code);
   if (EMBED) tellHost({ type: 'open', kind: 'editor', files: [file] }); else { await openPaths([file]); toggleRef(true, 'ref'); }
   toast('Change it, then press Features > Install. Press F1 for help.', { ms: 5000 });
@@ -616,14 +616,14 @@ async function installFromDoc() {
   if (c.missing.length) {
     const PN = { read: 'Read files', write: 'Change files', network: 'Use the internet', run: 'Run commands' };
     const r = await modal({ title: 'Add the missing permissions?', width: 520, body: h('div', { class: 'stack' },
-      h('p', {}, 'Your feature uses things its header doesn’t ask for, so Atlas would refuse them:'),
+      h('p', {}, 'Your feature uses things its header doesn’t ask for, so Dogfile would refuse them:'),
       h('ul', {}, ...c.missing.map((x) => h('li', {}, h('code', {}, x.fn + '()'), ' needs ', h('b', {}, PN[x.perm])))),
       h('div', { class: 'hint' }, 'Adding them changes the // @permissions line at the top. People installing your feature will see what it asks for.')),
       buttons: [{ label: 'Cancel', value: null }, { label: 'Install without', value: 'skip' }, { label: 'Add and install', primary: true, value: 'add' }] });
     if (!r) return;
     if (r === 'add') { code = FR.addPermissions(code, c.missing.map((x) => x.perm)); const v = active.view; v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: code } }); }
   }
-  api('ext:install', { code, source: 'Atlas Notepad' + (active.path ? ` (${active.name})` : '') });
+  api('ext:install', { code, source: 'Dogfile Notepad' + (active.path ? ` (${active.name})` : '') });
 }
 async function openGuide() {
   const p = await api('docs:featureGuide');
@@ -654,10 +654,10 @@ async function exportFromDoc() {
   const X = await import('./extensions.js');
   const code = active.view.state.doc.toString();
   const meta = X.parseFeature(code);
-  const p = await api('dialog:saveFile', { title: 'Export feature', defaultPath: `${(meta.name || 'feature').replace(/[\\/:*?"<>|]/g, '_')}.atlasfeature`, filters: [{ name: 'Atlas feature', extensions: ['atlasfeature'] }] });
+  const p = await api('dialog:saveFile', { title: 'Export feature', defaultPath: `${(meta.name || 'feature').replace(/[\\/:*?"<>|]/g, '_')}.dogmod`, filters: [{ name: 'Dogfile mod', extensions: ['atlasfeature'] }] });
   if (!p) return;
   await api('fs:writeText', p, X.featureFile({ ...meta, code }));
-  toast('Exported. Share the .atlasfeature file, or upload it from the feature browser.');
+  toast('Exported. Share the .dogmod file, or upload it from the feature browser.');
 }
 async function startEditorFeatures() {
   const X = await import('./extensions.js');
@@ -755,9 +755,9 @@ async function openCompare(a, b) {
   count();
   const iv = setInterval(() => { if (!compareView) clearInterval(iv); else count(); }, 800);
   wrap.addEventListener('keydown', (e) => { if (e.key === 'F7') { e.preventDefault(); (e.shiftKey ? CM.goToPreviousChunk : CM.goToNextChunk)(compareView.b); } if (e.key === 'Escape') closeCompare(); });
-  setTitle(`${basename(a)} ↔ ${basename(b)} - Atlas Notepad`);
+  setTitle(`${basename(a)} ↔ ${basename(b)} - Dogfile Notepad`);
 }
-function closeCompare() { if (!compareView) return; compareView.destroy(); compareView = null; $('ed-compare')?.remove(); document.body.classList.remove('comparing'); if (active) setTitle(`${active.name} - Atlas Notepad`); }
+function closeCompare() { if (!compareView) return; compareView.destroy(); compareView = null; $('ed-compare')?.remove(); document.body.classList.remove('comparing'); if (active) setTitle(`${active.name} - Dogfile Notepad`); }
 
 // ---------------- session (Notepad++-style: unsaved changes survive restarts) ----------------
 function snapshot() {

@@ -25,13 +25,13 @@ export async function openSettings(section = 'general', opts = {}) {
   const sections = {
     general: ['General', 'settings', async (el) => {
       const isDef = IS_WIN() ? await api('default:get').catch(() => false) : false;
-      const defBtn = h('button', { class: 'btn' + (isDef ? '' : ' primary') }, isDef ? 'Restore Windows File Explorer' : 'Make Atlas the default');
-      const defState = h('div', { class: 'hint' + (isDef ? ' ok' : '') }, isDef ? '✓ Atlas opens for folders, Win+E, “Show in folder” and the desktop This PC icon.' : 'Windows File Explorer is currently the default.');
+      const defBtn = h('button', { class: 'btn' + (isDef ? '' : ' primary') }, isDef ? 'Restore Windows File Explorer' : 'Make Dogfile the default');
+      const defState = h('div', { class: 'hint' + (isDef ? ' ok' : '') }, isDef ? '✓ Dogfile opens for folders, Win+E, “Show in folder” and the desktop This PC icon.' : 'Windows File Explorer is currently the default.');
       defBtn.addEventListener('click', async () => {
         const want = !isDef;
-        if (want && !(await confirm('Make Atlas the default?', 'Atlas will open whenever Windows opens a folder, including <b>Win+E</b>, double-clicking folders on the desktop and “Open folder” buttons in other apps.<br><br>This only changes settings for your user account and can be undone here at any time.', { ok: 'Make default' }))) return;
+        if (want && !(await confirm('Make Dogfile the default?', 'Dogfile will open whenever Windows opens a folder, including <b>Win+E</b>, double-clicking folders on the desktop and “Open folder” buttons in other apps.<br><br>This only changes settings for your user account and can be undone here at any time.', { ok: 'Make default' }))) return;
         const r = await api('default:set', want);
-        toast(r ? 'Atlas is now the default file manager' : 'Windows File Explorer restored');
+        toast(r ? 'Dogfile is now the default file manager' : 'Windows File Explorer restored');
         openSettingsSection('general');
       });
       _append(el,
@@ -47,17 +47,17 @@ export async function openSettings(section = 'general', opts = {}) {
         row('Keep running in the background', toggle('keepRunning'), 'Lives in the tray so folders open instantly.'),
         row('Sidebar shows actions for selected items', toggle('sidebarActions', () => bus.emit('sidebarMode')), 'Select files and the sidebar turns into a menu with everything from the right-click menu. Right-click still works.'),
         group('Built-in apps'),
-        row('Open text files in Atlas Notepad', toggle('useAtlasEditor'), 'Code, configs, logs, Markdown, CSV… open in the built-in Notepad++-style editor.'),
-        row('Play audio & video in Atlas Player', toggle('useAtlasPlayer'), 'The built-in VLC-style player (plays MKV, 4K, HEVC, AC3/DTS, FLAC, WMA…).'),
+        row('Open text files in Dogfile Notepad', toggle('useAtlasEditor'), 'Code, configs, logs, Markdown, CSV… open in the built-in Notepad++-style editor.'),
+        row('Play audio & video in Dogfile Player', toggle('useAtlasPlayer'), 'The built-in VLC-style player (plays MKV, 4K, HEVC, AC3/DTS, FLAC, WMA…).'),
         row('Add the folder to the playlist', toggle('playerAutoPlaylist'), 'Opening one file queues the other media in the same folder.'),
-        row('Detect BPM & key for songs', toggle('playerAnalyze'), 'Atlas Player shows the tempo and musical key (with Camelot code) of each song it plays.'),
-        row('Open photos in Atlas Photos', toggle('useAtlasViewer'), 'Built-in viewer with a queue, slideshow, fullscreen and a basic editor (filters, crop, draw, rotate).'),
+        row('Detect BPM & key for songs', toggle('playerAnalyze'), 'Dogfile Player shows the tempo and musical key (with Camelot code) of each song it plays.'),
+        row('Open photos in Dogfile Photos', toggle('useAtlasViewer'), 'Built-in viewer with a queue, slideshow, fullscreen and a basic editor (filters, crop, draw, rotate).'),
         row('Seconds per photo in slideshows', select('slideshowSeconds', [[2, '2 seconds'], [3, '3 seconds'], [4, '4 seconds'], [5, '5 seconds'], [8, '8 seconds'], [10, '10 seconds'], [15, '15 seconds'], [30, '30 seconds']])),
-        row('Atlas Player & Photos theme', select('mediaTheme', [['app', 'Same as Atlas (light or dark)'], ['dark', 'Always dark'], ['light', 'Always light']])),
-        row('Open built-in apps as tabs', toggle('toolsInTabs'), 'Atlas Notepad, Atlas Player and Atlas Photos open as tabs in this window instead of their own windows.'),
+        row('Dogfile Player & Photos theme', select('mediaTheme', [['app', 'Same as Dogfile (light or dark)'], ['dark', 'Always dark'], ['light', 'Always light']])),
+        row('Open built-in apps as tabs', toggle('toolsInTabs'), 'Dogfile Notepad, Dogfile Player and Dogfile Photos open as tabs in this window instead of their own windows.'),
         IS_WIN() ? group('Windows') : null,
         IS_WIN() ? row('Default file manager', h('div', { class: 'stack' }, defBtn, defState), 'Replace File Explorer system-wide (per user, reversible).') : null,
-        IS_WIN() ? row('Windows right-click menu', h('div', { class: 'row-inline' }, h('button', { class: 'btn small', onclick: async () => { await api('shellverbs:set', true); toast('Added “Edit with Atlas Notepad”, “Play with Atlas Player” and “View with Atlas Photos”'); } }, 'Add'), h('button', { class: 'btn small', onclick: async () => { await api('shellverbs:set', false); toast('Removed'); } }, 'Remove')), 'Adds “Edit with Atlas Notepad”, “Play with Atlas Player” and “View with Atlas Photos” to File Explorer and the desktop.') : null,
+        IS_WIN() ? row('Windows right-click menu', h('div', { class: 'row-inline' }, h('button', { class: 'btn small', onclick: async () => { await api('shellverbs:set', true); toast('Added “Edit with Dogfile Notepad”, “Play with Dogfile Player” and “View with Dogfile Photos”'); } }, 'Add'), h('button', { class: 'btn small', onclick: async () => { await api('shellverbs:set', false); toast('Removed'); } }, 'Remove')), 'Adds “Edit with Dogfile Notepad”, “Play with Dogfile Player” and “View with Dogfile Photos” to File Explorer and the desktop.') : null,
       );
     }],
     appearance: ['Appearance', 'sun', (el) => {
@@ -116,7 +116,7 @@ export async function openSettings(section = 'general', opts = {}) {
       const currentTheme = () => ({ light: { ...S.colors.light }, dark: { ...S.colors.dark }, accent: S.accent, shadowStrength: S.shadowStrength ?? 1 });
       const exportColors = async (name, data) => {
         const dir = sys.known.downloads || sys.known.home;
-        const file = await api('fs:uniqueName', dir, `Atlas Colors - ${String(name).replace(/[<>:"/\\|?*]/g, '')}.json`, 'number');
+        const file = await api('fs:uniqueName', dir, `Dogfile Colors - ${String(name).replace(/[<>:"/\\|?*]/g, '')}.json`, 'number');
         await api('fs:writeText', file, JSON.stringify({ type: 'atlas-colors', version: 1, name, ...data }, null, 2));
         toast(`Exported to ${file}`, { ms: 6000, action: { label: 'Show', run: () => api('win:new', { path: dir, select: file }) } });
       };
@@ -128,16 +128,16 @@ export async function openSettings(section = 'general', opts = {}) {
           h('button', { class: 'btn small primary', onclick: async () => { const n = await prompt('Save preset', '', { label: 'Preset name', placeholder: 'e.g. My Midnight', validate: (v) => (!v.trim() ? 'Enter a name' : PRESETS[v.trim()] ? 'That name is used by a built-in preset' : null) }); if (!n) return; S.colorPresets[n.trim()] = currentTheme(); saveSettings(); show('colors'); toast(`Saved preset “${n.trim()}”`); } }, 'Save as preset…'),
           h('button', { class: 'btn small', onclick: async () => { const n = await prompt('Export colors', 'My colors', { label: 'Name for the file' }); if (n) exportColors(n, currentTheme()); } }, 'Export to file'),
           h('button', { class: 'btn small', onclick: async () => {
-            const [f] = await api('dialog:openFiles', { title: 'Import colors', defaultPath: sys.known.downloads, filters: [{ name: 'Atlas colors', extensions: ['json'] }] });
+            const [f] = await api('dialog:openFiles', { title: 'Import colors', defaultPath: sys.known.downloads, filters: [{ name: 'Dogfile colors', extensions: ['json'] }] });
             if (!f) return;
             try {
               const c = JSON.parse((await api('fs:readText', f, 1024 * 1024)).text);
               if (!(c.light || c.dark)) throw new Error('bad');
-              const name = (c.name || f.split(/[\\/]/).pop().replace(/\.json$/i, '').replace(/^Atlas Colors - /, '')).trim() || 'Imported';
+              const name = (c.name || f.split(/[\\/]/).pop().replace(/\.json$/i, '').replace(/^Dogfile Colors - /, '')).trim() || 'Imported';
               S.colorPresets[name] = { light: c.light || {}, dark: c.dark || {}, accent: c.accent, shadowStrength: c.shadowStrength };
               S.colors = { light: { ...(c.light || {}) }, dark: { ...(c.dark || {}) } }; if (c.accent) S.accent = c.accent; if (c.shadowStrength != null) S.shadowStrength = c.shadowStrength;
               apply(); show('colors'); toast(`Imported “${name}” and added it to your presets`);
-            } catch { toast('That file is not an Atlas colors file', { error: true }); }
+            } catch { toast('That file is not an Dogfile colors file', { error: true }); }
           } }, 'Import from file…')));
       const grid = h('div', { class: 'color-grid' }, h('div', { class: 'cg-head' }, ''), h('div', { class: 'cg-head' }, 'Light'), h('div', { class: 'cg-head' }, 'Dark'), h('div', { class: 'cg-head' }, ''));
       for (const g of COLOR_PARTS) {
@@ -186,7 +186,7 @@ export async function openSettings(section = 'general', opts = {}) {
         row('Single-click to open', toggle('singleClick')),
         row('Double-click empty space goes up', toggle('doubleClickUp')),
         row('Click empty space to clear the selection', toggle('clickEmptyDeselects'), 'A single click on empty space (including the gaps between thumbnails) unselects / unchecks everything.'),
-        row('Use Windows dialogs for Open / Save / Choose folder', toggle('nativeDialogs', (v) => setNativeDialogs(v)), 'Off: Atlas uses its own pickers everywhere (Move to, Copy to, Extract to, Open, Save as, Import).'),
+        row('Use Windows dialogs for Open / Save / Choose folder', toggle('nativeDialogs', (v) => setNativeDialogs(v)), 'Off: Dogfile uses its own pickers everywhere (Move to, Copy to, Extract to, Open, Save as, Import).'),
         row('Typing in a folder', select('typeAhead', [['select', 'Jumps to matching item'], ['filter', 'Filters the folder']])),
         row('Delete moves to Recycle Bin', toggle('deleteToRecycle')),
         row('Confirm before deleting', toggle('confirmDelete')),
@@ -195,7 +195,7 @@ export async function openSettings(section = 'general', opts = {}) {
         row('Open archives like folders', toggle('browseArchives')),
         row('Smart extract', toggle('smartExtract'), 'Avoids double folders when an archive already contains one.'),
         row('Run file operations one at a time', toggle('sequentialOps'), 'Queue copies instead of running them in parallel (better for HDDs).'),
-        row('Smart drop', select('smartDrop', [['smart', 'Suggest when it helps (extract, sort, matching folders)'], ['ask', 'Always ask what to do'], ['off', 'Off: just move or copy']]), 'When you drop files, Atlas can offer to extract archives, sort them with the folder’s rules, or put them into matching subfolders.'),
+        row('Smart drop', select('smartDrop', [['smart', 'Suggest when it helps (extract, sort, matching folders)'], ['ask', 'Always ask what to do'], ['off', 'Off: just move or copy']]), 'When you drop files, Dogfile can offer to extract archives, sort them with the folder’s rules, or put them into matching subfolders.'),
         row('Review name clashes together', toggle('batchConflicts'), 'When several files already exist where you copy or move, show them in one list with Replace / Skip / Keep both for each.'),
         row('Network copies in their own queue', toggle('networkQueue'), 'Copies to and from shares, NAS and servers run one at a time without holding up local copies.'),
         row('Middle-click folder opens a new tab', toggle('middleClickOpensTab')),
@@ -234,7 +234,7 @@ export async function openSettings(section = 'general', opts = {}) {
       const drawIndex = async () => {
         const st = await api('index:status').catch(() => null);
         indexBox.innerHTML = '';
-        if (!st?.available) { indexBox.append(h('div', { class: 'hint' }, 'The native engine isn’t available, so Atlas searches by reading folders.')); return; }
+        if (!st?.available) { indexBox.append(h('div', { class: 'hint' }, 'The native engine isn’t available, so Dogfile searches by reading folders.')); return; }
         if (S.indexEnabled === false) return;
         const drives = (state.drives || []).filter((d) => d.type !== 'network' && d.type !== 'optical' && d.type !== 'portable');
         const chosen = Array.isArray(S.indexRoots) && S.indexRoots.length ? S.indexRoots : null;
@@ -253,7 +253,7 @@ export async function openSettings(section = 'general', opts = {}) {
         indexBox.append(h('div', { class: 'row-inline' },
           h('button', { class: 'btn small', onclick: async () => { await api('index:refresh'); drawIndex(); } }, 'Rebuild now'),
           IS_WIN() && !st.admin ? h('button', { class: 'btn small', title: 'Windows asks for administrator permission once', onclick: async (e) => { e.target.disabled = true; e.target.textContent = 'Building…'; const r = await api('index:fastBuild'); toast(r.ok ? 'Index rebuilt from the file table' : r.error, { error: !r.ok }); drawIndex(); } }, 'Faster build (administrator)…') : null));
-        if (IS_WIN() && !st.admin) indexBox.append(h('div', { class: 'hint' }, 'Without administrator rights Atlas reads every folder once (a minute or two for a big drive); with them it reads the drive’s file table in seconds.'));
+        if (IS_WIN() && !st.admin) indexBox.append(h('div', { class: 'hint' }, 'Without administrator rights Dogfile reads every folder once (a minute or two for a big drive); with them it reads the drive’s file table in seconds.'));
       };
       drawIndex();
       const offIdx = onMain('index:status', () => { if (document.body.contains(indexBox)) drawIndexSoon(); else offIdx?.(); });
@@ -269,11 +269,11 @@ export async function openSettings(section = 'general', opts = {}) {
         group('Programs'),
         row('Terminal', select('terminal', [['auto', 'Windows Terminal (if installed)'], ['powershell', 'Windows PowerShell'], ['pwsh', 'PowerShell 7'], ['cmd', 'Command Prompt']])),
         row('Code editor command', text('editor', 'code'), 'Used by “Open in code editor”, e.g. code, cursor, notepad++, subl.'),
-        row('File types', h('button', { class: 'btn small', onclick: () => import('./assoc.js').then((m) => m.fileTypesDialog()) }, 'Choose what opens each file type…'), 'Pick Atlas Notepad, Player, Photos, the Windows default or any program for each extension.'),
+        row('File types', h('button', { class: 'btn small', onclick: () => import('./assoc.js').then((m) => m.fileTypesDialog()) }, 'Choose what opens each file type…'), 'Pick Dogfile Notepad, Player, Photos, the Windows default or any program for each extension.'),
         row('“Open with” apps', apps),
         row('Custom commands', cmds),
         group('Search'),
-        row('Instant search index', h('div', { class: 'stack' }, toggle('indexEnabled'), indexBox), 'Atlas keeps a list of every file on your drives, so searches, Go to file (Ctrl+P) and folder sizes are instant. It stays up to date while Atlas runs.'),
+        row('Instant search index', h('div', { class: 'stack' }, toggle('indexEnabled'), indexBox), 'Dogfile keeps a list of every file on your drives, so searches, Go to file (Ctrl+P) and folder sizes are instant. It stays up to date while Dogfile runs.'),
         row('AI search', h('div', { class: 'row-inline' }, toggle('aiSearch'), h('button', { class: 'btn small', onclick: () => import('./ai.js').then((m) => m.modelsDialog()) }, 'Models…')), 'Search photos, videos and songs by describing them (“photos of a dog running on grass”). Runs privately on this PC with free models downloaded once.'),
         row('Use Everything for search', toggle('useEverything'), 'Instant whole-disk results when voidtools Everything + es.exe are installed.'),
         group('Connections & automation'),
@@ -298,12 +298,12 @@ export async function openSettings(section = 'general', opts = {}) {
         row('Your features', h('div', { class: 'row-inline' }, h('button', { class: 'btn small', onclick: () => bus.emit('featuresManager') }, 'Manage…'), h('button', { class: 'btn small', onclick: () => import('./features.js').then((m) => m.createFeature()) }, 'Add a feature…')), n ? `${n} installed. Turn them on and off, edit, export or remove them.` : 'Small tools you add to the file browser, Notepad, Photos and Player.'),
         row('Feature browser', h('button', { class: 'btn small', onclick: () => FS.featureBrowser() }, 'Browse features…'), 'Find and install features others shared. Browsing needs no account.'),
         row('Account for sharing', acct, 'Needed only to upload. Uses a GitHub token, stored encrypted on this PC.'),
-        row('Making features', h('div', { class: 'row-inline' }, h('button', { class: 'btn small', onclick: async () => { const p = await api('docs:featureGuide'); (await import('./apptabs.js')).openTool('editor', [p]); } }, 'Read the guide')), 'In Atlas Notepad, press F1 for the API reference, examples, a check of your feature and the feature log.'),
+        row('Making features', h('div', { class: 'row-inline' }, h('button', { class: 'btn small', onclick: async () => { const p = await api('docs:featureGuide'); (await import('./apptabs.js')).openTool('editor', [p]); } }, 'Read the guide')), 'In Dogfile Notepad, press F1 for the API reference, examples, a check of your feature and the feature log.'),
       );
     }],
     safety: ['History & safety', 'history', (el) => {
       _append(el,
-        row('Keep a file history', h('div', { class: 'row-inline' }, select('historyLimit', [[200, 'Last 200 actions'], [1000, 'Last 1,000 actions'], [5000, 'Last 5,000 actions']]), h('button', { class: 'btn small', onclick: () => import('./history.js').then((m) => m.historyDialog()) }, 'Open history…')), 'Copies, moves, renames and deletes, with Undo where it’s still possible. The list is capped so Atlas stays fast.'),
+        row('Keep a file history', h('div', { class: 'row-inline' }, select('historyLimit', [[200, 'Last 200 actions'], [1000, 'Last 1,000 actions'], [5000, 'Last 5,000 actions']]), h('button', { class: 'btn small', onclick: () => import('./history.js').then((m) => m.historyDialog()) }, 'Open history…')), 'Copies, moves, renames and deletes, with Undo where it’s still possible. The list is capped so Dogfile stays fast.'),
         row('Versions kept per file', select('versionsKeep', [[5, '5'], [10, '10'], [20, '20'], [50, '50']]), 'For files you save versions of (right-click > More > Versions…).'),
         row('Space for versions', select('versionsMaxMB', [[1000, '1 GB'], [5000, '5 GB'], [20000, '20 GB']]), 'The oldest versions are removed first when this fills up.'),
         row('Saved versions', h('button', { class: 'btn small', onclick: () => import('./history.js').then((m) => m.versionsOverview()) }, 'Show all…')),
@@ -312,7 +312,7 @@ export async function openSettings(section = 'general', opts = {}) {
     privacy: ['Privacy', 'lock', (el) => {
       _append(el,
         row('Clipboard history', select('clipHistory', [['paths', 'Files and paths only'], ['all', 'Files, paths and text'], ['off', 'Off']]), 'Ctrl+Shift+V shows what you copied recently. Anything a password manager marks as private is never kept.'),
-        row('Remember clipboard history after closing', toggle('clipRemember'), 'Off: the list is forgotten when Atlas closes.'),
+        row('Remember clipboard history after closing', toggle('clipRemember'), 'Off: the list is forgotten when Dogfile closes.'),
         row('Clear clipboard history', h('button', { class: 'btn small', onclick: () => { api('store:set', 'cliphistory', []); toast('Cleared'); } }, 'Clear')),
         row('Recently opened', h('button', { class: 'btn small', onclick: async () => { state.recent = []; state.recentFiles = []; (await import('./core.js')).saveLibrary(); toast('Recent lists cleared'); } }, 'Clear recent folders & files')),
       );
@@ -379,21 +379,21 @@ export async function openSettings(section = 'general', opts = {}) {
         list.append(h('button', { class: 'btn small', onclick: () => { state.tags.defs.push({ id: 't' + Date.now().toString(36), name: 'New tag', color: '#12a594' }); saveTags(); bus.emit('tags'); draw(); } }, 'Add tag'));
       };
       draw();
-      el.append(h('p', { class: 'hint' }, 'Tags are stored by Atlas and follow files when you rename or move them inside Atlas. Drag files onto a tag dot in the sidebar to tag them.'), list);
+      el.append(h('p', { class: 'hint' }, 'Tags are stored by Dogfile and follow files when you rename or move them inside Dogfile. Drag files onto a tag dot in the sidebar to tag them.'), list);
     }],
     data: ['Data & reset', 'workspace', async (el) => {
       const dir = await api('store:path');
       _append(el,
-        row('Settings folder', h('div', { class: 'stack' }, h('code', {}, dir), h('button', { class: 'btn small', onclick: () => api('shell:open', dir) }, 'Open folder')), 'Copy this folder to back up or move your setup. Put a file named portable.txt next to Atlas.exe to run portable.'),
+        row('Settings folder', h('div', { class: 'stack' }, h('code', {}, dir), h('button', { class: 'btn small', onclick: () => api('shell:open', dir) }, 'Open folder')), 'Copy this folder to back up or move your setup. Put a file named portable.txt next to Dogfile.exe to run portable.'),
         row('Export settings', h('button', { class: 'btn small', onclick: async () => {
           const dir = sys.known.downloads || sys.known.home;
           const d = new Date(); const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-          const file = await api('fs:uniqueName', dir, `Atlas Settings ${stamp}.json`, 'number');
+          const file = await api('fs:uniqueName', dir, `Dogfile Settings ${stamp}.json`, 'number');
           await api('fs:writeText', file, JSON.stringify({ type: 'atlas-settings', version: 1, settings: S, tags: state.tags, pinned: state.pinned, workspaces: state.workspaces }, null, 1));
           toast(`Settings exported to ${file}`, { ms: 6000, action: { label: 'Show', run: () => api('win:new', { path: dir, select: file }) } });
         } }, 'Export to Downloads'), 'Saves a file with every setting, color, preset, tag, pin and workspace.'),
         row('Import settings', h('button', { class: 'btn small', onclick: async () => {
-          const [f] = await api('dialog:openFiles', { title: 'Import settings', defaultPath: sys.known.downloads, filters: [{ name: 'Atlas settings', extensions: ['json'] }] });
+          const [f] = await api('dialog:openFiles', { title: 'Import settings', defaultPath: sys.known.downloads, filters: [{ name: 'Dogfile settings', extensions: ['json'] }] });
           if (!f) return;
           try {
             const d = JSON.parse((await api('fs:readText', f, 16 * 1024 * 1024)).text);
@@ -401,7 +401,7 @@ export async function openSettings(section = 'general', opts = {}) {
             Object.assign(S, d.settings); if (d.tags) state.tags = d.tags; if (d.pinned) state.pinned = d.pinned; if (d.workspaces) state.workspaces = d.workspaces;
             saveSettings(); saveTags(); (await import('./core.js')).saveLibrary(); bus.emit('theme'); bus.emit('sidebar'); renderAll();
             toast('Settings imported');
-          } catch { toast('That file is not an Atlas settings file', { error: true }); }
+          } catch { toast('That file is not an Dogfile settings file', { error: true }); }
         } }, 'Import from file…')),
         row('Clear recent history', h('button', { class: 'btn small', onclick: async () => { state.recent = []; state.recentFiles = []; (await import('./core.js')).saveLibrary(); toast('History cleared'); } }, 'Clear')),
         row('Forget per-folder views', h('button', { class: 'btn small', onclick: async () => { state.folderViews = {}; (await import('./core.js')).saveLibrary(); toast('Folder views reset'); } }, 'Reset')),
@@ -410,7 +410,7 @@ export async function openSettings(section = 'general', opts = {}) {
     }],
     about: ['About', 'info', async (el) => {
       const info = await api('sys:info');
-      el.append(h('div', { class: 'about' }, h('div', { class: 'about-name' }, 'Atlas Files'), h('div', { class: 'hint' }, `Version ${info.version} · ${info.platform} · ${info.has7z ? '7-Zip detected' : 'Using Windows tar for archives'}`),
+      el.append(h('div', { class: 'about' }, h('div', { class: 'about-name' }, 'Dogfile'), h('div', { class: 'hint' }, `Version ${info.version} · ${info.platform} · ${info.has7z ? '7-Zip detected' : 'Using Windows tar for archives'}`),
         h('p', {}, 'A fast, keyboard-driven file manager with tabs, up to four panes, previews, tags, batch rename, folder compare, duplicate finder and more.')));
     }],
   };

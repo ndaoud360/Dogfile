@@ -1,5 +1,5 @@
-// Bridge to atlas-core, the native engine (core/ in the source, bin/atlas-core.exe in the app). It runs as one
-// background process; requests and replies are JSON lines. If it's missing or keeps crashing, Atlas falls back
+// Bridge to dogfile-core, the native engine (core/ in the source, bin/dogfile-core.exe in the app). It runs as one
+// background process; requests and replies are JSON lines. If it's missing or keeps crashing, Dogfile falls back
 // to the JavaScript versions of everything, so the app always works.
 'use strict';
 const { spawn } = require('child_process');
@@ -17,7 +17,7 @@ let lastConfig = null;
 let info = null;
 
 function binPath() {
-  const exe = process.platform === 'win32' ? 'atlas-core.exe' : 'atlas-core';
+  const exe = process.platform === 'win32' ? 'dogfile-core.exe' : 'dogfile-core';
   const cands = [
     path.join(__dirname, '..', '..', 'bin', exe), // packaged: resources/app/bin
     path.join(__dirname, '..', '..', 'core', 'target', 'release', exe), // from source
@@ -68,7 +68,7 @@ function request(cmd, args, timeoutMs = 0) {
       if (m.type === 'done') { clearTimeout(timer); resolve(m); }
       else if (m.type === 'error') { clearTimeout(timer); reject(new Error(m.error)); }
     });
-    if (id == null) return reject(new Error('atlas-core is not available'));
+    if (id == null) return reject(new Error('dogfile-core is not available'));
     if (timeoutMs) timer = setTimeout(() => { pending.delete(id); reject(new Error('timeout')); }, timeoutMs);
   });
 }

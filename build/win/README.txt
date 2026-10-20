@@ -52,6 +52,15 @@ BUILT-IN APPS
   window instead of their own windows. Settings > General can also add them to
   the Windows right-click menu.
 
+NEW IN 1.6: INSTANT SEARCH (native engine)
+  Dogfile keeps an index of every file on your drives (dogfile-core.exe), so
+  search, Go to file (Ctrl+P, every drive as you type) and folder sizes are
+  instant. Settings > Tools & apps > Search shows its status per drive.
+  The first build reads every folder (a minute or two). "Faster build
+  (administrator)" reads the drive's file table instead: about 10 seconds for
+  a million files. Atlas Files is now called Dogfile; your settings move over
+  on first start. Features are saved as .dogmod files (old ones still work).
+
 MORE NEW STUFF
   Ctrl+B / top-left menu button   folding sidebar animation
   Ctrl+`        built-in terminal (synced with the folder you're in)

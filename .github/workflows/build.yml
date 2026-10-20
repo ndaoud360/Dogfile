@@ -25,7 +25,14 @@ jobs:
           key: core-${{ hashFiles('core/Cargo.lock') }}
       - name: Test
         working-directory: core
-        run: cargo test --release
+        shell: pwsh
+        run: |
+          # output goes into annotations too: they can be read through the API when logs can't
+          cargo test --release 2>&1 | Tee-Object -FilePath test.log
+          $code = $LASTEXITCODE
+          $tail = (Get-Content test.log | Select-Object -Last 60) -join '%0A'
+          if ($code -ne 0) { Write-Output "::error title=tests::$tail" } else { Write-Output "::notice title=tests::$((Get-Content test.log | Select-String 'test result') -join '%0A')" }
+          exit $code
       - name: Build
         working-directory: core
         run: cargo build --release
@@ -33,13 +40,28 @@ jobs:
         working-directory: core
         shell: pwsh
         run: |
-          ./target/release/dogfile-core.exe --version
-          Measure-Command { ./target/release/dogfile-core.exe --build-index "C:" "$env:RUNNER_TEMP/idx" | Out-Host } | Select-Object TotalSeconds | Out-Host
-          '{"id":1,"cmd":"ping","args":{}}' | ./target/release/dogfile-core.exe
+          $v = ./target/release/dogfile-core.exe --version
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          $b = ./target/release/dogfile-core.exe --build-index "C:" "$env:RUNNER_TEMP/idx" 2>&1
+          $t = $sw.Elapsed.TotalSeconds
+          $p = '{"id":1,"cmd":"ping","args":{}}' | ./target/release/dogfile-core.exe
+          Write-Output "::notice title=engine::$v%0Abuild-index C: -> $($b -join ' ') (wall $t s)%0Aping: $p"
       - uses: actions/upload-artifact@v4
         with:
           name: dogfile-core-windows
           path: core/target/release/dogfile-core.exe
+      - name: Publish to the core-bin branch (readable with git)
+        shell: pwsh
+        run: |
+          $d = "$env:RUNNER_TEMP/binbranch"
+          New-Item -ItemType Directory -Force $d | Out-Null
+          Copy-Item core/target/release/dogfile-core.exe $d/
+          Set-Location $d
+          git init -q -b core-bin
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          git add dogfile-core.exe
+          git commit -q -m "dogfile-core.exe from ${{ github.sha }}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" core-bin
       - name: Publish to the core-latest release
         shell: pwsh
         env:

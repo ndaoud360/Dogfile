@@ -2,7 +2,7 @@
 // folder tree, network, recycle bin and color tags. Every entry is a drop target.
 import { api, state, sys, bus, h, esc, debounce, basename, pjoin, samePath, isInside, IS_WIN, saveLibrary, saveSettings, toast, isVirtual } from './core.js';
 import { icon } from './icons.js';
-import { activeTab, navigate, openTab, attachDropTarget, currentDrag, selectedItems, selectNone } from './pane.js';
+import { activeTab, navigate, openTab, attachDropTarget, registerDropTarget, currentDrag, selectedItems, selectNone } from './pane.js';
 import { showMenu } from './menu.js';
 import * as A from './actions.js';
 
@@ -23,7 +23,13 @@ export function initSidebar(el) {
   bus.on('tabs', highlight);
   bus.on('loaded', highlight);
   // optional "actions" mode: the selection's right-click menu lives in the sidebar
-  const sync = debounce(syncMode, 70);
+  // while the mouse button is held (selecting, or dragging files onto a sidebar folder) the sidebar stays as it
+  // is; it turns into the actions menu once the button is released
+  let held = false;
+  window.addEventListener('mousedown', (e) => { if (e.button === 0) held = true; }, true);
+  window.addEventListener('mouseup', () => { if (held) { held = false; setTimeout(syncMode, 0); } }, true);
+  bus.on('dragEnded', () => { held = false; setTimeout(syncMode, 0); });
+  const sync = debounce(() => { if (!held) syncMode(); }, 70);
   for (const ev of ['selection', 'activePane', 'tabs', 'loaded', 'sidebarMode', 'status']) bus.on(ev, sync);
   // resizer
   const rz = document.getElementById('sidebar-resizer');
@@ -165,6 +171,12 @@ export function render() {
   // Drop folders on empty space to pin them
   top.addEventListener('dragover', (e) => { if (e.target === top && e.dataTransfer.types.includes('Files')) { e.preventDefault(); e.dataTransfer.dropEffect = 'link'; top.classList.add('pin-zone'); } });
   top.addEventListener('dragleave', (e) => { if (e.target === top) top.classList.remove('pin-zone'); });
+  // dragging folders from Dogfile itself onto the empty part of this list pins them
+  registerDropTarget(top, {
+    hover: (e) => (e.target === top || e.target.classList?.contains('side-sep') ? top : null),
+    op: () => 'Pin',
+    drop: async (e, paths) => { const dirs = []; for (const p of paths) if (await api('fs:isDir', p)) dirs.push(p); if (dirs.length) A.pin(dirs); else toast('Only folders can be pinned'); },
+  });
   top.addEventListener('drop', async (e) => {
     if (e.target !== top) return;
     e.preventDefault(); top.classList.remove('pin-zone');
@@ -182,6 +194,7 @@ export function render() {
       dot.addEventListener('contextmenu', (e) => { e.preventDefault(); tagMenu(d, e); });
       dot.addEventListener('dragover', (e) => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); dot.classList.add('drop-on'); } });
       dot.addEventListener('dragleave', () => dot.classList.remove('drop-on'));
+      registerDropTarget(dot, { hover: () => dot, op: () => 'Tag ' + d.name, drop: async (e, paths) => { const { setTags } = await import('./core.js'); setTags(paths, d.id, true); toast(`Tagged ${paths.length} item${paths.length > 1 ? 's' : ''} ${d.name}`); } });
       dot.addEventListener('drop', async (e) => {
         e.preventDefault(); dot.classList.remove('drop-on');
         let paths = [...e.dataTransfer.files].map((f) => window.atlas.pathForFile(f)).filter(Boolean);

@@ -172,4 +172,20 @@ async function fetchArt(url) {
   return `data:${type.split(';')[0]};base64,${buf.toString('base64')}`;
 }
 
-module.exports = { read, write, lookup, identify, fetchArt };
+// title / artist / comment for any media file (videos too): copied stream for stream, only the labels change
+async function writeMedia(file, changes = {}) {
+  const e = ext(file);
+  const out = path.join(path.dirname(file), `.${path.basename(file)}.dogfile-meta.${e}`);
+  const args = ['-hide_banner', '-y', '-nostdin', '-loglevel', 'error', '-i', file, '-map', '0', '-c', 'copy', '-map_metadata', '0'];
+  for (const [k, v] of Object.entries(changes)) args.push('-metadata', `${k}=${v ?? ''}`);
+  if (e === 'mp4' || e === 'm4v' || e === 'mov') args.push('-movflags', 'use_metadata_tags');
+  args.push(out);
+  try {
+    await run(args);
+    let ok = false;
+    for (let i = 0; i < 20 && !ok; i++) { try { fs.renameSync(out, file); ok = true; } catch { await new Promise((r) => setTimeout(r, 200)); } }
+    if (!ok) throw new Error('The file is in use (is it playing?). Close it and try again.');
+    return true;
+  } finally { try { fs.unlinkSync(out); } catch {} }
+}
+module.exports = { writeMedia, read, write, lookup, identify, fetchArt };

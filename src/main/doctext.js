@@ -136,7 +136,13 @@ function odpSlides(xml) {
 // ---------- PDF ----------
 function pdfInfo(buf) {
   const s = buf.toString('latin1');
-  const str = (k) => { const m = new RegExp(`/${k}\\s*\\(((?:\\\\.|[^\\\\)])*)\\)`).exec(s); if (m) return pdfString(m[1]); const hx = new RegExp(`/${k}\\s*<([0-9A-Fa-f]+)>`).exec(s); if (hx) return hexString(hx[1]); return ''; };
+  // the last value wins: edits are appended to the end of the file
+  const last = (re) => { let m, out = null; while ((m = re.exec(s))) out = m; return out; };
+  const str = (k) => {
+    const m = last(new RegExp(`/${k}\\s*\\(((?:\\\\.|[^\\\\)])*)\\)|/${k}\\s*<([0-9A-Fa-f]+)>`, 'g'));
+    if (!m) return '';
+    return m[1] != null ? pdfString(m[1]) : hexString(m[2]);
+  };
   const pages = (s.match(/\/Type\s*\/Page[^s]/g) || []).length;
   return { title: str('Title'), author: str('Author'), subject: str('Subject'), keywords: str('Keywords'), creator: str('Creator'), producer: str('Producer'), pages };
 }
@@ -218,7 +224,7 @@ async function read(file, { maxChars = 200000 } = {}) {
   if (ext === 'odp') { const x = (await unzipEntry(file, 'content.xml'))?.toString('utf8'); return { type: 'slides', slides: x ? odpSlides(x) : [] }; }
   if (ext === 'pdf') {
     const buf = await fs.promises.readFile(file);
-    return { type: 'text', text: pdfText(buf.length > 60 * 1048576 ? buf.subarray(0, 60 * 1048576) : buf, maxChars), props: pdfInfo(buf.subarray(0, Math.min(buf.length, 4 * 1048576))) };
+    return { type: 'text', text: pdfText(buf.length > 60 * 1048576 ? buf.subarray(0, 60 * 1048576) : buf, maxChars), props: pdfInfo(buf.length > 5 * 1048576 ? Buffer.concat([buf.subarray(0, 4 * 1048576), buf.subarray(buf.length - 1048576)]) : buf) };
   }
   if (['html', 'htm', 'xhtml'].includes(ext)) return { type: 'text', text: stripHtml((await fs.promises.readFile(file, 'utf8')).slice(0, maxChars * 3)).slice(0, maxChars) };
   if (ext === 'rtf') return { type: 'text', text: stripRtf((await fs.promises.readFile(file, 'latin1')).slice(0, maxChars * 3)).slice(0, maxChars) };
@@ -275,4 +281,42 @@ async function setProps(file, props) {
     return true;
   } finally { fs.promises.rm(tmp, { recursive: true, force: true }).catch(() => {}); }
 }
-module.exports = { read, text, title, setProps };
+// PDF title / author / subject / keywords: written as an "incremental update" appended to the file (the way
+// Acrobat saves), so the rest of the PDF is untouched. PDFs whose index is a compressed stream, or that are
+// encrypted, are left alone.
+async function pdfSetInfo(file, props) {
+  const buf = await fs.promises.readFile(file);
+  const tail = buf.subarray(Math.max(0, buf.length - 65536)).toString('latin1');
+  const sx = [...tail.matchAll(/startxref\s+(\d+)/g)].pop();
+  if (!sx) throw new Error('This PDF is damaged or unusual, so its properties can’t be changed here');
+  const prev = +sx[1];
+  const trailerIdx = tail.lastIndexOf('trailer');
+  if (trailerIdx < 0 || /\/Encrypt\b/.test(tail.slice(trailerIdx))) throw new Error('This PDF is protected or uses a compressed index, so its properties can’t be changed here');
+  const tr = tail.slice(trailerIdx);
+  const size = +(/\/Size\s+(\d+)/.exec(tr) || [])[1];
+  const root = (/\/Root\s+(\d+\s+\d+\s+R)/.exec(tr) || [])[1];
+  if (!size || !root) throw new Error('This PDF’s properties can’t be changed here');
+  const id = (/\/ID\s*(\[[^\]]*\])/.exec(tr) || [])[1];
+  // keep fields we don't edit (creation date, creator…) from the old Info dictionary
+  const whole = buf.toString('latin1');
+  const infoRef = (/\/Info\s+(\d+)\s+(\d+)\s+R/.exec(tr) || []);
+  let keep = '';
+  if (infoRef[1]) {
+    const m = [...whole.matchAll(new RegExp(`(?:^|\\s)${infoRef[1]}\\s+${infoRef[2]}\\s+obj\\s*<<([\\s\\S]*?)>>\\s*endobj`, 'g'))].pop();
+    if (m) keep = m[1].replace(/\/(Title|Author|Subject|Keywords|ModDate)\s*(\((?:\\.|[^\\)])*\)|<[0-9A-Fa-f]*>)/g, '').trim();
+  }
+  const enc = (v) => { const u = Buffer.from('\ufeff' + String(v), 'utf16le'); for (let i = 0; i < u.length; i += 2) { const a = u[i]; u[i] = u[i + 1]; u[i + 1] = a; } return '<' + u.toString('hex').toUpperCase() + '>'; };
+  const d = new Date(); const pad = (n) => String(n).padStart(2, '0');
+  const fields = [['Title', props.title], ['Author', props.author], ['Subject', props.subject], ['Keywords', props.keywords]].filter(([, v]) => v != null && v !== '').map(([k, v]) => `/${k} ${enc(v)}`).join(' ');
+  const objNo = size;
+  const nl = buf[buf.length - 1] === 0x0a ? '' : '\n';
+  const objOff = buf.length + Buffer.byteLength(nl, 'latin1');
+  const obj = `${objNo} 0 obj\n<< ${keep} ${fields} /ModDate (D:${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z) >>\nendobj\n`;
+  const xrefOff = objOff + Buffer.byteLength(obj, 'latin1');
+  const xref = `xref\n${objNo} 1\n${String(objOff).padStart(10, '0')} 00000 n \ntrailer\n<< /Size ${objNo + 1} /Root ${root} /Info ${objNo} 0 R /Prev ${prev}${id ? ` /ID ${id}` : ''} >>\nstartxref\n${xrefOff}\n%%EOF\n`;
+  const tmp = file + '.dogfile-tmp';
+  await fs.promises.writeFile(tmp, Buffer.concat([buf, Buffer.from(nl + obj + xref, 'latin1')]));
+  await fs.promises.rename(tmp, file);
+  return true;
+}
+module.exports = { read, text, title, setProps, pdfSetInfo };

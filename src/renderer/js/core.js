@@ -240,15 +240,17 @@ export const KINDS = {
   font: ['ttf', 'otf', 'woff', 'woff2', 'fon'],
 };
 export const TEXT_EXTS = new Set([...KINDS.code, 'txt', 'text', 'md', 'markdown', 'log', 'csv', 'tsv', 'nfo', 'srt', 'vtt', 'ass', 'ssa', 'sub', 'reg', 'inf', 'properties', 'gitattributes', 'npmrc', 'license', 'readme', 'sln', 'csproj', 'vcxproj', 'plist', 'lock', 'diff', 'patch', 'tex', 'bib', 'rst', 'adoc', 'cue', 'm3u', 'm3u8', 'pls', 'url', 'desktop', 'service', 'rc', 'def', 'asm', 's', 'mk', 'cmake', 'proto', 'graphql', 'gql', 'tf', 'hcl', 'nix', 'zig', 'v', 'sv', 'vhd', 'kt', 'kts', 'scala', 'clj', 'ex', 'exs', 'erl', 'hs', 'elm', 'ml', 'fs', 'fsx', 'jl', 'nim', 'cr', 'pas', 'vb', 'vbs', 'au3', 'ahk', 'iss', 'nsi', 'json5', 'jsonc', 'ndjson', 'xaml', 'xsd', 'xsl', 'svelte', 'astro', 'mdx', 'hbs', 'ejs', 'pug', 'twig', 'liquid', 'csv']);
-export const isTextFile = (it) => !it.isDir && (TEXT_EXTS.has(it.ext) || (!it.ext && /^(readme|license|changelog|makefile|dockerfile|authors|copying|todo)$/i.test(it.name)) || /^\.(gitignore|env|editorconfig|bashrc|zshrc|profile|npmrc|prettierrc|eslintrc|babelrc|dockerignore)/i.test(it.name));
-export const isImageFile = (it) => !it.isDir && (KINDS.image.includes(it.ext) || ['heif', 'jxl', 'tga', 'arw', 'orf', 'rw2', 'raf'].includes(it.ext));
-export const isMediaFile = (it) => !it.isDir && (KINDS.video.includes(it.ext) || KINDS.audio.includes(it.ext) || ['mka', 'ape', 'wv', 'tta', 'dts', 'ac3', 'eac3', 'amr', 'm2ts', 'mts', 'vob', 'divx', 'xvid', 'rm', 'rmvb', 'asf', 'f4v', 'ogm', 'm4b', 'caf', 'aif', 'aifc', 'mpc', 'spx', 'dsf', 'dff'].includes(it.ext));
+// every item gets its type from its name when whoever made it (a search, a virtual folder…) left it out
+const ex = (it) => { if (it.ext == null) { const n = it.name || ''; const i = n.lastIndexOf('.'); it.ext = it.isDir ? '' : i > 0 ? n.slice(i + 1).toLowerCase() : ''; } return it.ext; };
+export const isTextFile = (it) => !it.isDir && (TEXT_EXTS.has(ex(it)) || (!it.ext && /^(readme|license|changelog|makefile|dockerfile|authors|copying|todo)$/i.test(it.name)) || /^\.(gitignore|env|editorconfig|bashrc|zshrc|profile|npmrc|prettierrc|eslintrc|babelrc|dockerignore)/i.test(it.name));
+export const isImageFile = (it) => !it.isDir && (KINDS.image.includes(ex(it)) || ['heif', 'jxl', 'tga', 'arw', 'orf', 'rw2', 'raf'].includes(it.ext));
+export const isMediaFile = (it) => !it.isDir && (KINDS.video.includes(ex(it)) || KINDS.audio.includes(it.ext) || ['mka', 'ape', 'wv', 'tta', 'dts', 'ac3', 'eac3', 'amr', 'm2ts', 'mts', 'vob', 'divx', 'xvid', 'rm', 'rmvb', 'asf', 'f4v', 'ogm', 'm4b', 'caf', 'aif', 'aifc', 'mpc', 'spx', 'dsf', 'dff'].includes(it.ext));
 const kindByExt = {};
 for (const [k, list] of Object.entries(KINDS)) for (const e of list) kindByExt[e] = k;
-export const kindOf = (item) => (item.isDir ? 'folder' : kindByExt[item.ext] || 'other');
+export const kindOf = (item) => (item.isDir ? 'folder' : kindByExt[ex(item)] || 'other');
 export function typeLabel(item) {
   if (item.isDir) return item.share ? 'Shared folder' : 'File folder';
-  if (!item.ext) return 'File';
+  if (!ex(item)) return 'File';
   const named = { jpg: 'JPEG image', jpeg: 'JPEG image', png: 'PNG image', gif: 'GIF image', pdf: 'PDF document', txt: 'Text document', md: 'Markdown', zip: 'Compressed (zipped) folder', exe: 'Application', lnk: 'Shortcut', docx: 'Word document', xlsx: 'Excel worksheet', pptx: 'PowerPoint presentation', mp3: 'MP3 audio', mp4: 'MP4 video', js: 'JavaScript file', json: 'JSON file', html: 'HTML document', css: 'CSS stylesheet', py: 'Python file', dll: 'Application extension', svg: 'SVG image', webp: 'WebP image', '7z': '7-Zip archive', rar: 'RAR archive' };
   return named[item.ext] || `${item.ext.toUpperCase()} file`;
 }
@@ -281,7 +283,7 @@ export const DEFAULT_SETTINGS = {
   defaultView: 'grid', gridSize: 160, gridLabels: 'smart', showPreview: false, previewWidth: 340,
   dateFormat: 'locale', sizeUnits: 'binary', folderSizes: false, rememberFolderViews: true,
   singleClick: false, doubleClickUp: true, typeAhead: 'select', confirmDelete: true, deleteToRecycle: true,
-  startupPath: 'restore', terminal: 'auto', editor: 'code', keepRunning: false, openInNewWindow: false,
+  startupPath: 'restore', terminal: 'auto', editor: '', keepRunning: false, openInNewWindow: false,
   useWindowsIcons: false, showThumbnails: true, gitBadges: true, hoverPreview: false, sequentialOps: false,
   ribbonPinned: false, sidebarWidth: 300, sidebarCollapsed: false, syncNavigation: false, restoreTabs: true,
   showStatusBar: true, smartExtract: true, closeLastTabClosesWindow: false, middleClickOpensTab: true,

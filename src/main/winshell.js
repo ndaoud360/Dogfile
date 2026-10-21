@@ -440,7 +440,11 @@ async function runAsAdmin(p) {
 
 function openWith(p) {
   if (!IS_WIN) return false;
-  spawn('rundll32.exe', ['shell32.dll,OpenAs_RunDLL', p], { detached: true, stdio: 'ignore' }).unref();
+  // Windows 8+ has OpenWith.exe, which takes a quoted path; rundll32's OpenAs_RunDLL needs the path unquoted,
+  // so a quoted path (any path with a space) made it fail silently
+  const ow = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'OpenWith.exe');
+  if (fs.existsSync(ow)) { const c = spawn(ow, [p], { detached: true, stdio: 'ignore' }); c.on('error', () => {}); c.unref(); return true; }
+  spawn('rundll32.exe', [`shell32.dll,OpenAs_RunDLL ${p}`], { detached: true, stdio: 'ignore', windowsVerbatimArguments: true }).unref();
   return true;
 }
 

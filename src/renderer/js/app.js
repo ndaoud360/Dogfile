@@ -92,15 +92,18 @@ function renderTabs() {
   for (const t of ordered) {
     const paneIdx = state.panes.slice(0, n).indexOf(t.id);
     const active = paneIdx === state.activePane;
-    const el = h('div', { class: `tab${active ? ' active' : ''}${paneIdx >= 0 ? ' shown' : ''}${t.pinned ? ' pinned' : ''}${t.loading ? ' loading' : ''}`, role: 'tab', draggable: 'true', title: (t.path && !isVirtual(t.path) ? t.path : tabTitle(t)) + (t.locked ? '  (locked)' : ''), 'data-id': t.id });
+    const el = h('div', { class: `tab${active ? ' active' : ''}${paneIdx >= 0 ? ' shown' : ''}${t.pinned ? ' pinned' : ''}${t.loading ? ' loading' : ''}`, role: 'tab', draggable: 'true', title: (t.path && !isVirtual(t.path) ? t.path : tabTitle(t)) + (t.pinned ? '  (pinned)' : ''), 'data-id': t.id });
     if (t.color) el.style.setProperty('--tabc', t.color);
-    el.innerHTML = `${n > 1 && paneIdx >= 0 ? `<span class="pane-badge">${paneIdx + 1}</span>` : ''}<span class="tab-ic">${icon(tabIcon(t))}</span>${t.pinned ? '' : `<span class="tab-title">${esc(tabTitle(t))}</span>`}${t.locked ? `<span class="tab-lock">${icon('lock')}</span>` : ''}${t.pinned || t.locked ? '' : `<button class="tab-close" title="Close (Ctrl+W)">${icon('close')}</button>`}`;
+    el.innerHTML = `${n > 1 && paneIdx >= 0 ? `<span class="pane-badge">${paneIdx + 1}</span>` : ''}<span class="tab-ic">${icon(tabIcon(t))}</span><span class="tab-title">${esc(tabTitle(t))}</span>${t.pinned ? `<span class="tab-lock" title="Pinned: stays at the left and can't be closed by accident">${icon('pin')}</span>` : `<button class="tab-close" title="Close (Ctrl+W)">${icon('close')}</button>`}`;
     el.addEventListener('mousedown', (e) => {
       if (e.button === 1) { e.preventDefault(); closeTab(t); return; }
       if (e.button !== 0 || e.target.closest('.tab-close')) return;
-      if (e.ctrlKey && n > 1) { // Ctrl+click: show this tab in the next pane
-        showTabInPane(t.id, (state.activePane + 1) % n); return;
-      }
+    });
+    // switch on release, not on press: pressing and dragging a tab leaves the current tab showing so the dragged
+    // one can be dropped beside it to split the window
+    el.addEventListener('click', (e) => {
+      if (e.button !== 0 || e.target.closest('.tab-close')) return;
+      if (e.ctrlKey && n > 1) { showTabInPane(t.id, (state.activePane + 1) % n); return; } // Ctrl+click: next pane
       showTabInPane(t.id, state.activePane);
       ensureLoaded(t);
     });
@@ -129,9 +132,10 @@ function renderTabs() {
     });
     // Files dragged onto a tab: hover to switch to it, drop to copy/move into its folder
     let hoverT;
-    el.addEventListener('dragenter', (e) => { if (e.dataTransfer.types.includes('Files')) { hoverT = setTimeout(() => showTabInPane(t.id, state.activePane), 700); } });
+    const hoverSwitch = () => { clearTimeout(hoverT); hoverT = setTimeout(() => showTabInPane(t.id, state.activePane), 650); };
+    el.addEventListener('dragenter', (e) => { if (e.dataTransfer.types.includes('Files')) hoverSwitch(); });
     el.addEventListener('dragleave', () => clearTimeout(hoverT));
-    attachDropTarget(el, () => (t.path && !isVirtual(t.path) ? t.path : null));
+    attachDropTarget(el, () => (t.path && !isVirtual(t.path) ? t.path : null), null, { enter: hoverSwitch, leave: () => clearTimeout(hoverT) });
     host.append(el);
   }
   // keep active tab visible
@@ -152,7 +156,6 @@ function tabMenu(t, e) {
     { label: 'Split with this tab', icon: 'layout2v', run: () => { if (n < 2) setLayout('2v'); setTimeout(() => showTabInPane(t.id, (state.activePane + 1) % paneCount()), 0); } },
     { separator: true },
     { label: t.pinned ? 'Unpin tab' : 'Pin tab', icon: 'pin', run: () => { t.pinned = !t.pinned; renderTabs(); saveSession(); } },
-    { label: t.locked ? 'Unlock tab' : 'Lock tab', icon: 'lock', run: () => { t.locked = !t.locked; renderTabs(); saveSession(); } },
     { label: 'Tab color', submenu: colors.map((c) => ({ label: c ? c : 'None', swatch: c || 'transparent', checked: t.color === c, run: () => { t.color = c; renderTabs(); saveSession(); } })) },
     { label: 'Copy path', icon: 'link', run: () => !isVirtual(t.path) && api('clip:writeText', t.path) },
     { separator: true },
@@ -466,7 +469,8 @@ async function boot() {
   A.refreshDrives();
 
   const launch = info.launch || {};
-  const restored = (state.settings.startupPath === 'restore' && !info.test) && T.restoreSnapshot(session);
+  // only the first window brings back the last session; New window starts fresh
+  const restored = (state.settings.startupPath === 'restore' && !info.test && !launch.fresh) && T.restoreSnapshot(session);
   if (!restored) {
     const t = newTabState();
     state.tabs = [t]; state.panes = [t.id]; state.layout = '1'; state.activePane = 0;
@@ -496,7 +500,10 @@ onMain('archive:updated', ({ file, arc }) => { toast(`Saved changes back into ${
 onMain('ops:update', T.onOpsUpdate);
 onMain('ops:finished', (j) => { T.onOpsUpdate(j); A.onJobFinished(j); });
 onMain('ops:conflict', T.onConflict);
-onMain('work:msg', (m) => { if (!A.onWorkMsg(m)) T.onWorkMsg(m); });
+// results from searches carry only the basics: fill in what the rest of Dogfile expects of a file (its type), so files
+// found by a search open in the built-in apps and get the same right-click options as anywhere else
+const fillItem = (it) => { if (it && !it.isDir && it.ext == null) { const n = it.name || ''; const i = n.lastIndexOf('.'); it.ext = i > 0 ? n.slice(i + 1).toLowerCase() : ''; } if (it && it.isDir && it.ext == null) it.ext = ''; return it; };
+onMain('work:msg', (m) => { if (Array.isArray(m.items)) m.items.forEach(fillItem); if (!A.onWorkMsg(m)) T.onWorkMsg(m); });
 onMain('watch:changed', onWatchChanged);
 onMain('theme:changed', ({ dark }) => { systemDark = dark; applyTheme(); });
 onMain('app:beforeHide', () => saveSession());

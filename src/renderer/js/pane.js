@@ -190,7 +190,7 @@ function viewKey(p) { return IS_WIN() ? p.toLowerCase() : p; }
 function rememberFolderView(t) {
   if (!state.settings.rememberFolderViews || !t.path || t.path.startsWith('atlas:search')) return;
   if (!t._viewTouched) return;
-  state.folderViews[viewKey(t.path)] = { view: t.view, sort: t.sort, group: t.group, gridSize: t.gridSize };
+  state.folderViews[viewKey(t.path)] = { view: t.view, sort: t.sort, group: t.group, gridSize: t.gridSize, rowZoom: t.rowZoom || 1 };
   const keys = Object.keys(state.folderViews);
   if (keys.length > 2000) delete state.folderViews[keys[0]];
   saveLibrary();
@@ -203,7 +203,7 @@ function applyFolderView(t) {
   if (t.sort.key === 'none') t.sort = { key: 'name', dir: 1 };
   if (t.group === 'section') t.group = null;
   const fv = state.settings.rememberFolderViews && state.folderViews[viewKey(t.path)];
-  if (fv) { t.view = fv.view; t.sort = fv.sort; t.group = fv.group; t.gridSize = fv.gridSize; }
+  if (fv) { t.view = fv.view; t.sort = fv.sort; t.group = fv.group; t.gridSize = fv.gridSize; t.rowZoom = fv.rowZoom || 1; } else t.rowZoom = 1;
 }
 export function touchView(t) { t._viewTouched = true; rememberFolderView(t); }
 
@@ -516,6 +516,9 @@ export function renderPane(i) {
   el.root.classList.toggle('app-pane', !!t.app);
   if (t.app) { el.nav.innerHTML = ''; el.tools.innerHTML = ''; el.inner.innerHTML = ''; el._cells = null; el.scroller.querySelector('.details-head')?.remove(); bus.emit('syncFrames'); return; }
   el.root.dataset.view = t.view;
+  // Ctrl+wheel in Details / List makes rows bigger or smaller instead of switching view
+  if (t.rowZoom && t.rowZoom !== 1) { el.root.style.setProperty('--row-h', ROW_H(t) + 'px'); el.root.style.setProperty('--fs', String((state.settings.fontScale || 1) * t.rowZoom)); }
+  else { el.root.style.removeProperty('--row-h'); el.root.style.removeProperty('--fs'); }
   renderNav(el, t);
   renderTools(el, t);
   renderView(i);
@@ -726,7 +729,7 @@ export function viewMenu(t, r) {
 // ======================================================================
 // Views (virtualized)
 // ======================================================================
-const ROW_H = () => (state.settings.density === 'compact' ? 26 : 32);
+const ROW_H = (t) => Math.round((state.settings.density === 'compact' ? 26 : 32) * (t?.rowZoom || 1));
 const COLS = {
   name: { label: 'Name', w: 320, min: 140 },
   mtime: { label: 'Date modified', w: 170 },
@@ -785,7 +788,7 @@ function layoutFor(t, el) {
     y = 10;
   } else if (t.view === 'list') {
     cellW = Math.max(120, Math.min(260, width - 24)); cellH = 30; cols = Math.max(1, Math.floor((width - 24) / cellW)); y = 6;
-  } else { cellH = ROW_H(); cols = 1; y = t.view === 'details' ? 34 : 0; }
+  } else { cellH = ROW_H(t); cols = 1; y = t.view === 'details' ? 34 : 0; }
   const GAP = width < 500 ? 4 : 6;
   const push = t.view === 'gallery' ? (idxs) => {
     const avail = Math.max(60, width - pad * 2);
@@ -837,6 +840,9 @@ export function renderView(i) {
   const t = paneTab(i);
   if (!el || !t || t.app) return;
   el.root.dataset.view = t.view;
+  // Ctrl+wheel in Details / List makes rows bigger or smaller instead of switching view
+  if (t.rowZoom && t.rowZoom !== 1) { el.root.style.setProperty('--row-h', ROW_H(t) + 'px'); el.root.style.setProperty('--fs', String((state.settings.fontScale || 1) * t.rowZoom)); }
+  else { el.root.style.removeProperty('--row-h'); el.root.style.removeProperty('--fs'); }
   if (t.view === 'columns' && !isVirtual(t.path)) return renderColumns(el, t);
   el.scroller.classList.remove('miller');
   if (t.error === 'netdown') {
@@ -1055,7 +1061,8 @@ function renderDetailsHeader(el, t) {
   let head = el.scroller.querySelector('.details-head');
   if (!head) { head = h('div', { class: 'details-head' }); el.scroller.prepend(head); }
   const cols = columnsFor(t);
-  head.innerHTML = cols.map((c) => `<div class="hc c-${c}${COLS[c].align === 'right' ? ' right' : ''}" data-col="${c}" style="width:${colWidth(c)}px"><span>${COLS[c].label}</span>${t.sort.key === c ? icon(t.sort.dir > 0 ? 'caretUp' : 'caretDown', 'sort-ind') : ''}<i class="rz" data-rz="${c}"></i></div>`).join('');
+  head.innerHTML = cols.map((c) => `<div class="hc c-${c}${COLS[c].align === 'right' ? ' right' : ''}" data-col="${c}" style="width:${colWidth(c)}px"><span>${COLS[c].label}</span>${t.sort.key === c ? icon(t.sort.dir > 0 ? 'caretUp' : 'caretDown', 'sort-ind') : ''}<i class="rz" data-rz="${c}" title="Drag to resize · double-click to fit"></i></div>`).join('') + `<button class="hc-cols" title="Choose columns (or right-click the column names)">${icon('viewColumns')}</button>`;
+  head.querySelector('.hc-cols').onclick = (e) => { e.stopPropagation(); const r = e.currentTarget.getBoundingClientRect(); head.oncontextmenu({ preventDefault() {}, clientX: r.left, clientY: r.bottom + 2 }); };
   head.onclick = (e) => {
     const hc = e.target.closest('.hc');
     if (!hc || e.target.classList.contains('rz')) return;
@@ -1352,8 +1359,8 @@ function wirePane(el) {
     if (!e.ctrlKey) return;
     e.preventDefault();
     const t = paneTab(el.idx);
-    if (t.view !== 'grid') { t.view = 'grid'; }
-    t.gridSize = Math.max(72, Math.min(320, (t.gridSize || state.settings.gridSize) + (e.deltaY < 0 ? 16 : -16)));
+    if (t.view === 'details' || t.view === 'list' || t.view === 'columns') t.rowZoom = Math.max(0.8, Math.min(1.8, Math.round(((t.rowZoom || 1) + (e.deltaY < 0 ? 0.1 : -0.1)) * 10) / 10));
+    else t.gridSize = Math.max(72, Math.min(320, (t.gridSize || state.settings.gridSize) + (e.deltaY < 0 ? 16 : -16)));
     touchView(t);
     renderPane(el.idx);
   }, { passive: false });
@@ -1366,6 +1373,12 @@ function wirePane(el) {
     if (!cell || state.settings.hoverFolderSize === false) return;
     const t = paneTab(el.idx);
     const it = t?.shown[+cell.dataset.ix];
+    if (it && !it.isDir && !it.virtual) {
+      // files: size, type and date right away
+      const tip = `${it.name}\nSize: ${fmtSize(it.size)}${it.size >= 1024 ? ` (${(it.size || 0).toLocaleString()} bytes)` : ''}\nType: ${typeLabel(it)}${it.mtime ? `\nModified: ${fmtDate(it.mtime, 'locale')}` : ''}`;
+      cell.title = tip; cell.querySelectorAll('[title]').forEach((x) => (x.title = tip));
+      return;
+    }
     if (!it?.isDir || it.virtual || it.drive || isVirtual(it.path)) return;
     hoverT = setTimeout(async () => {
       let c = folderSizeCache.get(it.path);
@@ -1483,8 +1496,7 @@ function wirePane(el) {
     e.preventDefault();
     if (!paths.length) return;
     dragPaths = { paths, sourceDir: t.path, at: Date.now() };
-    window.atlas.startDrag(paths);
-    setTimeout(() => { if (dragPaths && Date.now() - dragPaths.at > 60000) dragPaths = null; }, 61000);
+    beginInternalDrag(paths, e);
   });
 
   attachDropTarget(body, (e) => {
@@ -1561,7 +1573,94 @@ function refreshSel(el, t) {
 function paintRowsOrColumns(el, t) { if (t.view === 'columns') { el.inner.querySelectorAll('.mcol.current .mitem').forEach((m) => { const it = t.shown[+m.dataset.ix]; m.classList.toggle('selected', t.sel.has(it.path)); m.classList.toggle('focused', t.focus === it.path); }); } else paintRows(el, t); }
 
 // Generic drop target for any element (pane bodies, sidebar entries, crumbs, tabs)
-export function attachDropTarget(node, resolveDir, hiliteFn) {
+// ---- dragging inside Dogfile ----
+// Windows doesn't hand a native file drag back to the window it started from, so drags between panes, tabs,
+// folders and the sidebar are run by Dogfile itself: a label follows the pointer, targets light up, and the drop
+// happens on release. Leaving the window hands the drag to Windows (Explorer, the desktop, mail…); if it comes
+// back and is dropped here, the main process reports where (drag:ended) and the drop still happens.
+const internalTargets = new Set(); // { node, hover(e) -> element to light up | null, drop(e, paths), enter?(), leave?() }
+export function registerDropTarget(node, spec) { internalTargets.add({ node, ...spec }); }
+function targetAt(x, y) {
+  const el = document.elementFromPoint(x, y);
+  if (!el) return null;
+  let best = null;
+  for (const t of internalTargets) {
+    if (!t.node.isConnected) { internalTargets.delete(t); continue; }
+    if (t.node.contains(el) && (!best || best.node.contains(t.node))) best = t;
+  }
+  return best ? { tgt: best, el } : null;
+}
+function fakeEvent(ev, el) {
+  return { clientX: ev.clientX, clientY: ev.clientY, target: el, ctrlKey: ev.ctrlKey, shiftKey: ev.shiftKey, altKey: ev.altKey, button: 0, synthetic: true,
+    preventDefault() {}, stopPropagation() {}, dataTransfer: { types: ['Files'], files: [], getData: () => '', dropEffect: 'none' } };
+}
+let dragging = null;
+export const isInternalDragging = () => !!dragging;
+function beginInternalDrag(paths, e0) {
+  const ghost = h('div', { class: 'drag-ghost' }, h('span', { html: icon(paths.length > 1 ? 'stack' : 'page') }), h('span', {}, paths.length > 1 ? `${paths.length} items` : basename(paths[0])), h('span', { class: 'dg-op' }));
+  document.body.append(ghost);
+  document.body.classList.add('item-dragging');
+  let cur = null, lit = null;
+  const place = (ev) => { ghost.style.transform = `translate(${ev.clientX + 14}px, ${ev.clientY + 12}px)`; };
+  place(e0);
+  const light = (node) => { if (lit === node) return; lit?.classList.remove('drop-on'); lit = node; lit?.classList.add('drop-on'); };
+  const move = (ev) => {
+    if (ev.buttons === 0) return up(ev); // released outside our listeners
+    place(ev);
+    const hit = targetAt(ev.clientX, ev.clientY);
+    const fe = hit && fakeEvent(ev, hit.el);
+    const tgt = hit && hit.tgt.hover(fe) ? hit.tgt : null;
+    if (tgt !== cur) { cur?.leave?.(); cur = tgt; cur?.enter?.(); }
+    light(tgt ? tgt.hover(fe) : null);
+    const op = !tgt ? '' : ev.altKey ? 'Shortcut' : ev.ctrlKey ? 'Copy' : ev.shiftKey ? 'Move' : tgt.op?.(fe, paths) || '';
+    ghost.querySelector('.dg-op').textContent = op;
+    ghost.classList.toggle('none', !tgt);
+  };
+  const out = (ev) => {
+    // left the window: hand over to Windows for Explorer, the desktop, other apps
+    if (ev.relatedTarget || ev.toElement) return;
+    stop();
+    window.atlas.startDrag(paths);
+  };
+  const up = (ev) => {
+    const hit = targetAt(ev.clientX, ev.clientY);
+    stop();
+    if (!hit) { dragPaths = null; return; }
+    const fe = fakeEvent(ev, hit.el);
+    if (!hit.tgt.hover(fe)) { dragPaths = null; return; }
+    dragPaths = null;
+    hit.tgt.drop(fe, paths);
+  };
+  const key = (ev) => { if (ev.key === 'Escape') { stop(); dragPaths = null; } };
+  const stop = () => {
+    window.removeEventListener('mousemove', move, true); window.removeEventListener('mouseup', up, true);
+    document.removeEventListener('mouseout', out, true); window.removeEventListener('keydown', key, true);
+    cur?.leave?.(); light(null); ghost.remove(); document.body.classList.remove('item-dragging'); dragging = null;
+    bus.emit('dragEnded');
+  };
+  dragging = { paths, stop };
+  window.addEventListener('mousemove', move, true); window.addEventListener('mouseup', up, true);
+  document.addEventListener('mouseout', out, true); window.addEventListener('keydown', key, true);
+}
+// a native drag that went out of the window and was dropped back in (or into another Dogfile window)
+window.atlas?.on?.('drag:ended', ({ x, y, paths }) => {
+  const ps = paths || dragPaths?.paths;
+  if (!ps?.length) return;
+  if (!paths && !dragPaths) return; // a real drop already handled it
+  const hit = targetAt(x, y);
+  dragPaths = null;
+  if (!hit) return;
+  const fe = fakeEvent({ clientX: x, clientY: y }, hit.el);
+  if (hit.tgt.hover(fe)) hit.tgt.drop(fe, ps);
+});
+
+export function attachDropTarget(node, resolveDir, hiliteFn, opts = {}) {
+  registerDropTarget(node, {
+    hover: (e) => (resolveDir(e) ? (hiliteFn ? hiliteFn(e) || node : node) : null),
+    drop: (e, paths) => runDrop(e, resolveDir(e), paths),
+    op: (e, paths) => { const dir = resolveDir(e); if (typeof dir === 'object') return dir.exe ? 'Open with' : 'Add to archive'; if (typeof dir === 'string' && paths.every((p) => samePath(dirname(p), dir))) return ''; return typeof dir === 'string' && sameRoot(paths[0], dir) ? 'Move' : 'Copy'; },
+    enter: opts.enter, leave: opts.leave,
+  });
   let last = null;
   const clear = () => { node.classList.remove('drop-on'); if (last) last.classList.remove('drop-on'); last = null; };
   node.addEventListener('dragover', (e) => {
@@ -1594,6 +1693,11 @@ export function attachDropTarget(node, resolveDir, hiliteFn) {
       if (txt && typeof dir === 'string') A.saveDroppedText(dir, txt);
       return;
     }
+    runDrop(e, dir, paths);
+  });
+}
+async function runDrop(e, dir, paths) {
+    if (!dir || !paths?.length) return;
     if (typeof dir === 'object' && dir.exe) { api('shell:launch', dir.exe, paths); return; }
     // dropping onto an archive (or into an open archive) adds the files to it
     const zipT = typeof dir === 'object' && dir.archive ? { arc: dir.archive, inner: '' } : typeof dir === 'string' && dir.startsWith('atlas:zip|') ? A.arcOf(dir) : null;
@@ -1618,7 +1722,6 @@ export function attachDropTarget(node, resolveDir, hiliteFn) {
       if (await sm.smartDrop(paths, dir, move, e.clientX, e.clientY)) return;
     }
     A.transfer(paths, dir, move ? 'move' : 'copy');
-  });
 }
 export function sameRoot(a, b) {
   if (!IS_WIN()) return true;
@@ -1629,9 +1732,12 @@ export function sameRoot(a, b) {
 // Marquee (rubber-band) selection with auto-scroll
 function startMarquee(el, t, e) {
   const base = e.ctrlKey ? new Set(t.sel) : new Set();
-  if (!e.ctrlKey && !e.shiftKey) { t.sel = new Set(); t.focus = null; paintRows(el, t); bus.emit('selection', t); }
+  if (!e.ctrlKey && !e.shiftKey) { t.sel = new Set(); t.focus = null; refreshSel(el, t); bus.emit('selection', t); bus.emit('status'); }
   const sr = el.scroller.getBoundingClientRect();
   const x0 = e.clientX - sr.left + el.scroller.scrollLeft, y0 = e.clientY - sr.top + el.scroller.scrollTop;
+  // hit-testing uses the item area's own coordinates (they don't change when it scrolls)
+  const ir0 = el.inner.getBoundingClientRect();
+  const xi0 = e.clientX - ir0.left, yi0 = e.clientY - ir0.top;
   const box = h('div', { class: 'marquee' });
   let started = false, lastE = e, raf = null;
   const update = () => {
@@ -1639,16 +1745,21 @@ function startMarquee(el, t, e) {
     const L = el.layout;
     const [ax, bx] = [Math.min(x0, x1), Math.max(x0, x1)], [ay, by] = [Math.min(y0, y1), Math.max(y0, y1)];
     Object.assign(box.style, { left: ax + 'px', top: ay + 'px', width: bx - ax + 'px', height: by - ay + 'px' });
+    const ir = el.inner.getBoundingClientRect();
+    const xi1 = lastE.clientX - ir.left, yi1 = lastE.clientY - ir.top;
+    const [hx0, hx1] = [Math.min(xi0, xi1), Math.max(xi0, xi1)], [hy0, hy1] = [Math.min(yi0, yi1), Math.max(yi0, yi1)];
     const sel = new Set(base);
+    // only the visible part of each item counts (not the spacing around it), so the row above isn't picked up
+    const pad = t.view === 'grid' || t.view === 'gallery' ? 8 : 3;
     for (const row of L.rows) {
-      if (row.type !== 'items' || row.y + row.h < ay || row.y > by) continue;
+      if (row.type !== 'items' || row.y + row.h - pad < hy0 || row.y + pad > hy1) continue;
       row.items.forEach((ix, c) => {
         let cx0, cx1;
         if (t.view === 'gallery') { cx0 = row.xs[c]; cx1 = cx0 + row.ws[c]; }
         else if (t.view === 'grid') { cx0 = L.pad + c * L.cellW + 6; cx1 = cx0 + L.cellW - 12; }
         else if (t.view === 'list') { cx0 = 12 + c * L.cellW; cx1 = cx0 + L.cellW - 12; }
         else { cx0 = 0; cx1 = colWidth('name') + 40; }
-        if (cx1 >= ax && cx0 <= bx) { const p = t.shown[ix].path; if (e.ctrlKey && base.has(p)) sel.delete(p); else sel.add(p); }
+        if (cx1 >= hx0 && cx0 <= hx1) { const p = t.shown[ix].path; if (e.ctrlKey && base.has(p)) sel.delete(p); else sel.add(p); }
       });
     }
     t.sel = sel;
@@ -1760,6 +1871,7 @@ export function watchPanes() {
 }
 bus.on('layout', () => watchPanes());
 bus.on('loaded', () => watchPanes());
+bus.on('tags', () => requestAnimationFrame(renderAll)); // tag dots show the moment a tag changes
 export function onWatchChanged({ key, dir }) {
   const i = +key.replace('pane', '');
   const t = paneTab(i);

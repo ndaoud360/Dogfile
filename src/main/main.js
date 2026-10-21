@@ -513,6 +513,43 @@ on('shell:runCommand', async (e, cmdline, cwd) => {
   spawn(cmdline, { cwd, detached: true, stdio: 'ignore', shell: true }).unref();
   return true;
 });
+// name search inside one folder and its subfolders, for the built-in file picker when the index doesn't cover it
+on('fs:findUnder', async (e, root, query, limit = 300) => {
+  const q = String(query || '').toLowerCase(); if (!q) return [];
+  const out = [], t0 = Date.now(), queue = [root];
+  const SKIP = new Set(['node_modules', '.git', '$recycle.bin', 'system volume information', 'windows', 'appdata']);
+  while (queue.length && out.length < limit && Date.now() - t0 < 4000) {
+    const dir = queue.shift();
+    let ents; try { ents = await fsp.readdir(dir, { withFileTypes: true }); } catch { continue; }
+    for (const d of ents) {
+      const full = path.join(dir, d.name);
+      const isDir = d.isDirectory();
+      if (d.name.toLowerCase().includes(q)) {
+        let st = null; try { st = await fsp.stat(full); } catch {}
+        out.push({ path: full, name: d.name, isDir, size: st?.size || 0, mtime: st?.mtimeMs || 0 });
+        if (out.length >= limit) break;
+      }
+      if (isDir && !d.name.startsWith('.') && !SKIP.has(d.name.toLowerCase())) queue.push(full);
+    }
+  }
+  return out;
+});
+// finds an installed code editor (VS Code, Cursor, VSCodium, Sublime Text, Notepad++); null when none
+on('sys:findEditor', async () => {
+  const env = process.env;
+  const cands = IS_WIN ? [
+    [env.LOCALAPPDATA, 'Programs', 'Microsoft VS Code', 'Code.exe'], [env.ProgramFiles, 'Microsoft VS Code', 'Code.exe'],
+    [env.LOCALAPPDATA, 'Programs', 'cursor', 'Cursor.exe'], [env.LOCALAPPDATA, 'Programs', 'VSCodium', 'VSCodium.exe'], [env.ProgramFiles, 'VSCodium', 'VSCodium.exe'],
+    [env.ProgramFiles, 'Sublime Text', 'sublime_text.exe'], [env.ProgramFiles, 'Sublime Text 3', 'sublime_text.exe'],
+    [env.ProgramFiles, 'Notepad++', 'notepad++.exe'], [env['ProgramFiles(x86)'], 'Notepad++', 'notepad++.exe'],
+  ] : [['/usr/bin/code'], ['/usr/local/bin/code'], ['/snap/bin/code'], ['/usr/bin/codium'], ['/usr/bin/subl'], ['/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code']];
+  for (const parts of cands) {
+    if (parts.some((x) => !x)) continue;
+    const f = path.join(...parts);
+    try { await fsp.access(f); return { path: f, name: path.basename(f).replace(/\.exe$/i, '') }; } catch {}
+  }
+  return null;
+});
 
 // ---------- clipboard ----------
 on('clip:writeFiles', async (e, paths, cut) => {
@@ -641,13 +678,21 @@ on('everything:search', async (e, query, max = 2000, root) => {
   return new Promise((resolve) => execFile(es, args, { windowsHide: true, maxBuffer: 64 << 20 }, (err, out) => resolve(err ? null : out.split(/\r?\n/).filter(Boolean))));
 });
 let esPath;
+// es.exe is Everything's command-line tool (a separate small download from voidtools). Besides PATH and the usual
+// install folders, look next to a running Everything.exe, which finds portable copies too.
+async function everythingExe() {
+  if (!IS_WIN) return null;
+  return new Promise((resolve) => execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', '(Get-Process Everything,Everything64 -ErrorAction SilentlyContinue | Select-Object -First 1).Path'], { windowsHide: true, timeout: 8000 }, (err, out) => resolve(err ? null : String(out || '').trim() || null)));
+}
 async function findEs() {
-  if (esPath !== undefined) return esPath;
-  const cands = [await win.which('es.exe'), 'C:\\Program Files\\Everything\\es.exe', 'C:\\Program Files (x86)\\Everything\\es.exe'].filter(Boolean);
+  if (esPath) return esPath;
+  const run = await everythingExe();
+  const cands = [await win.which('es.exe'), run && path.join(path.dirname(run), 'es.exe'), 'C:\\Program Files\\Everything\\es.exe', 'C:\\Program Files (x86)\\Everything\\es.exe', path.join(app.getPath('userData'), 'es.exe')].filter(Boolean);
   esPath = cands.find((c) => fs.existsSync(c)) || null;
   return esPath;
 }
 on('everything:available', async () => !!(await findEs()));
+on('everything:status', async () => { const es = await findEs(); const run = es ? null : await everythingExe(); return { es, running: !!(es || run), exe: run }; });
 
 // ---------- git ----------
 // git: branches, switching and recent history for the status bar branch menu
@@ -820,7 +865,8 @@ const doctext = require('./doctext');
 on('doc:read', async (e, p, o) => doctext.read(p, o || {}));
 on('doc:text', async (e, p, n) => doctext.text(p, n || 20000));
 on('doc:titles', async (e, paths) => { const out = []; for (const p of (paths || []).slice(0, 500)) out.push(await doctext.title(p)); return out; });
-on('doc:setProps', async (e, p, props) => doctext.setProps(p, props || {}));
+on('doc:setProps', async (e, p, props) => (/\.pdf$/i.test(p) ? doctext.pdfSetInfo(p, props || {}) : doctext.setProps(p, props || {})));
+on('media:setMeta', async (e, p, changes) => tags.writeMedia(p, changes || {}));
 
 // ---------- versions ----------
 const versions = require('./versions');
@@ -860,7 +906,7 @@ on('default:get', async () => win.isDefault(process.execPath));
 on('default:set', async (e, enable) => win.setDefault(process.execPath, enable));
 
 // ---------- windows & theme ----------
-on('win:new', async (e, launch) => { createWindow(launch || {}); return true; });
+on('win:new', async (e, launch) => { createWindow({ ...(launch || {}), fresh: true }); return true; });
 on('win:control', async (e, action) => {
   const w = BrowserWindow.fromWebContents(e.sender);
   if (!w) return;
@@ -868,7 +914,7 @@ on('win:control', async (e, action) => {
   else if (action === 'max') w.isMaximized() ? w.unmaximize() : w.maximize();
   else if (action === 'close') w.close();
   else if (action === 'devtools') w.webContents.toggleDevTools();
-  else if (action === 'fullscreen') w.setFullScreen(!w.isFullScreen());
+  else if (action === 'fullscreen') { if (w.isFullScreen()) w.setFullScreen(false); else w.isMaximized() ? w.unmaximize() : w.maximize(); } // F11: same as the maximize button
   else if (action === 'quit') { quitting = true; app.quit(); }
   else if (action === 'ontop') { w.setAlwaysOnTop(!w.isAlwaysOnTop()); return w.isAlwaysOnTop(); }
   else if (action === 'isFullscreen') return w.isFullScreen();
@@ -914,25 +960,44 @@ on('media:quickProbe', async (e, paths) => {
   return out;
 });
 // video contact sheet: a grid of frames saved as a JPG next to the video
+// video contact sheet: grab each frame with a fast seek (seconds, even for long films), then tile them.
+// Progress is reported per frame and it can be cancelled.
+const sheetJobs = new Map();
+on('media:sheetCancel', async (e, jobId) => { const j = sheetJobs.get(jobId); if (j) { j.cancelled = true; try { j.proc?.kill(); } catch {} } return true; });
 on('media:contactSheet', async (e, file, o = {}) => {
+  const { spawn } = require('child_process');
   const info = await media.probe(file);
   const dur = parseFloat(info.format?.duration) || 0;
   if (!dur) throw new Error('Can’t read the length of this video');
   const cols = o.cols || 4, rows = o.rows || 4, n = cols * rows, w = o.width || 360;
   const out = o.out || file.replace(/\.[^.\\/]+$/, '') + ' - contact sheet.jpg';
-  const fps = n / Math.max(1, dur * 0.96);
-  await new Promise((resolve, reject) => {
-    const { spawn } = require('child_process');
-    const pr = spawn(media.ffmpegPath(), ['-hide_banner', '-loglevel', 'error', '-y', '-ss', String(Math.min(dur * 0.02, 5)), '-i', file, '-vf', `fps=${fps.toFixed(6)},scale=${w}:-2,drawtext=text='%{pts\\:hms}':x=8:y=h-th-8:fontsize=16:fontcolor=white:box=1:boxcolor=black@0.5:boxborderw=4,tile=${cols}x${rows}:padding=6:margin=6:color=0x1b1b1d`, '-frames:v', '1', '-q:v', '3', out], { windowsHide: true });
+  const job = { cancelled: false, proc: null };
+  const jobId = o.jobId || String(Date.now());
+  sheetJobs.set(jobId, job);
+  const tmp = await fsp.mkdtemp(path.join(require('os').tmpdir(), 'dogfile-sheet-'));
+  const run = (args) => new Promise((resolve, reject) => {
+    if (job.cancelled) return reject(new Error('Cancelled'));
+    const pr = spawn(media.ffmpegPath(), args, { windowsHide: true }); job.proc = pr;
     let err = ''; pr.stderr.on('data', (d) => { err += d; });
-    pr.on('close', (c) => (c === 0 ? resolve() : reject(new Error(err.split('\n').filter(Boolean).pop() || 'ffmpeg failed'))));
+    pr.on('close', (c) => (job.cancelled ? reject(new Error('Cancelled')) : c === 0 ? resolve() : reject(new Error(err.split('\n').filter(Boolean).pop() || 'ffmpeg failed'))));
     pr.on('error', reject);
-  }).catch(async (err) => {
-    // some ffmpeg builds have no drawtext (no fonts): try again without timestamps
-    if (!/drawtext|Font|font/i.test(err.message)) throw err;
-    await new Promise((resolve, reject) => { const { spawn } = require('child_process'); const pr = spawn(media.ffmpegPath(), ['-hide_banner', '-loglevel', 'error', '-y', '-i', file, '-vf', `fps=${fps.toFixed(6)},scale=${w}:-2,tile=${cols}x${rows}:padding=6:margin=6:color=0x1b1b1d`, '-frames:v', '1', '-q:v', '3', out], { windowsHide: true }); pr.on('close', (c) => (c === 0 ? resolve() : reject(new Error('ffmpeg failed')))); pr.on('error', reject); });
   });
-  return out;
+  const hms = (t) => { const s = Math.floor(t); return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+  let drawText = true;
+  try {
+    for (let i = 0; i < n; i++) {
+      const t = dur * (0.02 + 0.96 * (i + 0.5) / n);
+      const f = path.join(tmp, `f${String(i).padStart(3, '0')}.jpg`);
+      const label = hms(t).replace(/:/g, '\\:');
+      const vf = `scale=${w}:-2` + (drawText ? `,drawtext=text='${label}':x=8:y=h-th-8:fontsize=16:fontcolor=white:box=1:boxcolor=black@0.5:boxborderw=4` : '');
+      try { await run(['-hide_banner', '-loglevel', 'error', '-y', '-ss', t.toFixed(2), '-i', file, '-frames:v', '1', '-vf', vf, '-q:v', '3', f]); }
+      catch (err) { if (err.message === 'Cancelled') throw err; if (drawText && /drawtext|font/i.test(err.message)) { drawText = false; i--; continue; } throw err; }
+      if (!e.sender.isDestroyed()) e.sender.send('media:sheetProgress', { jobId, done: i + 1, total: n + 1 });
+    }
+    await run(['-hide_banner', '-loglevel', 'error', '-y', '-framerate', '1', '-i', path.join(tmp, 'f%03d.jpg'), '-vf', `tile=${cols}x${rows}:padding=6:margin=6:color=0x1b1b1d`, '-frames:v', '1', '-q:v', '3', out]);
+    if (!e.sender.isDestroyed()) e.sender.send('media:sheetProgress', { jobId, done: n + 1, total: n + 1 });
+    return out;
+  } finally { sheetJobs.delete(jobId); fsp.rm(tmp, { recursive: true, force: true }).catch(() => {}); }
 });
 on('media:encoder', async () => media.bestEncoder());
 on('media:shotDir', async () => media.screenshotTo());
@@ -1028,7 +1093,10 @@ async function applyWindowCorners(w, pref) {
   const hwnd = w.getNativeWindowHandle();
   const ptr = hwnd.length >= 8 ? hwnd.readBigUInt64LE(0).toString() : String(hwnd.readUInt32LE(0));
   const val = { square: 1, round: 2, small: 3 }[pref] || 0;
-  await win.ps.json(`if (-not ('AtlasNs.Dwm' -as [type])) { Add-Type -Namespace AtlasNs -Name Dwm -MemberDefinition '[DllImport("dwmapi.dll")] public static extern int DwmSetWindowAttribute(System.IntPtr hwnd, int attr, ref int val, int size);' }; $v = ${val}; [void][AtlasNs.Dwm]::DwmSetWindowAttribute([System.IntPtr]${ptr}, 33, [ref]$v, 4); '{}'`).catch(() => {});
+  // square corners: Windows drops the window shadow for frameless windows unless the frame reaches into the
+  // window by a pixel, so extend it (the shadow then matches rounded windows)
+  const ext = val === 1 ? 1 : 0;
+  await win.ps.json(`if (-not ('DogNs.Dwm2' -as [type])) { Add-Type -Namespace DogNs -Name Dwm2 -MemberDefinition '[DllImport("dwmapi.dll")] public static extern int DwmSetWindowAttribute(System.IntPtr hwnd, int attr, ref int val, int size); [StructLayout(LayoutKind.Sequential)] public struct MARGINS { public int l; public int r; public int t; public int b; } [DllImport("dwmapi.dll")] public static extern int DwmExtendFrameIntoClientArea(System.IntPtr hwnd, ref MARGINS m);' }; $v = ${val}; $h = [System.IntPtr]${ptr}; [void][DogNs.Dwm2]::DwmSetWindowAttribute($h, 33, [ref]$v, 4); $m = New-Object DogNs.Dwm2+MARGINS; $m.l = ${ext}; $m.r = ${ext}; $m.t = ${ext}; $m.b = ${ext}; [void][DogNs.Dwm2]::DwmExtendFrameIntoClientArea($h, [ref]$m); $p = 2; [void][DogNs.Dwm2]::DwmSetWindowAttribute($h, 2, [ref]$p, 4); '{}'`).catch(() => {});
 }
 function cornerPref() { const c = settingsCache.corners || {}; return c.window === false ? 'square' : (c.radius ?? 8) >= 6 ? 'round' : 'small'; }
 on('win:corners', async (e, pref) => { for (const w of allWindows()) await applyWindowCorners(w, pref); return true; });
@@ -1090,6 +1158,15 @@ ipcMain.handle('invoke', async (e, name, ...args) => {
 const dragIcon = () => nativeImage.createFromPath(path.join(RENDERER, 'assets', 'drag.png'));
 ipcMain.on('drag:start', (e, paths) => {
   try { e.sender.startDrag({ files: paths, file: paths[0], icon: dragIcon() }); } catch (err) { console.error(err); }
+  // Windows doesn't deliver a drag back to the window it came from: if it ended over a Dogfile window, tell it where
+  try {
+    const pt = screen.getCursorScreenPoint();
+    for (const w of allWindows()) {
+      if (w.isMinimized() || !w.isVisible()) continue;
+      const b = w.getContentBounds();
+      if (pt.x >= b.x && pt.y >= b.y && pt.x < b.x + b.width && pt.y < b.y + b.height) { w.webContents.send('drag:ended', { x: pt.x - b.x, y: pt.y - b.y, paths: w.webContents === e.sender ? null : paths }); break; }
+    }
+  } catch {}
 });
 
 nativeTheme.on('updated', () => {

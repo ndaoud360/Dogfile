@@ -250,6 +250,7 @@ function enterEdit(tool = 'adjust') {
   const g = work.getContext('2d');
   g.translate(work.width / 2, work.height / 2); g.rotate((V.rot * Math.PI) / 180); g.scale(V.flipH ? -1 : 1, V.flipV ? -1 : 1);
   g.drawImage(img, -V.nat.w / 2, -V.nat.h / 2);
+  g.setTransform(1, 0, 0, 1, 0, 0); // later drawing (pen, text) works in plain picture pixels
   E = { work, adj: defaultAdj(), tool, undo: [], redo: [], dirty: V.rot !== 0 || V.flipH, draw: { color: '#ff3b30', size: 8, opacity: 100, mode: 'pen' }, crop: null, aspect: 'free' };
   try { work.getContext('2d').getImageData(0, 0, 1, 1); } catch { toast('This image can’t be edited (protected source)', { error: true }); E = null; return; }
   document.body.classList.add('editing');
@@ -305,6 +306,7 @@ function drawCanvas() {
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.clearRect(0, 0, c.width, c.height);
   const G = geom();
+  E.lastG = { ...G, cw: c.clientWidth, ch: c.clientHeight };
   g.imageSmoothingQuality = 'high';
   g.filter = filterStr(E.adj);
   g.drawImage(E.work, G.x, G.y, G.dw, G.dh);
@@ -396,6 +398,7 @@ function transformWork(kind) {
   if (kind === 'left') g.rotate(-Math.PI / 2); else if (kind === 'right') g.rotate(Math.PI / 2); else if (kind === '180') g.rotate(Math.PI);
   else if (kind === 'flipH') g.scale(-1, 1); else if (kind === 'flipV') g.scale(1, -1);
   g.drawImage(src, -src.width / 2, -src.height / 2);
+  g.setTransform(1, 0, 0, 1, 0, 0);
   E.work = out; drawCanvas();
 }
 function resizeWork(w, hh) {
@@ -412,7 +415,14 @@ function resizeWork(w, hh) {
 (() => {
   const c = $('vw-canvas');
   let drawing = false, last = null, base = null;
-  const toImg = (e) => { const G = geom(); const r = c.getBoundingClientRect(); return { x: (e.clientX - r.left - G.x) / G.s, y: (e.clientY - r.top - G.y) / G.s }; };
+  // map the pointer to picture pixels using the geometry the canvas was last drawn with (the canvas can be
+  // stretched by a layout change before it redraws, which made strokes land away from the pointer)
+  const toImg = (e) => {
+    const r = c.getBoundingClientRect(); const G = E.lastG || geom();
+    const kx = r.width / (G.cw || r.width), ky = r.height / (G.ch || r.height);
+    const P = { x: ((e.clientX - r.left) / kx - G.x) / G.s, y: ((e.clientY - r.top) / ky - G.y) / G.s }; return P;
+  };
+  new ResizeObserver(() => { if (E && (c.clientWidth !== E.lastG?.cw || c.clientHeight !== E.lastG?.ch)) drawCanvas(); }).observe(c);
   c.addEventListener('pointerdown', async (e) => {
     if (!E || E.tool !== 'draw') return;
     const p = toImg(e);
@@ -420,7 +430,7 @@ function resizeWork(w, hh) {
       const t = await prompt('Add text', '', { label: 'Text' });
       if (!t) return;
       bakeAdjust(); pushHistory();
-      const g = E.work.getContext('2d');
+      const g = E.work.getContext('2d'); g.setTransform(1, 0, 0, 1, 0, 0);
       g.globalAlpha = E.draw.opacity / 100; g.fillStyle = E.draw.color;
       g.font = `600 ${Math.max(12, E.draw.size * 5)}px Inter, Segoe UI, sans-serif`; g.textBaseline = 'top';
       g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = 4;
@@ -437,7 +447,7 @@ function resizeWork(w, hh) {
   c.addEventListener('pointerup', () => { drawing = false; });
   function stroke(a, b) {
     const g = E.work.getContext('2d');
-    g.save();
+    g.save(); g.setTransform(1, 0, 0, 1, 0, 0);
     g.lineCap = 'round'; g.lineJoin = 'round';
     g.lineWidth = E.draw.size * (E.draw.mode === 'marker' ? 3 : 1) * Math.max(1, E.work.width / 1600);
     if (E.draw.mode === 'eraser') { g.strokeStyle = g.createPattern(base, 'no-repeat'); g.globalAlpha = 1; }

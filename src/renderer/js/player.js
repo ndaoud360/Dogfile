@@ -820,13 +820,16 @@ async function openTranscript() {
   if (cached) { try { Object.assign(TX, { path: it.path, chunks: JSON.parse(cached) }); return renderTranscript(); } catch {} }
   renderTranscript('Getting ready…');
   if (!(await ai.ensureModels(['whisper']))) { renderTranscript('Transcripts need the free Whisper model.'); return; }
-  TX.busy = true; TX.path = it.path; TX.chunks = [];
+  TX.busy = true; TX.stop = false; TX.path = it.path; TX.chunks = [];
   const total = dur() || P.duration || 0;
-  const SEG = 600; // ten minutes at a time keeps memory low
+  const SEG = 60; // one minute at a time: text appears as it goes and the progress keeps moving
+  const t0 = Date.now();
   try {
     for (let off = 0; off < Math.max(total, 1); off += SEG) {
-      if (P.item !== it) break;
-      renderTranscript(`Listening… ${fmt(off)} of ${fmt(total)}`);
+      if (P.item !== it || TX.stop) break;
+      const spent = (Date.now() - t0) / 1000;
+      const left = off > 0 && total ? (spent / off) * (total - off) : null;
+      renderTranscript(`Listening… ${fmt(off)} of ${fmt(total)}${left ? ` · about ${Math.ceil(left / 60)} min left` : ' · the first minute takes longest'}`);
       const r = await fetch(`atlas://media/pcm?p=${encodeURIComponent(it.path)}&ss=${off}&t=${SEG}&sr=16000`);
       if (!r.ok) break;
       const buf = await r.arrayBuffer();
@@ -836,7 +839,7 @@ async function openTranscript() {
       renderTranscript();
       if (!total) break;
     }
-    api('ai:cacheSet', 'whisper', { [key]: JSON.stringify(TX.chunks) });
+    if (!TX.stop && P.item === it) api('ai:cacheSet', 'whisper', { [key]: JSON.stringify(TX.chunks) });
   } catch (e) { renderTranscript(`Couldn’t transcribe: ${e.message}`); }
   finally { TX.busy = false; renderTranscript(); }
 }
@@ -864,7 +867,7 @@ function renderTranscript(msg) {
   const has = TX.chunks.length > 0;
   panel.append(...[
     h('div', { class: 'eq-head' }, h('b', {}, 'Transcript'), lang, h('button', { class: 'icon-btn small', title: 'Close', html: icon('close'), onclick: () => panel.classList.remove('open') })),
-    msg ? h('div', { class: 'tx-msg' }, TX.busy ? h('span', { class: 'av-spin' }) : null, msg) : null,
+    msg ? h('div', { class: 'tx-msg' }, TX.busy ? h('span', { class: 'av-spin' }) : null, msg, TX.busy ? h('button', { class: 'btn small', onclick: () => { TX.stop = true; renderTranscript('Stopping after this minute…'); } }, 'Stop') : null) : null,
     has ? search : null, list,
     h('div', { class: 'row-inline tx-actions' },
       h('button', { class: 'btn small', disabled: !has, onclick: () => { P.subCues = TX.chunks.map((c) => ({ s: c.start, e: c.end ?? c.start + 3, t: c.text.trim() })); P.sub = { label: 'Transcript', file: '' }; rebuildCues(); renderButtons(); osd('Showing transcript as subtitles'); } }, 'Show as subtitles'),

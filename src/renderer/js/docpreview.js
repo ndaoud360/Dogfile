@@ -55,7 +55,7 @@ export async function editDocProps(it) {
   const p = d?.props || {};
   const f = {};
   const row = (k, label, ta) => { f[k] = h(ta ? 'textarea' : 'input', { class: 'input', rows: ta ? '3' : null }); f[k].value = p[k] || ''; f[k].addEventListener('keydown', (e) => e.stopPropagation()); return h('label', { class: 'pp-row' }, h('span', {}, label), f[k]); };
-  const ok = await modal({ title: `Properties of “${it.name}”`, width: 520, body: h('div', { class: 'stack' }, row('title', 'Title'), row('subject', 'Subject'), row('author', 'Author'), row('keywords', 'Keywords (tags)'), row('description', 'Comments', true), h('div', { class: 'hint' }, 'Saved inside the document, so Word, Excel, PowerPoint and Windows see them too.')), buttons: [{ label: 'Cancel', value: null }, { label: 'Save', primary: true, value: true }] });
+  const ok = await modal({ title: `Properties of “${it.name}”`, width: 520, body: h('div', { class: 'stack' }, row('title', 'Title'), row('subject', 'Subject'), row('author', 'Author'), row('keywords', 'Keywords (tags)'), row('description', 'Comments', true), h('div', { class: 'hint' }, /\.pdf$/i.test(it.path) ? 'Saved inside the PDF, so PDF readers and Windows see them too.' : 'Saved inside the document, so Word, Excel, PowerPoint and Windows see them too.')), buttons: [{ label: 'Cancel', value: null }, { label: 'Save', primary: true, value: true }] });
   if (!ok) return;
   try { await api('doc:setProps', it.path, Object.fromEntries(Object.entries(f).map(([k, el]) => [k, el.value]))); toast('Properties saved'); bus.emit('preview'); } catch (e) { toast(`Couldn’t save: ${e.message}`, { error: true }); }
 }

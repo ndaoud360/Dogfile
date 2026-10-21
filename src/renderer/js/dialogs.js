@@ -285,7 +285,22 @@ export async function propertiesDialog(items, helpers) {
     const countEl = h('span', {}, '');
     const thumb = h('div', { class: 'props-thumb' });
     helpers.renderThumb(thumb, single || items[0]);
-    el.append(h('div', { class: 'props-headline' }, thumb, h('div', {}, h('div', { class: 'props-name' }, single ? single.name : `${items.length} items`), h('div', { class: 'hint' }, single ? typeLabel(single) : 'Multiple items'))));
+    // the name can be changed right here, like in Windows
+    let nameEl;
+    if (single && !single.virtual && !single.archive && !single.recycle && !single.drive) {
+      nameEl = h('input', { class: 'input props-name-input', value: single.name, spellcheck: 'false', title: 'Type a new name and press Enter', 'data-select-stem': '1' });
+      const commit = async () => {
+        const nn = nameEl.value.trim();
+        if (!nn || nn === single.name) { nameEl.value = single.name; return; }
+        if (/[\\/:*?"<>|]/.test(nn)) { toast('A name can’t contain \\ / : * ? " < > |', { error: true }); nameEl.value = single.name; return; }
+        const to = pjoin(dirname(single.path), nn);
+        try { const A = await import('./actions.js'); await A.renamePairs([{ from: single.path, to }], 'Rename'); single.path = to; single.name = nn; helpers.refresh(); }
+        catch (e) { toast(`Couldn’t rename: ${e.message}`, { error: true }); nameEl.value = single.name; }
+      };
+      nameEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); commit(); } if (e.key === 'Escape') { nameEl.value = single.name; } });
+      nameEl.addEventListener('blur', commit);
+    } else nameEl = h('div', { class: 'props-name' }, single ? single.name : `${items.length} items`);
+    el.append(h('div', { class: 'props-headline' }, thumb, h('div', { class: 'grow' }, nameEl, h('div', { class: 'hint' }, single ? typeLabel(single) : 'Multiple items'))));
     el.append(kv([
       ['Location', single ? dirname(single.path) || '' : dirname(items[0].path) || ''],
       ['Size', sizeEl],
@@ -329,6 +344,34 @@ export async function propertiesDialog(items, helpers) {
         } catch (er) { out.textContent = er.message; }
         e.target.remove();
       } }, 'Compute MD5 / SHA-1 / SHA-256 / SHA-512'), out, cmp, res);
+    });
+  }
+
+  // title, author and the like, saved inside the file itself (documents, PDFs, music and videos)
+  const ex = single && !single.isDir ? (single.ext || (single.name.includes('.') ? single.name.split('.').pop().toLowerCase() : '')) : '';
+  const DOCS = ['docx', 'xlsx', 'pptx', 'docm', 'xlsm', 'pptm'];
+  const MEDIA = ['mp3', 'flac', 'm4a', 'ogg', 'opus', 'wav', 'wma', 'mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi'];
+  if (single && !single.virtual && !single.archive && (DOCS.includes(ex) || ex === 'pdf' || MEDIA.includes(ex))) {
+    addTab('details', 'Details', async (el) => {
+      const isMedia = MEDIA.includes(ex);
+      const isVideo = ['mp4', 'm4v', 'mov', 'mkv', 'webm', 'avi'].includes(ex);
+      const fields = isMedia ? [['title', 'Title'], ['artist', isVideo ? 'Author / artist' : 'Artist'], ...(isVideo ? [] : [['album', 'Album']]), ['comment', 'Comments']] : [['title', 'Title'], ['author', 'Author'], ['subject', 'Subject'], ['keywords', 'Keywords']];
+      const cur = isMedia ? await api('tags:read', single.path).catch(() => ({})) : (await api('doc:read', single.path, { maxChars: 50 }).catch(() => ({})))?.props || {};
+      const vals = isMedia ? (cur.tags || cur || {}) : cur;
+      const inputs = {};
+      for (const [k, label] of fields) { inputs[k] = h('input', { class: 'input', value: vals[k] || vals[k.toUpperCase()] || '' }); inputs[k].addEventListener('keydown', (e) => e.stopPropagation()); }
+      el.append(kv(fields.map(([k, label]) => [label, inputs[k]])),
+        h('div', { class: 'hint' }, isMedia ? 'Saved inside the file, so players and Windows show them too.' : ex === 'pdf' ? 'Saved inside the PDF (readers and Windows show them).' : 'Saved inside the document, so Office and Windows see them too.'),
+        h('div', { class: 'row-end' }, h('button', { class: 'btn primary', onclick: async (e) => {
+          const b = e.currentTarget; b.disabled = true; b.textContent = 'Saving…';
+          const out = Object.fromEntries(Object.entries(inputs).map(([k, i]) => [k, i.value]));
+          try {
+            if (isMedia) await api(isVideo ? 'media:setMeta' : 'tags:write', single.path, out);
+            else await api('doc:setProps', single.path, out);
+            toast('Details saved');
+          } catch (err) { toast(`Couldn’t save: ${err.message}`, { error: true }); }
+          b.disabled = false; b.textContent = 'Save';
+        } }, 'Save')));
     });
   }
 

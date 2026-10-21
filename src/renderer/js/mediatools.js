@@ -4,11 +4,12 @@ import { api, h, esc, toast, basename, dirname, stem, bus, IS_WIN, fileUrl } fro
 import { modal } from './dialogs.js';
 import { analyzeAudio, fmtAnalysis } from './audio-analysis.js';
 
-function progressToast(title) {
+export function progressToast(title, onCancel) {
   const host = document.getElementById('toasts');
   const fill = h('div', { class: 'tp-fill' });
   const txt = h('span', {}, title);
-  const el = h('div', { class: 'toast show tprog' }, txt, h('div', { class: 'tp-bar' }, fill));
+  const cancel = onCancel ? h('button', { class: 'btn small tp-cancel', onclick: () => { cancel.disabled = true; cancel.textContent = 'Cancelling…'; onCancel(); } }, 'Cancel') : null;
+  const el = h('div', { class: 'toast show tprog' }, h('div', { class: 'tp-row' }, txt, cancel), h('div', { class: 'tp-bar' }, fill));
   host.append(el);
   return { set: (pct, t) => { fill.style.width = pct + '%'; if (t) txt.textContent = t; }, done: () => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); } };
 }
@@ -25,10 +26,11 @@ async function waitJob(id, onPct) {
 // convert audio / video files with ffmpeg; copies are written next to the originals
 export async function convertMedia(paths, format, { normalize = false, audioOnly = false } = {}) {
   if (!paths.length) return;
-  const p = progressToast(`Converting ${paths.length === 1 ? basename(paths[0]) : paths.length + ' files'}…`);
+  let cancelled = false, curJob = null;
+  const p = progressToast(`Converting ${paths.length === 1 ? basename(paths[0]) : paths.length + ' files'}…`, () => { cancelled = true; if (curJob) api('media:cancel', curJob); });
   let ok = 0;
   const made = [];
-  for (let i = 0; i < paths.length; i++) {
+  for (let i = 0; i < paths.length && !cancelled; i++) {
     const src = paths[i];
     const info = await api('media:probe', src).catch(() => null);
     const hasVideo = !!info?.streams?.some((s) => s.codec_type === 'video' && !s.disposition?.attached_pic);
@@ -38,13 +40,16 @@ export async function convertMedia(paths, format, { normalize = false, audioOnly
     const out = await api('fs:uniqueName', dirname(src), `${stem(basename(src)) || basename(src)}${suffix}.${ext}`, 'number');
     const spec = { src, out, duration, hasVideo, audioOnly: audioOnly || ['mp3', 'm4a', 'flac', 'wav', 'ogg', 'opus'].includes(ext), normalize, mode: 'fast', convert: true, copyOk: ['mp4', 'mkv', 'mov'].includes(ext) };
     const prog = (pct) => p.set(((i + pct / 100) / paths.length) * 100, `Converting ${basename(src)} (${i + 1}/${paths.length})…`);
-    let st = await waitJob(await api('media:export', spec), prog);
+    curJob = await api('media:export', spec);
+    let st = await waitJob(curJob, prog);
     // stream copy can fail when the codecs don't fit the new container: re-encode instead
-    if (st.error && spec.copyOk && st.error !== 'Cancelled') st = await waitJob(await api('media:export', { ...spec, copyOk: false, mode: 'precise' }), prog);
+    if (st.error && spec.copyOk && st.error !== 'Cancelled' && !cancelled) { curJob = await api('media:export', { ...spec, copyOk: false, mode: 'precise' }); st = await waitJob(curJob, prog); }
+    if (cancelled || st.error === 'Cancelled') { api('fs:trash', out).catch(() => {}); break; }
     if (st.error) toast(`${basename(src)}: ${st.error}`, { error: true }); else { ok++; made.push(out); }
   }
   p.done();
-  if (ok) toast(`Converted ${ok} file${ok > 1 ? 's' : ''} to ${format.toUpperCase()}`);
+  if (cancelled) toast(ok ? `Stopped after ${ok} file${ok > 1 ? 's' : ''}` : 'Conversion cancelled');
+  else if (ok) toast(`Converted ${ok} file${ok > 1 ? 's' : ''} to ${format.toUpperCase()}`);
   bus.emit('refreshPanes');
   return made;
 }

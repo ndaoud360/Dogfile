@@ -22,6 +22,7 @@ const copyable = (items) => items.filter((i) => !i.virtual && !i.archive && !i.r
 // Opening
 // ======================================================================
 export async function openItems(items, { pane = state.activePane, newTab = false, newWindow = false } = {}) {
+  for (const i of items) if (i && i.ext == null && !i.isDir && (i.name || i.path)) i.ext = extname(i.name || basename(i.path));
   const t = paneTab(pane);
   const dirs = items.filter((i) => i.isDir);
   let files = items.filter((i) => !i.isDir);
@@ -712,7 +713,18 @@ export async function openTerminal(t = activeTab(), kind, admin) {
 
 export async function openInEditor(items, t = activeTab()) {
   const targets = items.length ? items.map((i) => i.path) : [t.path];
-  const cmd = state.settings.editor || 'code';
+  let cmd = (state.settings.editor || '').trim();
+  if (!cmd || cmd === 'code') {
+    const found = await api('sys:findEditor').catch(() => null);
+    cmd = found ? `"${found.path}"` : '';
+  }
+  if (!cmd) {
+    // no code editor installed: files open in Dogfile Notepad; folders need an editor
+    const files = items.filter((i) => !i.isDir).map((i) => i.path);
+    if (files.length) { const { openTool } = await import('./apptabs.js'); openTool('editor', files); return; }
+    toast('No code editor found. Install VS Code, or set one in Settings > Tools > Code editor command.', { error: true });
+    return;
+  }
   await api('shell:runCommand', `${cmd} ${targets.map((p) => `"${p}"`).join(' ')}`, isVirtual(t.path) ? undefined : t.path);
 }
 
@@ -845,7 +857,52 @@ export async function emptyRecycle() {
 // ======================================================================
 function tagMenu(paths) {
   return state.tags.defs.map((d) => ({ label: d.name, swatch: d.color, checked: paths.every((p) => tagsOf(p).includes(d.id)), keys: `Alt+${state.tags.defs.indexOf(d) + 1}`, run: () => setTags(paths, d.id, !paths.every((p) => tagsOf(p).includes(d.id))) }))
-    .concat([{ separator: true }, { label: 'Clear tags', run: () => { for (const d of state.tags.defs) setTags(paths, d.id, false); } }]);
+    .concat([{ separator: true },
+      { label: 'Auto-tag…', icon: 'wand', run: () => autoTagDialog(paths) },
+      { label: 'Clear tags', run: () => { for (const d of state.tags.defs) setTags(paths, d.id, false); } }]);
+}
+// Auto-tag: colour tags by a rule you pick now, songs' details from online, or a rule that keeps tagging new files
+async function autoTagDialog(paths) {
+  const items = paths.map((p) => ({ path: p, name: basename(p) }));
+  const { modal } = await import('./dialogs.js');
+  const songs = items.filter((it) => /\.(mp3|flac|m4a|aac|ogg|opus|wav|wma)$/i.test(it.name));
+  const tagSel = h('select', { class: 'input' }, ...state.tags.defs.map((d) => h('option', { value: d.id }, d.name)));
+  const rule = h('select', { class: 'input' },
+    h('option', { value: 'all' }, 'every selected item'),
+    h('option', { value: 'images' }, 'pictures'), h('option', { value: 'videos' }, 'videos'), h('option', { value: 'audio' }, 'music'),
+    h('option', { value: 'docs' }, 'documents'), h('option', { value: 'big' }, 'files over 100 MB'), h('option', { value: 'old' }, 'files not changed for a year'));
+  const body = h('div', { class: 'col', style: { gap: '10px' } },
+    h('div', { class: 'hint' }, 'Give a colour tag to the items that match. For folders, everything inside counts.'),
+    h('div', { class: 'row-inline' }, h('span', {}, 'Tag'), rule, h('span', {}, 'as'), tagSel),
+    songs.length ? h('div', { class: 'hint' }, `${songs.length} song${songs.length > 1 ? 's' : ''} selected: “Song details” looks up artist, album and cover online.`) : null,
+    h('div', { class: 'hint' }, 'To keep tagging new files automatically, use “Keep doing this” to make a folder automation.'));
+  const v = await modal({ title: 'Auto-tag', width: 520, body, buttons: [
+    songs.length ? { label: 'Song details…', value: 'songs' } : null,
+    { label: 'Keep doing this…', value: 'rule' }, { label: 'Cancel', value: null }, { label: 'Tag', primary: true, value: 'tag' }].filter(Boolean) });
+  if (v === 'songs') return import('./tageditor.js').then((m) => m.openTagEditor(songs.map((s) => s.path)));
+  if (v === 'rule') { const dir = paths.length === 1 ? paths[0] : dirname(paths[0]); return import('./rules.js').then((m) => m.automationDialog(dir)); }
+  if (v !== 'tag') return;
+  const want = rule.value, now = Date.now();
+  const test = (it) => {
+    const k = kindOf({ ...it, ext: it.ext || extname(it.name || '') });
+    if (want === 'all') return true;
+    if (want === 'images') return k === 'image'; if (want === 'videos') return k === 'video'; if (want === 'audio') return k === 'audio';
+    if (want === 'docs') return ['document', 'pdf', 'text', 'spreadsheet', 'presentation'].includes(k);
+    if (want === 'big') return (it.size || 0) > 100 * 1024 * 1024;
+    if (want === 'old') return it.mtime && now - it.mtime > 365 * 864e5;
+    return false;
+  };
+  const hits = [];
+  for (const p of paths) {
+    const st = await api('fs:stat', p).catch(() => null); if (!st) continue;
+    if (st.isDir && want !== 'all') {
+      const r = await api('fs:list', p).catch(() => ({ items: [] }));
+      for (const it of r.items || []) if (!it.isDir && test(it)) hits.push(it.path);
+    } else if (want === 'all' || test({ ...st, path: p, name: basename(p), ext: extname(p) })) hits.push(p);
+  }
+  if (!hits.length) return toast('Nothing matched');
+  setTags(hits, tagSel.value, true);
+  toast(`Tagged ${hits.length} item${hits.length > 1 ? 's' : ''} ${state.tags.defs.find((d) => d.id === tagSel.value)?.name || ''}`);
 }
 
 async function openWithMenu(it) {
@@ -868,7 +925,7 @@ async function windowsVerbsMenu(it) {
 
 export function itemsContextMenu(t, items, e) { showMenu(buildItemsMenu(t, items), e.clientX, e.clientY, { kind: 'items' }); }
 // Simple mode: power-user entries move into one "More options" submenu so menus stay short
-const ADVANCED_LABELS = /^(Open in other pane|Open in new window|Copy to other pane|Move to other pane|Delete permanently|Windows menu|Run as administrator|Run in terminal|Paste shortcut|Open terminal as administrator|Open in code editor|Select by pattern|Show in Windows Explorer|Tags|Archive|Compare these two files|Detect BPM & key|Pin to sidebar|Unpin from sidebar|Open terminal here|Add folder note|Edit folder note)/;
+const ADVANCED_LABELS = /^(Open in other pane|Open in new window|Copy to other pane|Move to other pane|Delete permanently|Windows menu|Run as administrator|Run in terminal|Paste shortcut|Open terminal as administrator|Open in code editor|Select by pattern|Show in Windows Explorer|Archive|Compare these two files|Detect BPM & key|Pin to sidebar|Unpin from sidebar|Open terminal here)/;
 export function simplifyMenu(menu) {
   if (state.settings.uiMode !== 'simple') return menu;
   const keep = [], more = [];
@@ -927,6 +984,9 @@ export function buildItemsMenu(t, items) {
       { label: 'Test archive', icon: 'check', run: () => testArchives([]) },
     ];
   }
+  // items from search, collections or the index may arrive without a type: give every one its extension
+  // so type-based entries (Run in terminal, Edit tags, Extract…) show the same everywhere
+  for (const i of items) if (i && i.ext == null && !i.isDir && i.name) i.ext = extname(i.name);
   const real = realItems(items);
   const one = items.length === 1 ? items[0] : null;
   const allDirs = items.every((i) => i.isDir);
@@ -1017,7 +1077,7 @@ export function backgroundContextMenu(t, e) { showMenu(buildBackgroundMenu(t, e)
 export function buildBackgroundMenu(t, e = { clientX: 0, clientY: 0 }) {
   const C = (id) => bus.cmd(id);
   const real = !isVirtual(t.path);
-  const vtog = (label, view) => ({ label, radio: true, selected: t.view === view, run: () => { t.view = view; renderTabPanes(t); } });
+  const vtog = (label, view) => ({ label, radio: true, selected: t.view === view, run: () => import('./pane.js').then((m) => m.setView(t, view)) });
   return (simplifyMenu([
     { label: 'View', icon: 'viewGrid', submenu: [vtog('Grid', 'grid'), vtog('List', 'list'), vtog('Details', 'details'), vtog('Columns', 'columns')] },
     { label: 'Sort by', icon: 'sort', run: (ev) => bus.emit('openSortMenu', { t, x: e.clientX, y: e.clientY }) },

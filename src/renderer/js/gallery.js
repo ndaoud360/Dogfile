@@ -61,7 +61,7 @@ export function mediaFilterPanel(t, anchor) {
         h('div', { class: 'mf-row hint' }, `${analyzed} of ${total} songs analyzed`, analyzed < total ? h('button', { class: 'btn small', onclick: () => { p.close(); analyzeFolder(t); } }, 'Analyze BPM & key') : null));
     }
     body.append(h('div', { class: 'mf-foot' }, h('button', { class: 'btn small', onclick: () => { t.mf = null; recompute(t); renderTabPanes(t); p.close(); } }, 'Clear'), h('span', { class: 'st-spacer' }),
-      t.view !== 'gallery' && (has.pic || has.vid) ? h('button', { class: 'btn small', onclick: () => { t.view = 'gallery'; renderTabPanes(t); p.close(); } }, 'Gallery view') : null,
+      t.view !== 'gallery' && (has.pic || has.vid) ? h('button', { class: 'btn small', onclick: () => { import('./pane.js').then((m) => m.setView(t, 'gallery')); p.close(); } }, 'Gallery view') : null,
       h('button', { class: 'btn small primary', onclick: () => p.close() }, 'Done')));
   };
   redraw();
@@ -96,10 +96,19 @@ export async function contactSheets(items) {
   const vids = items.filter(MM.isVid);
   if (!vids.length) return toast('Select one or more videos');
   let made = [];
+  const { progressToast } = await import('./mediatools.js');
+  let cancelled = false, jobId = null;
+  const p = progressToast(`Making a contact sheet…`, () => { cancelled = true; if (jobId) api('media:sheetCancel', jobId); });
+  const off = window.atlas.on('media:sheetProgress', (m) => { if (m.jobId === jobId) p.set(((vids.indexOf(cur) + m.done / m.total) / vids.length) * 100); });
+  let cur = null;
   for (const v of vids) {
-    toast(`Making a contact sheet for “${v.name}”…`);
-    try { made.push(await api('media:contactSheet', v.path, { cols: 4, rows: 4 })); } catch (e) { toast(`${v.name}: ${e.message}`, { error: true }); }
+    if (cancelled) break;
+    cur = v; jobId = 'sheet-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    p.set((vids.indexOf(v) / vids.length) * 100, `Contact sheet for “${v.name}”${vids.length > 1 ? ` (${vids.indexOf(v) + 1} of ${vids.length})` : ''}…`);
+    try { made.push(await api('media:contactSheet', v.path, { cols: 4, rows: 4, jobId })); } catch (e) { if (!cancelled) toast(`${v.name}: ${e.message}`, { error: true }); }
   }
+  off?.(); p.done();
+  if (cancelled) toast('Contact sheet cancelled');
   if (made.length) {
     toast(`Saved ${made.length} contact sheet${made.length === 1 ? '' : 's'}`, { action: { label: 'Show', run: () => navigate(activeTab(), dirname(made[0]), { select: made[0] }) } });
     bus.emit('refreshPanes');

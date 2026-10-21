@@ -489,6 +489,8 @@ export function onOpsUpdate(j) {
 }
 const fmtDurS = (s) => { s = Math.max(0, Math.round(s)); if (s < 60) return `${s} s`; const m = Math.floor(s / 60); if (m < 60) return `${m} min ${s % 60 ? `${s % 60} s` : ''}`.trim(); return `${Math.floor(m / 60)} h ${m % 60} min`; };
 const expanded = new Set();
+const popSeen = new Set();
+let popMin = false;
 onMainSafe('ops:removed', ({ id }) => { jobs.delete(id); drawOps(); });
 function onMainSafe(ch, fn) { try { window.atlas?.on(ch, fn); } catch {} }
 function drawOps() {
@@ -504,7 +506,8 @@ function drawOps() {
   const seq = !!state.settings.sequentialOps;
   const anyRunning = active.some((j) => j.status === 'running');
   const allPaused = active.length && active.every((j) => j.paused || j.status !== 'running');
-  panel.innerHTML = `<div class="ops-head"><span>Operations</span><label class="ops-seq" title="Run copies and moves one after another instead of at the same time (faster on hard drives)"><input type="checkbox" data-act="seq" ${seq ? 'checked' : ''}> One at a time</label>${anyRunning ? `<button class="link" data-act="${allPaused ? 'resumeAll' : 'pauseAll'}">${allPaused ? 'Resume all' : 'Pause all'}</button>` : ''}<button class="link" data-act="clear">Clear finished</button></div>` + (list.length ? list.map((j) => {
+  const showPop = state.settings.opsPopup && active.length > 0;
+  panel.innerHTML = `<div class="ops-head"><span>Operations</span>${state.settings.opsPopup && active.length ? `<button class="link" data-act="popup" title="Show progress in its own window">Pop out</button>` : ''}<label class="ops-seq" title="Run copies and moves one after another instead of at the same time (faster on hard drives)"><input type="checkbox" data-act="seq" ${seq ? 'checked' : ''}> One at a time</label>${anyRunning ? `<button class="link" data-act="${allPaused ? 'resumeAll' : 'pauseAll'}">${allPaused ? 'Resume all' : 'Pause all'}</button>` : ''}<button class="link" data-act="clear">Clear finished</button></div>` + (list.length ? list.map((j) => {
     const pct = j.indeterminate || !j.total ? (j.filesTotal ? (j.filesDone / j.filesTotal) * 100 : null) : (j.done / j.total) * 100;
     const eta = j.speed > 0 && j.total ? Math.max(0, (j.total - j.done) / j.speed) : null;
     const elapsed = ((j.finished || Date.now()) - (j.started || Date.now())) / 1000;
@@ -524,9 +527,20 @@ function drawOps() {
         ? `${j.status === 'queued' && j.queuePos > 1 ? `<button class="icon-btn" data-id="${j.id}" data-act="prioritize" title="Run this next">${icon('up')}</button>` : ''}${j.status === 'running' ? `<button class="icon-btn" data-id="${j.id}" data-act="${j.paused ? 'resume' : 'pause'}" title="${j.paused ? 'Resume' : 'Pause'}">${icon(j.paused ? 'play' : 'pause')}</button>` : ''}<button class="icon-btn" data-id="${j.id}" data-act="cancel" title="Cancel">${icon('stop')}</button>`
         : `${(problems || j.status === 'cancelled') && j.canRetry ? `<button class="icon-btn" data-id="${j.id}" data-act="retry" title="${j.failed?.length && j.failed.length < j.sourceCount ? `Retry the ${j.failed.length} that failed` : 'Try again'}">${icon('refresh')}</button>` : ''}<button class="icon-btn" data-id="${j.id}" data-act="dismiss" title="Dismiss">${icon('close')}</button>`}</div></div>`;
   }).join('') : '<div class="hint pad">No recent operations</div>') + `<div class="ops-foot"><button class="link" data-act="history">${icon('history')} File history…</button></div>`;
-  panel.querySelectorAll('[data-act]').forEach((b) => b.addEventListener(b.type === 'checkbox' ? 'change' : 'click', async (e) => {
+  // optional progress window (Settings > Behavior): the same list, floating, with Minimize
+  let pop = document.getElementById('ops-pop');
+  for (const j of active) if (!popSeen.has(j.id)) { popSeen.add(j.id); popMin = false; }
+  if (showPop && !popMin) {
+    if (!pop) { pop = h('div', { id: 'ops-pop', role: 'dialog', 'aria-label': 'Transfer progress' }); document.body.append(pop); }
+    const listHtml = panel.innerHTML.replace(/^<div class="ops-head">[\s\S]*?<\/div>/, '').replace(/<div class="ops-foot">[\s\S]*$/, '');
+    pop.innerHTML = `<div class="pop-head"><b>${active.length === 1 ? esc(active[0].title) : `${active.length} operations`}</b><span class="grow"></span><button class="btn small" data-act="minimize" title="Keep going in the background (click the progress button at the bottom right to see it again)">Minimize</button></div><div class="pop-body">${listHtml}</div>`;
+  } else if (pop && (!active.length || popMin || !state.settings.opsPopup)) pop.remove();
+  const containers = [panel, document.getElementById('ops-pop')].filter(Boolean);
+  for (const c of containers) c.querySelectorAll('[data-act]').forEach((b) => b.addEventListener(b.type === 'checkbox' ? 'change' : 'click', async (e) => {
     e.stopPropagation();
     const act = b.dataset.act;
+    if (act === 'minimize') { popMin = true; drawOps(); return; }
+    if (act === 'popup') { popMin = false; panel.classList.remove('open'); drawOps(); return; }
     if (act === 'clear') { for (const [id, j] of jobs) if (!['running', 'queued', 'waiting'].includes(j.status)) { jobs.delete(id); api('ops:control', id, 'dismiss'); } drawOps(); return; }
     if (act === 'seq') { state.settings.sequentialOps = b.checked; saveSettingsT(); return; }
     if (act === 'pauseAll' || act === 'resumeAll') { for (const j of jobs.values()) if (j.status === 'running') api('ops:control', j.id, act === 'pauseAll' ? 'pause' : 'resume'); return; }

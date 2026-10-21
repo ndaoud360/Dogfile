@@ -21,6 +21,7 @@ export async function renderPreview(box, it, { large = false } = {}) {
   const meta = h('div', { class: 'pv-meta' });
   box.append(stage);
   if (!large) box.append(meta);
+  if (it.ext == null && !it.isDir) { const i = (it.name || '').lastIndexOf('.'); it.ext = i > 0 ? it.name.slice(i + 1).toLowerCase() : ''; }
   const k = kindOf(it);
   const url = fileUrl(it.path);
   const addMeta = (rows) => { meta.innerHTML = ''; meta.append(h('div', { class: 'pv-name', title: it.name }, it.name), h('div', { class: 'kv' }, ...rows.filter(Boolean).flatMap(([a, b]) => [h('div', { class: 'k' }, a), h('div', { class: 'v' }, b)]))); };
@@ -95,7 +96,7 @@ export async function renderPreview(box, it, { large = false } = {}) {
       waveform(wave, a, url, it, (info) => { if (my === seq) { addMeta([...baseRows(), ['Duration', fmtDur(info.duration)], ['Sample rate', `${(info.sampleRate / 1000).toFixed(1)} kHz`], ['Channels', info.channels === 1 ? 'Mono' : info.channels === 2 ? 'Stereo' : String(info.channels)], ['Peak level', `${info.peakDb.toFixed(1)} dBFS`]]); playBtn(); } });
     } else if (it.ext === 'pdf') {
       stage.append(h('iframe', { class: 'pv-pdf', src: url + '#toolbar=0&navpanes=0', title: it.name }));
-      pdfRows(it).then((rows) => { if (my === seq && rows.length) { addMeta([...baseRows(), ...rows]); if (!large) meta.append(h('div', { class: 'pv-actions' }, h('button', { class: 'btn small', onclick: () => A.openItems([it]) }, 'Open'))); } });
+      pdfRows(it).then((rows) => { if (my === seq && rows.length) { addMeta([...baseRows(), ...rows]); if (!large) meta.append(h('div', { class: 'pv-actions' }, h('button', { class: 'btn small', onclick: () => A.openItems([it]) }, 'Open'), h('button', { class: 'btn small', onclick: () => editDocProps(it) }, 'Edit properties…'))); } });
     } else if (OFFICE.has(it.ext)) {
       const d = await renderOffice(stage, it, { large, alive: () => my === seq, addRows: (rows) => { if (my === seq) addMeta([...baseRows(), ...rows.filter(Boolean)]); } });
       if (my === seq && !large && d) meta.append(h('div', { class: 'pv-actions' }, h('button', { class: 'btn small', onclick: () => A.openItems([it]) }, 'Open'), !['rtf', 'odt', 'ods', 'odp', 'ott'].includes(it.ext) && h('button', { class: 'btn small', onclick: () => editDocProps(it) }, 'Edit properties…'), h('button', { class: 'btn small', onclick: () => A.copyPaths([it]) }, 'Copy path')));

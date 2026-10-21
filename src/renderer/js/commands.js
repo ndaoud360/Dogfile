@@ -43,7 +43,6 @@ def('nextTab', 'Next tab', { keys: ['Ctrl+Tab', 'Ctrl+PageDown'], cat: 'Tabs', r
 def('prevTab', 'Previous tab', { keys: ['Ctrl+Shift+Tab', 'Ctrl+PageUp'], cat: 'Tabs', run: () => cycleTab(-1) });
 for (let i = 1; i <= 9; i++) def('tab' + i, `Switch to tab ${i}`, { keys: [`Ctrl+${i}`], cat: 'Tabs', hidden: true, run: () => { const t = i === 9 ? state.tabs[state.tabs.length - 1] : state.tabs[i - 1]; if (t) showTabInPane(t.id, state.activePane); } });
 def('pinTab', 'Pin / unpin tab', { icon: 'pin', cat: 'Tabs', run: () => { const t = T_(); t.pinned = !t.pinned; bus.emit('tabs'); } });
-def('lockTab', 'Lock / unlock tab', { icon: 'lock', cat: 'Tabs', run: () => { const t = T_(); t.locked = !t.locked; bus.emit('tabs'); } });
 def('newWindow', 'New window', { icon: 'newWindow', keys: ['Ctrl+N'], cat: 'Tabs', run: () => api('win:new', { path: T_().path }) });
 def('layout1', 'Single pane', { icon: 'layout1', keys: ['Ctrl+Alt+1'], cat: 'Layout', run: () => setLayout('1') });
 def('layout2v', 'Two panes side by side', { icon: 'layout2v', keys: ['Ctrl+Alt+2', 'Ctrl+Shift+S'], cat: 'Layout', run: () => setLayout('2v') });
@@ -119,8 +118,8 @@ def('viewGallery', 'Gallery view', { icon: 'gallery', keys: ['Ctrl+Shift+8'], ca
 def('viewList', 'List view', { icon: 'viewDetails', keys: ['Ctrl+Shift+5'], cat: 'View', run: () => setView(T_(), 'list') });
 def('viewDetails', 'Details view', { icon: 'viewList', keys: ['Ctrl+Shift+6'], cat: 'View', run: () => setView(T_(), 'details') });
 def('viewColumns', 'Columns view', { icon: 'viewColumns', keys: ['Ctrl+Shift+7'], cat: 'View', run: () => setView(T_(), 'columns') });
-def('zoomIn', 'Bigger thumbnails', { icon: 'zoomIn', keys: ['Ctrl+=', 'Ctrl+Plus'], cat: 'View', run: () => { const t = T_(); t.view = 'grid'; t.gridSize = Math.min(320, (t.gridSize || state.settings.gridSize) + 24); touchView(t); renderTabPanes(t); } });
-def('zoomOut', 'Smaller thumbnails', { icon: 'zoomOut', keys: ['Ctrl+-'], cat: 'View', run: () => { const t = T_(); t.view = 'grid'; t.gridSize = Math.max(72, (t.gridSize || state.settings.gridSize) - 24); touchView(t); renderTabPanes(t); } });
+def('zoomIn', 'Bigger items', { icon: 'zoomIn', keys: ['Ctrl+=', 'Ctrl+Plus'], cat: 'View', run: () => { const t = T_(); if (['details', 'list', 'columns'].includes(t.view)) t.rowZoom = Math.min(1.8, (t.rowZoom || 1) + 0.1); else t.gridSize = Math.min(320, (t.gridSize || state.settings.gridSize) + 24); touchView(t); renderTabPanes(t); } });
+def('zoomOut', 'Smaller items', { icon: 'zoomOut', keys: ['Ctrl+-'], cat: 'View', run: () => { const t = T_(); if (['details', 'list', 'columns'].includes(t.view)) t.rowZoom = Math.max(0.8, (t.rowZoom || 1) - 0.1); else t.gridSize = Math.max(72, (t.gridSize || state.settings.gridSize) - 24); touchView(t); renderTabPanes(t); } });
 def('toggleHidden', 'Show hidden items', { icon: 'eye', keys: ['Ctrl+H', 'Ctrl+.'], cat: 'View', check: () => state.settings.showHidden, run: () => { state.settings.showHidden = !state.settings.showHidden; saveSettings(); state.tabs.forEach(recompute); renderAll(); toast(state.settings.showHidden ? 'Showing hidden items' : 'Hiding hidden items'); bus.emit('settings'); } });
 def('toggleExt', 'Show file extensions', { icon: 'extension', cat: 'View', check: () => state.settings.showExtensions, run: () => { state.settings.showExtensions = !state.settings.showExtensions; saveSettings(); renderAll(); bus.emit('settings'); } });
 def('toggleCheckboxes', 'Item check boxes', { icon: 'checkbox', cat: 'View', check: () => state.settings.showCheckboxes, run: () => { state.settings.showCheckboxes = !state.settings.showCheckboxes; saveSettings(); renderAll(); bus.emit('settings'); } });

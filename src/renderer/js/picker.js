@@ -74,11 +74,33 @@ async function picker(mode, opts = {}) {
     try { const p = join(cwd, n.trim(), sep); await invoke('fs:mkdir', p); await go(cwd, false); sel = new Set([p]); draw(); } catch (e) { toast(String(e.message || e).replace(/^.*Error: /, ''), { error: true }); }
   });
   const status = h('div', { class: 'pk-status' });
+  // search: filters this folder as you type, then (with the index) everything inside it
+  const searchInput = h('input', { class: 'input pk-search', spellcheck: 'false', placeholder: 'Search', type: 'search' });
+  let query = '', found = null, sSeq = 0, sTimer = 0;
+  searchInput.addEventListener('input', () => {
+    query = searchInput.value.trim().toLowerCase(); found = null; sel = new Set(); anchor = null; draw();
+    clearTimeout(sTimer);
+    if (query.length < 2 || cwd === ROOT) return;
+    const my = ++sSeq;
+    sTimer = setTimeout(async () => {
+      let r = await invoke('index:search', { query: searchInput.value.trim(), roots: [cwd], limit: 300 }).catch(() => null);
+      if (my !== sSeq) return;
+      if (!r?.items) { r = { items: await invoke('fs:findUnder', cwd, searchInput.value.trim(), 300).catch(() => []) }; if (my !== sSeq) return; }
+      found = r.items.filter((x) => x.path !== cwd).map((x) => ({ ...x, name: x.name || baseOf(x.path), deep: true }));
+      draw();
+    }, 120);
+  });
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && searchInput.value) { e.preventDefault(); e.stopPropagation(); searchInput.value = ''; searchInput.dispatchEvent(new Event('input')); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); list.focus(); const r = shown()[0]; if (r) { sel = new Set([r.path]); anchor = 0; draw(); } }
+    else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); const r = shown()[0]; if (r) { if (r.isDir) go(r.path); else { sel = new Set([r.path]); draw(); confirmBtn(); } } }
+  });
 
   async function go(p, push = true) {
     if (push && cwd && cwd !== p) history.push(cwd);
     cwd = p;
     sel = new Set(); anchor = null;
+    if (searchInput.value) { searchInput.value = ''; query = ''; found = null; }
     pathInput.value = p === ROOT ? 'This PC' : p;
     list.innerHTML = '<div class="pk-empty">Loading…</div>';
     if (p === ROOT) {
@@ -93,13 +115,22 @@ async function picker(mode, opts = {}) {
     draw();
     markPlace();
   }
-  function shown() { return items.filter((it) => (mode === 'folder' ? it.isDir : true) && filterOk(it)); }
+  function shown() {
+    let src = items;
+    if (query) {
+      const here = items.filter((it) => it.name.toLowerCase().includes(query));
+      const seen = new Set(here.map((x) => x.path));
+      src = here.concat((found || []).filter((x) => !seen.has(x.path)));
+    }
+    return src.filter((it) => (mode === 'folder' ? it.isDir : true) && filterOk(it));
+  }
   function draw() {
     const rows = shown();
-    if (!rows.length) { list.innerHTML = `<div class="pk-empty">${mode === 'folder' ? 'No folders here. Choose this folder, or create one.' : 'Nothing here.'}</div>`; status.textContent = ''; return; }
-    list.innerHTML = rows.map((it, i) => `<div class="pk-row${sel.has(it.path) ? ' sel' : ''}${!it.isDir && mode === 'folder' ? ' dim' : ''}" data-i="${i}"><span class="pk-ic">${it.drive ? icon('drive') : it.isDir ? folderArt() : fileArt((it.name.split('.').pop() || '').toLowerCase())}</span><span class="pk-n">${esc(it.name)}</span><span class="pk-d">${it.mtime ? esc(fmtDate(it.mtime)) : ''}</span><span class="pk-s">${it.isDir ? '' : fmtSize(it.size || 0)}</span></div>`).join('');
+    if (!rows.length) { list.innerHTML = `<div class="pk-empty">${query ? 'Nothing matches “' + esc(searchInput.value.trim()) + '”' + (found ? '' : ' in this folder') + '.' : mode === 'folder' ? 'No folders here. Choose this folder, or create one.' : 'Nothing here.'}</div>`; status.textContent = ''; return; }
+    const rel = (p) => { const r = p.slice(cwd.length).replace(/^[\\/]+/, ''); const i = Math.max(r.lastIndexOf('\\'), r.lastIndexOf('/')); return i > 0 ? r.slice(0, i) : ''; };
+    list.innerHTML = rows.map((it, i) => `<div class="pk-row${sel.has(it.path) ? ' sel' : ''}${!it.isDir && mode === 'folder' ? ' dim' : ''}" data-i="${i}" title="${esc(it.path)}"><span class="pk-ic">${it.drive ? icon('drive') : it.isDir ? folderArt() : fileArt((it.name.split('.').pop() || '').toLowerCase())}</span><span class="pk-n">${esc(it.name)}${it.deep && rel(it.path) ? `<span class="pk-in"> in ${esc(rel(it.path))}</span>` : ''}</span><span class="pk-d">${it.mtime ? esc(fmtDate(it.mtime)) : ''}</span><span class="pk-s">${it.isDir ? '' : fmtSize(it.size || 0)}</span></div>`).join('');
     const n = rows.filter((r) => sel.has(r.path)).length;
-    status.textContent = `${rows.length} item${rows.length === 1 ? '' : 's'}${n ? ` · ${n} selected` : ''}`;
+    status.textContent = `${rows.length} item${rows.length === 1 ? '' : 's'}${query ? (found ? ' found in this folder and below' : ' in this folder') : ''}${n ? ` · ${n} selected` : ''}`;
   }
   list.addEventListener('mousedown', (e) => {
     const r = e.target.closest('.pk-row');
@@ -191,7 +222,7 @@ async function picker(mode, opts = {}) {
     rememberDir(mode, cwd);
     closeFn(target);
   }
-  const head = h('div', { class: 'pk-bar' }, backBtn, upBtn, pathInput, newBtn);
+  const head = h('div', { class: 'pk-bar' }, backBtn, upBtn, pathInput, searchInput, newBtn);
   const main = h('div', { class: 'pk-main' }, head, h('div', { class: 'pk-cols' }, h('span', {}, 'Name'), h('span', {}, 'Modified'), h('span', {}, 'Size')), list);
   const foot = h('div', { class: 'pk-foot' }, status,
     mode === 'save' ? h('label', { class: 'pk-namewrap' }, h('span', {}, 'File name'), nameInput) : null,

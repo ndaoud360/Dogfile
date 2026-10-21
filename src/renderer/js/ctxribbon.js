@@ -80,7 +80,7 @@ export function contextRibbon() {
   if (sel.every(isPic)) return { key: 'pictures', label: 'Pictures', groups: [
     ['View', [B('image', sel.length > 1 ? 'View all' : 'View', () => A.openAllIn('viewer', paths), true), B('pplay', 'Slideshow', () => A.openAllIn('viewer', paths.length > 1 ? paths : paths, { slideshow: true, autoPlaylist: paths.length === 1 }))]],
     ['Convert', [B('convert', 'To JPG', () => convertImages(paths, 'jpg')), B('convert', 'To PNG', () => convertImages(paths, 'png')), B('convert', 'To WebP', () => convertImages(paths, 'webp')), B('zoomOut', 'Resize to 1920px', () => convertImages(paths, 'jpg', { maxSide: 1920 }))]],
-    ['Browse', [B('gallery', 'Gallery view', () => { t.view = 'gallery'; import('./pane.js').then((m) => m.renderTabPanes(t)); }, true), B('filter', 'Filter by colour…', () => document.querySelector('.pane.active .mf-btn')?.click())]],
+    ['Browse', [B('gallery', 'Gallery view', () => import('./pane.js').then((m) => m.setView(t, 'gallery')), true), B('filter', 'Filter by colour…', () => document.querySelector('.pane.active .mf-btn')?.click())]],
     ['Use', [sel.length === 1 && B('desktop', 'Set as background', () => setWallpaper(paths[0]), true), B('zip', 'Add to zip', () => A.quickZip(sel))]],
   ] };
   return null;

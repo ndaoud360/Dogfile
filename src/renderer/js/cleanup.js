@@ -12,9 +12,9 @@ import { renderPreview } from './preview.js';
 
 const CATS = [
   ['overview', 'Overview', 'chart'],
-  ['dupes', 'Exact duplicates', 'dupes', 'Files with identical contents (checked with a hash). One copy of each is kept.'],
+  ['dupes', 'Exact duplicates', 'dupes', 'Files whose contents are exactly the same, byte for byte (checked with a hash), even when their names differ. One copy of each is kept.'],
   ['photos', 'Similar photos', 'photos', 'The same picture saved more than once at different sizes or qualities. The largest copy is kept.'],
-  ['docs', 'Document versions', 'page', 'Copies and versions of the same document (“report (1).docx”, “report final v2.docx”). The newest is kept.'],
+  ['docs', 'Document versions', 'page', 'Files whose names suggest versions of one document (“report (1).docx”, “report final v2.docx”). Their contents can differ, so nothing is selected for you: tick the ones you don’t need.'],
   ['installers', 'Old installers', 'exe', 'Setup files in Downloads that are older than two weeks. Programs stay installed if you remove these.'],
   ['temp', 'Temporary files', 'clock', 'Files in the temporary folder and leftovers like .tmp, unfinished downloads and Office lock files.'],
   ['empty', 'Empty folders', 'folder', 'Folders with nothing inside (or only other empty folders).'],
@@ -160,7 +160,7 @@ export async function openCleanup(initialRoot) {
     const byKey = new Map();
     for (const d of inv.docs) { const key = docKey(d.name); if (!key) continue; const dir = dirname(d.path); const kk = key + '|' + dir; if (!byKey.has(kk)) byKey.set(kk, []); byKey.get(kk).push(d); }
     const docGroups = [...byKey.values()].filter((g) => g.length > 1).map((g) => g.sort((a, b) => b.mtime - a.mtime).map((x, i) => ({ ...x, why: i ? `older version (newest is ${g[0].name})` : '' })));
-    finish('docs', null, { groups: docGroups });
+    finish('docs', null, { groups: docGroups, preselect: false });
     // recycle bin
     if (IS_WIN()) A.listRecycle().then((r) => { S.recycle = r; S.groups.recycle = r; S.checked.set('recycle', new Set()); updFoot(); if (S.cat === 'recycle') drawMain(); }).catch(() => { S.groups.recycle = []; });
     else S.groups.recycle = [];

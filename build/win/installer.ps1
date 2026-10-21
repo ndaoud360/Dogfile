@@ -63,7 +63,7 @@ New-Item -Path $UninstKey -Force | Out-Null
 Set-ItemProperty $UninstKey DisplayName $AppName
 Set-ItemProperty $UninstKey DisplayIcon "$Exe,0"
 Set-ItemProperty $UninstKey Publisher 'Dogfile'
-Set-ItemProperty $UninstKey DisplayVersion '1.6.0'
+Set-ItemProperty $UninstKey DisplayVersion '1.6.1'
 Set-ItemProperty $UninstKey InstallLocation $Dest
 Set-ItemProperty $UninstKey UninstallString "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$Dest\installer.ps1`" -Uninstall"
 Set-ItemProperty $UninstKey NoModify 1 -Type DWord

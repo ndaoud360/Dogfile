@@ -12,7 +12,23 @@ import { onWorkMsgFor } from './tools.js';
 import { planRules, describeAction } from './organize.js';
 
 export const results = new Map(); // id -> items (shown in a tab as atlas:search?assist=id)
-let panel = null, log = null, input = null;
+let panel = null, log = null, input = null, sendBtn = null;
+// the request being worked on (Stop ends it) and what the conversation is about (for follow-ups)
+let busy = null;
+const C = { items: null, plan: null };
+function setBusy(on) {
+  busy = on ? { stop: false, jobs: new Set() } : null;
+  if (!sendBtn) return;
+  sendBtn.classList.toggle('stop', !!on);
+  sendBtn.title = on ? 'Stop' : 'Send';
+  sendBtn.innerHTML = icon(on ? 'pstop' : 'forward');
+}
+function stopNow() {
+  if (!busy) return;
+  busy.stop = true;
+  for (const id of busy.jobs) api('work:cancel', id).catch(() => {});
+  for (const f of busy.onStop || []) f();
+}
 const SUGGEST = ['Find the latest version of my screenplay', 'Show me PDFs about taxes from last year', 'Group these by type', 'Find files I haven’t opened in six months', 'Rename these using their contents', 'How much space do my videos take?', 'Videos bigger than 1 GB', 'Organize my Downloads'];
 
 export function toggleAssistant(force) {
@@ -27,13 +43,14 @@ function build() {
   log = h('div', { class: 'as-log' });
   input = h('textarea', { class: 'as-input', rows: '1', placeholder: 'Ask about your files… (Enter to send)', spellcheck: 'true' });
   const send = h('button', { class: 'as-send', title: 'Send', html: icon('forward') });
-  const go = () => { const v = input.value.trim(); if (!v) return; input.value = ''; input.style.height = ''; ask(v); };
+  const go = () => { if (busy) { stopNow(); return; } const v = input.value.trim(); if (!v) return; input.value = ''; input.style.height = ''; ask(v); };
+  sendBtn = send;
   input.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); go(); } if (e.key === 'Escape') toggleAssistant(false); });
   input.addEventListener('input', () => { input.style.height = ''; input.style.height = Math.min(140, input.scrollHeight) + 'px'; });
   send.onclick = go;
   panel = h('aside', { id: 'assistant', role: 'complementary', 'aria-label': 'File assistant' },
     h('div', { class: 'as-head' }, h('span', { class: 'as-logo', html: icon('sparkle') }), h('b', {}, 'Assistant'), h('span', { class: 'hint' }, 'private · runs on this PC'), h('span', { class: 'st-spacer' }),
-      h('button', { class: 'icon-btn small', title: 'Clear the conversation', html: icon('trash'), onclick: () => { log.innerHTML = ''; hello(); } }),
+      h('button', { class: 'icon-btn small', title: 'Clear the conversation', html: icon('trash'), onclick: () => { log.innerHTML = ''; C.items = null; C.plan = null; hello(); } }),
       h('button', { class: 'icon-btn small', title: 'Close (Esc)', html: icon('close'), onclick: () => toggleAssistant(false) })),
     log, h('div', { class: 'as-foot' }, input, send));
   document.body.append(panel);
@@ -53,17 +70,21 @@ const msg = (who, ...c) => h('div', { class: 'as-msg ' + who }, ...c);
 function scrollDown() { requestAnimationFrame(() => { log.scrollTop = log.scrollHeight; }); }
 
 // ---------------- running a request ----------------
-async function runAsk(text) {
+function startCard(text) {
   if (!panel) build();
   toggleAssistant(true);
   log.append(msg('me', text));
-  const t = activeTab();
-  const sel = selectedItems(t).filter((i) => !i.virtual);
-  const plan = parseRequest(text, { hasSelection: sel.length > 0 });
   const card = h('div', { class: 'as-card' });
   log.append(msg('bot', card));
   scrollDown();
-  try { await execute(plan, card, { t, sel }); } catch (e) { card.append(h('div', { class: 'as-err' }, `Something went wrong: ${e.message}`)); }
+  return card;
+}
+async function runPlan(plan, card, ctx) {
+  setBusy(true);
+  try { await execute(plan, card, ctx); } catch (e) { card.append(h('div', { class: 'as-err' }, `Something went wrong: ${e.message}`)); }
+  if (busy?.stop) card.append(h('p', { class: 'hint' }, 'Stopped.'));
+  card.querySelectorAll('.as-stop').forEach((b) => b.remove());
+  setBusy(false);
   scrollDown();
 }
 function understoodChips(plan, extra = []) {
@@ -90,7 +111,10 @@ function rootsFor(plan, t, sel) {
   return { roots: personal, label: 'your personal folders (Desktop, Documents, Downloads, Pictures, Videos, Music)' };
 }
 async function findFiles(plan, where, card) {
-  const status = h('div', { class: 'as-status' }, h('span', { class: 'as-spin' }), 'Looking…');
+  const label = h('span', {}, 'Looking…');
+  const stopB = h('button', { class: 'btn small as-stop' }, 'Stop');
+  stopB.onclick = stopNow;
+  const status = h('div', { class: 'as-status' }, h('span', { class: 'as-spin' }), label, stopB);
   card.append(status);
   let items = [...(where.files || [])];
   if (where.roots.length) {
@@ -100,7 +124,9 @@ async function findFiles(plan, where, card) {
     const found = await new Promise(async (resolve) => {
       const acc = [];
       const id = await api('work:start', spec);
-      onWorkMsgFor(id, (m) => { if (m.type === 'results') { acc.push(...m.items); status.lastChild.textContent = `Looking… ${acc.length.toLocaleString()} candidates · ${m.scanned.toLocaleString()} checked`; } else resolve(acc); });
+      busy?.jobs.add(id);
+      if (busy) (busy.onStop ||= []).push(() => resolve(acc));
+      onWorkMsgFor(id, (m) => { if (m.type === 'results') { acc.push(...m.items); label.textContent = `Looking… ${acc.length.toLocaleString()} candidates · ${m.scanned.toLocaleString()} checked`; } else resolve(acc); });
     });
     items.push(...found);
   } else {
@@ -126,7 +152,8 @@ async function findFiles(plan, where, card) {
     if (docs.length) {
       let k = 0;
       for (const f of docs) {
-        if (++k % 10 === 0) status.lastChild.textContent = `Reading documents… ${k} of ${docs.length}`;
+        if (busy?.stop) break;
+        if (++k % 10 === 0) label.textContent = `Reading documents… ${k} of ${docs.length}`;
         const txt = (await api('doc:text', f.path, 8000).catch(() => '') || '').toLowerCase();
         const w = terms.find((x) => txt.includes(x));
         if (w) { byName.push(f); why.set(f, `mentions “${w}”`); }
@@ -243,6 +270,7 @@ async function execute(plan, card, { t, sel }) {
   const isSelOnly = plan.scope === 'selection' && !where.roots.length && ['move', 'copy', 'delete', 'zip', 'tag', 'open'].includes(plan.action);
   const { items, why } = isSelOnly ? { items: sel.filter((i) => !i.isDir).concat(sel.filter((i) => i.isDir)), why: new Map() } : await findFiles(plan, where, card);
   const total = items.reduce((a, f) => a + (f.size || 0), 0);
+  if (items.length) { C.items = items; C.plan = plan; }
   if (!items.length) {
     const tips = [];
     if (plan.topic.length && plan.kinds.some((k) => ['image', 'video', 'audio'].includes(k))) tips.push(btn('Search inside the pictures with AI', () => { const q = encodeURIComponent(plan.raw); navigate(activeTab(), `atlas:search?q=${q}&ai=1`); }, 'primary'));
@@ -269,8 +297,7 @@ async function execute(plan, card, { t, sel }) {
     acts.append(btn('Show all in a tab', () => showInTab(items, plan.raw), 'primary'));
     if (plan.action === 'open' || items.length === 1) acts.append(btn(items.length === 1 ? 'Open it' : `Open ${Math.min(items.length, 10)}`, () => A.openItems(items.slice(0, 10).map((f) => ({ ...f, isDir: false })))));
     if (items.length === 1) acts.append(btn('Show in folder', () => navigate(activeTab(), dirname(items[0].path), { select: items[0].path })));
-    acts.append(h('span', { class: 'hint' }, 'Then you can say “move them to…”, “zip them”, “delete them”…'));
-    lastResults = items;
+    acts.append(h('span', { class: 'hint' }, 'Then you can say “move them to…”, “zip them”, “only the PDFs”…'));
     return;
   }
   if (plan.action === 'move' || plan.action === 'copy') {
@@ -303,9 +330,6 @@ async function execute(plan, card, { t, sel }) {
     acts.append(btn(`Tag ${tag?.name || ''}`, () => { setTags(chosen().map((f) => f.path), tag.id, true); done(`Tagged ${chosen().length} ${tag.name}.`); }, 'primary'));
   }
 }
-let lastResults = null;
-// "them" after a search means the last results
-const _parse = parseRequest;
 async function resolveDest(name, t) {
   if (!name) return null;
   const k = sys.known || {};
@@ -317,23 +341,107 @@ async function resolveDest(name, t) {
   const p = pjoin(base, name.replace(/[<>:"/\\|?*]/g, '_'));
   return { path: p, create: !(await api('fs:stat', p)) };
 }
-// follow-ups like "move them to Archive" act on the last results
+
+// ---------------- understanding a message ----------------
+const FILLER = /\b(actually|instead|rather|also|too|no|nope|wait|ok|okay|then|please|just|now|hmm|oh|so)\b,?/gi;
+const FOLLOW = /\b(instead|actually|rather|also|them|those|these|it|that|that one|the same|same ones|again|the files?|the results?)\b/i;
+const FILE_Q = /^\s*(how (much|many|big)|where (is|are|did) (my|the|i)|which of my|can you (find|show|get|list|delete|remove|move|copy|zip|compress|tag|rename|sort|organi[sz]e|group|open)|could you (find|show|get|move|copy|zip|tag|rename|sort)|show me (my|all|the)|do i have)\b/i;
+const HELP_Q = /^\s*(what|what's|whats|how|why|where|can i|could i|is there|are there|does|do you|do i|which|when|explain|tell me|help|i don'?t (understand|get)|what'?s the (point|difference))\b|\?\s*$/i;
+const hasTarget = (p) => !!(p.kinds.length || p.topic.length || p.exts.length || p.quoted.length || (p.scope && p.scope !== 'selection') || p.after || p.before || p.minSize || p.maxSize || p.notOpenedBefore || p.duplicates || p.latest);
+
 function ask(text) { return askAssistant(text); }
 export async function askAssistant(text) {
-  if (lastResults && /\b(them|those|these results|it)\b/i.test(text) && !selectedItems(activeTab()).length) {
-    const plan = _parse(text, { hasSelection: true });
-    if (plan.action !== 'find') {
-      if (!panel) build();
-      toggleAssistant(true);
-      log.append(msg('me', text));
-      const card = h('div', { class: 'as-card' });
-      log.append(msg('bot', card));
-      plan.scope = 'selection';
-      await execute(plan, card, { t: activeTab(), sel: lastResults.map((f) => ({ ...f, isDir: false })) }).catch((e) => card.append(h('div', { class: 'as-err' }, e.message)));
-      scrollDown();
-      return;
-    }
+  if (busy) stopNow();
+  const t = activeTab();
+  const sel = selectedItems(t).filter((i) => !i.virtual);
+  // small talk
+  if (/^\s*(hi|hello|hey|yo|thanks|thank you|thx|cheers|good (morning|evening|afternoon))\b[\s!.]*$/i.test(text)) {
+    const card = startCard(text);
+    card.append(h('p', {}, /thank|thx|cheers/i.test(text) ? 'You’re welcome!' : 'Hi! Ask me to find or tidy files, or how to do something in Dogfile.'));
+    return;
   }
-  return runAsk(text);
+  // questions about Dogfile itself
+  if (HELP_Q.test(text) && !FILE_Q.test(text)) {
+    const plan = parseRequest(text, { hasSelection: false });
+    const fileish = plan.kinds.length || plan.after || plan.before || plan.minSize || plan.maxSize || plan.notOpenedBefore || /\b(my|downloaded|saved)\b/i.test(text);
+    const appish = /\b(dogfile|feature|setting|settings|button|menu|ribbon|sidebar|tab|pane|mean|means|do i|can i|how to|how do|shortcut|key)\b/i.test(text);
+    if (!fileish || appish) { answerHelp(text, await helpSearch(text), startCard(text)); return; }
+  }
+  const cleaned = text.replace(FILLER, ' ').replace(/\s+/g, ' ').trim() || text;
+  const refine = C.items && !sel.length && /^\s*(only|just|of (those|these|them)|from (those|these|them)|which of (those|these|them)|keep only)\b/i.test(text);
+  const plan = parseRequest(cleaned, { hasSelection: sel.length > 0 || !!C.items });
+  // "only the PDFs", "just the big ones": narrow what was found last
+  if (refine) {
+    const card = startCard(text);
+    plan.action = plan.action === 'find' ? 'find' : plan.action;
+    plan.scope = 'selection';
+    return runPlan(plan, card, { t, sel: C.items.map((f) => ({ ...f, isDir: !!f.isDir })) });
+  }
+  // follow-ups ("actually zip it instead", "move them to Archive", "tag them red") act on what we were just talking about
+  if (C.items && !sel.length && plan.action !== 'find' && (!hasTarget(plan) || FOLLOW.test(text))) {
+    const card = startCard(text);
+    plan.scope = 'selection';
+    plan.topic = []; plan.kinds = []; plan.exts = []; plan.quoted = [];
+    return runPlan(plan, card, { t, sel: C.items.map((f) => ({ ...f, isDir: !!f.isDir })) });
+  }
+  // nothing to go on: try the help, otherwise say so
+  if (plan.action === 'find' && !hasTarget(plan) && plan.scope !== 'selection') {
+    const hits = await helpSearch(text);
+    answerHelp(text, hits, startCard(text));
+    return;
+  }
+  return runPlan(plan, startCard(text), { t, sel });
+}
+
+// ---------------- help: answers from Dogfile's own feature list, commands and guide ----------------
+let HELP = null;
+const HSTOP = new Set('what whats what\'s does do did how i me my the a an is are was can could would should to of in on for with and or you your it this that these those there here mean means meaning work works working use using used dogfile app feature features thing stuff way want wanna need get make makes where why when which who please explain tell about any some does doesnt don\'t dont not no be have has if then than so just like into from by at as up out off its'.split(' '));
+const stemW = (w) => w.replace(/(ings?|edly|ed|es|s)$/, '').replace(/(.)\1$/, '$1');
+const toks = (s) => String(s || '').toLowerCase().replace(/[’']/g, '').split(/[^a-z0-9+]+/).filter((w) => w.length > 1 && !HSTOP.has(w)).map(stemW).filter((w) => w.length > 1);
+async function loadHelp() {
+  if (HELP) return HELP;
+  let list = [];
+  try { list = await (await fetch(new URL('../assets/help.json', import.meta.url))).json(); } catch {}
+  let cmds = new Map();
+  try { cmds = (await import('./commands.js')).commands; } catch {}
+  const entries = list.map((e) => ({ ...e, N: toks(e.n + ' ' + (e.q || '')), H: toks(e.h), A: toks(e.a) }));
+  for (const c of cmds.values()) if (!c.hidden && c.title && c.run) entries.push({ cmd: c, n: c.title, a: c.cat || 'Commands', h: c.keys?.length ? `Shortcut: ${c.keys[0]}. Also in the command palette (Ctrl+Shift+P).` : 'In the command palette (Ctrl+Shift+P).', N: toks(c.title), H: [], A: toks(c.cat) });
+  return (HELP = entries);
+}
+const hasTok = (list, w) => list.some((x) => x === w || (w.length >= 4 && (x.startsWith(w) || w.startsWith(x)) && Math.min(x.length, w.length) >= 4));
+async function helpSearch(text) {
+  const q = toks(text);
+  if (!q.length) return [];
+  const all = await loadHelp();
+  const out = [];
+  for (const e of all) {
+    let score = 0, hit = 0;
+    for (const w of q) { const s2 = hasTok(e.N, w) ? 3 : hasTok(e.H, w) ? 1 : hasTok(e.A, w) ? 0.5 : 0; if (s2) hit++; score += s2; }
+    if (!hit) continue;
+    score *= hit / q.length; // reward answers that cover the whole question
+    if (e.x) score += 0.5; // hand-written explanations first
+    if (e.cmd) score -= 0.3;
+    out.push({ e, score });
+  }
+  return out.sort((a, b) => b.score - a.score).slice(0, 6);
+}
+function answerHelp(text, hits, card) {
+  const vague = !toks(text).length;
+  if (!hits.length || hits[0].score < 1.5) {
+    card.append(h('p', {}, vague ? 'Which part of Dogfile do you mean? Tell me its name, for example “what does Smart drop do?” or “how do I pin a folder?”.' : 'I can’t answer that one, sorry. I can explain Dogfile’s features and settings, and find, count, measure, move, copy, zip, tag, rename, sort or recycle your files.'),
+      h('div', { class: 'as-sugg' }, ...['What can you do?', 'How do I split the window?', 'Find videos bigger than 1 GB', 'How do I see copy progress?'].map((x) => h('button', { class: 'chip', onclick: () => ask(x) }, x))));
+    return;
+  }
+  const top = hits.filter((x) => x.score >= hits[0].score * 0.6).slice(0, 3);
+  const cmdFor = (e) => e.cmd || (HELP || []).find((c) => c.cmd && c.n.toLowerCase() === e.n.toLowerCase())?.cmd;
+  for (const { e } of top) {
+    const c = cmdFor(e);
+    card.append(h('div', { class: 'as-help' },
+      h('div', {}, h('b', {}, e.n), h('span', { class: 'as-chip' }, e.a)),
+      h('p', {}, e.h),
+      c ? h('div', { class: 'as-acts' }, btn(`Do it: ${c.title}`, () => { try { c.run(); } catch (err) { toast(err.message, { error: true }); } })) : null));
+  }
+  card.append(h('p', { class: 'hint' }, 'Not it? Ask in other words, or search every command with Ctrl+Shift+P.'));
+  scrollDown();
 }
 bus.on('assistant', (q) => (q ? askAssistant(q) : toggleAssistant()));

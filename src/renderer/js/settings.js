@@ -183,6 +183,7 @@ export async function openSettings(section = 'general', opts = {}) {
     }],
     behavior: ['Behavior', 'keyboard', (el) => {
       _append(el,
+        row('Show copy and move progress in a window', toggle('opsPopup'), 'A progress window with speed and time left opens for copies and moves. Minimize it to keep going in the background (the progress button at the bottom right brings it back).'),
         row('Single-click to open', toggle('singleClick')),
         row('Double-click empty space goes up', toggle('doubleClickUp')),
         row('Click empty space to clear the selection', toggle('clickEmptyDeselects'), 'A single click on empty space (including the gaps between thumbnails) unselects / unchecks everything.'),
@@ -268,14 +269,20 @@ export async function openSettings(section = 'general', opts = {}) {
       _append(el,
         group('Programs'),
         row('Terminal', select('terminal', [['auto', 'Windows Terminal (if installed)'], ['powershell', 'Windows PowerShell'], ['pwsh', 'PowerShell 7'], ['cmd', 'Command Prompt']])),
-        row('Code editor command', text('editor', 'code'), 'Used by “Open in code editor”, e.g. code, cursor, notepad++, subl.'),
+        row('Code editor command', text('editor', 'Automatic'), 'Used by “Open in code editor” (Ctrl+Shift+O), e.g. code, cursor, notepad++, subl. Empty finds VS Code, Cursor, Sublime or Notepad++, else opens files in Dogfile Notepad.'),
         row('File types', h('button', { class: 'btn small', onclick: () => import('./assoc.js').then((m) => m.fileTypesDialog()) }, 'Choose what opens each file type…'), 'Pick Dogfile Notepad, Player, Photos, the Windows default or any program for each extension.'),
         row('“Open with” apps', apps),
         row('Custom commands', cmds),
         group('Search'),
         row('Instant search index', h('div', { class: 'stack' }, toggle('indexEnabled'), indexBox), 'Dogfile keeps a list of every file on your drives, so searches, Go to file (Ctrl+P) and folder sizes are instant. It stays up to date while Dogfile runs.'),
         row('AI search', h('div', { class: 'row-inline' }, toggle('aiSearch'), h('button', { class: 'btn small', onclick: () => import('./ai.js').then((m) => m.modelsDialog()) }, 'Models…')), 'Search photos, videos and songs by describing them (“photos of a dog running on grass”). Runs privately on this PC with free models downloaded once.'),
-        row('Use Everything for search', toggle('useEverything'), 'Instant whole-disk results when voidtools Everything + es.exe are installed.'),
+        (() => {
+          const st = h('div', { class: 'hint' }, 'Searches ask voidtools Everything for instant whole-disk results. Needs Everything running and its command-line tool es.exe.');
+          if (IS_WIN()) api('everything:status').then((r) => {
+            st.textContent = r?.es ? `Ready: found ${r.es}.` : r?.running ? `Everything is running, but es.exe is missing. Download “ES” (command-line interface) from voidtools.com and put es.exe next to ${r.exe ? r.exe.split(/[\\/]/).pop() : 'Everything.exe'}.` : 'Everything isn’t running. Start Everything, and put its command-line tool es.exe (a separate download from voidtools.com) next to it. Dogfile’s own instant index (Search, above) works without it.';
+          }).catch(() => {});
+          return row('Use Everything for search', toggle('useEverything'), st);
+        })(),
         group('Connections & automation'),
         row('Server connections', h('button', { class: 'btn small', onclick: () => import('./network.js').then((m) => m.connectionsDialog()) }, 'Manage…'), 'NAS, Windows shares, SFTP, FTP and WebDAV. Passwords are stored encrypted on this PC.'),
         row('Folder automations', h('button', { class: 'btn small', onclick: () => import('./rules.js').then((m) => m.automationsManager()) }, 'Manage…'), 'Rules that sort new files in a folder automatically.'),

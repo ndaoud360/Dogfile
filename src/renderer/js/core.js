@@ -190,20 +190,32 @@ export function fmtSize(n, opts = {}) {
   while (v >= k && i < units.length - 1) { v /= k; i++; }
   return `${v < 10 ? v.toFixed(1) : Math.round(v)} ${units[i]}`;
 }
+// Intl formatters are expensive to create, so they are made once; finished strings are remembered too
+const DF = { date: new Intl.DateTimeFormat(undefined, { year: 'numeric', month: 'numeric', day: 'numeric' }), time: new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }) };
+const dateMemo = new Map();
 export function fmtDate(ms, style) {
   if (!ms) return '';
-  const d = new Date(ms);
   style = style || state.settings.dateFormat;
+  if (style !== 'relative') {
+    const k = style + ms;
+    let v = dateMemo.get(k);
+    if (v === undefined) { v = fmtDateRaw(ms, style); if (dateMemo.size > 20000) dateMemo.clear(); dateMemo.set(k, v); }
+    return v;
+  }
+  return fmtDateRaw(ms, style);
+}
+function fmtDateRaw(ms, style) {
+  const d = new Date(ms);
   if (style === 'relative') {
     const diff = (Date.now() - ms) / 1000;
     if (diff < 60) return 'Just now';
     if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
-    if (diff < 86400 && new Date().getDate() === d.getDate()) return `Today, ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
-    if (diff < 172800) return `Yesterday, ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+    if (diff < 86400 && new Date().getDate() === d.getDate()) return `Today, ${DF.time.format(d)}`;
+    if (diff < 172800) return `Yesterday, ${DF.time.format(d)}`;
     if (diff < 7 * 86400) return d.toLocaleDateString([], { weekday: 'long' }) + ', ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   }
   if (style === 'iso') { const z = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}:${z(d.getMinutes())}`; }
-  return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return DF.date.format(d) + ' ' + DF.time.format(d);
 }
 export function dateBucket(ms) {
   if (!ms) return 'Unknown';

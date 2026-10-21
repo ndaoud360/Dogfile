@@ -759,12 +759,18 @@ export function columnsFor(t) {
   if (t.git && state.settings.gitBadges && !cols.includes('git')) cols.push('git');
   // media folders get their own columns automatically (Settings > View > "Media columns in music, video and photo folders")
   if (state.settings.mediaColumns !== false && t.items?.length) {
-    const files = t.items.filter((i) => !i.isDir);
-    const share = (f) => files.length ? files.filter(f).length / files.length : 0;
+    // what kind of folder this is, worked out once per listing (this runs for every row that is drawn)
+    let mk = t._mediaKind;
+    if (!mk || mk.items !== t.items || mk.n !== t.items.length) {
+      let files = 0, a = 0, v = 0, p = 0;
+      for (const i of t.items) { if (i.isDir) continue; files++; if (MM.isAud(i)) a++; else if (MM.isVid(i)) v++; else if (MM.isPic(i)) p++; }
+      const kind = !files ? '' : a / files > 0.5 ? 'aud' : v / files > 0.5 ? 'vid' : p / files > 0.6 ? 'pic' : '';
+      mk = t._mediaKind = { items: t.items, n: t.items.length, kind };
+    }
     const add = (c) => { if (!cols.includes(c)) cols.splice(Math.max(1, cols.indexOf('size') + 1 || cols.length), 0, c); };
-    if (share(MM.isAud) > 0.5) ['key', 'bpm', 'duration'].forEach(add);
-    else if (share(MM.isVid) > 0.5) ['dims', 'duration'].forEach(add);
-    else if (share(MM.isPic) > 0.6) ['dims', 'taken'].forEach(add);
+    if (mk.kind === 'aud') ['key', 'bpm', 'duration'].forEach(add);
+    else if (mk.kind === 'vid') ['dims', 'duration'].forEach(add);
+    else if (mk.kind === 'pic') ['dims', 'taken'].forEach(add);
   }
   return cols;
 }

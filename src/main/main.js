@@ -266,6 +266,7 @@ function registerProtocol() {
       const range = req.headers.get('range');
       const headers = { 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Access-Control-Allow-Origin': '*', 'Cache-Control': u.host === 'app' ? 'no-cache' : 'max-age=60' };
       // the feature sandbox: may evaluate the feature's code, but can't load other scripts or reach the network
+      if (TEST_MODE && u.host === 'app' && /\.html$/.test(file)) headers['Document-Policy'] = 'js-profiling';
       if (u.host === 'app' && /[\\/]ext-worker\.js$/.test(file)) headers['Content-Security-Policy'] = "default-src 'none'; script-src atlas: 'unsafe-eval'; connect-src 'none'; worker-src 'none'";
       if (range) {
         const m = range.match(/bytes=(\d*)-(\d*)/);

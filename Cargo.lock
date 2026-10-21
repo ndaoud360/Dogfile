@@ -1245,7 +1245,7 @@ dependencies = [
 
 [[package]]
 name = "dogfile"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "dirs 6.0.0",
  "dogfile-backend",
@@ -1269,7 +1269,7 @@ dependencies = [
 
 [[package]]
 name = "dogfile-backend"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "arboard",
  "async-trait",
@@ -1331,7 +1331,7 @@ dependencies = [
 
 [[package]]
 name = "dogfile-dev"
-version = "2.0.0"
+version = "2.0.1"
 dependencies = [
  "dogfile-backend",
  "serde_json",

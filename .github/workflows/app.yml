@@ -51,6 +51,8 @@ jobs:
         shell: pwsh
         continue-on-error: true
         run: |
+          trap { Write-Output "::error title=smoke::$($_.InvocationInfo.PositionMessage -replace "`n",'%0A') $_"; continue }
+          Remove-Item -Recurse -Force target/release/renderer, target/release/data, target/release/portable.txt -ErrorAction SilentlyContinue
           $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
           $files = "$env:RUNNER_TEMP\files"; New-Item -ItemType Directory -Force $files | Out-Null
           1..300 | ForEach-Object { Set-Content "$files/file $_.txt" "hello $_" }
@@ -89,3 +91,7 @@ jobs:
           git add -A
           git commit -q -m "Dogfile.exe from ${{ github.sha }}"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" app-bin
+      - name: Tidy the cache
+        if: always()
+        shell: pwsh
+        run: Remove-Item -Recurse -Force target/release/renderer, target/release/data, target/release/portable.txt -ErrorAction SilentlyContinue

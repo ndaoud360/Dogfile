@@ -46,6 +46,14 @@ if ($Uninstall) {
 }
 
 Write-Host "Installing $AppName to $Dest ..." -ForegroundColor Cyan
+# Dogfile draws its windows with Microsoft Edge WebView2, part of Windows 11 and of up-to-date Windows 10
+$wv = 'SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+$hasWv = (Get-ItemProperty "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" -ErrorAction SilentlyContinue).pv -or (Get-ItemProperty "HKLM:\$wv" -ErrorAction SilentlyContinue).pv -or (Get-ItemProperty "HKCU:\$wv" -ErrorAction SilentlyContinue).pv
+if (-not $hasWv) {
+  Write-Host 'Dogfile needs Microsoft Edge WebView2 Runtime. Opening the download page (install it, then run this installer again)...' -ForegroundColor Yellow
+  Start-Process 'https://go.microsoft.com/fwlink/p/?LinkId=2124703'
+  if (-not $Quiet) { Read-Host 'Press Enter to continue anyway' | Out-Null }
+}
 # Dogfile used to be called Atlas Files: remove the old program (your settings move over on first start)
 $OldDest = Join-Path $env:LOCALAPPDATA 'Programs\Atlas Files'
 Get-Process AtlasFiles -ErrorAction SilentlyContinue | Stop-Process -Force
@@ -54,6 +62,12 @@ Remove-Item 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\AtlasFile
 foreach ($k in @('HKCU\Software\Classes\*\shell\AtlasEdit', 'HKCU\Software\Classes\SystemFileAssociations\video\shell\AtlasPlay', 'HKCU\Software\Classes\SystemFileAssociations\audio\shell\AtlasPlay', 'HKCU\Software\Classes\SystemFileAssociations\image\shell\AtlasView')) { & reg.exe delete $k /f 2>$null | Out-Null }
 if (Test-Path $OldDest) { Start-Sleep -Milliseconds 400; Remove-Item $OldDest -Recurse -Force -ErrorAction SilentlyContinue }
 Get-Process Dogfile -ErrorAction SilentlyContinue | Stop-Process -Force
+# Dogfile 2 is a different (much smaller) program: clear out the previous version's files first.
+# Your settings, tags and index live in %APPDATA%\Dogfile and are kept.
+if (Test-Path $Dest) {
+  Start-Sleep -Milliseconds 500
+  Get-ChildItem $Dest -Force | Where-Object { $_.Name -ne 'data' } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+}
 New-Item -ItemType Directory -Force -Path $Dest | Out-Null
 robocopy $Src $Dest /E /NFL /NDL /NJH /NJS /NP /XF 'Install Dogfile.cmd' | Out-Null
 New-Shortcut $StartMenu $Exe
@@ -63,7 +77,7 @@ New-Item -Path $UninstKey -Force | Out-Null
 Set-ItemProperty $UninstKey DisplayName $AppName
 Set-ItemProperty $UninstKey DisplayIcon "$Exe,0"
 Set-ItemProperty $UninstKey Publisher 'Dogfile'
-Set-ItemProperty $UninstKey DisplayVersion '1.6.1'
+Set-ItemProperty $UninstKey DisplayVersion '2.0.0'
 Set-ItemProperty $UninstKey InstallLocation $Dest
 Set-ItemProperty $UninstKey UninstallString "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$Dest\installer.ps1`" -Uninstall"
 Set-ItemProperty $UninstKey NoModify 1 -Type DWord

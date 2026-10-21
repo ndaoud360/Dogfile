@@ -58,8 +58,8 @@ NEW IN 2.0.1: AUTOMATIC UPDATES
   again in 24 hours); Update shows what's new and installs it in about a
   minute, then Dogfile restarts. File > Updates is red while an update is
   waiting and green when you're up to date. Turn checking off in Settings >
-  Behavior. The sidebar's Collections section is now off by default (Settings
-  > Behavior > Sidebar sections).
+  General. The sidebar's Collections section is now off by default (Settings
+  > General > Sidebar sections).
 
 NEW IN 2.0: REBUILT ON TAURI + RUST
   Dogfile no longer carries its own copy of Chrome and Node.js. The window is

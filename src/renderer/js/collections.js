@@ -125,7 +125,10 @@ export async function editCollection(c) {
   const list = collections().filter((x) => x.id !== c.id);
   const at = collections().findIndex((x) => x.id === c.id);
   list.splice(at >= 0 ? at : list.length, 0, c);
-  state.settings.collections = list; saveSettings(); bus.emit('collections');
+  state.settings.collections = list;
+  // making a collection shows the sidebar's Collections section
+  state.settings.sidebarSections = { ...(state.settings.sidebarSections || {}), collections: true };
+  saveSettings(); bus.emit('collections');
   navigate(activeTab(), collectionUrl(c));
   return c;
 }

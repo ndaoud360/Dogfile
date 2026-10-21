@@ -29,6 +29,7 @@ pub mod secrets;
 pub mod shell;
 pub mod server;
 pub mod util;
+pub mod update;
 #[cfg(windows)]
 pub mod win;
 

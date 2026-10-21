@@ -45,6 +45,17 @@ export async function openSettings(section = 'general', opts = {}) {
         row('Open folders from other apps in a new window', toggle('openInNewWindow'), 'Otherwise they open as a new tab.'),
         row('Closing the last tab closes the window', toggle('closeLastTabClosesWindow')),
         row('Keep running in the background', toggle('keepRunning'), 'Lives in the tray so folders open instantly.'),
+        row('Updates', h('div', { class: 'row-inline' }, toggle('autoUpdates'), h('button', { class: 'btn small', onclick: () => import('./updates.js').then((m) => m.openUpdates()) }, 'Check now…')), 'Dogfile checks for a new version a few seconds after it starts and every few hours, and asks before installing.'),
+        row('Sidebar sections', (() => {
+          const box = h('div', { class: 'row-inline', style: { flexWrap: 'wrap', gap: '6px 14px' } });
+          for (const [k, l] of [['tags', 'Tags'], ['collections', 'Collections'], ['drives', 'Drives'], ['cloud', 'Cloud folders'], ['network', 'Network']]) {
+            const c = h('input', { type: 'checkbox' });
+            c.checked = (S.sidebarSections || {})[k] !== false;
+            c.addEventListener('change', () => { S.sidebarSections = { ...(S.sidebarSections || {}), [k]: c.checked }; changed(); bus.emit('sidebar'); });
+            box.append(h('label', { class: 'check' }, c, ' ' + l));
+          }
+          return box;
+        })(), 'Collections (smart lists like “Large files” or “Recently downloaded”) are off by default.'),
         row('Sidebar shows actions for selected items', toggle('sidebarActions', () => bus.emit('sidebarMode')), 'Select files and the sidebar turns into a menu with everything from the right-click menu. Right-click still works.'),
         group('Built-in apps'),
         row('Open text files in Dogfile Notepad', toggle('useAtlasEditor'), 'Code, configs, logs, Markdown, CSV… open in the built-in Notepad++-style editor.'),

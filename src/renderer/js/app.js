@@ -26,6 +26,7 @@ import './mediatools.js';
 import './foldernotes.js';
 import './collections.js';
 import './rules.js';
+import * as U from './updates.js';
 import './history.js';
 import './workspaces.js';
 import './cliphistory.js';
@@ -305,6 +306,7 @@ function fileMenu(btn) {
     full && { label: 'Macros', icon: 'record', submenu: [C('startMacro'), C('macros'), ...[...commands.values()].filter((c) => c.id.startsWith('macro:')).map((c) => ({ label: c.title.replace(/^Macro: /, ''), icon: 'record', run: c.run }))] },
     { separator: true },
     C('settings'),
+    U.menuItem(),
     { label: 'Help', icon: 'info', submenu: [C('shortcuts'), { label: 'Welcome tour', icon: 'info', run: () => import('./welcome.js').then((m) => m.showWelcome()) }, { label: 'Feature guide (for making features)', icon: 'book', run: async () => { const p = await api('docs:featureGuide'); (await import('./apptabs.js')).openTool('editor', [p]); } }] },
     IS_WIN() && C('setDefault'),
     { separator: true },
@@ -482,6 +484,9 @@ async function boot() {
   rebuild();
   document.body.classList.toggle('ui-simple', state.settings.uiMode === 'simple');
   if (!state.settings.welcomed && !info.test) setTimeout(() => import('./welcome.js').then((m) => m.showWelcome()), 700);
+  if (!info.test || window.__dogTestUpdates) U.startUpdates();
+  // a dot on File while an update is waiting
+  bus.on('updateStatus', () => document.querySelector('.menu-tab[data-menu="file"]')?.classList.toggle('has-update', !!U.U.status?.available));
   if (launch.select) setTimeout(() => navigate(activeTab(), launch.path, { select: launch.select }), 50);
   focusPane(state.activePane);
   document.body.classList.add('ready');

@@ -20,7 +20,7 @@ pub const NAMES: &[&str] = &[
     "media:imgMeta", "media:quickProbe", "media:sheetCancel", "media:contactSheet", "media:encoder", "media:shotDir", "media:export", "ai:status", "ai:download", "ai:remove", "ai:cacheGet", "ai:cacheSet",
     "tags:read", "tags:write", "tags:lookup", "tags:identify", "tags:fetchArt", "media:job", "media:cancel", "fs:trash", "fs:copyFile", "fs:writeDataUrl", "fs:readBuffer", "fs:writeEncoded",
     "archive:watchEdit", "fs:watchFile", "mtp:list", "mtp:copyOut", "mtp:copyIn", "mtp:delete", "mtp:mkdir", "mtp:rename", "mtp:fetch", "win:corners", "net:discover", "net:open", "locks:who", "locks:kill",
-    "shellverbs:set", "pty:available", "pty:spawn", "pty:write", "pty:resize", "pty:kill", "test:capture", "win:startDrag", "win:dragOut", "win:startResize", "test:log",
+    "shellverbs:set", "pty:available", "pty:spawn", "pty:write", "pty:resize", "pty:kill", "test:capture", "win:startDrag", "win:dragOut", "win:startResize", "test:log", "update:check", "update:status", "update:download", "update:cancel", "update:install",
 ];
 
 fn dialog_opts(v: &Value) -> DialogOpts {
@@ -46,6 +46,11 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
         "everything:search" => sys::everything_search(&a).await,
         "everything:available" => sys::everything_available().await,
         "everything:status" => sys::everything_status().await,
+        "update:check" => update::check(&a).await,
+        "update:status" => update::status(&a),
+        "update:download" => update::download(win, &a).await,
+        "update:cancel" => update::cancel(&a),
+        "update:install" => update::install(&a),
         "test:log" => {
             let line = a.s_or(0, "");
             match std::env::var("DOGFILE_TEST_LOG") {

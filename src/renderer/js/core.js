@@ -299,7 +299,7 @@ export const DEFAULT_SETTINGS = {
   useWindowsIcons: false, showThumbnails: true, gitBadges: true, hoverPreview: false, sequentialOps: false,
   ribbonPinned: false, sidebarWidth: 300, sidebarCollapsed: false, syncNavigation: false, restoreTabs: true,
   showStatusBar: true, smartExtract: true, closeLastTabClosesWindow: false, middleClickOpensTab: true,
-  sidebarSections: { quick: true, drives: true, network: true, tags: true },
+  autoUpdates: true, sidebarSections: { quick: true, drives: true, network: true, tags: true, collections: false },
   warnExtChange: true, browseArchives: true, askOnDrop: false, newTabPath: 'home', fullCrumbs: false, useEverything: false, indexEnabled: true, indexRoots: [], indexMft: true, nativeEngine: true,
   openWithApps: [], networkPlaces: [], userTemplates: [], ribbonTab: 'home',
   corners: { radius: 8, tabs: false, tiles: true, controls: true, menus: true, dialogs: true, panels: true, items: true, window: true },

@@ -64,6 +64,8 @@ jobs:
           # Dogfile 2 with the index (the default)
           Remove-Item -Recurse -Force target/release/data
           ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$files`"" -Label tauri-index -Out $out -Seconds 40
+          # ...and after a couple of quiet minutes (the index sleeps when nobody searches)
+          ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$files`"" -Label tauri-index-idle -Out $out -Seconds 150 -Shot
           # Dogfile 1.6 (Electron) without the index, same folder and settings
           npm install --no-save --ignore-scripts electron@33.4.11 2>&1 | Out-Null
           node node_modules/electron/install.js 2>&1 | Out-Null

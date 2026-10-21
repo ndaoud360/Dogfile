@@ -394,6 +394,71 @@ pub struct Root {
     pub ms: AtomicU64,
     pub watcher: Mutex<Option<notify::RecommendedWatcher>>,
     pub pending: Mutex<Vec<notify::Event>>, // changes seen while a rebuild is running
+    /// Asleep: the tree was saved and let go of to free memory while nobody searched; it loads again (from the
+    /// file, usually still in the system's cache) on the next search. Changes meanwhile wait in `sleep_events`.
+    pub asleep: AtomicBool,
+    pub last_used: AtomicU64,
+    pub sleep_count: AtomicU64,
+    pub sleep_events: Mutex<Vec<notify::Event>>,
+    pub sleep_overflow: AtomicBool,
+}
+impl Root {
+    fn new(path: &str) -> Root {
+        Root { path: path.to_string(), tree: RwLock::new(None), state: Mutex::new("loading".into()), dirty: AtomicBool::new(false), scanned: AtomicU64::new(0), ms: AtomicU64::new(0), watcher: Mutex::new(None), pending: Mutex::new(Vec::new()),
+               asleep: AtomicBool::new(false), last_used: AtomicU64::new(util::now_ms() as u64), sleep_count: AtomicU64::new(0), sleep_events: Mutex::new(Vec::new()), sleep_overflow: AtomicBool::new(false) }
+    }
+}
+/// how long the index stays in memory after the last search before it sleeps
+fn idle_ms() -> u64 {
+    static V: OnceLock<u64> = OnceLock::new();
+    *V.get_or_init(|| std::env::var("DOGFILE_INDEX_IDLE_MS").ok().and_then(|v| v.parse().ok()).unwrap_or(90_000))
+}
+
+/// Load a sleeping root's tree again (and catch up with what changed while it slept). Marks it as used.
+pub fn wake(r: &Arc<Root>) {
+    r.last_used.store(util::now_ms() as u64, Ordering::Relaxed);
+    if !r.asleep.load(Ordering::Relaxed) { return }
+    let mut g = r.tree.write().unwrap();
+    if !r.asleep.load(Ordering::Relaxed) { return }
+    let file = index_file(&service().data_dir.lock().unwrap(), &r.path);
+    match Tree::load(&file) {
+        Ok(mut t) => {
+            let evs: Vec<notify::Event> = std::mem::take(&mut *r.sleep_events.lock().unwrap());
+            if !evs.is_empty() { r.dirty.store(true, Ordering::Relaxed) }
+            for ev in evs { apply_event(&mut t, &ev) }
+            *g = Some(t);
+            r.asleep.store(false, Ordering::Relaxed);
+            if r.sleep_overflow.swap(false, Ordering::Relaxed) {
+                // too many changes while asleep to replay: build again in the background
+                let r2 = r.clone();
+                std::thread::spawn(move || { util::lower_thread_priority(); rebuild(&r2, true, &file) });
+            }
+        }
+        Err(_) => {
+            r.asleep.store(false, Ordering::Relaxed);
+            drop(g);
+            let r2 = r.clone();
+            std::thread::spawn(move || { util::lower_thread_priority(); rebuild(&r2, true, &file) });
+        }
+    }
+}
+/// Put idle roots to sleep (saving them first if they changed).
+fn sleep_idle() {
+    let now = util::now_ms() as u64;
+    let dir = service().data_dir.lock().unwrap().clone();
+    for r in service().roots.read().unwrap().iter() {
+        if r.asleep.load(Ordering::Relaxed) || now.saturating_sub(r.last_used.load(Ordering::Relaxed)) < idle_ms() { continue }
+        if *r.state.lock().unwrap() != "ready" { continue }
+        let mut g = r.tree.write().unwrap();
+        let Some(t) = g.as_mut() else { continue };
+        if r.dirty.swap(false, Ordering::Relaxed) || !index_file(&dir, &r.path).exists() {
+            if t.deleted > t.entries.len() / 5 { t.compact() }
+            if t.save(&index_file(&dir, &r.path)).is_err() { continue }
+        }
+        r.sleep_count.store(t.live() as u64, Ordering::Relaxed);
+        r.asleep.store(true, Ordering::Relaxed);
+        *g = None;
+    }
 }
 
 #[derive(Default)]
@@ -414,7 +479,8 @@ fn index_file(dir: &Path, root: &str) -> PathBuf {
 
 fn status_of(r: &Root) -> Value {
     let t = r.tree.read().unwrap();
-    json!({ "root": r.path, "state": *r.state.lock().unwrap(), "count": t.as_ref().map(|t| t.live()).unwrap_or(0),
+    let count = if r.asleep.load(Ordering::Relaxed) { r.sleep_count.load(Ordering::Relaxed) as usize } else { t.as_ref().map(|t| t.live()).unwrap_or(0) };
+    json!({ "root": r.path, "state": *r.state.lock().unwrap(), "count": count, "asleep": r.asleep.load(Ordering::Relaxed),
             "method": t.as_ref().map(|t| t.method.clone()), "builtAt": t.as_ref().map(|t| t.built_at),
             "scanned": r.scanned.load(Ordering::Relaxed), "ms": r.ms.load(Ordering::Relaxed) })
 }
@@ -447,7 +513,7 @@ pub fn configure(j: &Value) -> Value {
         });
         for w in &want {
             if roots.iter().any(|r| r.path.eq_ignore_ascii_case(w)) { continue }
-            let r = Arc::new(Root { path: w.clone(), tree: RwLock::new(None), state: Mutex::new("loading".into()), dirty: AtomicBool::new(false), scanned: AtomicU64::new(0), ms: AtomicU64::new(0), watcher: Mutex::new(None), pending: Mutex::new(Vec::new()) });
+            let r = Arc::new(Root::new(w));
             roots.push(r.clone());
             std::thread::spawn(move || start_root(r, rescan, mft));
         }
@@ -504,6 +570,9 @@ pub fn rebuild(r: &Arc<Root>, mft: bool, file: &Path) {
     r.scanned.store(tree.live() as u64, Ordering::Relaxed);
     let _ = tree.save(file);
     *r.tree.write().unwrap() = Some(tree);
+    r.asleep.store(false, Ordering::Relaxed);
+    r.sleep_events.lock().unwrap().clear();
+    r.last_used.store(util::now_ms() as u64, Ordering::Relaxed);
     *r.state.lock().unwrap() = "ready".into();
     r.dirty.store(false, Ordering::Relaxed);
     announce(r);
@@ -531,6 +600,12 @@ fn start_watch(r: &Arc<Root>) {
                     std::thread::spawn(move || { let f = index_file(&service().data_dir.lock().unwrap(), &r2.path); rebuild(&r2, true, &f) });
                     return;
                 }
+                if matches!(ev.kind, notify::EventKind::Access(_)) { return }
+                if r.asleep.load(Ordering::Relaxed) {
+                    let mut q = r.sleep_events.lock().unwrap();
+                    if q.len() < 100_000 { q.push(ev) } else { q.clear(); r.sleep_overflow.store(true, Ordering::Relaxed) }
+                    return;
+                }
                 let st = r.state.lock().unwrap().clone();
                 if st == "scanning" || st == "refreshing" { r.pending.lock().unwrap().push(ev.clone()) }
                 if let Some(t) = r.tree.write().unwrap().as_mut() { apply_event(t, &ev); r.dirty.store(true, Ordering::Relaxed); }
@@ -546,9 +621,14 @@ fn start_watch(r: &Arc<Root>) {
 fn ensure_saver() {
     static STARTED: AtomicBool = AtomicBool::new(false);
     if STARTED.swap(true, Ordering::Relaxed) { return }
-    std::thread::spawn(|| loop {
-        std::thread::sleep(std::time::Duration::from_secs(90));
-        save_all();
+    std::thread::spawn(|| {
+        let mut n = 0u64;
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis((idle_ms() / 3).clamp(1000, 30_000)));
+            n += 1;
+            sleep_idle();
+            if n % 3 == 0 { save_all() }
+        }
     });
 }
 pub fn save_all() {
@@ -574,7 +654,7 @@ fn scope_of(scope: Option<&str>) -> Vec<(Arc<Root>, Option<String>)> {
 }
 /// Can the index answer for this folder right now?
 pub fn covers(scope: &str) -> bool {
-    scope_of(Some(scope)).iter().any(|(r, _)| r.tree.read().unwrap().is_some())
+    scope_of(Some(scope)).iter().any(|(r, _)| r.asleep.load(Ordering::Relaxed) || r.tree.read().unwrap().is_some())
 }
 
 pub struct Hit {
@@ -607,6 +687,7 @@ pub fn search(j: &Value) -> Result<Value, String> {
     let include_hidden = spec.include_hidden;
     let mut targets: Vec<(Arc<Root>, Option<String>)> = Vec::new();
     if !spec.index_can() { return Err("not indexed: needs a folder walk".into()) }
+    for r in service().roots.read().unwrap().iter() { if scopes.is_empty() || scopes.iter().any(|s| util::same_path_prefix(s, &r.path)) { wake(r) } }
     if scopes.is_empty() { targets = scope_of(None) } else {
         for s in &scopes {
             let t = scope_of(Some(s));
@@ -663,6 +744,7 @@ pub fn sizes(j: &Value) -> Value {
     for p in j["paths"].as_array().cloned().unwrap_or_default() {
         let Some(p) = p.as_str() else { continue };
         for (r, _) in scope_of(Some(p)) {
+            wake(&r);
             let g = r.tree.read().unwrap();
             if let Some(t) = g.as_ref() {
                 if let Some(i) = t.lookup(p) {
@@ -684,6 +766,7 @@ pub fn reload(j: &Value) -> Value {
         if let Ok(t) = Tree::load(&index_file(&dir, &r.path)) {
             r.scanned.store(t.live() as u64, Ordering::Relaxed);
             *r.tree.write().unwrap() = Some(t);
+            r.asleep.store(false, Ordering::Relaxed);
             *r.state.lock().unwrap() = "ready".into();
             announce(r);
         }

@@ -692,6 +692,12 @@ fn run_test_steps(steps: &str) {
         }
         std::thread::sleep(std::time::Duration::from_millis(st["wait"].as_u64().unwrap_or(800)));
         if let Some(shot) = st["shot"].as_str() {
+            #[cfg(windows)]
+            {
+                let ps = format!("Add-Type -AssemblyName System.Windows.Forms,System.Drawing; $b=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $m=New-Object System.Drawing.Bitmap $b.Width,$b.Height; [System.Drawing.Graphics]::FromImage($m).CopyFromScreen($b.Location,[System.Drawing.Point]::Empty,$b.Size); $m.Save('{}')", shot.replace('\'', "''"));
+                let _ = std::process::Command::new("powershell.exe").args(["-NoProfile", "-Command", &ps]).status();
+            }
+            #[cfg(not(windows))]
             let _ = std::process::Command::new("import").args(["-window", "root", shot]).status();
             println!("[shot] {shot}");
         }

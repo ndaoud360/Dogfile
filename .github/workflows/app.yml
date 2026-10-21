@@ -78,6 +78,28 @@ jobs:
             $env:ATLAS_PORTABLE = '1'
             ./build/ci/measure.ps1 -Exe $el -ArgList ". `"$files`"" -Label electron-noindex -Out $out -Shot
           } else { Write-Output "::warning title=electron::not installed" }
+      - name: Windows checks inside the app (shell, recycle bin, clipboard, thumbnails, 7-Zip, terminal…)
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          trap { Write-Output "::error title=wintest::$_"; continue }
+          $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
+          Remove-Item -Recurse -Force target/release/data -ErrorAction SilentlyContinue
+          if (-not (Test-Path target/release/renderer)) { Copy-Item -Recurse src/renderer target/release/renderer }
+          New-Item -ItemType File -Force target/release/portable.txt | Out-Null
+          New-Item -ItemType Directory -Force target/release/data, target/release/7zip | Out-Null
+          Copy-Item vendor/7zip/win32/7za.exe target/release/7zip/
+          Set-Content target/release/data/settings.json '{"welcomed":true}'
+          $js = Get-Content -Raw build/ci/wintest.js
+          $env:ATLAS_TEST = '1'
+          $env:DOGFILE_TEST_LOG = "$out/wintest.log"
+          $env:ATLAS_STEPS = (ConvertTo-Json -Compress -Depth 3 @(@{ js = $js; wait = 90000; shot = "$out/wintest.png" }))
+          $p = Start-Process -FilePath target/release/dogfile.exe -PassThru
+          if (-not $p.WaitForExit(150000)) { Stop-Process -Id $p.Id -Force; Write-Output "::warning title=wintest::timed out" }
+          Get-Process msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force
+          $log = if (Test-Path "$out/wintest.log") { Get-Content "$out/wintest.log" } else { @('no log') }
+          Write-Output "::notice title=wintest::$($log -join '%0A')"
+          Remove-Item Env:ATLAS_TEST, Env:DOGFILE_TEST_LOG, Env:ATLAS_STEPS
       - name: Publish to the app-bin branch (readable with git)
         shell: pwsh
         run: |

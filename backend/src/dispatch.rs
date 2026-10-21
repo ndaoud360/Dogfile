@@ -47,7 +47,16 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
         "everything:available" => sys::everything_available().await,
         "everything:status" => sys::everything_status().await,
         "test:log" => {
-            println!("[eval] {}", a.s_or(0, ""));
+            let line = a.s_or(0, "");
+            match std::env::var("DOGFILE_TEST_LOG") {
+                Ok(f) if st().test_mode => {
+                    use std::io::Write;
+                    if let Ok(mut fh) = std::fs::OpenOptions::new().create(true).append(true).open(f) {
+                        let _ = writeln!(fh, "{line}");
+                    }
+                }
+                _ => println!("[eval] {line}"),
+            }
             Ok(json!(true))
         }
         "test:capture" => Ok(json!(st().host.capture(win, &a.s(0)?))),

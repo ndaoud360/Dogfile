@@ -1,0 +1,48 @@
+// Checks Dogfile's Windows-only parts inside the real app on a Windows machine (run by CI, results in a log).
+(async () => {
+  const api = (n, ...a) => window.atlas.invoke(n, ...a);
+  const log = (s) => api('test:log', s);
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const T = async (name, fn) => { const t0 = performance.now(); try { const r = await Promise.race([fn(), wait(20000).then(() => 'TIMEOUT')]); await log(`${r === false || r === 'TIMEOUT' ? 'FAIL' : 'ok  '} ${name} ${Math.round(performance.now() - t0)}ms ${r === true || r === false ? '' : String(typeof r === 'string' ? r : JSON.stringify(r)).slice(0, 300)}`); } catch (e) { await log(`ERR  ${name}: ${e && e.message || e}`); } };
+  const ev = (ch, pred, ms = 15000) => new Promise((res) => { const off = window.atlas.on(ch, (d) => { if (pred(d)) { off(); res(d); } }); setTimeout(() => { off(); res(null); }, ms); });
+  const job = async (spec) => { const fin = ev('ops:finished', () => true, 30000); const id = await api('ops:start', spec); let d = await fin; return d && d.id === id ? d.status + (d.errors?.length ? ' ' + d.errors[0] : '') : 'no event ' + JSON.stringify(d); };
+  const info = await api('sys:info');
+  const D = info.known.temp + '\\dogtest';
+  await log('platform ' + info.platform + ' temp ' + info.known.temp + ' 7z ' + info.has7z + ' ffmpeg ' + info.ffmpeg);
+  await T('drives', async () => (await api('fs:drives')).map((d) => `${d.path} ${d.type} ${d.label || ''} ${Math.round((d.free || 0) / 1e9)}GB free`).join(' | '));
+  await T('list C:\\Windows (attributes)', async () => { const t0 = performance.now(); const r = await api('fs:list', 'C:\\Windows'); return `${r.items.length} items, hidden ${r.items.filter((i) => i.hidden).length}, system ${r.items.filter((i) => i.system).length}, ${Math.round(performance.now() - t0)} ms`; });
+  await T('list System32 (big folder)', async () => { const t0 = performance.now(); const r = await api('fs:list', 'C:\\Windows\\System32'); return `${r.items.length} items in ${Math.round(performance.now() - t0)} ms`; });
+  await T('mkdir + files', async () => { await api('fs:mkdir', D).catch(() => 0); await api('fs:writeText', D + '\\a.txt', 'hello'); await api('fs:writeText', D + '\\b.txt', 'world'); await api('fs:mkdir', D + '\\out').catch(() => 0); return (await api('fs:list', D)).items.map((i) => i.name).join(','); });
+  await T('rename case only', async () => { await api('fs:rename', D + '\\b.txt', D + '\\B.txt'); return (await api('fs:list', D)).items.map((i) => i.name).join(','); });
+  await T('hash', async () => (await api('fs:hash', D + '\\a.txt', ['sha256'])).sha256 === '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824');
+  await T('copy job', async () => job({ type: 'copy', sources: [D + '\\a.txt', D + '\\B.txt'], dest: D + '\\out' }));
+  await T('copy again (keep both)', async () => { const r = await job({ type: 'copy', sources: [D + '\\a.txt'], dest: D + '\\out', opts: { conflict: 'keepBoth' } }); return r + ' ' + (await api('fs:list', D + '\\out')).items.map((i) => i.name).join(','); });
+  await T('move job', async () => job({ type: 'move', sources: [D + '\\out\\B.txt'], dest: D }).then(async (r) => r + ' ' + (await api('fs:exists', D + '\\B (2).txt') || await api('fs:exists', D + '\\B.txt'))));
+  await T('recycle + list + restore', async () => { await api('fs:writeText', D + '\\trashme.txt', 'x'); const r = await job({ type: 'trash', sources: [D + '\\trashme.txt'] }); const l = await api('recycle:list'); const it = l.find((x) => /trashme/.test(x.name)); if (!it) return r + ' not in recycle bin (' + l.length + ')'; await api('recycle:restore', [it.path]); await wait(800); return r + ' restored=' + (await api('fs:exists', D + '\\trashme.txt')); });
+  await T('attributes hidden', async () => { await api('fs:setAttributes', [D + '\\a.txt'], { hidden: true }); const a = await api('fs:attributes', D + '\\a.txt'); await api('fs:setAttributes', [D + '\\a.txt'], { hidden: false }); return JSON.stringify(a); });
+  await T('shortcut', async () => { await api('fs:shortcut', D + '\\a.lnk', D + '\\a.txt'); return api('fs:readLink', D + '\\a.lnk'); });
+  await T('clipboard files', async () => { await api('clip:writeFiles', [D + '\\a.txt'], false); return JSON.stringify(await api('clip:readFiles')); });
+  await T('clipboard text', async () => { await api('clip:writeText', 'dogfile ✓'); return (await api('clip:readText')) === 'dogfile ✓'; });
+  await T('icon for .txt and notepad.exe', async () => { const a = await api('icon:get', D + '\\a.txt', 'normal'); const b = await api('icon:get', 'C:\\Windows\\notepad.exe', 'large'); return `${String(a).slice(0, 30)} | ${String(b).slice(0, 30)}`; });
+  await T('thumbnail (shell)', async () => { const png = 'data:image/png;base64,' + 'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAQ0lEQVR42u3PMQ0AAAgDsM2/aFCBDZKGBdq0Ixe2AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeHoBtIEBtwm8gGcAAAAASUVORK5CYII='; await api('fs:writeDataUrl', D + '\\pic.png', png); const u = await api('thumb:get', D + '\\pic.png', 128); if (!u) return 'no thumbnail'; const r = await fetch(u); return u.slice(0, 40) + ' -> ' + r.status + ' ' + r.headers.get('content-type') + ' ' + (await r.arrayBuffer()).byteLength; });
+  await T('shell verbs', async () => (await api('shell:verbs', D + '\\a.txt')).slice(0, 8).join(', '));
+  await T('zip (7za) + list + extract', async () => { const r = await job({ type: 'compress', sources: [D + '\\a.txt', D + '\\pic.png'], dest: D + '\\made.zip', format: 'zip' }); const l = await api('archive:list', D + '\\made.zip'); const x = await job({ type: 'extract', sources: [D + '\\made.zip'], dest: D + '\\ex' }); return r + ' ' + JSON.stringify((l.items || l).map((e) => e.path || e.name)) + ' extract ' + x + ' ' + (await api('fs:list', D + '\\ex')).items.map((i) => i.name).join(','); });
+  await T('folder size job', async () => { const done = new Promise((res) => { const off = window.atlas.on('work:msg', (m) => { if (m.type === 'done') { off(); res(m); } }); }); await api('work:start', { type: 'size', root: 'C:\\Windows\\Fonts' }); const m = await done; return `${m.files} files ${Math.round(m.total / 1e6)} MB`; });
+  await T('search job (walk)', async () => { const items = []; const done = new Promise((res) => { const off = window.atlas.on('work:msg', (m) => { if (m.type === 'results') items.push(...m.items); if (m.type === 'done' || m.type === 'error') { off(); res(m); } }); }); await api('work:start', { type: 'search', roots: [D], query: 'pic', kind: 'file', recursive: true }); await done; return items.map((i) => i.name).join(','); });
+  await T('index status', async () => JSON.stringify(await api('index:status')).slice(0, 300));
+  await T('pty (powershell)', async () => { let buf = ''; const off = window.atlas.on('pty:data', (m) => { buf += m.d || ''; }); const r = await api('pty:spawn', { shell: 'powershell', cwd: D, cols: 100, rows: 30 }); await wait(2500); await api('pty:write', r.id ?? r, 'echo ("PT" + "Y_" + (40+2))\r'); await wait(2500); off(); await api('pty:kill', r.id ?? r); return /PTY_42/.test(buf) || JSON.stringify(buf.slice(-200)); });
+  await T('watch folder', async () => { const got = ev('watch:changed', () => true, 5000); await api('watch:set', 'pane0', D); await wait(300); await api('fs:writeText', D + '\\new.txt', 'x'); return JSON.stringify(await got); });
+  await T('versions', async () => { await api('versions:save', D + '\\a.txt', 'test'); return (await api('versions:list', D + '\\a.txt')).length; });
+  await T('secret (DPAPI)', async () => { await api('secret:set', 'unittest', 'pw'); return api('secret:has', 'unittest'); });
+  await T('default file manager?', async () => api('default:get'));
+  await T('who locks', async () => JSON.stringify(await api('locks:who', [D + '\\a.txt'])));
+  await T('git status', async () => JSON.stringify(await api('git:status', 'D:\\a\\Dogfile\\Dogfile')).slice(0, 120));
+  await T('everything status', async () => JSON.stringify(await api('everything:status')));
+  await T('find editor', async () => JSON.stringify(await api('sys:findEditor')));
+  await T('cloud detect', async () => JSON.stringify(await api('cloud:detect')).slice(0, 200));
+  await T('mapped drives', async () => JSON.stringify(await api('fs:mapped')));
+  await T('recent (Windows)', async () => (await api('fs:recentWindows')).length);
+  await T('doc text (txt)', async () => api('doc:text', D + '\\a.txt', 100));
+  await T('window maximized?', async () => api('win:control', 'isMaximized'));
+  await log('DONE');
+})()

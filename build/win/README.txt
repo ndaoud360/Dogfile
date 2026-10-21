@@ -56,9 +56,9 @@ NEW IN 2.0: REBUILT ON TAURI + RUST
   Dogfile no longer carries its own copy of Chrome and Node.js. The window is
   drawn by Windows' built-in WebView2 (the Edge engine) and everything else -
   folders, copying, search, archives, media, documents, tags, the terminal - is
-  native Rust inside Dogfile.exe. About a third less memory than 1.6 at start,
-  a 10x smaller download, faster folder listings (25,000 files in ~0.1 s) and
-  no PowerShell helpers running in the background.
+  native Rust inside Dogfile.exe. About a third less memory than 1.6, half
+  the download, big folders list several times faster, and no PowerShell
+  helpers running in the background.
   Instant search index: built at low priority, refreshed only when it is more
   than 6 hours old, and it lets go of its memory after 90 seconds without a
   search (it wakes in a blink on the next one). Windows and program folders are

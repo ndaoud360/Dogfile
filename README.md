@@ -1,12 +1,28 @@
 # Dogfile — source
 
-Electron app (no build step, no runtime dependencies).
+Dogfile 2 is a Tauri app: the interface (`src/renderer/`, plain ES modules, no build step) runs in the system web
+view (WebView2 on Windows), and everything else is Rust in the same process.
 
 ```
-npm install            # installs Electron for development
-npm start              # run from source
-node build/package-win.mjs electron-vXX-win32-x64.zip   # make the portable Windows folder (needs: npm i -D resedit pe-library)
+cargo run -p dogfile                    # the app (Linux needs webkit2gtk-4.1; Windows needs WebView2)
+cargo run -p dogfile-dev                # the interface in any browser at http://127.0.0.1:47800/app/index.html
+cargo test -p dogfile-core              # engine tests
+node build/package-win.mjs Dogfile.exe ffmpeg-win64-shared.zip   # portable Windows folder (+ zip it)
 ```
+Windows builds come from GitHub Actions (`.github/workflows/app.yml`): it builds `Dogfile.exe`, starts it on the
+runner to check it draws, runs Windows checks inside the app (`build/ci/wintest.js`), measures memory next to
+Dogfile 1.6, and publishes the exe on the `app-bin` branch.
+
+Crates
+- `core/` — the engine: instant index (in-memory tree, NTFS file-table reader, watcher, sleeps when idle),
+  parallel folder walker, search, folder sizes, duplicates, storage inventory, checksums.
+- `backend/` — every call the interface makes (`dispatch.rs` routes them by name): files, the copy queue
+  (`ops.rs`), archives, media (ffmpeg), documents, tags, versions, remote (SFTP/FTP/WebDAV), terminal,
+  Windows shell (`win/`: drives, Recycle Bin, thumbnails, icons, shell verbs, clipboard, MTP, registry).
+- `app/` — the Tauri shell: frameless windows, events, dialogs, drag in/out, tray, single instance.
+- `devserver/` — the same back end over HTTP, for development and automated tests.
+
+The Electron version's main process is still in `src/main/` for reference (not used by the app).
 
 Layout
 - `src/main/` — main process: window, `atlas://` protocol (thumbnails/previews with range requests), IPC,

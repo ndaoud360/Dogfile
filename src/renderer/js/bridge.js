@@ -170,10 +170,13 @@
       }
       return '';
     };
+    // a double-click on a title bar maximizes (as with a system title bar) and goes no further
+    let eatDbl = false;
+    window.addEventListener('dblclick', (e) => { if (eatDbl) { eatDbl = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
     window.addEventListener('mousedown', (e) => {
       if (e.button !== 0 || e.defaultPrevented) return;
       if (region(e.target) !== 'drag') return;
-      if (e.detail >= 2) { invoke('win:control', 'max'); e.preventDefault(); return; }
+      if (e.detail >= 2) { invoke('win:control', 'max'); e.preventDefault(); eatDbl = true; return; }
       invoke('win:startDrag');
     });
   }

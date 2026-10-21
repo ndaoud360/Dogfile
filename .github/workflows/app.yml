@@ -100,6 +100,42 @@ jobs:
           $log = if (Test-Path "$out/wintest.log") { Get-Content "$out/wintest.log" } else { @('no log') }
           Write-Output "::notice title=wintest::$($log -join '%0A')"
           Remove-Item Env:ATLAS_TEST, Env:DOGFILE_TEST_LOG, Env:ATLAS_STEPS
+      - name: Auto-update end to end (check, download, install, restart)
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          trap { Write-Output "::error title=updtest::$_"; continue }
+          $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
+          $srv = "$env:RUNNER_TEMP/updsrv"; New-Item -ItemType Directory -Force "$srv/pkg/renderer" | Out-Null
+          # the "new version": this build plus a marker file
+          Copy-Item target/release/dogfile.exe "$srv/pkg/Dogfile.exe"
+          Copy-Item -Recurse -Force src/renderer/* "$srv/pkg/renderer/"
+          Set-Content "$srv/pkg/updated.txt" 'updated'
+          Compress-Archive -Path "$srv/pkg/*" -DestinationPath "$srv/Dogfile-9.9.9-app.zip" -Force
+          $hash = (Get-FileHash "$srv/Dogfile-9.9.9-app.zip" -Algorithm SHA256).Hash.ToLower()
+          $size = (Get-Item "$srv/Dogfile-9.9.9-app.zip").Length
+          $m = @{ version = '9.9.9'; date = '2026-10-22'; notes = "- test"; packages = @(@{ id = 'app'; version = '9.9.9'; url = 'http://127.0.0.1:47961/Dogfile-9.9.9-app.zip'; sha256 = $hash; size = $size }) }
+          $m | ConvertTo-Json -Depth 4 | Set-Content "$srv/latest.json"
+          $py = Start-Process python -ArgumentList '-m', 'http.server', '47961', '--directory', $srv -PassThru -WindowStyle Hidden
+          Start-Sleep -Seconds 2
+          Remove-Item -Recurse -Force target/release/data, target/release/updated.txt -ErrorAction SilentlyContinue
+          if (-not (Test-Path target/release/renderer)) { Copy-Item -Recurse src/renderer target/release/renderer }
+          New-Item -ItemType File -Force target/release/portable.txt | Out-Null
+          New-Item -ItemType Directory -Force target/release/data | Out-Null
+          Set-Content target/release/data/settings.json '{"welcomed":true}'
+          $env:ATLAS_TEST = '1'
+          $env:DOGFILE_TEST_LOG = "$out/updtest.log"
+          $env:DOGFILE_UPDATE_URL = 'http://127.0.0.1:47961/latest.json'
+          $env:ATLAS_STEPS = (ConvertTo-Json -Compress -Depth 3 @(@{ js = (Get-Content -Raw build/ci/updtest.js); wait = 20000 }))
+          Start-Process -FilePath target/release/dogfile.exe | Out-Null
+          Start-Sleep -Seconds 75
+          Get-Process dogfile, msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force
+          Stop-Process -Id $py.Id -Force -ErrorAction SilentlyContinue
+          $log = if (Test-Path "$out/updtest.log") { Get-Content "$out/updtest.log" } else { @('no log') }
+          $inst = if (Test-Path "$env:TEMP/dogfile-update/install.log") { (Get-Content "$env:TEMP/dogfile-update/install.log" | Select-Object -Last 15) } else { @('no install log') }
+          Write-Output "::notice title=updtest::$(($log + '--- install.log ---' + $inst) -join '%0A')"
+          Remove-Item Env:ATLAS_TEST, Env:DOGFILE_TEST_LOG, Env:ATLAS_STEPS, Env:DOGFILE_UPDATE_URL
+          Remove-Item -Force target/release/updated.txt, target/release/Dogfile.exe.bak -ErrorAction SilentlyContinue
       - name: Publish to the app-bin branch (readable with git)
         shell: pwsh
         run: |

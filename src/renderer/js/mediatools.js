@@ -81,7 +81,7 @@ export async function convertImages(paths, format, { maxSide = 0 } = {}) {
   let ok = 0;
   for (const p of paths) {
     try {
-      const img = await new Promise((res, rej) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => res(im); im.onerror = () => rej(new Error('Can’t decode')); im.src = /\.(jpe?g|png|gif|webp|bmp|ico|svg|avif|jfif)$/i.test(p) ? fileUrl(p) : `atlas://media/still?p=${encodeURIComponent(p)}`; });
+      const img = await new Promise((res, rej) => { const im = new Image(); im.crossOrigin = 'anonymous'; im.onload = () => res(im); im.onerror = () => rej(new Error('Can’t decode')); im.src = /\.(jpe?g|png|gif|webp|bmp|ico|svg|avif|jfif)$/i.test(p) ? fileUrl(p) : `/media/still?p=${encodeURIComponent(p)}`; });
       let w = img.naturalWidth, hh = img.naturalHeight;
       if (maxSide && Math.max(w, hh) > maxSide) { const k = maxSide / Math.max(w, hh); w = Math.round(w * k); hh = Math.round(hh * k); }
       const c = document.createElement('canvas'); c.width = w; c.height = hh;

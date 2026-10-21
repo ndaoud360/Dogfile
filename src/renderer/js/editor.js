@@ -806,7 +806,7 @@ async function boot() {
   document.body.classList.toggle('ed-preview-on', !!ed.preview);
   $('ed-new').innerHTML = icon('plus');
   $('ed-new').addEventListener('click', () => newDoc());
-  if (sys.platform !== 'win32' && !EMBED) {
+  if ((sys.platform !== 'win32' || sys.customControls) && !EMBED) {
     const wc = $('win-ctl');
     const mk = (ic, act, title) => { const b = h('button', { class: 'wc-btn ' + act, title, html: icon(ic) }); b.addEventListener('click', () => api('win:control', act)); return b; };
     wc.append(mk('min', 'min', 'Minimize'), mk('max', 'max', 'Maximize'), mk('close', 'close', 'Close'));

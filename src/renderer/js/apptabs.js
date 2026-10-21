@@ -56,7 +56,7 @@ function paneFor(t) { const i = state.panes.slice(0, paneCount()).indexOf(t.id);
 function createFrame(t, pending) {
   ensureHost();
   const q = new URLSearchParams({ embed: '1', id: t.id, pending: JSON.stringify(pending || {}) });
-  const f = h('iframe', { class: 'app-frame', src: `atlas://app/${t.app}.html?${q}`, allow: 'fullscreen; autoplay; clipboard-read; clipboard-write', allowfullscreen: 'true' });
+  const f = h('iframe', { class: 'app-frame', src: `/app/${t.app}.html?${q}`, allow: 'fullscreen; autoplay; clipboard-read; clipboard-write', allowfullscreen: 'true' });
   f.dataset.tab = t.id;
   host.append(f);
   frames.set(t.id, f);

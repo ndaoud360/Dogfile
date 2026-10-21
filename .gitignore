@@ -4,3 +4,4 @@ bin/
 core/target/
 vendor/ffmpeg/
 *.zip
+target/

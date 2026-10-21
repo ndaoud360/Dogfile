@@ -39,7 +39,7 @@ export function scoreCandidate(c, want, duration) {
   return s;
 }
 
-const artUrl = (p, bust) => `atlas://media/art?p=${encodeURIComponent(p)}&b=${bust || 0}`;
+const artUrl = (p, bust) => `/media/art?p=${encodeURIComponent(p)}&b=${bust || 0}`;
 
 export async function openTagEditor(paths) {
   paths = paths.filter(Boolean);
@@ -75,7 +75,7 @@ export async function openTagEditor(paths) {
   const pickCover = async () => {
     const [f] = await api('dialog:openFiles', { title: 'Choose cover art', filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'webp'] }] });
     if (!f) return;
-    const im = await loadImg(`atlas://f/?p=${encodeURIComponent(f)}`);
+    const im = await loadImg(`/f/?p=${encodeURIComponent(f)}`);
     cover = toJpeg(im); showCover(cover);
   };
   const pasteCover = async () => {

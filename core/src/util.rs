@@ -3,7 +3,7 @@ use std::fs::Metadata;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub const SKIP_DIRS: [&str; 4] = ["$Recycle.Bin", "System Volume Information", "$WinREAgent", "Config.Msi"];
+pub const SKIP_DIRS: [&str; 6] = ["$Recycle.Bin", "System Volume Information", "$WinREAgent", "Config.Msi", "WinSxS", "$SysReset"];
 
 pub fn ms(t: std::io::Result<SystemTime>) -> f64 {
     match t {
@@ -70,4 +70,22 @@ pub fn same_path_prefix(path: &str, prefix: &str) -> bool {
     let head = &a[..b.len()];
     let eq = if cfg!(windows) { head.eq_ignore_ascii_case(b) } else { head == b };
     eq && (a.len() == b.len() || matches!(a.as_bytes()[b.len()], b'\\' | b'/') || b.is_empty() || b.ends_with(':'))
+}
+
+/// Run this thread at background priority (also lowers its disk and memory priority on Windows).
+#[cfg(windows)]
+pub fn lower_thread_priority() {
+    unsafe extern "system" {
+        fn GetCurrentThread() -> isize;
+        fn SetThreadPriority(h: isize, p: i32) -> i32;
+    }
+    const THREAD_MODE_BACKGROUND_BEGIN: i32 = 0x0001_0000;
+    unsafe { SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN); }
+}
+#[cfg(not(windows))]
+pub fn lower_thread_priority() {
+    unsafe extern "C" {
+        fn nice(inc: i32) -> i32;
+    }
+    unsafe { nice(10); }
 }

@@ -1,0 +1,87 @@
+# Builds Dogfile (Tauri + Rust) for Windows, runs the engine's tests, starts the app once on the runner to
+# check that it draws and to measure its memory, and publishes Dogfile.exe on the app-bin branch.
+# Results go into annotations (readable through the API).
+name: app
+on:
+  push:
+    branches: [main]
+    paths: ['core/**', 'backend/**', 'app/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/app.yml', 'src/renderer/**']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain
+        run: rustup toolchain install stable --profile minimal && rustup default stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: app-${{ hashFiles('Cargo.lock') }}
+          restore-keys: app-
+      - name: Build
+        shell: pwsh
+        run: |
+          cargo build --release -p dogfile --message-format=short 2>&1 | Tee-Object -FilePath build.log
+          $code = $LASTEXITCODE
+          if ($code -ne 0) {
+            $errs = (Get-Content build.log | Select-String -Pattern '(^|: )error' | Select-Object -First 80) -join '%0A'
+            Write-Output "::error title=build::$errs"
+            $tail = (Get-Content build.log | Select-Object -Last 40) -join '%0A'
+            Write-Output "::error title=build-tail::$tail"
+          } else {
+            $warn = (Get-Content build.log | Select-String -Pattern 'warning' | Select-Object -First 40) -join '%0A'
+            Write-Output "::notice title=build-warnings::$warn"
+          }
+          exit $code
+      - name: Engine tests
+        shell: pwsh
+        run: |
+          cargo test --release -p dogfile-core 2>&1 | Tee-Object -FilePath test.log
+          $code = $LASTEXITCODE
+          $tail = (Get-Content test.log | Select-Object -Last 40) -join '%0A'
+          if ($code -ne 0) { Write-Output "::error title=tests::$tail" } else { Write-Output "::notice title=tests::$((Get-Content test.log | Select-String 'test result') -join '%0A')" }
+          exit $code
+      - name: Start the app, take a screenshot, measure memory
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
+          Copy-Item -Recurse src/renderer target/release/renderer
+          New-Item -ItemType File -Force target/release/portable.txt | Out-Null
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP/files" | Out-Null
+          1..300 | ForEach-Object { Set-Content "$env:RUNNER_TEMP/files/file $_.txt" "hello $_" }
+          $p = Start-Process -FilePath target/release/dogfile.exe -ArgumentList "`"$env:RUNNER_TEMP\files`"" -PassThru
+          Start-Sleep -Seconds 25
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          $g = [System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+          $bmp.Save("$out/screen.png", [System.Drawing.Imaging.ImageFormat]::Png)
+          $procs = @(Get-Process -Id $p.Id -ErrorAction SilentlyContinue) + @(Get-Process msedgewebview2 -ErrorAction SilentlyContinue)
+          $rows = $procs | ForEach-Object { "{0} pid {1}: working set {2:N1} MB, private {3:N1} MB" -f $_.ProcessName, $_.Id, ($_.WorkingSet64/1MB), ($_.PrivateMemorySize64/1MB) }
+          $ws = ($procs | Measure-Object WorkingSet64 -Sum).Sum / 1MB
+          $pv = ($procs | Measure-Object PrivateMemorySize64 -Sum).Sum / 1MB
+          $report = "processes: $($procs.Count)%0A" + ($rows -join '%0A') + ("%0ATOTAL working set {0:N1} MB, private {1:N1} MB" -f $ws, $pv)
+          Write-Output "::notice title=memory::$report"
+          ($rows + ("TOTAL working set {0:N1} MB, private {1:N1} MB" -f $ws, $pv)) | Set-Content "$out/memory.txt"
+          if (Test-Path target/release/data) { Get-ChildItem -Recurse target/release/data | Select-Object -First 30 FullName, Length | Out-String | Set-Content "$out/data.txt" }
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+      - name: Publish to the app-bin branch (readable with git)
+        shell: pwsh
+        run: |
+          $d = "$env:RUNNER_TEMP/binbranch"
+          New-Item -ItemType Directory -Force $d | Out-Null
+          Copy-Item target/release/dogfile.exe $d/Dogfile.exe
+          if (Test-Path "$env:RUNNER_TEMP/smoke") { Copy-Item "$env:RUNNER_TEMP/smoke/*" $d/ }
+          Set-Location $d
+          git init -q -b app-bin
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          git add -A
+          git commit -q -m "Dogfile.exe from ${{ github.sha }}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" app-bin

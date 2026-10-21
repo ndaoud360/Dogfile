@@ -107,7 +107,7 @@ const keyOf = (it, extra = '') => `${it.path}|${it.size || 0}|${Math.round(it.mt
 const NATIVE_IMG = /\.(jpe?g|jfif|png|gif|webp|bmp|avif)$/i;
 async function imageSource(it) {
   if (IS_WIN()) { const t = await api('thumb:get', it.path, 256).catch(() => null); if (t) return t; }
-  return NATIVE_IMG.test(it.path) && (it.size || 0) < 25e6 ? fileUrl(it.path) : `atlas://media/thumb?p=${encodeURIComponent(it.path)}&w=320`;
+  return NATIVE_IMG.test(it.path) && (it.size || 0) < 25e6 ? fileUrl(it.path) : `/media/thumb?p=${encodeURIComponent(it.path)}&w=320`;
 }
 
 const isImg = (i) => !i.isDir && KINDS.image.includes(i.ext);
@@ -209,14 +209,14 @@ export async function runAiSearch(t, query, roots) {
           const info = await api('media:probe', it.path).catch(() => null);
           const dur = parseFloat(info?.format?.duration) || 0;
           const ts = dur > 4 ? [0.1, 0.35, 0.6, 0.85].map((f) => (dur * f).toFixed(1)) : ['0'];
-          const res = await call({ type: 'image', urls: ts.map((s) => `atlas://media/thumb?p=${encodeURIComponent(it.path)}&t=${s}&w=320`) });
+          const res = await call({ type: 'image', urls: ts.map((s) => `/media/thumb?p=${encodeURIComponent(it.path)}&t=${s}&w=320`) });
           vecs = res.filter(Boolean);
         } else {
           const info = await api('media:probe', it.path).catch(() => null);
           const dur = parseFloat(info?.format?.duration) || 0;
           const starts = dur > 60 ? [dur * 0.25, dur * 0.55] : [0];
           const bufs = [];
-          for (const s of starts) { const r = await fetch(`atlas://media/pcm?p=${encodeURIComponent(it.path)}&ss=${s.toFixed(1)}&t=10&sr=48000`); if (r.ok) bufs.push(await r.arrayBuffer()); }
+          for (const s of starts) { const r = await fetch(`/media/pcm?p=${encodeURIComponent(it.path)}&ss=${s.toFixed(1)}&t=10&sr=48000`); if (r.ok) bufs.push(await r.arrayBuffer()); }
           if (bufs.length) vecs = (await call({ type: 'audio', buffers: bufs }, bufs)).filter(Boolean);
         }
       } catch (e) { if (/worker|wasm|onnx|model/i.test(e.message) && !vecs.length && done === 0) { t.searchInfo = { running: false, text: `AI search failed: ${e.message}` }; bus.emit('aiSearchUpdate', t); return; } }

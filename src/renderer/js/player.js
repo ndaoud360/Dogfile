@@ -115,7 +115,7 @@ async function load(i, { startAt = null, autoplay = true } = {}) {
 
 function streamUrl(t) {
   const q = new URLSearchParams({ p: P.item.path, ss: String(t || 0), a: P.aStreams.length ? String(P.audioIdx) : 'none', v: P.mode === 'transcode' ? 'enc' : P.vStream ? 'copy' : 'none', vc: P.vStream?.codec_name || '' });
-  return `atlas://media/stream?${q}`;
+  return `${(sys.streamBase || '/')}media/stream?${q}`;
 }
 
 function setSource(t = 0, autoplay = true) {
@@ -241,7 +241,7 @@ function renderTime() {
     tt.textContent = fmt(t) + (ch?.tags?.title ? ` · ${ch.tags.title}` : '');
     if (P.vStream && sys.ffmpeg && dur() > 0) {
       clearTimeout(thumbTimer);
-      thumbTimer = setTimeout(() => { const k = Math.round(t / Math.max(2, dur() / 200)); if (k === lastThumb) return; lastThumb = k; thumb.src = `atlas://media/thumb?p=${encodeURIComponent(P.item.path)}&t=${t.toFixed(1)}&w=240`; }, 90);
+      thumbTimer = setTimeout(() => { const k = Math.round(t / Math.max(2, dur() / 200)); if (k === lastThumb) return; lastThumb = k; thumb.src = `/media/thumb?p=${encodeURIComponent(P.item.path)}&t=${t.toFixed(1)}&w=240`; }, 90);
       thumb.style.display = 'block';
     } else thumb.style.display = 'none';
   });
@@ -326,7 +326,7 @@ function setupAudioView() {
   const art = $('art');
   art.style.display = 'none';
   const hasPic = (P.info?.streams || []).some((s) => s.disposition?.attached_pic);
-  if (!P.vStream && hasPic && sys.ffmpeg) { art.onload = () => (art.style.display = 'block'); art.src = `atlas://media/art?p=${encodeURIComponent(P.item.path)}${P.item.bust ? `&b=${P.item.bust}` : ''}`; }
+  if (!P.vStream && hasPic && sys.ffmpeg) { art.onload = () => (art.style.display = 'block'); art.src = `/media/art?p=${encodeURIComponent(P.item.path)}${P.item.bust ? `&b=${P.item.bust}` : ''}`; }
   else if (!P.vStream) findFolderArt();
 }
 async function findFolderArt() {
@@ -370,7 +370,7 @@ async function setSub(sel) {
   P.sub = sel;
   P.subCues = [];
   if (sel == null) { rebuildCues(); osd('Subtitles off'); renderButtons(); return; }
-  const url = sel.file ? `atlas://media/sub?p=${encodeURIComponent(sel.file)}` : `atlas://media/sub?p=${encodeURIComponent(P.item.path)}&s=${sel.index}`;
+  const url = sel.file ? `/media/sub?p=${encodeURIComponent(sel.file)}` : `/media/sub?p=${encodeURIComponent(P.item.path)}&s=${sel.index}`;
   try {
     const txt = sel.file && /\.vtt$/i.test(sel.file) ? await (await fetch(fileUrl(sel.file))).text() : await (await fetch(url)).text();
     P.subCues = parseVtt(txt);
@@ -830,7 +830,7 @@ async function openTranscript() {
       const spent = (Date.now() - t0) / 1000;
       const left = off > 0 && total ? (spent / off) * (total - off) : null;
       renderTranscript(`Listening… ${fmt(off)} of ${fmt(total)}${left ? ` · about ${Math.ceil(left / 60)} min left` : ' · the first minute takes longest'}`);
-      const r = await fetch(`atlas://media/pcm?p=${encodeURIComponent(it.path)}&ss=${off}&t=${SEG}&sr=16000`);
+      const r = await fetch(`/media/pcm?p=${encodeURIComponent(it.path)}&ss=${off}&t=${SEG}&sr=16000`);
       if (!r.ok) break;
       const buf = await r.arrayBuffer();
       if (buf.byteLength < 16000 * 4 * 0.5) break;
@@ -1029,7 +1029,7 @@ async function boot() {
   resume = rs || {};
   applyMediaTheme();
   applySubSize();
-  if (sys.platform !== 'win32' && !EMBED) {
+  if ((sys.platform !== 'win32' || sys.customControls) && !EMBED) {
     const wc = $('win-ctl');
     const mk = (ic, act, title) => { const b = h('button', { class: 'wc-btn ' + act, title, html: icon(ic) }); b.addEventListener('click', () => api('win:control', act)); return b; };
     wc.append(mk('min', 'min', 'Minimize'), mk('max', 'max', 'Maximize'), mk('close', 'close', 'Close'));

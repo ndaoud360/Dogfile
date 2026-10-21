@@ -18,7 +18,7 @@ export async function analyzeAudio(path, { force = false } = {}) {
   const st = await api('fs:stat', path).catch(() => null);
   const sig = st ? `v2|${st.size}|${Math.round(st.mtime)}` : '';
   if (!force && c[path] && c[path].sig === sig) return c[path];
-  const r = await fetch(`atlas://media/pcm?p=${encodeURIComponent(path)}&ss=0&t=360`);
+  const r = await fetch(`/media/pcm?p=${encodeURIComponent(path)}&ss=0&t=360`);
   if (!r.ok) throw new Error('Could not decode this audio');
   const buf = await r.arrayBuffer();
   if (buf.byteLength < 22050 * 4 * 5) throw new Error('Audio is too short to analyze');

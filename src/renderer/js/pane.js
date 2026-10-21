@@ -1019,7 +1019,7 @@ function galleryCell(t, it, ix, y, x, w, hh) {
     const k = it.path + '|' + (it.mtime || 0) + '|g';
     const u = thumbCache.get(k);
     art = u ? `<img class="gal-img" src="${u}" alt="" draggable="false" crossorigin="anonymous" data-gal="${esc(it.path)}">` : `<img class="gal-img pending" data-thumb="${esc(it.path)}" data-m="${it.mtime || 0}" data-gal="${esc(it.path)}" data-tw="${Math.min(1024, Math.round(Math.max(w, hh) * (window.devicePixelRatio || 1)))}" alt="" draggable="false" crossorigin="anonymous">`;
-  } else if (MM.isAud(it)) art = `<div class="gal-wave"><img src="atlas://media/wave?p=${encodeURIComponent(it.path)}&w=${Math.min(1200, Math.round(w * (window.devicePixelRatio || 1)))}&h=${Math.round(hh * 0.6 * (window.devicePixelRatio || 1))}&c=${(getComputedStyle(document.documentElement).getPropertyValue('--accent').trim().replace('#', '') || '3b82f6').slice(0, 6)}" alt="" draggable="false" onerror="this.remove()"></div>`;
+  } else if (MM.isAud(it)) art = `<div class="gal-wave"><img src="/media/wave?p=${encodeURIComponent(it.path)}&w=${Math.min(1200, Math.round(w * (window.devicePixelRatio || 1)))}&h=${Math.round(hh * 0.6 * (window.devicePixelRatio || 1))}&c=${(getComputedStyle(document.documentElement).getPropertyValue('--accent').trim().replace('#', '') || '3b82f6').slice(0, 6)}" alt="" draggable="false" onerror="this.remove()"></div>`;
   else art = `<div class="gal-file">${fileArt(it.ext)}</div>`;
   const cap = it.isDir || !(pic || vid) || state.settings.galleryNames;
   return `<div class="cell gal-cell${itemClasses(t, it)}${cap ? ' cap' : ''}${vid ? ' vid' : ''}" data-ix="${ix}" role="option" aria-selected="${t.sel.has(it.path)}" draggable="true" style="transform:translate(${x}px,${y}px);width:${w}px;height:${hh}px">
@@ -1138,7 +1138,7 @@ function hydrateGal(el, t, img) {
     let url = null;
     const tw = +img.dataset.tw || 400;
     if (IS_WIN()) url = await api('thumb:get', p, Math.min(1024, tw)).catch(() => null);
-    if (!url) url = it && MM.isPic(it) && !['heic', 'psd', 'raw', 'cr2', 'nef', 'dng', 'tif', 'tiff', 'arw', 'cr3'].includes(it.ext) ? fileUrl(p) : `atlas://media/thumb?p=${encodeURIComponent(p)}&w=${Math.min(1024, tw)}`;
+    if (!url) url = it && MM.isPic(it) && !['heic', 'psd', 'raw', 'cr2', 'nef', 'dng', 'tif', 'tiff', 'arw', 'cr3'].includes(it.ext) ? fileUrl(p) : `/media/thumb?p=${encodeURIComponent(p)}&w=${Math.min(1024, tw)}`;
     thumbCache.set(key, url);
     if (img.isConnected) show(url);
   })();
@@ -1416,7 +1416,7 @@ function wirePane(el) {
     if (step === scrub.last) return;
     scrub.last = step;
     cancelAnimationFrame(scrubRaf);
-    scrubRaf = requestAnimationFrame(() => { if (scrub?.cell === cell) img.src = `atlas://media/thumb?p=${encodeURIComponent(it.path)}&t=${((step + 0.5) / 12 * m.dur).toFixed(1)}&w=${Math.min(640, Math.round(r.width * (window.devicePixelRatio || 1)))}`; });
+    scrubRaf = requestAnimationFrame(() => { if (scrub?.cell === cell) img.src = `/media/thumb?p=${encodeURIComponent(it.path)}&t=${((step + 0.5) / 12 * m.dur).toFixed(1)}&w=${Math.min(640, Math.round(r.width * (window.devicePixelRatio || 1)))}`; });
   });
   const endScrub = () => { if (!scrub) return; scrub.cell.classList.remove('scrubbing'); scrub.img.src = scrub.orig; scrub = null; };
   inner.addEventListener('mouseleave', endScrub);
@@ -1659,6 +1659,33 @@ window.atlas?.on?.('drag:ended', ({ x, y, paths }) => {
   const fe = fakeEvent({ clientX: x, clientY: y }, hit.el);
   if (hit.tgt.hover(fe)) hit.tgt.drop(fe, ps);
 });
+
+// files dragged in from Explorer, the desktop or another app (and Dogfile's own drags that left the window and
+// came back): the app reports them with the pointer position, and the same drop targets light up and take them
+{
+  let nd = null;
+  const light = (node) => { if (nd.lit === node) return; nd.lit?.classList.remove('drop-on'); nd.lit = node; nd.lit?.classList.add('drop-on'); };
+  const clear = () => { if (!nd) return; nd.cur?.leave?.(); light(null); nd = null; document.body.classList.remove('item-dragging'); };
+  window.addEventListener('dogfile:nativedrag', ({ detail: d }) => {
+    if (d.type === 'leave') { clear(); return; }
+    if (!nd) nd = { cur: null, lit: null, paths: [] };
+    if (d.paths?.length) nd.paths = d.paths;
+    const ev = { clientX: d.x, clientY: d.y };
+    const hit = targetAt(d.x, d.y);
+    const fe = hit && fakeEvent(ev, hit.el);
+    const tgt = hit && hit.tgt.hover(fe) ? hit.tgt : null;
+    if (d.type === 'drop') {
+      const paths = nd.paths;
+      clear();
+      dragPaths = null;
+      if (tgt && paths.length) tgt.drop(fe, paths);
+      return;
+    }
+    document.body.classList.add('item-dragging');
+    if (tgt !== nd.cur) { nd.cur?.leave?.(); nd.cur = tgt; nd.cur?.enter?.(); }
+    light(tgt ? tgt.hover(fe) : null);
+  });
+}
 
 export function attachDropTarget(node, resolveDir, hiliteFn, opts = {}) {
   registerDropTarget(node, {

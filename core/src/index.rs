@@ -9,10 +9,9 @@
 use crate::matcher::Spec;
 use crate::proto;
 use crate::util;
-use crate::walk::{self, Ent, Visit, WalkOpts};
+use crate::walk::Ent;
 use rayon::prelude::*;
 use serde_json::{json, Value};
-use std::collections::HashMap;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -41,8 +40,9 @@ pub struct Tree {
     pub root: String, // "C:\" or "/home/me"
     pub entries: Vec<E>,
     pub names: Vec<u8>,
-    pub lower: Vec<u8>,
-    pub children: HashMap<u32, Vec<u32>>,
+    /// each folder's first child and each entry's next sibling (a linked list per folder: 8 bytes an entry)
+    pub first: Vec<u32>,
+    pub next: Vec<u32>,
     pub deleted: usize,
     pub built_at: f64,
     pub method: String,
@@ -50,9 +50,6 @@ pub struct Tree {
 
 fn sep() -> char {
     if cfg!(windows) { '\\' } else { '/' }
-}
-fn lower_ascii(s: &str) -> Vec<u8> {
-    s.as_bytes().iter().map(|b| b.to_ascii_lowercase()).collect()
 }
 fn eq_name(a: &[u8], b: &str) -> bool {
     if cfg!(windows) { a.eq_ignore_ascii_case(b.as_bytes()) } else { a == b.as_bytes() }
@@ -62,7 +59,13 @@ impl Tree {
     pub fn new(root: &str, method: &str) -> Tree {
         let mut t = Tree { root: root.to_string(), method: method.into(), built_at: util::now_ms(), ..Default::default() };
         t.entries.push(E { parent: NONE, name_off: 0, name_len: 0, flags: F_DIR, size: 0, mtime: 0, files: 0 });
+        t.first.push(NONE);
+        t.next.push(NONE);
         t
+    }
+    /// the children of a folder
+    pub fn kids(&self, parent: u32) -> Kids<'_> {
+        Kids { t: self, cur: self.first.get(parent as usize).copied().unwrap_or(NONE) }
     }
     pub fn live(&self) -> usize {
         self.entries.len() - self.deleted
@@ -71,19 +74,20 @@ impl Tree {
         let e = &self.entries[i as usize];
         std::str::from_utf8(&self.names[e.name_off as usize..e.name_off as usize + e.name_len as usize]).unwrap_or("")
     }
-    fn lname(&self, i: u32) -> &[u8] {
+    fn name_bytes(&self, i: u32) -> &[u8] {
         let e = &self.entries[i as usize];
-        &self.lower[e.name_off as usize..e.name_off as usize + e.name_len as usize]
+        &self.names[e.name_off as usize..e.name_off as usize + e.name_len as usize]
     }
     /// Add an entry under `parent` (no size bookkeeping; see `insert`).
     pub fn push(&mut self, parent: u32, name: &str, flags: u16, size: u64, mtime: i64) -> u32 {
         let off = self.names.len() as u32;
         let nm = if name.len() > u16::MAX as usize { &name[..u16::MAX as usize] } else { name };
         self.names.extend_from_slice(nm.as_bytes());
-        self.lower.extend(lower_ascii(nm));
         let i = self.entries.len() as u32;
         self.entries.push(E { parent, name_off: off, name_len: nm.len() as u16, flags, size, mtime, files: 0 });
-        self.children.entry(parent).or_default().push(i);
+        self.first.push(NONE);
+        self.next.push(self.first[parent as usize]);
+        self.first[parent as usize] = i;
         i
     }
     pub fn path(&self, mut i: u32) -> String {
@@ -121,7 +125,7 @@ impl Tree {
         }
     }
     fn child(&self, parent: u32, name: &str) -> Option<u32> {
-        self.children.get(&parent)?.iter().copied().find(|&c| self.entries[c as usize].flags & F_DELETED == 0 && eq_name(&self.names[self.entries[c as usize].name_off as usize..][..self.entries[c as usize].name_len as usize], name))
+        self.kids(parent).find(|&c| self.entries[c as usize].flags & F_DELETED == 0 && eq_name(self.name_bytes(c), name))
     }
     fn rel_parts<'a>(&self, path: &'a str) -> Option<Vec<&'a str>> {
         if !util::same_path_prefix(path, &self.root) { return None }
@@ -214,12 +218,18 @@ impl Tree {
         if e.flags & F_DELETED != 0 { return }
         let (s, f) = if e.flags & F_DIR != 0 { (e.size, e.files) } else if e.flags & F_LINK != 0 { (0, 0) } else { (e.size, 1) };
         self.add_up(e.parent, -(s as i64), -(f as i64));
-        if let Some(v) = self.children.get_mut(&e.parent) { v.retain(|&c| c != i) }
+        // unlink from the parent's list
+        let p = e.parent as usize;
+        if self.first[p] == i { self.first[p] = self.next[i as usize] } else {
+            let mut c = self.first[p];
+            while c != NONE { let n = self.next[c as usize]; if n == i { self.next[c as usize] = self.next[i as usize]; break } c = n }
+        }
         let mut stack = vec![i];
         while let Some(x) = stack.pop() {
             self.entries[x as usize].flags |= F_DELETED;
             self.deleted += 1;
-            if let Some(kids) = self.children.remove(&x) { stack.extend(kids) }
+            stack.extend(self.kids(x));
+            self.first[x as usize] = NONE;
         }
     }
     /// Drop deleted entries (keeps parents before children).
@@ -228,7 +238,7 @@ impl Tree {
         t.entries.push(self.entries[0]);
         let mut stack: Vec<(u32, u32)> = vec![(0, 0)];
         while let Some((old, new)) = stack.pop() {
-            let kids = self.children.get(&old).cloned().unwrap_or_default();
+            let kids: Vec<u32> = self.kids(old).collect();
             for c in kids {
                 let e = self.entries[c as usize];
                 if e.flags & F_DELETED != 0 { continue }
@@ -296,12 +306,13 @@ impl Tree {
         r.read_exact(&mut b4)?;
         let mut names = vec![0u8; u32::from_le_bytes(b4) as usize];
         r.read_exact(&mut names)?;
-        let lower = names.iter().map(|b| b.to_ascii_lowercase()).collect();
-        let mut t = Tree { root, entries, names, lower, children: HashMap::new(), deleted: 0, built_at, method };
+        let n = entries.len();
+        let mut t = Tree { root, entries, names, first: vec![NONE; n], next: vec![NONE; n], deleted: 0, built_at, method };
         for i in 1..t.entries.len() as u32 {
             let e = t.entries[i as usize];
             if e.flags & F_DELETED != 0 { t.deleted += 1; continue }
-            t.children.entry(e.parent).or_default().push(i);
+            t.next[i as usize] = t.first[e.parent as usize];
+            t.first[e.parent as usize] = i;
         }
         t.aggregate();
         Ok(t)
@@ -309,32 +320,68 @@ impl Tree {
 }
 
 /// Build a tree by walking the folders (works everywhere, no special rights).
-pub fn build_by_walk(root: &str, cancel: &AtomicBool, progress: &(dyn Fn(u64) + Sync)) -> Tree {
-    // collect in parallel, then assemble in folder order
-    struct Raw { parent: PathBuf, e: Ent }
-    let raw: Mutex<Vec<Raw>> = Mutex::new(Vec::with_capacity(1 << 16));
-    let n = AtomicU64::new(0);
-    let opts = WalkOpts { recursive: true, skip_dirs: &[], cancel: Some(cancel) };
-    walk::walk(&[PathBuf::from(root)], &opts, |parent, e| {
-        if e.is_dir && util::is_skip_dir(&e.name) { return Visit::SkipChildren }
-        let k = n.fetch_add(1, Ordering::Relaxed);
-        if k % 20000 == 0 { progress(k) }
-        raw.lock().unwrap().push(Raw { parent: parent.to_path_buf(), e: e.clone() });
-        Visit::Continue
-    }, |_, _| {});
-    let mut raw = raw.into_inner().unwrap();
-    // parents first: sort by depth
-    raw.par_sort_by_key(|r| r.e.path.components().count());
-    let mut t = Tree::new(root, "scan");
-    let mut dir_idx: HashMap<PathBuf, u32> = HashMap::new();
-    dir_idx.insert(PathBuf::from(root), 0);
-    for r in raw {
-        let Some(&p) = dir_idx.get(&r.parent) else { continue };
-        let i = t.push(p, &r.e.name, Tree::flags_of(&r.e), if r.e.is_dir { 0 } else { r.e.size }, r.e.mtime as i64);
-        if r.e.is_dir && !r.e.is_link { dir_idx.insert(r.e.path, i); }
+pub struct Kids<'a> {
+    t: &'a Tree,
+    cur: u32,
+}
+impl Iterator for Kids<'_> {
+    type Item = u32;
+    fn next(&mut self) -> Option<u32> {
+        if self.cur == NONE { return None }
+        let c = self.cur;
+        self.cur = self.t.next[c as usize];
+        Some(c)
     }
+}
+
+pub fn build_by_walk(root: &str, cancel: &AtomicBool, progress: &(dyn Fn(u64) + Sync)) -> Tree {
+    // One folder level at a time: the folders of a level are read in parallel (on the small background pool),
+    // then added in order, so parents always come before children and only one level's listings are held.
+    let mut t = Tree::new(root, "scan");
+    let mut frontier: Vec<(u32, PathBuf)> = vec![(0, PathBuf::from(root))];
+    let mut n = 0u64;
+    while !frontier.is_empty() && !cancel.load(Ordering::Relaxed) {
+        let lists: Vec<(u32, Vec<Ent>)> = background_pool().install(|| {
+            frontier.par_iter().map(|(di, dir)| {
+                let mut v = Vec::new();
+                if let Ok(rd) = std::fs::read_dir(dir) {
+                    for d in rd.flatten() {
+                        if let Some(e) = Ent::from_dir_entry(&d) {
+                            if e.is_dir && util::is_skip_dir(&e.name) { continue }
+                            v.push(e);
+                        }
+                    }
+                }
+                (*di, v)
+            }).collect()
+        });
+        let mut next: Vec<(u32, PathBuf)> = Vec::new();
+        for (di, list) in lists {
+            for e in list {
+                let i = t.push(di, &e.name, Tree::flags_of(&e), if e.is_dir { 0 } else { e.size }, e.mtime as i64);
+                if e.is_dir && !e.is_link { next.push((i, e.path)) }
+                n += 1;
+                if n % 20000 == 0 { progress(n) }
+            }
+        }
+        frontier = next;
+    }
+    t.names.shrink_to_fit();
+    t.entries.shrink_to_fit();
+    t.first.shrink_to_fit();
+    t.next.shrink_to_fit();
     t.aggregate();
     t
+}
+
+/// A small pool for rebuilding the index in the background: at most two threads, at low priority, so the
+/// computer (and Dogfile's window) stays responsive while it runs.
+pub fn background_pool() -> &'static rayon::ThreadPool {
+    static P: OnceLock<rayon::ThreadPool> = OnceLock::new();
+    P.get_or_init(|| {
+        let n = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(2).clamp(1, 4) / 2;
+        rayon::ThreadPoolBuilder::new().num_threads(n.max(1)).thread_name(|i| format!("dogfile-index-{i}")).start_handler(|_| util::lower_thread_priority()).build().expect("pool")
+    })
 }
 
 // ---------------- the index service ----------------
@@ -388,6 +435,7 @@ pub fn configure(j: &Value) -> Value {
     }
     let want: Vec<String> = j["roots"].as_array().map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default();
     let rescan = j["rescan"].as_bool().unwrap_or(true);
+    if let Some(ms) = j["rescanAfter"].as_u64() { rescan_after.store(ms, Ordering::Relaxed) }
     let mft = j["mft"].as_bool().unwrap_or(true);
     {
         let mut roots = svc.roots.write().unwrap();
@@ -407,7 +455,12 @@ pub fn configure(j: &Value) -> Value {
     status()
 }
 
+/// how old a saved index may be before the start-up refresh (default 6 hours)
+#[allow(non_upper_case_globals)]
+static rescan_after: AtomicU64 = AtomicU64::new(6 * 3600 * 1000);
+
 fn start_root(r: Arc<Root>, rescan: bool, mft: bool) {
+    util::lower_thread_priority();
     let dir = service().data_dir.lock().unwrap().clone();
     let file = index_file(&dir, &r.path);
     let t0 = std::time::Instant::now();
@@ -420,7 +473,10 @@ fn start_root(r: Arc<Root>, rescan: bool, mft: bool) {
         announce(&r);
     }
     start_watch(&r);
-    if had && !rescan { return }
+    // a saved index is kept up to date by the watcher while Dogfile runs; rebuild only when it is missing, or
+    // older than `rescanAfter` (changes made while Dogfile was closed), in the background at low priority
+    let stale = { let b = r.tree.read().unwrap().as_ref().map(|t| t.built_at).unwrap_or(0.0); util::now_ms() - b > rescan_after.load(Ordering::Relaxed) as f64 };
+    if had && (!rescan || !stale) { return }
     rebuild(&r, mft, &file);
 }
 
@@ -530,9 +586,9 @@ pub struct Hit {
 fn ancestors_ok(t: &Tree, mut p: u32, skip: &[Vec<u8>], include_hidden: bool) -> bool {
     if skip.is_empty() && include_hidden { return true }
     while p != 0 && p != NONE {
-        let ln = t.lname(p);
+        let ln = t.name_bytes(p);
         if !include_hidden && ln.first() == Some(&b'.') { return false }
-        if skip.iter().any(|s| s.as_slice() == ln) { return false }
+        if skip.iter().any(|s| s.eq_ignore_ascii_case(ln)) { return false }
         p = t.entries[p as usize].parent;
     }
     true
@@ -564,20 +620,22 @@ pub fn search(j: &Value) -> Result<Value, String> {
     for (gi, (g, scope)) in guards.iter().enumerate() {
         let Some(t) = g.as_ref() else { continue };
         let sidx = match scope { Some(s) => match t.lookup(s) { Some(i) => i, None => continue }, None => 0 };
-        let found: Vec<u32> = (1..t.entries.len() as u32).into_par_iter().filter(|&i| {
+        let found: Vec<u32> = (1..t.entries.len() as u32).into_par_iter().map_init(String::new, |buf, i| {
             let e = &t.entries[i as usize];
-            if e.flags & F_DELETED != 0 { return false }
-            if !recursive && e.parent != sidx { return false }
+            if e.flags & F_DELETED != 0 { return None }
+            if !recursive && e.parent != sidx { return None }
             let name = t.name(i);
-            let low = std::str::from_utf8(t.lname(i)).unwrap_or("");
-            let low_owned;
-            let low = if low.is_ascii() || name.is_ascii() { low } else { low_owned = name.to_lowercase(); &low_owned };
-            spec.name_ok(name, low, e.flags & F_DIR != 0, e.flags & F_HIDDEN != 0)
+            // lower-case on the fly (no second copy of every name in memory)
+            buf.clear();
+            if name.is_ascii() { buf.extend(name.chars().map(|c| c.to_ascii_lowercase())) } else { buf.push_str(&name.to_lowercase()) }
+            let low = buf.as_str();
+            let ok = spec.name_ok(name, low, e.flags & F_DIR != 0, e.flags & F_HIDDEN != 0)
                 && spec.meta_ok(e.flags & F_DIR != 0, e.size, e.mtime as f64, e.mtime as f64, e.mtime as f64)
                 && (sidx == 0 || recursive && t.is_under(e.parent, sidx))
                 && (!spec.has_path_words() || spec.path_ok(&t.path(i).to_lowercase()))
-                && ancestors_ok(t, e.parent, &skip, include_hidden)
-        }).collect();
+                && ancestors_ok(t, e.parent, &skip, include_hidden);
+            if ok { Some(i) } else { None }
+        }).flatten().collect();
         total += found.len();
         hits.extend(found.into_iter().map(|i| (gi, i)));
     }
@@ -587,7 +645,7 @@ pub fn search(j: &Value) -> Result<Value, String> {
         "size" => hits.par_sort_by(|a, b| tr(b.0).entries[b.1 as usize].size.cmp(&tr(a.0).entries[a.1 as usize].size)),
         "mtime" | "date" => hits.par_sort_by(|a, b| tr(b.0).entries[b.1 as usize].mtime.cmp(&tr(a.0).entries[a.1 as usize].mtime)),
         "path" => hits.par_sort_by_cached_key(|h| tr(h.0).path(h.1).to_lowercase()),
-        _ => hits.par_sort_by(|a, b| tr(a.0).lname(a.1).cmp(tr(b.0).lname(b.1))),
+        _ => hits.par_sort_by(|a, b| { let (x, y) = (tr(a.0).name_bytes(a.1), tr(b.0).name_bytes(b.1)); x.iter().map(u8::to_ascii_lowercase).cmp(y.iter().map(u8::to_ascii_lowercase)) }),
     }
     let items: Vec<Value> = hits.iter().skip(offset).take(limit).map(|&(gi, i)| {
         let t = tr(gi);

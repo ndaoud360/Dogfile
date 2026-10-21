@@ -298,7 +298,7 @@ mod image_details {
         assert_eq!(get("sparse-file").unwrap().size, 500005);
         let m = get("many_subdirs").unwrap();
         assert!(m.flags & F_DIR != 0);
-        assert_eq!(t.children.get(&t.lookup("T:\\many_subdirs").unwrap()).map(|v| v.len()), Some(512));
+        assert_eq!(Some(t.kids(t.lookup("T:\\many_subdirs").unwrap()).count()), Some(512));
         let e = get("empty-file").unwrap();
         assert_eq!(e.size, 0);
         // 2021-01-01 13:37 in whatever time zone the image was made in

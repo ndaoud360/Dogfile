@@ -8,6 +8,16 @@ use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
+type Sink = Box<dyn Fn(Value) + Send + Sync>;
+static SINK: OnceLock<Sink> = OnceLock::new();
+/// Inside the app: every message goes to this function instead of stdout.
+pub fn set_sink(f: impl Fn(Value) + Send + Sync + 'static) {
+    let _ = SINK.set(Box::new(f));
+}
+pub fn has_sink() -> bool {
+    SINK.get().is_some()
+}
+
 fn out() -> &'static Mutex<std::io::Stdout> {
     static OUT: OnceLock<Mutex<std::io::Stdout>> = OnceLock::new();
     OUT.get_or_init(|| Mutex::new(std::io::stdout()))
@@ -26,6 +36,10 @@ pub fn send(id: u64, kind: &str, body: Value) {
     };
     m.insert("id".into(), json!(id));
     m.insert("type".into(), json!(kind));
+    if let Some(s) = SINK.get() {
+        s(Value::Object(m));
+        return;
+    }
     let line = serde_json::to_string(&Value::Object(m)).unwrap_or_else(|_| "{}".into());
     let lock = out().lock();
     if let Ok(mut o) = lock {

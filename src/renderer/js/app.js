@@ -54,7 +54,7 @@ function applyTheme() {
   document.body.classList.toggle('show-preview', !!s.showPreview);
   document.body.classList.toggle('ribbon-pinned', !!s.ribbonPinned);
   document.body.classList.toggle('no-status', s.showStatusBar === false);
-  if (IS_WIN()) { const cs = getComputedStyle(root); api('win:overlay', { color: cs.getPropertyValue('--tabbar').trim() || (dark ? '#151618' : '#efeff0'), symbolColor: cs.getPropertyValue('--text-2').trim() || (dark ? '#c9cacc' : '#3a3a3a') }); }
+  if (IS_WIN() && !sys.customControls) { const cs = getComputedStyle(root); api('win:overlay', { color: cs.getPropertyValue('--tabbar').trim() || (dark ? '#151618' : '#efeff0'), symbolColor: cs.getPropertyValue('--text-2').trim() || (dark ? '#c9cacc' : '#3a3a3a') }); }
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => { systemDark = e.matches; applyTheme(); });
 bus.on('theme', applyTheme);
@@ -349,7 +349,7 @@ function initMenubar() {
   $('ops-btn').innerHTML = icon('sync');
   $('st-mid').addEventListener('click', gitMenu);
   // custom window controls when there is no native overlay (Linux/macOS dev builds)
-  if (!IS_WIN()) {
+  if (!IS_WIN() || sys.customControls) {
     const wc = $('win-ctl');
     const mk = (ic, act, title) => { const b = h('button', { class: 'wc-btn ' + act, title, html: icon(ic) }); b.addEventListener('click', () => api('win:control', act)); return b; };
     wc.append(mk('min', 'min', 'Minimize'), mk('max', 'max', 'Maximize'), mk('close', 'close', 'Close'));

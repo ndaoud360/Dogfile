@@ -682,7 +682,7 @@ export async function properties(items) {
   await propertiesDialog(items, {
     folderSize,
     refresh: () => loadTab(t, { soft: true }),
-    renderThumb: (el, it) => { el.innerHTML = it.isDir ? icon('folder') : icon('page'); if (!it.isDir && kindOf(it) === 'image') el.innerHTML = `<img src="atlas://f/?p=${encodeURIComponent(it.path)}">`; },
+    renderThumb: (el, it) => { el.innerHTML = it.isDir ? icon('folder') : icon('page'); if (!it.isDir && kindOf(it) === 'image') el.innerHTML = `<img src="/f/?p=${encodeURIComponent(it.path)}">`; },
   });
 }
 

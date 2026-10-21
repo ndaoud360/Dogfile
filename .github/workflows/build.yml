@@ -5,7 +5,7 @@ name: build
 on:
   push:
     branches: [main]
-    paths: ['core/**', '.github/workflows/build.yml']
+    paths: ['.github/workflows/build.yml']
   workflow_dispatch:
 permissions:
   contents: write

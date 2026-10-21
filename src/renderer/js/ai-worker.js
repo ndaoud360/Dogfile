@@ -1,12 +1,12 @@
 // AI search worker: turns text, pictures and sounds into comparable vectors with open models running locally.
-// CLIP (pictures, video frames) and CLAP (music, sounds). Models load from atlas://models/ (downloaded once).
+// CLIP (pictures, video frames) and CLAP (music, sounds). Models load from /models/ (downloaded once).
 import { env, pipeline, AutoTokenizer, AutoProcessor, RawImage, CLIPTextModelWithProjection, CLIPVisionModelWithProjection, ClapTextModelWithProjection, ClapAudioModelWithProjection } from '../vendor/transformers.min.js';
 
 env.allowRemoteModels = false;
 env.allowLocalModels = true;
-env.localModelPath = 'atlas://models/';
+env.localModelPath = '/models/';
 env.useBrowserCache = false;
-env.backends.onnx.wasm.wasmPaths = 'atlas://app/vendor/ort/';
+env.backends.onnx.wasm.wasmPaths = '/app/vendor/ort/';
 env.backends.onnx.wasm.numThreads = 1;
 
 const REPO = { clip: 'Xenova/clip-vit-base-patch32', clap: 'Xenova/clap-htsat-unfused', whisper: 'Xenova/whisper-base', minilm: 'Xenova/all-MiniLM-L6-v2' };

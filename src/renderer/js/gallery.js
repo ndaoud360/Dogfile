@@ -133,7 +133,7 @@ export async function findSimilarMedia(t = activeTab()) {
       const v = vids[i], m = MM.metaOf(v) || {};
       status.textContent = `Looking at videos… ${i + 1} of ${vids.length}`;
       const hs = [];
-      for (const f of [0.25, 0.5, 0.75]) { if (await load(`atlas://media/thumb?p=${encodeURIComponent(v.path)}&t=${((m.dur || 10) * f).toFixed(1)}&w=96`)) hs.push(MM.analyzeImage(im)?.hash); }
+      for (const f of [0.25, 0.5, 0.75]) { if (await load(`/media/thumb?p=${encodeURIComponent(v.path)}&t=${((m.dur || 10) * f).toFixed(1)}&w=96`)) hs.push(MM.analyzeImage(im)?.hash); }
       vh.push({ it: v, hs: hs.filter(Boolean), dur: m.dur || 0 });
     }
     const used = new Set();

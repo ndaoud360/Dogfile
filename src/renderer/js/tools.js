@@ -300,7 +300,7 @@ export async function similarImageGroups(files, { onProgress, cancelled = () => 
       const f = files[i];
       if (i % 10 === 0) onProgress?.(i, files.length);
       let src = IS_WIN() ? await api('thumb:get', f.path, 96).catch(() => null) : null;
-      if (!src) src = /\.(jpe?g|jfif|png|webp|bmp|gif|avif)$/i.test(f.path) ? `atlas://f/?p=${encodeURIComponent(f.path)}` : `atlas://media/thumb?p=${encodeURIComponent(f.path)}&w=96`;
+      if (!src) src = /\.(jpe?g|jfif|png|webp|bmp|gif|avif)$/i.test(f.path) ? `/f/?p=${encodeURIComponent(f.path)}` : `/media/thumb?p=${encodeURIComponent(f.path)}&w=96`;
       const im = await load(src);
       if (!im) continue;
       g.drawImage(im, 0, 0, 9, 8);
@@ -344,7 +344,7 @@ export async function findSimilarImages() {
     groups = await similarImageGroups(files, { onProgress: (i, n) => { status.textContent = `Looking at pictures… ${i.toLocaleString()} of ${n.toLocaleString()}`; }, cancelled: () => cancelled });
     const wasted = groups.reduce((a, gg) => a + gg.slice(1).reduce((s2, x) => s2 + (x.f.size || 0), 0), 0);
     status.textContent = groups.length ? `${groups.length} sets of similar pictures · ${fmtSize(wasted)} could be freed. The best copy (largest) is kept unticked.` : 'No similar pictures found.';
-    list.innerHTML = groups.slice(0, 300).map((gg, gi) => `<div class="dupe-group sim"><div class="dg-head">${gg.length} similar</div><div class="sim-row">${gg.map((x, fi) => `<label class="sim-card" title="${esc(x.f.path)}"><img src="atlas://f/?p=${encodeURIComponent(x.f.path)}" loading="lazy" alt=""><span><input type="checkbox" data-g="${gi}" data-f="${fi}" ${fi > 0 ? 'checked' : ''}> ${x.w}×${x.h} · ${fmtSize(x.f.size || 0)}</span><span class="hint">${esc(x.f.name)}</span></label>`).join('')}</div></div>`).join('');
+    list.innerHTML = groups.slice(0, 300).map((gg, gi) => `<div class="dupe-group sim"><div class="dg-head">${gg.length} similar</div><div class="sim-row">${gg.map((x, fi) => `<label class="sim-card" title="${esc(x.f.path)}"><img src="/f/?p=${encodeURIComponent(x.f.path)}" loading="lazy" alt=""><span><input type="checkbox" data-g="${gi}" data-f="${fi}" ${fi > 0 ? 'checked' : ''}> ${x.w}×${x.h} · ${fmtSize(x.f.size || 0)}</span><span class="hint">${esc(x.f.name)}</span></label>`).join('')}</div></div>`).join('');
   })();
   await modal({
     title: `Similar pictures in ${basename(t.path)}`, width: 900, body: h('div', { class: 'stack' }, status, list),

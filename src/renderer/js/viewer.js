@@ -28,7 +28,7 @@ async function srcFor(p) {
   const b = bust.has(p) ? `&b=${bust.get(p)}` : '';
   if (NATIVE.has(ext)) return fileUrl(p) + b;
   if (sys.platform === 'win32') { const t = await api('thumb:get', p, 2560).catch(() => null); if (t) return t; }
-  return `atlas://media/still?p=${encodeURIComponent(p)}${b}`;
+  return `/media/still?p=${encodeURIComponent(p)}${b}`;
 }
 async function show(i, { fade = false } = {}) {
   if (!V.list.length) { $('vw-empty').style.display = ''; return; }
@@ -189,7 +189,7 @@ function renderQueue() {
   box.querySelectorAll('img[data-p]').forEach(async (im) => {
     const p = im.dataset.p;
     let u = thumbs.get(p);
-    if (!u) { u = sys.platform === 'win32' ? await api('thumb:get', p, 200).catch(() => null) : null; if (!u) u = NATIVE.has((p.split('.').pop() || '').toLowerCase()) ? fileUrl(p) : `atlas://media/thumb?p=${encodeURIComponent(p)}&w=200`; thumbs.set(p, u); }
+    if (!u) { u = sys.platform === 'win32' ? await api('thumb:get', p, 200).catch(() => null) : null; if (!u) u = NATIVE.has((p.split('.').pop() || '').toLowerCase()) ? fileUrl(p) : `/media/thumb?p=${encodeURIComponent(p)}&w=200`; thumbs.set(p, u); }
     im.src = u;
   });
   box.querySelector('.cur')?.scrollIntoView({ block: 'nearest' });
@@ -735,7 +735,7 @@ async function boot() {
   settings = { ...DEFAULT_SETTINGS, ...(st || {}) };
   setNativeDialogs(settings.nativeDialogs);
   applyMediaTheme();
-  if (sys.platform !== 'win32' && !EMBED) {
+  if ((sys.platform !== 'win32' || sys.customControls) && !EMBED) {
     const wc = $('win-ctl');
     const mk = (ic, act, title) => { const b = h('button', { class: 'wc-btn ' + act, title, html: icon(ic) }); b.addEventListener('click', () => api('win:control', act)); return b; };
     wc.append(mk('min', 'min', 'Minimize'), mk('max', 'max', 'Maximize'), mk('close', 'close', 'Close'));

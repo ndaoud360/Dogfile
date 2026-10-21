@@ -285,7 +285,7 @@ export function h(tag, attrs = {}, ...children) {
   for (const c of children.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : document.createTextNode(c));
   return el;
 }
-export const fileUrl = (p) => `atlas://f/?p=${encodeURIComponent(p)}`;
+export const fileUrl = (p) => `/f/?p=${encodeURIComponent(p)}`;
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
 // ---------------- settings & state ----------------

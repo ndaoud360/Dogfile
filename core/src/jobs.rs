@@ -390,6 +390,64 @@ pub fn list(j: &Value) -> Result<Value, String> {
     Ok(json!({ "path": dir, "items": items }))
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Item {
+    name: String,
+    path: String,
+    is_dir: bool,
+    is_link: bool,
+    broken: bool,
+    size: Option<u64>,
+    mtime: f64,
+    ctime: f64,
+    atime: f64,
+    hidden: bool,
+    system: bool,
+    readonly: bool,
+    ext: String,
+}
+/// The same listing as `list`, written straight to JSON text (no intermediate values): big folders list fast.
+pub fn list_raw(dir: &str) -> Result<String, String> {
+    let rd = std::fs::read_dir(dir).map_err(|e| match e.kind() {
+        std::io::ErrorKind::PermissionDenied => "EACCES".to_string(),
+        std::io::ErrorKind::NotFound => "ENOENT".to_string(),
+        _ => e.to_string(),
+    })?;
+    let ents: Vec<std::fs::DirEntry> = rd.flatten().collect();
+    let parts: Vec<String> = ents.par_chunks(256).map(|chunk| {
+        let mut out = String::with_capacity(chunk.len() * 220);
+        for d in chunk {
+            let Ok(ft) = d.file_type() else { continue };
+            let is_link = ft.is_symlink();
+            let Ok(md) = d.metadata() else { continue };
+            let name = d.file_name().to_string_lossy().into_owned();
+            let a = util::attrs(&md, &name);
+            let (is_dir, broken, tmd) = if is_link {
+                match std::fs::metadata(d.path()) { Ok(t) => (t.is_dir(), false, t), Err(_) => (false, true, md.clone()) }
+            } else { (ft.is_dir(), false, md) };
+            let it = Item { ext: if is_dir { String::new() } else { util::ext_of(&name) }, path: util::path_str(&d.path()), name, is_dir, is_link, broken,
+                size: if is_dir { None } else { Some(tmd.len()) }, mtime: util::ms(tmd.modified()), ctime: util::ctime(&tmd), atime: util::ms(tmd.accessed()),
+                hidden: a.hidden, system: a.system, readonly: a.readonly };
+            if !out.is_empty() { out.push(',') }
+            if let Ok(j) = serde_json::to_string(&it) { out.push_str(&j) }
+        }
+        out
+    }).collect();
+    let mut s = String::with_capacity(parts.iter().map(|p| p.len() + 1).sum::<usize>() + dir.len() + 32);
+    s.push_str("{\"path\":");
+    s.push_str(&serde_json::to_string(dir).unwrap_or_default());
+    s.push_str(",\"items\":[");
+    let mut first = true;
+    for p in parts.iter().filter(|p| !p.is_empty()) {
+        if !first { s.push(',') }
+        s.push_str(p);
+        first = false;
+    }
+    s.push_str("]}");
+    Ok(s)
+}
+
 /// Run a job and report: messages keep the old worker's shape.
 pub fn run(id: u64, kind: &str, j: Value) {
     let cancel = proto::register(id);

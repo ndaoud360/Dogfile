@@ -138,6 +138,21 @@ async fn invoke(req: Req) -> Resp {
         _ => vec![],
     };
     let win = if req.win.is_empty() { v["win"].as_str().unwrap_or("main-1").to_string() } else { req.win.clone() };
+    // folder listings: written straight to JSON (a folder of 25,000 files is a 6 MB answer)
+    if name == "fs:list" {
+        if let Some(dir) = args.first().and_then(|d| d.as_str()).map(String::from) {
+            if !dir.starts_with("\\\\") || dir.trim_end_matches('\\').matches('\\').count() > 2 {
+                let d2 = dir.clone();
+                if let Ok(Ok(raw)) = tokio::task::spawn_blocking(move || dogfile_core::jobs::list_raw(&d2)).await {
+                    let mut b = Vec::with_capacity(raw.len() + 16);
+                    b.extend_from_slice(b"{\"ok\":true,\"v\":");
+                    b.extend_from_slice(raw.as_bytes());
+                    b.push(b'}');
+                    return Resp::bytes(200, "application/json", b);
+                }
+            }
+        }
+    }
     match dispatch::call(&win, &name, args).await {
         Ok(v) => Resp::json(&json!({ "ok": true, "v": v })),
         Err(e) => Resp::json(&json!({ "ok": false, "error": e })),
@@ -161,7 +176,9 @@ fn app_file(rest: &str) -> Resp {
         } else {
             html.insert_str(0, BRIDGE_TAG);
         }
-        return Resp::bytes(200, mime("html"), html.into_bytes()).header("Cache-Control", "no-cache");
+        let r = Resp::bytes(200, mime("html"), html.into_bytes()).header("Cache-Control", "no-cache");
+        // test runs can profile the page
+        return if st().test_mode { r.header("Document-Policy", "js-profiling") } else { r };
     }
     let mut r = serve_file(&file, None, true, "no-cache");
     // the feature sandbox may run the feature's code but can't load other scripts or reach the network

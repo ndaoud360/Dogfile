@@ -103,7 +103,7 @@
       fire('dragend', p.src, p);
     };
     window.addEventListener('dragstart', (e) => {
-      if (e.__dog || !e.isTrusted) return;
+      if (e.__dog || (!e.isTrusted && !e.__dogTest)) return;
       // the system drag would swallow the rest of the gesture: cancel it and run our own
       e.preventDefault(); e.stopImmediatePropagation();
       const src = e.target.nodeType === 1 ? e.target : e.target.parentElement;

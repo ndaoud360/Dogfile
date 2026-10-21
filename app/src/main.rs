@@ -594,6 +594,11 @@ fn main() {
                 }
             }
             host().handle_launch(l, true);
+            if test_mode {
+                if let Ok(steps) = std::env::var("ATLAS_STEPS") {
+                    std::thread::spawn(move || run_test_steps(&steps));
+                }
+            }
             Ok(())
         })
         .on_window_event(|w, e| match e {
@@ -670,4 +675,27 @@ fn save_bounds_soon(w: tauri::Window) {
             host().save_bounds(&w);
         }
     });
+}
+
+/// Test runs (ATLAS_TEST=1, ATLAS_STEPS=[{js, wait, shot, win}]): run each step's script in a window, print what
+/// it returns, and save a screenshot of the screen (X11, with ImageMagick's `import`).
+fn run_test_steps(steps: &str) {
+    let steps: Vec<Value> = serde_json::from_str(steps).unwrap_or_default();
+    std::thread::sleep(std::time::Duration::from_millis(std::env::var("ATLAS_SHOT_DELAY").ok().and_then(|v| v.parse().ok()).unwrap_or(4000)));
+    for st in steps {
+        let win = st["win"].as_str().map(String::from).or_else(|| host().windows().into_iter().find(|w| w.starts_with("main"))).unwrap_or("main-1".into());
+        if let Some(js) = st["js"].as_str() {
+            if let Some(w) = host().win(&win) {
+                let script = format!("(async()=>{{try{{const r=await ({js});window.atlas.invoke('test:log',typeof r==='string'?r:JSON.stringify(r))}}catch(e){{window.atlas.invoke('test:log','ERR '+(e&&e.stack||e))}}}})()");
+                let _ = w.eval(script);
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(st["wait"].as_u64().unwrap_or(800)));
+        if let Some(shot) = st["shot"].as_str() {
+            let _ = std::process::Command::new("import").args(["-window", "root", shot]).status();
+            println!("[shot] {shot}");
+        }
+    }
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    host().quit();
 }

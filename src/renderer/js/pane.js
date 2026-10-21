@@ -364,6 +364,25 @@ export function isNetworkPath(p) {
   return !!d;
 }
 
+// Natural, case-insensitive name order (file2 before file10), like Explorer. Plain names compare by a key worked
+// out once per item (numbers padded), which is many times faster than the locale collator on big folders; names
+// with accents or other scripts still use the collator.
+// punctuation sorts before digits and letters, in the locale collator's order
+const PUNCT_RANK = Object.fromEntries([...' _-,;:!?.\'"()[]{}@*/\\&#%`^+<=>|~$'].map((c, i) => [c, String.fromCharCode(1 + i)]));
+function natKey(it) {
+  if (it._nk !== undefined && it._nkn === it.name) return it._nk;
+  const n = it.name;
+  let k = null;
+  if (/^[\x20-\x7e]*$/.test(n)) k = n.toLowerCase().replace(/[^a-z0-9]/g, (c) => PUNCT_RANK[c] || c).replace(/\d+/g, (d) => { const t = d.replace(/^0+(?=\d)/, ''); return String.fromCharCode(48 + Math.min(t.length, 40)) + t; });
+  it._nk = k; it._nkn = n;
+  return k;
+}
+function nameCmp(a, b) {
+  const x = natKey(a), y = natKey(b);
+  if (x !== null && y !== null) return x < y ? -1 : x > y ? 1 : natCmp(a.name, b.name);
+  return natCmp(a.name, b.name);
+}
+
 export function recompute(t) {
   let list = t.items.filter(visibleFilter);
   const ft = filterTest(t.filter || '');
@@ -375,8 +394,9 @@ export function recompute(t) {
   const { key, dir } = t.sort;
   if (key !== 'none') {
     const ff = state.settings.foldersFirst;
+    const byName = (a, b) => nameCmp(a, b);
     const val = {
-      name: (a, b) => natCmp(a.name, b.name),
+      name: byName,
       mtime: (a, b) => (a.mtime || 0) - (b.mtime || 0),
       ctime: (a, b) => (a.ctime || 0) - (b.ctime || 0),
       size: (a, b) => (a.size ?? -1) - (b.size ?? -1),
@@ -397,7 +417,7 @@ export function recompute(t) {
     list.sort((a, b) => {
       if (ff && a.isDir !== b.isDir && key !== 'location') return a.isDir ? -1 : 1;
       const r = val(a, b);
-      return (r || natCmp(a.name, b.name)) * dir;
+      return (r || byName(a, b)) * dir;
     });
   }
   // grouping

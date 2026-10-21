@@ -385,3 +385,22 @@ export function toast(msg, opts = {}) {
   requestAnimationFrame(() => el.classList.add('show'));
   setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, opts.ms || (opts.error ? 6000 : 3200));
 }
+
+// ---- background jobs (search, folder sizes, duplicates…): messages routed by job id ----
+// A job's first messages can arrive before its id reaches the caller (answers and events travel separately),
+// so messages for unknown ids are kept for a while and handed over when the caller starts listening.
+const workHandlers = new Map();
+const workEarly = new Map();
+export function onWorkMsgFor(id, fn) {
+  const h = (m) => { if (m.type === 'done' || m.type === 'error') workHandlers.delete(id); fn(m); };
+  workHandlers.set(id, h);
+  const q = workEarly.get(id);
+  if (q) { workEarly.delete(id); for (const m of q) h(m); }
+}
+export function onWorkMsg(m) {
+  const f = workHandlers.get(m.id);
+  if (f) { f(m); return true; }
+  if (!workEarly.has(m.id)) { workEarly.set(m.id, []); setTimeout(() => workEarly.delete(m.id), 30000); }
+  workEarly.get(m.id).push(m);
+  return false;
+}

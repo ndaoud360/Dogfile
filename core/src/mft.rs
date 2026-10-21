@@ -237,7 +237,8 @@ pub fn to_tree(recs: &[Rec], root: &str) -> Tree {
         let Some(list) = kids.get(&rec) else { continue };
         for &c in list {
             let r = &recs[c as usize];
-            if r.is_dir && (r.name == "$Extend" || crate::util::is_skip_dir(&r.name)) && rec == 5 { continue }
+            if r.is_dir && rec == 5 && r.name == "$Extend" { continue }
+            if r.is_dir && crate::util::index_skip(&r.name, rec == 5) { continue }
             let flags = (if r.is_dir { F_DIR } else { 0 }) | (if r.attrs & 2 != 0 { F_HIDDEN } else { 0 }) | (if r.attrs & 4 != 0 { F_SYSTEM } else { 0 }) | (if r.link { F_LINK } else { 0 });
             let i = t.push(idx, &r.name, flags, if r.is_dir { 0 } else { r.size }, r.mtime);
             if r.is_dir && !r.link { queue.push_back((c, i)) }

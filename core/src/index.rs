@@ -153,7 +153,7 @@ impl Tree {
         let ps = util::path_str(path);
         let Some(parts) = self.rel_parts(&ps) else { return };
         if parts.is_empty() { return }
-        if parts.iter().any(|p| util::is_skip_dir(p)) { return }
+        if parts.iter().enumerate().any(|(k, p)| util::index_skip(p, k == 0)) { return }
         let mut cur = 0u32;
         let mut built = PathBuf::from(&self.root);
         for (k, part) in parts.iter().enumerate() {
@@ -203,7 +203,7 @@ impl Tree {
             let Ok(rd) = std::fs::read_dir(&dir) else { continue };
             for d in rd.flatten() {
                 let Some(c) = Ent::from_dir_entry(&d) else { continue };
-                if c.is_dir && util::is_skip_dir(&c.name) { continue }
+                if c.is_dir && util::index_skip(&c.name, false) { continue }
                 let ci = self.push(di, &c.name, Tree::flags_of(&c), if c.is_dir { 0 } else { c.size }, c.mtime as i64);
                 if c.is_dir { if !c.is_link { stack.push((c.path.clone(), ci)) } } else if !c.is_link { self.add_up(di, c.size as i64, 1) }
             }
@@ -347,7 +347,7 @@ pub fn build_by_walk(root: &str, cancel: &AtomicBool, progress: &(dyn Fn(u64) + 
                 if let Ok(rd) = std::fs::read_dir(dir) {
                     for d in rd.flatten() {
                         if let Some(e) = Ent::from_dir_entry(&d) {
-                            if e.is_dir && util::is_skip_dir(&e.name) { continue }
+                            if e.is_dir && util::index_skip(&e.name, *di == 0) { continue }
                             v.push(e);
                         }
                     }
@@ -436,6 +436,7 @@ pub fn configure(j: &Value) -> Value {
     let want: Vec<String> = j["roots"].as_array().map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default();
     let rescan = j["rescan"].as_bool().unwrap_or(true);
     if let Some(ms) = j["rescanAfter"].as_u64() { rescan_after.store(ms, Ordering::Relaxed) }
+    if let Some(b) = j["system"].as_bool() { util::INDEX_SYSTEM.store(b, Ordering::Relaxed) }
     let mft = j["mft"].as_bool().unwrap_or(true);
     {
         let mut roots = svc.roots.write().unwrap();
@@ -715,7 +716,7 @@ pub fn refresh(j: &Value) -> Value {
         if !want.is_empty() && !r.path.eq_ignore_ascii_case(&want) { continue }
         let f = index_file(&service().data_dir.lock().unwrap(), &r.path);
         let mft = j["mft"].as_bool().unwrap_or(true);
-        std::thread::spawn(move || rebuild(&r, mft, &f));
+        std::thread::spawn(move || { util::lower_thread_priority(); rebuild(&r, mft, &f) });
     }
     status()
 }

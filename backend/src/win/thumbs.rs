@@ -117,7 +117,7 @@ fn remember(key: String, v: (Vec<u8>, bool)) {
     } else {
         c.order.push_back(key);
     }
-    while c.bytes > 24 * 1048576 {
+    while c.bytes > 8 * 1048576 {
         let Some(k) = c.order.pop_front() else { break };
         if let Some(v) = c.map.remove(&k) {
             c.bytes -= v.0.len();

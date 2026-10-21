@@ -47,31 +47,33 @@ jobs:
           $tail = (Get-Content test.log | Select-Object -Last 40) -join '%0A'
           if ($code -ne 0) { Write-Output "::error title=tests::$tail" } else { Write-Output "::notice title=tests::$((Get-Content test.log | Select-String 'test result') -join '%0A')" }
           exit $code
-      - name: Start the app, take a screenshot, measure memory
+      - name: Start the app, take screenshots, measure memory (and the old Electron version for comparison)
         shell: pwsh
         continue-on-error: true
         run: |
           $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
+          $files = "$env:RUNNER_TEMP\files"; New-Item -ItemType Directory -Force $files | Out-Null
+          1..300 | ForEach-Object { Set-Content "$files/file $_.txt" "hello $_" }
           Copy-Item -Recurse src/renderer target/release/renderer
           New-Item -ItemType File -Force target/release/portable.txt | Out-Null
-          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP/files" | Out-Null
-          1..300 | ForEach-Object { Set-Content "$env:RUNNER_TEMP/files/file $_.txt" "hello $_" }
-          $p = Start-Process -FilePath target/release/dogfile.exe -ArgumentList "`"$env:RUNNER_TEMP\files`"" -PassThru
-          Start-Sleep -Seconds 25
-          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
-          $g = [System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
-          $bmp.Save("$out/screen.png", [System.Drawing.Imaging.ImageFormat]::Png)
-          $procs = @(Get-Process -Id $p.Id -ErrorAction SilentlyContinue) + @(Get-Process msedgewebview2 -ErrorAction SilentlyContinue)
-          $rows = $procs | ForEach-Object { "{0} pid {1}: working set {2:N1} MB, private {3:N1} MB" -f $_.ProcessName, $_.Id, ($_.WorkingSet64/1MB), ($_.PrivateMemorySize64/1MB) }
-          $ws = ($procs | Measure-Object WorkingSet64 -Sum).Sum / 1MB
-          $pv = ($procs | Measure-Object PrivateMemorySize64 -Sum).Sum / 1MB
-          $report = "processes: $($procs.Count)%0A" + ($rows -join '%0A') + ("%0ATOTAL working set {0:N1} MB, private {1:N1} MB" -f $ws, $pv)
-          Write-Output "::notice title=memory::$report"
-          ($rows + ("TOTAL working set {0:N1} MB, private {1:N1} MB" -f $ws, $pv)) | Set-Content "$out/memory.txt"
-          if (Test-Path target/release/data) { Get-ChildItem -Recurse target/release/data | Select-Object -First 30 FullName, Length | Out-String | Set-Content "$out/data.txt" }
-          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          $noIndex = '{"indexEnabled":false,"welcomed":true,"uiMode":"simple"}'
+          # Dogfile 2 without the index
+          New-Item -ItemType Directory -Force target/release/data | Out-Null
+          Set-Content target/release/data/settings.json $noIndex
+          ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$files`"" -Label tauri-noindex -Out $out -Shot
+          # Dogfile 2 with the index (the default)
+          Remove-Item -Recurse -Force target/release/data
+          ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$files`"" -Label tauri-index -Out $out -Seconds 40
+          # Dogfile 1.6 (Electron) without the index, same folder and settings
+          npm install --no-save --ignore-scripts electron@33.4.11 2>&1 | Out-Null
+          node node_modules/electron/install.js 2>&1 | Out-Null
+          $el = "node_modules/electron/dist/electron.exe"
+          if (Test-Path $el) {
+            New-Item -ItemType Directory -Force node_modules/electron/dist/data | Out-Null
+            Set-Content node_modules/electron/dist/data/settings.json $noIndex
+            $env:ATLAS_PORTABLE = '1'
+            ./build/ci/measure.ps1 -Exe $el -ArgList ". `"$files`"" -Label electron-noindex -Out $out -Shot
+          } else { Write-Output "::warning title=electron::not installed" }
       - name: Publish to the app-bin branch (readable with git)
         shell: pwsh
         run: |

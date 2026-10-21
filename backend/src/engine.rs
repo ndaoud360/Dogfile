@@ -137,7 +137,7 @@ pub async fn index_roots() -> Vec<String> {
 pub async fn configure_index(rescan: bool) -> R {
     let roots = index_roots().await;
     let data = st().data_dir.join("Index");
-    request("index.configure", json!({ "roots": roots, "dataDir": data.to_string_lossy(), "rescan": rescan, "mft": setting_bool("indexMft", true) })).await
+    request("index.configure", json!({ "roots": roots, "dataDir": data.to_string_lossy(), "rescan": rescan, "mft": setting_bool("indexMft", true), "system": setting_bool("indexSystem", false) })).await
 }
 pub async fn index_status() -> R {
     let s = request("index.status", json!({})).await?;

@@ -253,7 +253,13 @@ pub async fn handle(route: &str, req: &Req) -> Resp {
             let w = qf("w", 200.0) as u32;
             let vf = format!("scale={w}:-2");
             let args = sv(&["-hide_banner", "-loglevel", "error", "-nostdin", "-skip_frame", "nokey", "-ss", &t.to_string(), "-i", &file, "-frames:v", "1", "-vf", &vf, "-f", "image2", "-c:v", "mjpeg", "-q:v", "6", "pipe:1"]);
-            img("image/jpeg", run_buffer(&args, 10000).await, "max-age=600")
+            let mut b = run_buffer(&args, 10000).await;
+            if b.is_none() {
+                // few key frames (screen recordings): decode up to the moment instead
+                let args = sv(&["-hide_banner", "-loglevel", "error", "-nostdin", "-ss", &t.to_string(), "-i", &file, "-frames:v", "1", "-vf", &vf, "-f", "image2", "-c:v", "mjpeg", "-q:v", "6", "pipe:1"]);
+                b = run_buffer(&args, 10000).await;
+            }
+            img("image/jpeg", b, "max-age=600")
         }
         _ => Resp::text(404, "not found"),
     }

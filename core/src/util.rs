@@ -57,6 +57,17 @@ pub fn is_skip_dir(name: &str) -> bool {
     SKIP_DIRS.iter().any(|s| s.eq_ignore_ascii_case(name))
 }
 
+/// Leave Windows' own folders and programs out of the index (the default): they hold a large share of a system
+/// drive's files and nobody searches them for their documents. `top` is true for folders at the drive's top.
+pub static INDEX_SYSTEM: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+const SYSTEM_TOP: [&str; 10] = ["Windows", "Program Files", "Program Files (x86)", "ProgramData", "$Windows.~BT", "$Windows.~WS", "Recovery", "PerfLogs", "MSOCache", "$GetCurrent"];
+pub fn index_skip(name: &str, top: bool) -> bool {
+    if is_skip_dir(name) { return true }
+    if INDEX_SYSTEM.load(std::sync::atomic::Ordering::Relaxed) { return false }
+    if top && cfg!(windows) && SYSTEM_TOP.iter().any(|s| s.eq_ignore_ascii_case(name)) { return true }
+    name.eq_ignore_ascii_case("AppData")
+}
+
 pub fn path_str(p: &Path) -> String {
     p.to_string_lossy().into_owned()
 }

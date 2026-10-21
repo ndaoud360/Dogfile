@@ -25,3 +25,17 @@ pub fn accent_color() -> Option<String> {
     let v = reg_dword(r"Software\Microsoft\Windows\DWM", "AccentColor")?;
     Some(format!("{:02x}{:02x}{:02x}ff", v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff))
 }
+
+/// Ask the web view to use as little memory as it can while the window is minimized or hidden, and go back to
+/// normal when it's shown again.
+pub fn webview_memory_low(w: &tauri::WebviewWindow, low: bool) {
+    let _ = w.with_webview(move |pw| unsafe {
+        use webview2_com::Microsoft::Web::WebView2::Win32::{ICoreWebView2_19, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL};
+        use windows_core::Interface;
+        if let Ok(core) = pw.controller().CoreWebView2() {
+            if let Ok(c19) = core.cast::<ICoreWebView2_19>() {
+                let _ = c19.SetMemoryUsageTargetLevel(if low { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW } else { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL });
+            }
+        }
+    });
+}

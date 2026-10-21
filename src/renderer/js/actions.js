@@ -2,7 +2,7 @@
 // virtual locations (Home, This PC, Recent, Recycle Bin, Network, Tags), and context menus.
 import {
   api, state, sys, bus, h, isVirtual, isRemote, remoteParts, onMain, pjoin, dirname, basename, normalize, samePath, isInside, extname, stem,
-  fmtSize, toast, IS_WIN, isMtp, isTextFile, isMediaFile, isImageFile, addRecentFile, tagsOf, setTags, moveTags, saveLibrary, saveSettings, kindOf, KINDS, virtualTitle, setDriveNames, uid,
+  fmtSize, toast, onWorkMsgFor, IS_WIN, isMtp, isTextFile, isMediaFile, isImageFile, addRecentFile, tagsOf, setTags, moveTags, saveLibrary, saveSettings, kindOf, KINDS, virtualTitle, setDriveNames, uid,
 } from './core.js';
 import {
   activeTab, paneTab, navigate, openTab, loadTab, renderTabPanes, selectedItems, startRename, selectOnly, otherPaneTab,
@@ -122,12 +122,16 @@ export function runJob(spec) {
   if (spec.network == null) { const net = (p) => p && (/^\\\\/.test(p) || (state.drives || []).some((d) => d.type === 'network' && d.path && String(p).toUpperCase().startsWith(d.path.toUpperCase().slice(0, 2)))); spec = { ...spec, network: net(spec.dest) || (spec.sources || []).some(net) }; }
   return new Promise(async (resolve) => {
     const id = await api('ops:start', spec);
+    // a quick job can finish before its id arrives here (events and answers travel separately)
+    if (finishedEarly.has(id)) { const j = finishedEarly.get(id); finishedEarly.delete(id); resolve(j); return; }
     jobWaiters.set(id, resolve);
   });
 }
+const finishedEarly = new Map();
 export function onJobFinished(j) {
   const r = jobWaiters.get(j.id);
   if (r) { jobWaiters.delete(j.id); r(j); }
+  else { finishedEarly.set(j.id, j); if (finishedEarly.size > 50) finishedEarly.delete(finishedEarly.keys().next().value); }
   if (!(j.status === 'done' && j.undo && !undoing)) bus.emit('jobDone', j);
   if (j.status === 'done' && j.undo && !undoing) pushUndo(j.undo, j.title);
   if (j.locked?.length && IS_WIN()) bus.emit('jobLocked', j);
@@ -686,23 +690,16 @@ export async function properties(items) {
   });
 }
 
-const sizeWaiters = new Map();
 export function folderSize(p, onProgress, children = false) {
   return new Promise(async (resolve) => {
     // the instant index already knows every folder's size
     if (!children && !onProgress) { const r = (await api('index:sizes', [p]).catch(() => ({})))[p]; if (r) return resolve({ total: r.size, files: r.files, dirs: null, indexed: true }); }
     const id = await api('work:start', { type: 'size', root: p, children });
-    sizeWaiters.set(id, { resolve, onProgress });
+    onWorkMsgFor(id, (m) => {
+      if (m.type === 'progress') onProgress?.(m);
+      else if (m.type === 'done' || m.type === 'error') resolve(m.type === 'done' ? m : { total: 0, files: 0, dirs: 0 });
+    });
   });
-}
-export function onWorkMsg(m) {
-  const w = sizeWaiters.get(m.id);
-  if (w) {
-    if (m.type === 'progress') w.onProgress?.(m);
-    else if (m.type === 'done' || m.type === 'error') { sizeWaiters.delete(m.id); w.resolve(m.type === 'done' ? m : { total: 0, files: 0, dirs: 0 }); }
-    return true;
-  }
-  return false;
 }
 
 export async function openTerminal(t = activeTab(), kind, admin) {

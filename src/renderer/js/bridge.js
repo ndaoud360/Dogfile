@@ -14,19 +14,39 @@
   window.__dogWin = win;
   const inApp = /(^|\.)dogfile\.localhost$/.test(location.hostname) || location.protocol === 'dogfile:';
 
+  // Calls that start a job answer with its id, and the job's events can overtake that answer (they travel
+  // separately). While such a call is on its way, events wait, so the caller is listening for its id first.
+  const STARTERS = /^(work:start|ops:start|pty:spawn|media:(job|contactSheet|export)|remote:(get|put)|ai:download|tags:identify)$/;
+  let starting = 0;
+  const held = [];
+  const flush = () => { if (starting) return; while (held.length) { const [c, d] = held.shift(); deliver(c, d); } };
+  const H = { inc: () => { starting++; }, dec: () => { starting = Math.max(0, starting - 1); flush(); } };
+  if (isTop) window.__dogHold = H;
   async function invoke(name, ...args) {
     // a missing last argument stays missing (not null), like the old IPC
     while (args.length && args[args.length - 1] === undefined) args.pop();
-    const r = await fetch('/invoke', { method: 'POST', headers: { 'content-type': 'application/json', 'x-dog-win': win }, body: JSON.stringify({ name, args, win }) });
-    if (!r.ok) throw new Error(`${name}: HTTP ${r.status}`);
-    const j = await r.json();
-    if (!j.ok) throw new Error(j.error || 'Failed');
-    return j.v;
+    const st = STARTERS.test(name);
+    const hold = isTop ? H : top.__dogHold; // app tabs (iframes) hold their window's events
+    if (st) hold?.inc();
+    try {
+      const r = await fetch('/invoke', { method: 'POST', headers: { 'content-type': 'application/json', 'x-dog-win': win }, body: JSON.stringify({ name, args, win }) });
+      if (!r.ok) throw new Error(`${name}: HTTP ${r.status}`);
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'Failed');
+      return j.v;
+    } finally {
+      // let the caller's code after `await` run (and start listening) before the held events go out
+      if (st) setTimeout(() => hold?.dec(), 0);
+    }
   }
 
   const listeners = new Map();
   function dispatch(c, d) {
     if (c === 'dogfile:drag') return nativeDrag(d);
+    if (starting || held.length) { held.push([c, d]); if (!starting) flush(); return; }
+    deliver(c, d);
+  }
+  function deliver(c, d) {
     const s = listeners.get(c);
     if (s) for (const fn of [...s]) { try { fn(d); } catch (e) { console.error(e); } }
   }

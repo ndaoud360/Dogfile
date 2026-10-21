@@ -21,7 +21,7 @@ use tauri::{AppHandle, DragDropEvent, Manager, PhysicalPosition, PhysicalSize, R
 
 /// Browser flags shared by every window (they must match, or WebView2 refuses the second window).
 /// One renderer process for all of Dogfile's pages (same site), and nothing running in the background.
-const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,msEdgeTranslate,msImplicitSignin,msWebView2TextureStream --process-per-site --disable-background-networking --disable-component-update --disable-domain-reliability --no-pings";
+const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,msEdgeTranslate,msImplicitSignin,msWebView2TextureStream,SpareRendererForSitePerProcess,MediaRouter,OptimizationHints,Translate,AutofillServerCommunication --process-per-site --disable-background-networking --disable-component-update --disable-domain-reliability --no-pings";
 
 fn page_url(page: &str, query: &str) -> WebviewUrl {
     let q = if query.is_empty() { String::new() } else { format!("?{query}") };
@@ -46,9 +46,6 @@ impl AppHost {
     }
     fn win(&self, label: &str) -> Option<WebviewWindow> {
         self.app().get_webview_window(label)
-    }
-    fn data_dir(&self) -> PathBuf {
-        dogfile_backend::st().data_dir.clone()
     }
     fn theme_bg(&self, kind: &str) -> tauri::window::Color {
         if kind == "player" {
@@ -127,6 +124,8 @@ impl AppHost {
         let want_new = launch["newWindow"].as_bool().unwrap_or(false) || dogfile_backend::setting_bool("openInNewWindow", false);
         if let Some(target) = wins.first().and_then(|l| self.win(l)) {
             if !want_new {
+                #[cfg(windows)]
+                winx::webview_memory_low(&target, false);
                 let _ = target.show();
                 let _ = target.unminimize();
                 let _ = target.set_focus();
@@ -608,11 +607,26 @@ fn main() {
                     api.prevent_close();
                     h.emit(w.label(), "app:beforeHide", json!({}));
                     let _ = w.hide();
+                    #[cfg(windows)]
+                    if let Some(wv) = h.win(w.label()) {
+                        winx::webview_memory_low(&wv, true);
+                    }
                     h.tray_icon();
                 }
             }
             WindowEvent::Resized(_) | WindowEvent::Moved(_) => {
                 save_bounds_soon(w.clone());
+                #[cfg(windows)]
+                if let Some(wv) = host().win(w.label()) {
+                    let low = w.is_minimized().unwrap_or(false);
+                    static LOW: Mutex<Option<HashMap<String, bool>>> = Mutex::new(None);
+                    let mut m = LOW.lock();
+                    let m = m.get_or_insert_with(HashMap::new);
+                    if m.get(w.label()) != Some(&low) {
+                        m.insert(w.label().to_string(), low);
+                        winx::webview_memory_low(&wv, low);
+                    }
+                }
                 if w.label().starts_with("main") {
                     let m = w.is_maximized().unwrap_or(false);
                     host().emit(w.label(), "win:state", json!({ "maximized": m }));

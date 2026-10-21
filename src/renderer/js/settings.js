@@ -275,6 +275,7 @@ export async function openSettings(section = 'general', opts = {}) {
         row('Custom commands', cmds),
         group('Search'),
         row('Instant search index', h('div', { class: 'stack' }, toggle('indexEnabled'), indexBox), 'Dogfile keeps a list of every file on your drives, so searches, Go to file (Ctrl+P) and folder sizes are instant. It stays up to date while Dogfile runs.'),
+        row('Index Windows and program folders', toggle('indexSystem'), 'Off by default: Windows, Program Files, ProgramData and AppData hold most of a system drive\'s files and take memory, but are rarely searched. Searching inside them still works, just without the index.'),
         row('AI search', h('div', { class: 'row-inline' }, toggle('aiSearch'), h('button', { class: 'btn small', onclick: () => import('./ai.js').then((m) => m.modelsDialog()) }, 'Models…')), 'Search photos, videos and songs by describing them (“photos of a dog running on grass”). Runs privately on this PC with free models downloaded once.'),
         (() => {
           const st = h('div', { class: 'hint' }, 'Searches ask voidtools Everything for instant whole-disk results. Needs Everything running and its command-line tool es.exe.');

@@ -7,15 +7,15 @@ import { modal, prompt, confirm, conflictDialog } from './dialogs.js';
 import * as A from './actions.js';
 import { showMenu } from './menu.js';
 import { runAiSearch, looksLikeAiQuery } from './ai.js';
-bus.on('aiWorkStarted', ({ id, onMsg }) => workHandlers.set(id, (m) => { onMsg(m); if (m.type === 'done' || m.type === 'error') workHandlers.delete(id); }));
+bus.on('aiWorkStarted', ({ id, onMsg }) => onWorkMsgFor(id, onMsg));
 bus.on('aiSearchUpdate', (t) => { recompute(t); renderTabPanes(t); bus.emit('status'); });
 
 // ======================================================================
 // Search
 // ======================================================================
-const workHandlers = new Map();
-export function onWorkMsgFor(id, fn) { workHandlers.set(id, (m) => { if (m.type === 'done' || m.type === 'error') workHandlers.delete(id); fn(m); }); }
-export function onWorkMsg(m) { const f = workHandlers.get(m.id); if (f) f(m); }
+// (work-message routing lives in core.js so every module shares the early-message buffer)
+import { onWorkMsgFor, onWorkMsg } from './core.js';
+export { onWorkMsgFor, onWorkMsg };
 
 export function searchUrl(o) {
   const q = new URLSearchParams();

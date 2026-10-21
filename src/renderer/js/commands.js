@@ -431,11 +431,11 @@ function filePalette() {
     status.textContent = 'Indexing subfolders…';
     api('work:start', { type: 'search', roots: [t.path], query: '', maxResults: 30000, skipDirs: ['node_modules', '.git', '__pycache__', '.venv', '$RECYCLE.BIN'] }).then((id) => {
       workId = id;
-      const off = window.atlas.on('work:msg', (m) => {
-        if (m.id !== id) return;
+      const off = () => {};
+      import('./core.js').then(({ onWorkMsgFor }) => onWorkMsgFor(id, (m) => {
         if (m.type === 'results') { for (const it of m.items) add(it.path, it.isDir, 'below'); status.textContent = `${pool.size.toLocaleString()} items indexed…`; drawSoon(); }
         if (m.type === 'done' || m.type === 'error') { off(); status.textContent = `${pool.size.toLocaleString()} items`; draw(); }
-      });
+      }));
     });
   }
   const drawSoon = debounce(draw, 120);

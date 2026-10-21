@@ -25,6 +25,8 @@ tauri-runtime = "2"
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = ["Win32_Foundation", "Win32_Graphics_Dwm", "Win32_UI_WindowsAndMessaging", "Win32_UI_Controls"] }
 winreg = "0.55"
+webview2-com = "0.39"
+windows-core = "0.62"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

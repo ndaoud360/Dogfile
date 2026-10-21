@@ -353,12 +353,17 @@ async fn store_set(win: &str, a: &Args) -> R {
     let v = a.v(1);
     if name == "settings" {
         let old = st().settings.read().clone();
-        let idx_changed = old["indexEnabled"] != v["indexEnabled"] || old["indexRoots"] != v["indexRoots"];
+        let idx_changed = old["indexEnabled"] != v["indexEnabled"] || old["indexRoots"] != v["indexRoots"] || old["indexSystem"] != v["indexSystem"];
         *st().settings.write() = v.clone();
         if idx_changed {
-            tokio::spawn(async {
+            let sys_changed = old["indexSystem"] != v["indexSystem"];
+            tokio::spawn(async move {
                 tokio::time::sleep(std::time::Duration::from_millis(50)).await;
                 let _ = engine::configure_index(true).await;
+                // which folders are left out changed: build again
+                if sys_changed {
+                    let _ = engine::request("index.refresh", json!({ "root": "", "mft": setting_bool("indexMft", true) })).await;
+                }
             });
         }
         ops::configure_from_settings();

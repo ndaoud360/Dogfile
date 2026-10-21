@@ -503,7 +503,7 @@ onMain('ops:conflict', T.onConflict);
 // results from searches carry only the basics: fill in what the rest of Dogfile expects of a file (its type), so files
 // found by a search open in the built-in apps and get the same right-click options as anywhere else
 const fillItem = (it) => { if (it && !it.isDir && it.ext == null) { const n = it.name || ''; const i = n.lastIndexOf('.'); it.ext = i > 0 ? n.slice(i + 1).toLowerCase() : ''; } if (it && it.isDir && it.ext == null) it.ext = ''; return it; };
-onMain('work:msg', (m) => { if (Array.isArray(m.items)) m.items.forEach(fillItem); if (!A.onWorkMsg(m)) T.onWorkMsg(m); });
+onMain('work:msg', (m) => { if (Array.isArray(m.items)) m.items.forEach(fillItem); T.onWorkMsg(m); });
 onMain('watch:changed', onWatchChanged);
 onMain('theme:changed', ({ dark }) => { systemDark = dark; applyTheme(); });
 onMain('app:beforeHide', () => saveSession());

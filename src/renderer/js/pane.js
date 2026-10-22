@@ -773,7 +773,7 @@ export function viewMenu(t, r) {
 // ======================================================================
 // Views (virtualized)
 // ======================================================================
-const ROW_H = (t) => Math.round((state.settings.density === 'compact' ? 26 : 32) * (t?.rowZoom || 1));
+const ROW_H = (t) => Math.round(({ compact: 26, touch: 44 }[document.documentElement.dataset.density] || 32) * (t?.rowZoom || 1));
 const COLS = {
   name: { label: 'Name', w: 320, min: 140 },
   mtime: { label: 'Date modified', w: 170 },
@@ -970,6 +970,7 @@ function itemClasses(t, it) {
   if (t.sel.has(it.path)) c += ' selected';
   if (t.focus === it.path) c += ' focused';
   if (it.hidden) c += ' hidden-item';
+  if (it.cloud) c += ' cloud-item';
   if (state.clipboard?.cut && state.clipboard.paths.includes(it.path)) c += ' cut';
   return c;
 }

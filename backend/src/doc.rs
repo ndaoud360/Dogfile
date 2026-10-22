@@ -519,3 +519,14 @@ pub async fn set_props_call(a: &Args) -> R {
     tokio::task::spawn_blocking(move || if util::ext(&p) == "pdf" { pdf_set_info(&p, &props) } else { set_props(&p, &props) }).await.map_err(|e| e.to_string())??;
     Ok(json!(true))
 }
+
+/// keywords and title of an Office document or a PDF (for tags kept inside files)
+pub fn props_of(file: &str) -> Result<Value, String> {
+    if crate::util::ext(file) == "pdf" {
+        let b = std::fs::read(file).map_err(|e| e.to_string())?;
+        return Ok(pdf_info(&b));
+    }
+    let core = text_of(file, "docProps/core.xml").ok_or("This document has no properties part")?;
+    let tag = |t: &str| re(&format!(r"<{t}[^>]*>([^<]*)</{t}>")).captures(&core).map(|c| c[1].replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">"));
+    Ok(json!({ "title": tag("dc:title"), "keywords": tag("cp:keywords") }))
+}

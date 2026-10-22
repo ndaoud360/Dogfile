@@ -552,7 +552,8 @@ fn data_dir() -> PathBuf {
 /// where the interface and the bundled tools are: beside the exe (installed / portable), or the source tree
 fn resource_dirs() -> (PathBuf, PathBuf) {
     let exe_dir = std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.to_path_buf())).unwrap_or_default();
-    for base in [exe_dir.clone(), exe_dir.join("resources")] {
+    // beside the program, in resources/, or in a Mac app bundle's Contents/Resources
+    for base in [exe_dir.clone(), exe_dir.join("resources"), exe_dir.join("..").join("Resources")] {
         if base.join("renderer").join("index.html").exists() {
             return (base.join("renderer"), base);
         }
@@ -562,6 +563,7 @@ fn resource_dirs() -> (PathBuf, PathBuf) {
 }
 
 fn main() {
+    dogfile_backend::mark_start();
     let argv: Vec<String> = std::env::args().collect();
     // the elevated helper that builds the index from the NTFS file table
     if argv.get(1).map(|s| s.as_str()) == Some("--build-index") && argv.len() >= 4 {

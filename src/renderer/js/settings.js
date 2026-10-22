@@ -46,6 +46,19 @@ export async function openSettings(section = 'general', opts = {}) {
         row('Closing the last tab closes the window', toggle('closeLastTabClosesWindow')),
         row('Keep running in the background', toggle('keepRunning'), 'Lives in the tray so folders open instantly.'),
         row('Updates', h('div', { class: 'row-inline' }, toggle('autoUpdates'), h('button', { class: 'btn small', onclick: () => import('./updates.js').then((m) => m.openUpdates()) }, 'Check now…')), 'Dogfile checks for a new version a few seconds after it starts and every few hours, and asks before installing.'),
+        row('Your settings on other PCs', (() => {
+          const box = h('div', { class: 'row-inline', style: { flexWrap: 'wrap', gap: '6px' } });
+          const st = h('div', { class: 'hint', style: { width: '100%' } });
+          const draw = async () => {
+            const S = await import('./settingsync.js');
+            box.innerHTML = '';
+            st.textContent = S.syncStatus();
+            box.append(h('button', { class: 'btn small', onclick: () => S.exportSettings() }, 'Export…'), h('button', { class: 'btn small', onclick: () => S.importSettings() }, 'Import…'),
+              state.settings.settingsSync?.folder ? h('button', { class: 'btn small', onclick: () => { S.stopSync(); draw(); } }, 'Stop syncing') : h('button', { class: 'btn small primary', onclick: async () => { await S.chooseSyncFolder(); draw(); } }, 'Sync through a folder…'), st);
+          };
+          draw();
+          return box;
+        })(), 'Keep them in a folder that syncs (OneDrive, Dropbox, Google Drive) and every PC using it shares your settings, pins, tags and workspaces.'),
         row('Sidebar sections', (() => {
           const box = h('div', { class: 'row-inline', style: { flexWrap: 'wrap', gap: '6px 14px' } });
           for (const [k, l] of [['tags', 'Tags'], ['collections', 'Collections'], ['drives', 'Drives'], ['cloud', 'Cloud folders'], ['network', 'Network']]) {
@@ -76,7 +89,7 @@ export async function openSettings(section = 'general', opts = {}) {
       scale.addEventListener('change', () => { S.fontScale = +scale.value; changed(); bus.emit('theme'); });
       _append(el,
         row('Theme', seg('theme', [['system', 'System', 'monitor'], ['light', 'Light', 'sun'], ['dark', 'Dark', 'moon']])),
-        row('Density', seg('density', [['comfortable', 'Comfortable'], ['compact', 'Compact']])),
+        row('Density', seg('density', [['compact', 'Compact'], ['comfortable', 'Comfortable'], ['touch', 'Touch'], ['auto', 'Automatic']]), 'Touch makes rows and buttons bigger for fingers; Automatic uses it on a touch screen without a mouse. Press and hold for the right-click menu.'),
         row('Text size', scale),
         row('Grid labels', select('gridLabels', [['smart', 'Smart (hide on photos, show on hover)'], ['always', 'Always show'], ['hover', 'Only on hover']]), 'Smart reproduces the clean gallery look of the design.'),
         row('Use Windows file icons', toggle('useWindowsIcons'), 'Show the real icons from your installed apps instead of minimal art.'),
@@ -398,30 +411,15 @@ export async function openSettings(section = 'general', opts = {}) {
         list.append(h('button', { class: 'btn small', onclick: () => { state.tags.defs.push({ id: 't' + Date.now().toString(36), name: 'New tag', color: '#12a594' }); saveTags(); bus.emit('tags'); draw(); } }, 'Add tag'));
       };
       draw();
-      el.append(h('p', { class: 'hint' }, 'Tags are stored by Dogfile and follow files when you rename or move them inside Dogfile. Drag files onto a tag dot in the sidebar to tag them.'), list);
+      el.append(h('p', { class: 'hint' }, 'Tags are stored by Dogfile and follow files when you rename or move them inside Dogfile. Drag files onto a tag dot in the sidebar to tag them.'), list,
+        row('Also write tags into the files', toggle('tagsInFiles'), 'Saved as the file’s own “Tags” (keywords), so they show in Explorer and Windows Search and travel with the file to other PCs and backups. Works for photos, music, videos, Office files and PDFs.'));
     }],
     data: ['Data & reset', 'workspace', async (el) => {
       const dir = await api('store:path');
       _append(el,
         row('Settings folder', h('div', { class: 'stack' }, h('code', {}, dir), h('button', { class: 'btn small', onclick: () => api('shell:open', dir) }, 'Open folder')), 'Copy this folder to back up or move your setup. Put a file named portable.txt next to Dogfile.exe to run portable.'),
-        row('Export settings', h('button', { class: 'btn small', onclick: async () => {
-          const dir = sys.known.downloads || sys.known.home;
-          const d = new Date(); const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-          const file = await api('fs:uniqueName', dir, `Dogfile Settings ${stamp}.json`, 'number');
-          await api('fs:writeText', file, JSON.stringify({ type: 'atlas-settings', version: 1, settings: S, tags: state.tags, pinned: state.pinned, workspaces: state.workspaces }, null, 1));
-          toast(`Settings exported to ${file}`, { ms: 6000, action: { label: 'Show', run: () => api('win:new', { path: dir, select: file }) } });
-        } }, 'Export to Downloads'), 'Saves a file with every setting, color, preset, tag, pin and workspace.'),
-        row('Import settings', h('button', { class: 'btn small', onclick: async () => {
-          const [f] = await api('dialog:openFiles', { title: 'Import settings', defaultPath: sys.known.downloads, filters: [{ name: 'Dogfile settings', extensions: ['json'] }] });
-          if (!f) return;
-          try {
-            const d = JSON.parse((await api('fs:readText', f, 16 * 1024 * 1024)).text);
-            if (!d.settings) throw new Error('bad');
-            Object.assign(S, d.settings); if (d.tags) state.tags = d.tags; if (d.pinned) state.pinned = d.pinned; if (d.workspaces) state.workspaces = d.workspaces;
-            saveSettings(); saveTags(); (await import('./core.js')).saveLibrary(); bus.emit('theme'); bus.emit('sidebar'); renderAll();
-            toast('Settings imported');
-          } catch { toast('That file is not an Dogfile settings file', { error: true }); }
-        } }, 'Import from file…')),
+        row('Export settings', h('button', { class: 'btn small', onclick: () => import('./settingsync.js').then((m) => m.exportSettings()) }, 'Export…'), 'Saves a file with every setting, color, preset, tag, pin and workspace — import it on another PC. To keep PCs in step automatically, use “Your settings on other PCs” in General.'),
+        row('Import settings', h('button', { class: 'btn small', onclick: () => import('./settingsync.js').then((m) => m.importSettings()) }, 'Import from file…')),
         row('Clear recent history', h('button', { class: 'btn small', onclick: async () => { state.recent = []; state.recentFiles = []; (await import('./core.js')).saveLibrary(); toast('History cleared'); } }, 'Clear')),
         row('Forget per-folder views', h('button', { class: 'btn small', onclick: async () => { state.folderViews = {}; (await import('./core.js')).saveLibrary(); toast('Folder views reset'); } }, 'Reset')),
         row('Reset all settings', h('button', { class: 'btn small danger', onclick: async () => { if (await confirm('Reset settings?', 'Restore every setting to its default?', { danger: true, ok: 'Reset' })) { Object.assign(S, DEFAULT_SETTINGS); saveSettings(); bus.emit('theme'); renderAll(); toast('Settings reset'); openSettingsSection('data'); } } }, 'Reset')),
@@ -429,7 +427,7 @@ export async function openSettings(section = 'general', opts = {}) {
     }],
     about: ['About', 'info', async (el) => {
       const info = await api('sys:info');
-      el.append(h('div', { class: 'about' }, h('div', { class: 'about-name' }, 'Dogfile'), h('div', { class: 'hint' }, `Version ${info.version} · ${info.platform} · ${info.has7z ? '7-Zip detected' : 'Using Windows tar for archives'}`),
+      el.append(h('div', { class: 'about' }, h('div', { class: 'about-name' }, 'Dogfile'), h('div', { class: 'hint' }, `Version ${info.version} · ${info.platform} · ${info.has7z ? '7-Zip detected' : 'Using Windows tar for archives'}${state.startupMs ? ` · started in ${state.startupMs} ms` : ''}`),
         h('p', {}, 'A fast, keyboard-driven file manager with tabs, up to four panes, previews, tags, Rename Studio, folder compare, duplicate finder and more.')));
     }],
   };

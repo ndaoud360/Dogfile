@@ -365,6 +365,18 @@ export function setTags(paths, tagId, on) {
   }
   saveTags();
   bus.emit('tags');
+  if (state.settings.tagsInFiles) writeTagsIntoFiles(paths);
+}
+// the tags' names as the file's own keywords (Explorer's "Tags"), when that setting is on
+export async function writeTagsIntoFiles(paths) {
+  let failed = 0, last = '';
+  for (const p of paths) {
+    const k = IS_WIN() ? p.toLowerCase() : p;
+    const names = (state.tags.map[k] || []).map((id) => state.tags.defs.find((d) => d.id === id)?.name).filter(Boolean);
+    const r = await api('keywords:write', p, names).catch((e) => ({ ok: false, error: e.message }));
+    if (!r?.ok) { failed++; last = r?.error || ''; }
+  }
+  if (failed) toast(`${failed === paths.length ? 'Couldn’t' : `${failed} of ${paths.length}: couldn’t`} save the tags inside the file${failed > 1 ? 's' : ''}${last ? ` (${last})` : ''}`, { error: true });
 }
 export function moveTags(from, to) {
   const f = IS_WIN() ? from.toLowerCase() : from;

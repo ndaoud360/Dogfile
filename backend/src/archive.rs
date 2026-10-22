@@ -18,7 +18,10 @@ pub fn find_full_7z() -> Option<PathBuf> {
     if !util::IS_WIN {
         return util::which("7z");
     }
-    first(&[PathBuf::from(r"C:\Program Files\7-Zip\7z.exe"), PathBuf::from(r"C:\Program Files (x86)\7-Zip\7z.exe")])
+    // the full 7-Zip that ships with Dogfile (7z.exe + 7z.dll: RAR, ISO, DMG, VHD… too), else an installed one
+    let s = st();
+    first(&[s.res_dir.join("7zip").join("7z.exe"), PathBuf::from(r"C:\Program Files\7-Zip\7z.exe"), PathBuf::from(r"C:\Program Files (x86)\7-Zip\7z.exe")])
+        .filter(|p| p.parent().map(|d| d.join("7z.dll").is_file()).unwrap_or(false))
 }
 pub fn find_bundled_7z() -> Option<PathBuf> {
     let exe = if util::IS_WIN { "7za.exe" } else { "7za" };

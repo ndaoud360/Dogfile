@@ -30,17 +30,31 @@ pub struct Attrs {
     pub hidden: bool,
     pub system: bool,
     pub readonly: bool,
+    /// a cloud placeholder (OneDrive "online-only"): reading its content downloads it
+    pub cloud: bool,
+}
+/// FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS | RECALL_ON_OPEN | OFFLINE
+pub const CLOUD_ATTRS: u32 = 0x0040_0000 | 0x0004_0000 | 0x0000_1000;
+/// Is this file only in the cloud (reading it would download it)? Searching contents, hashing and duplicate checks skip these.
+#[cfg(windows)]
+pub fn online_only(p: &std::path::Path) -> bool {
+    use std::os::windows::fs::MetadataExt;
+    std::fs::symlink_metadata(p).map(|m| m.file_attributes() & CLOUD_ATTRS != 0).unwrap_or(false)
+}
+#[cfg(not(windows))]
+pub fn online_only(_p: &std::path::Path) -> bool {
+    false
 }
 
 #[cfg(windows)]
 pub fn attrs(md: &Metadata, _name: &str) -> Attrs {
     use std::os::windows::fs::MetadataExt;
     let a = md.file_attributes();
-    Attrs { hidden: a & 0x2 != 0, system: a & 0x4 != 0, readonly: a & 0x1 != 0 }
+    Attrs { hidden: a & 0x2 != 0, system: a & 0x4 != 0, readonly: a & 0x1 != 0, cloud: a & CLOUD_ATTRS != 0 }
 }
 #[cfg(not(windows))]
 pub fn attrs(md: &Metadata, name: &str) -> Attrs {
-    Attrs { hidden: name.starts_with('.'), system: false, readonly: md.permissions().readonly() }
+    Attrs { hidden: name.starts_with('.'), system: false, readonly: md.permissions().readonly(), cloud: false }
 }
 
 /// Created time (birth time where the system has one).

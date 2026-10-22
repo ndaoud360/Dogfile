@@ -49,7 +49,11 @@ function applyTheme() {
   const dark = applyColors(s);
   state.dark = dark;
   const root = document.documentElement;
-  root.dataset.density = s.density;
+  // touch: bigger rows and buttons; "auto" picks it on a touch screen without a mouse
+  const touchy = matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches;
+  const dens = s.density === 'auto' ? (touchy ? 'touch' : 'comfortable') : s.density;
+  if (root.dataset.density !== dens) { root.dataset.density = dens; if (state.tabs?.length) setTimeout(() => renderAll(), 0); }
+  document.body.classList.toggle('touch', dens === 'touch');
   root.style.setProperty('--side-w', (s.sidebarWidth || 300) + 'px');
   root.style.setProperty('--pv-w', (s.previewWidth || 340) + 'px');
   if (!document.body.classList.contains('folding')) { document.body.classList.toggle('no-sidebar', !!s.sidebarCollapsed); document.body.classList.toggle('side-collapsed', !!s.sidebarCollapsed); }
@@ -211,7 +215,7 @@ const R = {
     ['Panes', [['togglePreview', 'Preview pane'], ['toggleSidebar', 'Sidebar'], ['layout1', 'One pane'], ['layout2v', 'Side by side'], ['layout2h', 'Stacked'], ['layout3', 'Three'], ['layout4', 'Four'], ['syncNav', 'Sync browsing'], ['swapPanes', 'Swap panes']]],
     ['Show', [['toggleHidden', 'Hidden items'], ['toggleExt', 'File extensions'], ['toggleFolderSizes', 'Folder sizes'], ['toggleCheckboxes', 'Check boxes'], ['flatten', 'Flatten folder']]],
     ['Workspace', [['workspaces', 'Workspaces', true], ['profiles', 'Profiles'], ['pinToWorkspace', 'Pin files']]],
-    ['Theme', [['themeSystem', 'System'], ['themeLight', 'Light'], ['themeDark', 'Dark']]],
+    ['Theme', [['themeSystem', 'System'], ['themeLight', 'Light'], ['themeDark', 'Dark'], ['customizeToolbar', 'Toolbar…']]],
   ],
 };
 R.share = R.organize; // older saved setting
@@ -246,6 +250,7 @@ function ribbonGroup(gname, entries) {
     // a button with a menu drops it down under itself (and a second click closes it)
     if (e.menu) b.addEventListener('click', () => { const r = b.getBoundingClientRect(); showMenu(e.menu, r.left, r.bottom + 2); });
     else b.addEventListener('click', () => { e.run(); after(); });
+    if (e.id) b.addEventListener('contextmenu', (ev) => { ev.preventDefault(); ev.stopPropagation(); showMenu([{ label: 'Add to toolbar', icon: 'plus', run: () => import('./toolbar.js').then((m) => m.addToToolbar(e.id)) }, { label: 'Customize toolbar…', icon: 'settings', run: () => import('./toolbar.js').then((m) => m.customizeToolbar()) }], ev.clientX, ev.clientY); });
     (e.big ? big : small).append(b);
   }
   g.append(h('div', { class: 'rb-btns' }, big.childElementCount ? big : null, small.childElementCount ? small : null), h('div', { class: 'rb-label' }, gname));
@@ -287,7 +292,7 @@ function renderRibbon() {
       if (!c || (c.when && !c.when())) continue;
       const k = keysFor(id)[0];
       const on = c.check?.() || (id === 'theme' + state.settings.theme[0].toUpperCase() + state.settings.theme.slice(1)) || (id === 'layout' + state.layout) || (id.startsWith('view') && activeTab()?.view === id.slice(4).toLowerCase());
-      entries.push({ icon: c.icon || 'command', label: label || c.title, title: `${c.title}${k ? ` (${k})` : ''}`, big: isBig, on, run: c.run });
+      entries.push({ id, icon: c.icon || 'command', label: label || c.title, title: `${c.title}${k ? ` (${k})` : ''}`, big: isBig, on, run: c.run });
     }
     if (entries.length) r.append(ribbonGroup(gname, entries));
   }
@@ -333,6 +338,10 @@ function initMenubar() {
   $('btn-layout').innerHTML = icon('layout' + state.layout);
   $('btn-search').addEventListener('click', () => T.openSearchBar());
   { const ab = h('button', { class: 'icon-btn top-ic', id: 'btn-assistant', title: 'Ask the file assistant (Ctrl+J)', html: icon('sparkle') }); ab.addEventListener('click', () => import('./assistant.js').then((m) => m.toggleAssistant())); $('btn-search').before(ab); }
+  import('./toolbar.js').then((m) => m.renderToolbar());
+  if (state.settings.settingsSync?.folder) import('./settingsync.js').then((m) => m.startSync());
+  // how long starting took (shown in About; logged in test runs)
+  { const off = bus.on('loaded', async () => { off?.(); const up = await api('sys:uptime').catch(() => 0); state.startupMs = up; if (sys.test) api('test:log', `startup: window ready ${up} ms after the program started (page ${Math.round(performance.now())} ms)`); }); }
   $('btn-newwin').addEventListener('click', () => api('win:new', { path: activeTab()?.path }));
   $('btn-newwin').addEventListener('contextmenu', (e) => { e.preventDefault(); showMenu([{ label: 'New tab', icon: 'plus', run: () => bus.cmd('newTab') }, { label: 'New window', icon: 'newWindow', run: () => bus.cmd('newWindow') }], e.clientX, e.clientY); });
   $('btn-layout').addEventListener('click', (e) => {

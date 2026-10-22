@@ -44,6 +44,18 @@
   await T('recent (Windows)', async () => (await api('fs:recentWindows')).length);
   await T('doc text (txt)', async () => api('doc:text', D + '\\a.txt', 100));
   await T('window maximized?', async () => api('win:control', 'isMaximized'));
+  await T('long paths (over 260 characters)', async () => {
+    let L = D + '\\long'; await api('fs:mkdir', L).catch(() => 0);
+    for (let i = 0; i < 12; i++) { L += '\\' + 'folder_with_a_long_name_' + i; await api('fs:mkdir', L).catch(() => 0); }
+    await api('fs:writeText', L + '\\deep file.txt', 'deep');
+    const list = (await api('fs:list', L)).items.map((i) => i.name).join(',');
+    const cp = await job({ type: 'copy', sources: [L + '\\deep file.txt'], dest: D });
+    await api('fs:rename', L + '\\deep file.txt', L + '\\renamed.txt');
+    const st = await api('fs:stat', L + '\\renamed.txt');
+    const del = await job({ type: 'delete', sources: [D + '\\long'] });
+    return `len ${L.length} list=${list} copy=${cp} renamed=${!!st} delete=${del} gone=${!(await api('fs:exists', D + '\\long'))}`;
+  });
+  await T('keywords into a file (System.Keywords)', async () => { const png = D + '\\pic.png'; const jpg = D + '\\kw.jpg'; const data = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA='; await api('fs:writeDataUrl', jpg, data); const w = await api('keywords:write', jpg, ['Red', 'Holiday']); const r = await api('keywords:read', jpg); const w2 = await api('keywords:write', png, ['Blue']); return JSON.stringify({ w, r, png: w2 }); });
   await T('window buttons drawn', async () => document.querySelectorAll('#win-ctl .wc-btn').length === 3 || document.querySelectorAll('#win-ctl .wc-btn').length);
   await log('DONE');
 })()

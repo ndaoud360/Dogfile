@@ -17,6 +17,7 @@ pub mod archive;
 pub mod media;
 pub mod doc;
 pub mod tags;
+pub mod keywords;
 pub mod versions;
 pub mod ai;
 pub mod imgmeta;
@@ -122,4 +123,13 @@ pub fn window_closed(win: &str) {
     if win.starts_with("player") {
         media::kill_all();
     }
+}
+
+/// When the program started (for the startup time Dogfile reports in tests and in About)
+static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+pub fn mark_start() {
+    let _ = START.set(std::time::Instant::now());
+}
+pub fn uptime_ms() -> u64 {
+    START.get_or_init(std::time::Instant::now).elapsed().as_millis() as u64
 }

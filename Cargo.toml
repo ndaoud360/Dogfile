@@ -12,3 +12,7 @@ panic = "abort"
 
 [profile.dev.package."*"]
 opt-level = 2
+
+# drag crate with Explorer-style drop effects (copy, move or link, chosen by the drop target)
+[patch.crates-io]
+drag = { path = "vendor/crates/drag" }

@@ -197,6 +197,7 @@ def('settings', 'Settings', { icon: 'settings', keys: ['Ctrl+,'], cat: 'App', ru
 def('shortcuts', 'Keyboard shortcuts', { icon: 'keyboard', keys: ['F1', 'Ctrl+/'], cat: 'App', run: () => bus.emit('openSettings', 'keys') });
 def('setDefault', 'Make Dogfile the default file manager', { icon: 'shield', cat: 'App', run: () => bus.emit('openSettings', 'general') });
 def('devtools', 'Toggle developer tools', { keys: ['Ctrl+Shift+I'], cat: 'App', run: () => api('win:control', 'devtools') });
+def('customizeToolbar', 'Customize toolbar…', { cat: 'View', icon: 'settings', run: () => import('./toolbar.js').then((m) => m.customizeToolbar()) });
 def('quit', 'Quit', { keys: ['Ctrl+Q'], cat: 'App', run: async () => { if (await confirmLeaveAll()) api('win:control', 'quit'); } });
 def('closeWindow', 'Close window', { keys: ['Ctrl+Shift+W', 'Alt+F4'], cat: 'App', run: () => api('win:control', 'close') });
 

@@ -1534,3 +1534,32 @@ body.app-only #preview, body.app-only #preview-resizer { display: none; }
 .as-steps li.bad .as-step-ic { color: var(--danger, #d64545); }
 .as-write { white-space: pre-wrap; font-size: 13px; line-height: 1.5; background: var(--bg-hover); border-radius: 8px; padding: 8px 10px; margin: 4px 0 6px; max-height: 320px; overflow: auto; }
 .as-write:empty { display: none; }
+
+/* touch-friendly mode */
+:root[data-density='touch'] { --row-h: 44px; }
+body.touch .side-item { min-height: 40px; }
+body.touch .tab { height: 38px; }
+body.touch .icon-btn, body.touch .tb-btn, body.touch .pb { min-width: 40px; min-height: 40px; }
+body.touch .menu-item { min-height: 40px; }
+body.touch .rb-btn { height: 34px; }
+body.touch .rb-btn.big { height: 86px; }
+body.touch .btn { min-height: 38px; padding-left: 14px; padding-right: 14px; }
+body.touch ::-webkit-scrollbar { width: 14px; height: 14px; }
+body.touch .drow { font-size: calc(14px * var(--fs)); }
+
+/* your own toolbar */
+#quick-tools { display: flex; align-items: center; gap: 2px; }
+#quick-tools .top-ic.on { color: var(--accent); }
+.qt-cur { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 0 4px; }
+.qt-cur .qt-row { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--border); border-radius: 8px; padding: 2px 2px 2px 8px; }
+.qt-avail { max-height: 260px; overflow: auto; display: grid; gap: 1px; margin-top: 6px; border: 1px solid var(--border); border-radius: 8px; padding: 4px; }
+.qt-add { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px; text-align: left; width: 100%; }
+.qt-add:hover { background: var(--bg-hover); }
+.qt-add .hint { margin-left: auto; }
+.qt-ic .ic, .qt-plus .ic { width: 15px; height: 15px; }
+.qt-builtins { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 4px; }
+.qt .field-label { margin-top: 10px; }
+
+/* online-only cloud files (OneDrive placeholders): a small cloud after the name, like Explorer's status column */
+.cloud-item .nm::after, .cloud-item .name-text::after { content: ''; display: inline-block; width: 13px; height: 13px; margin-left: 6px; vertical-align: -2px; opacity: .55;
+  background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Cpath d='M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 9.1 4.5 4.5 0 0 0 7 18z'/%3E%3C/svg%3E") center/contain no-repeat; }

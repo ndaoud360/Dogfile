@@ -64,6 +64,11 @@ export async function renderPreview(box, it, { large = false } = {}) {
     return;
   }
   if (it.archive) { stage.append(h('div', { class: 'pv-art', html: fileArt(it.ext) }), h('div', { class: 'hint center' }, 'Inside an archive. Open it to extract')); return; }
+  // online-only (OneDrive and other cloud placeholders): previewing would download the whole file
+  if (it.cloud && !it._fetch) {
+    stage.append(h('div', { class: 'pv-art', html: fileArt(it.ext) }), h('div', { class: 'hint center' }, 'Online-only file — it isn’t on this PC yet.'), h('div', { class: 'center', style: { marginTop: '8px' } }, h('button', { class: 'btn small', onclick: () => { it._fetch = true; renderPreview(box, it, { large }); } }, 'Download and preview')));
+    return;
+  }
   try {
     if (k === 'image' && !['psd', 'raw', 'cr2', 'nef', 'dng', 'heic', 'tif', 'tiff'].includes(it.ext)) {
       const img = h('img', { class: 'pv-img', src: url, draggable: 'false', crossorigin: 'anonymous' });

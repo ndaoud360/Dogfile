@@ -18,9 +18,9 @@ pub const NAMES: &[&str] = &[
     "versions:save", "versions:list", "versions:restore", "versions:remove", "versions:overview", "versions:track", "watched:add", "watched:get", "store:get", "store:set", "store:path", "default:get",
     "default:set", "win:new", "win:control", "win:overlay", "win:zoom", "theme:get", "dialog:pickFolder", "dialog:openFiles", "dialog:saveFile", "dialog:confirm", "tool:open", "tool:pending", "media:probe",
     "media:imgMeta", "media:quickProbe", "media:sheetCancel", "media:contactSheet", "media:encoder", "media:shotDir", "media:export", "ai:status", "ai:download", "ai:remove", "ai:cacheGet", "ai:cacheSet",
-    "tags:read", "tags:write", "tags:lookup", "tags:identify", "tags:fetchArt", "media:job", "media:cancel", "fs:trash", "fs:copyFile", "fs:writeDataUrl", "fs:readBuffer", "fs:writeEncoded",
+    "tags:read", "tags:write", "keywords:read", "keywords:write", "tags:lookup", "tags:identify", "tags:fetchArt", "media:job", "media:cancel", "fs:trash", "fs:copyFile", "fs:writeDataUrl", "fs:readBuffer", "fs:writeEncoded",
     "archive:watchEdit", "fs:watchFile", "mtp:list", "mtp:copyOut", "mtp:copyIn", "mtp:delete", "mtp:mkdir", "mtp:rename", "mtp:fetch", "win:corners", "net:discover", "net:open", "locks:who", "locks:kill",
-    "shellverbs:set", "pty:available", "pty:spawn", "pty:write", "pty:resize", "pty:kill", "test:capture", "win:startDrag", "win:dragOut", "win:startResize", "test:log", "update:check", "update:status", "update:download", "update:cancel", "update:install",
+    "shellverbs:set", "pty:available", "pty:spawn", "pty:write", "pty:resize", "pty:kill", "test:capture", "win:startDrag", "win:dragOut", "win:startResize", "test:log", "sys:uptime", "update:check", "update:status", "update:download", "update:cancel", "update:install",
 ];
 
 fn dialog_opts(v: &Value) -> DialogOpts {
@@ -51,6 +51,7 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
         "update:download" => update::download(win, &a).await,
         "update:cancel" => update::cancel(&a),
         "update:install" => update::install(&a),
+        "sys:uptime" => Ok(json!(crate::uptime_ms())),
         "test:log" => {
             let line = a.s_or(0, "");
             match std::env::var("DOGFILE_TEST_LOG") {
@@ -249,6 +250,8 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
         "media:export" => media::export(&a).await,
         "media:job" => media::job_status(&a),
         "media:cancel" => media::cancel_job(&a),
+        "keywords:read" => crate::keywords::read(&a).await,
+        "keywords:write" => crate::keywords::write(&a).await,
         "tags:read" => tags::read(&a).await,
         "tags:write" => tags::write(&a).await,
         "tags:lookup" => tags::lookup(&a).await,

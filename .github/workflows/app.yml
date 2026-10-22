@@ -68,16 +68,30 @@ jobs:
           ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$files`"" -Label tauri-index -Out $out -Seconds 40
           # ...and after a couple of quiet minutes (the index sleeps when nobody searches)
           ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$files`"" -Label tauri-index-idle -Out $out -Seconds 150 -Shot
-          # Dogfile 1.6 (Electron) without the index, same folder and settings
-          npm install --no-save --ignore-scripts electron@33.4.11 2>&1 | Out-Null
-          node node_modules/electron/install.js 2>&1 | Out-Null
-          $el = "node_modules/electron/dist/electron.exe"
-          if (Test-Path $el) {
-            New-Item -ItemType Directory -Force node_modules/electron/dist/data | Out-Null
-            Set-Content node_modules/electron/dist/data/settings.json $noIndex
-            $env:ATLAS_PORTABLE = '1'
-            ./build/ci/measure.ps1 -Exe $el -ArgList ". `"$files`"" -Label electron-noindex -Out $out -Shot
-          } else { Write-Output "::warning title=electron::not installed" }
+      - name: Startup time (first run, then warm starts)
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
+          if (-not (Test-Path target/release/renderer)) { Copy-Item -Recurse src/renderer target/release/renderer }
+          New-Item -ItemType File -Force target/release/portable.txt | Out-Null
+          New-Item -ItemType Directory -Force target/release/data | Out-Null
+          Set-Content target/release/data/settings.json '{"welcomed":true}'
+          $env:ATLAS_TEST = '1'
+          $env:DOGFILE_TEST_LOG = "$out/startup.log"
+          $env:ATLAS_SHOT_DELAY = '2500'
+          $env:ATLAS_STEPS = '[{"js":"1","wait":200}]'
+          foreach ($i in 1..4) {
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            $p = Start-Process -FilePath target/release/dogfile.exe -PassThru
+            if (-not $p.WaitForExit(60000)) { Stop-Process -Id $p.Id -Force }
+            Get-Process msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force
+            Start-Sleep -Seconds 2
+          }
+          $log = if (Test-Path "$out/startup.log") { Get-Content "$out/startup.log" | Where-Object { $_ -like 'startup*' } } else { @('no log') }
+          Write-Output "::notice title=startup::$($log -join '%0A')"
+          $log | Set-Content "$out/startup.txt"
+          Remove-Item Env:ATLAS_TEST, Env:DOGFILE_TEST_LOG, Env:ATLAS_STEPS, Env:ATLAS_SHOT_DELAY
       - name: Windows checks inside the app (shell, recycle bin, clipboard, thumbnails, 7-Zip, terminal…)
         shell: pwsh
         continue-on-error: true
@@ -153,6 +167,91 @@ jobs:
           Write-Output "::notice title=updtest::$(($log + '--- install.log ---' + $inst) -join '%0A')"
           Remove-Item Env:ATLAS_TEST, Env:DOGFILE_TEST_LOG, Env:ATLAS_STEPS, Env:DOGFILE_UPDATE_URL
           Remove-Item -Force target/release/updated.txt, target/release/Dogfile.exe.bak -ErrorAction SilentlyContinue
+      - name: Package, setup program and Store package (signed when a certificate is set up)
+        shell: pwsh
+        continue-on-error: true
+        env:
+          SIGN_PFX_BASE64: ${{ secrets.SIGN_PFX_BASE64 }}
+          SIGN_PFX_PASSWORD: ${{ secrets.SIGN_PFX_PASSWORD }}
+          STORE_IDENTITY_NAME: ${{ vars.STORE_IDENTITY_NAME }}
+          STORE_PUBLISHER: ${{ vars.STORE_PUBLISHER }}
+          STORE_PUBLISHER_NAME: ${{ vars.STORE_PUBLISHER_NAME }}
+        run: |
+          trap { Write-Output "::error title=package::$($_.InvocationInfo.PositionMessage -replace "`n",'%0A') $_"; continue }
+          $dl = "$env:RUNNER_TEMP/dl"; New-Item -ItemType Directory -Force $dl | Out-Null
+          $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
+          $ProgressPreference = 'SilentlyContinue'
+          # the full 7-Zip (7z.exe + 7z.dll) for x64 and ARM64
+          foreach ($v in @('25.01', '24.09')) {
+            $n = $v -replace '\.', ''
+            try {
+              Invoke-WebRequest "https://github.com/ip7z/7zip/releases/download/$v/7z$n-x64.exe" -OutFile "$dl/7z-x64.exe"
+              Invoke-WebRequest "https://github.com/ip7z/7zip/releases/download/$v/7z$n-arm64.exe" -OutFile "$dl/7z-arm64.exe"
+              Write-Output "::notice title=7zip::7-Zip $v"; break
+            } catch { Write-Output "::warning title=7zip::$v not found" }
+          }
+          vendor/7zip/win32/7za.exe x "$dl/7z-x64.exe" "-o$dl/7zfull" 7z.exe 7z.dll License.txt -y | Out-Null
+          vendor/7zip/win32/7za.exe x "$dl/7z-arm64.exe" "-o$dl/7zfull-arm64" 7z.exe 7z.dll License.txt -y | Out-Null
+          New-Item -ItemType Directory -Force "$out/7zfull", "$out/7zfull-arm64" | Out-Null
+          Copy-Item "$dl/7zfull/*" "$out/7zfull/"; Copy-Item "$dl/7zfull-arm64/*" "$out/7zfull-arm64/"
+          # the media engine
+          foreach ($f in @('ffmpeg-n8.1-latest-win64-gpl-shared-8.1.zip', 'ffmpeg-n8.0-latest-win64-gpl-shared-8.0.zip')) {
+            try { Invoke-WebRequest "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/$f" -OutFile "$dl/ff.zip"; break } catch { Write-Output "::warning title=ffmpeg::$f not found" }
+          }
+          Copy-Item target/release/dogfile.exe "$dl/Dogfile.exe"
+          $env:DOGFILE_7Z_FULL = "$dl/7zfull"
+          node build/package-win.mjs "$dl/Dogfile.exe" "$dl/ff.zip"
+          $ver = (Get-Content app/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe | Where-Object { $_.FullName -like '*\x64\*' } | Select-Object -First 1
+          function Sign($file) {
+            if (-not $env:SIGN_PFX_BASE64) { return }
+            $pfx = "$env:RUNNER_TEMP/sign.pfx"
+            if (-not (Test-Path $pfx)) { [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_PFX_BASE64)) }
+            & $signtool.FullName sign /f $pfx /p $env:SIGN_PFX_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 $file
+            Write-Output "::notice title=signing::signed $(Split-Path $file -Leaf)"
+          }
+          Sign dist/Dogfile/Dogfile.exe
+          # the setup program (NSIS)
+          $nsis = @("C:\Program Files (x86)\NSIS\makensis.exe", "C:\Program Files\NSIS\makensis.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $nsis) { choco install nsis -y --no-progress | Out-Null; $nsis = "C:\Program Files (x86)\NSIS\makensis.exe" }
+          & $nsis /V2 "/DVERSION=$ver" "/DSRC=..\..\dist\Dogfile" "/DOUT=..\..\dist\Dogfile-Setup-$ver.exe" build\win\setup.nsi
+          Sign "dist/Dogfile-Setup-$ver.exe"
+          # silent install + uninstall check
+          $p = Start-Process "dist/Dogfile-Setup-$ver.exe" -ArgumentList '/S' -PassThru -Wait
+          $inst = Test-Path "$env:LOCALAPPDATA\Programs\Dogfile\Dogfile.exe"
+          $reg = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Dogfile' -ErrorAction SilentlyContinue).DisplayVersion
+          $u = Start-Process "$env:LOCALAPPDATA\Programs\Dogfile\Uninstall Dogfile.exe" -ArgumentList '/S' -PassThru -Wait
+          Start-Sleep -Seconds 3
+          $gone = -not (Test-Path "$env:LOCALAPPDATA\Programs\Dogfile\Dogfile.exe")
+          Write-Output "::notice title=setup::Dogfile-Setup-$ver.exe $([math]::Round((Get-Item "dist/Dogfile-Setup-$ver.exe").Length/1MB,1)) MB; installed=$inst version=$reg uninstalled=$gone"
+          # the Microsoft Store package (MSIX); Partner Center signs it when it's submitted
+          $st = "$env:RUNNER_TEMP/store"; Remove-Item -Recurse -Force $st -ErrorAction SilentlyContinue
+          Copy-Item -Recurse dist/Dogfile $st
+          Remove-Item "$st/Install Dogfile.cmd", "$st/Uninstall Dogfile.cmd", "$st/installer.ps1", "$st/portable.txt" -ErrorAction SilentlyContinue
+          Set-Content "$st/store.txt" 'Installed from the Microsoft Store: the Store keeps Dogfile up to date.'
+          New-Item -ItemType Directory -Force "$st/assets" | Out-Null
+          Add-Type -AssemblyName System.Drawing
+          $src = [System.Drawing.Image]::FromFile((Resolve-Path app/icons/icon.png))
+          foreach ($l in @(@('StoreLogo', 50, 50), @('Square150x150Logo', 150, 150), @('Square44x44Logo', 44, 44), @('Wide310x150Logo', 310, 150))) {
+            $bmp = New-Object System.Drawing.Bitmap $l[1], $l[2]; $g = [System.Drawing.Graphics]::FromImage($bmp); $g.InterpolationMode = 'HighQualityBicubic'
+            $sz = [math]::Min($l[1], $l[2]); $g.DrawImage($src, [int](($l[1] - $sz) / 2), [int](($l[2] - $sz) / 2), $sz, $sz); $bmp.Save("$st/assets/$($l[0]).png"); $g.Dispose(); $bmp.Dispose()
+          }
+          $src.Dispose()
+          $idn = if ($env:STORE_IDENTITY_NAME) { $env:STORE_IDENTITY_NAME } else { 'Dogfile.Dogfile' }
+          $pub = if ($env:STORE_PUBLISHER) { $env:STORE_PUBLISHER } else { 'CN=Dogfile' }
+          $pubn = if ($env:STORE_PUBLISHER_NAME) { $env:STORE_PUBLISHER_NAME } else { 'Dogfile' }
+          (Get-Content build/store/AppxManifest.xml -Raw).Replace('{IDENTITY_NAME}', $idn).Replace('{PUBLISHER}', $pub).Replace('{PUBLISHER_NAME}', $pubn).Replace('{VERSION}', $ver).Replace('{ARCH}', 'x64') | Set-Content "$st/AppxManifest.xml" -Encoding utf8
+          $makeappx = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter makeappx.exe | Where-Object { $_.FullName -like '*\x64\*' } | Select-Object -First 1
+          & $makeappx.FullName pack /o /d $st /p "dist/Dogfile-$ver-x64.msix" | Select-Object -Last 3
+          Write-Output "::notice title=store::$(if (Test-Path "dist/Dogfile-$ver-x64.msix") { "Dogfile-$ver-x64.msix $([math]::Round((Get-Item "dist/Dogfile-$ver-x64.msix").Length/1MB,1)) MB (identity $idn, publisher $pub)" } else { 'no msix' })"
+      - uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: windows-x64
+          path: |
+            dist/Dogfile-Setup-*.exe
+            dist/*.msix
+          if-no-files-found: warn
       - name: Publish to the app-bin branch (readable with git)
         shell: pwsh
         run: |
@@ -170,3 +269,105 @@ jobs:
         if: always()
         shell: pwsh
         run: Remove-Item -Recurse -Force target/release/renderer, target/release/data, target/release/portable.txt -ErrorAction SilentlyContinue
+  windows-arm64:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust toolchain for Windows on ARM
+        run: rustup toolchain install stable --profile minimal && rustup default stable && rustup target add aarch64-pc-windows-msvc
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: arm64-${{ hashFiles('Cargo.lock') }}
+          restore-keys: arm64-
+      - name: Build (ARM64)
+        shell: pwsh
+        run: |
+          cargo build --release -p dogfile --target aarch64-pc-windows-msvc --message-format=short 2>&1 | Tee-Object -FilePath build.log
+          $code = $LASTEXITCODE
+          if ($code -ne 0) { Write-Output "::error title=arm64-build::$((Get-Content build.log | Select-String -Pattern '(^|: )error' | Select-Object -First 60) -join '%0A')" }
+          else { Write-Output "::notice title=arm64-build::$([math]::Round((Get-Item target/aarch64-pc-windows-msvc/release/dogfile.exe).Length/1MB,1)) MB" }
+          exit $code
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-arm64
+          path: target/aarch64-pc-windows-msvc/release/dogfile.exe
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: System libraries
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf > /dev/null
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: linux-${{ hashFiles('Cargo.lock') }}
+          restore-keys: linux-
+      - name: Build and package (Linux x64)
+        run: |
+          set -o pipefail
+          cargo build --release -p dogfile 2>&1 | tail -30 | tee build.log || { echo "::error title=linux-build::$(grep -E '^error' -A5 build.log | head -60 | sed ':a;N;$!ba;s/\n/%0A/g')"; exit 1; }
+          v=$(node -p "require('./app/tauri.conf.json').version")
+          d=dist/Dogfile-$v-linux-x64; mkdir -p $d
+          cp target/release/dogfile $d/dogfile; cp -r src/renderer $d/renderer; mkdir -p $d/7zip && cp vendor/7zip/linux/* $d/7zip/ 2>/dev/null || true
+          cp app/icons/icon.png $d/dogfile.png
+          cat > $d/install.sh <<'SH'
+          #!/bin/sh
+          # adds Dogfile to your applications menu
+          HERE="$(cd "$(dirname "$0")" && pwd)"
+          mkdir -p "$HOME/.local/share/applications"
+          printf '[Desktop Entry]\nName=Dogfile\nComment=File manager\nExec=%s/dogfile %%U\nIcon=%s/dogfile.png\nType=Application\nCategories=System;FileManager;\nMimeType=inode/directory;\n' "$HERE" "$HERE" > "$HOME/.local/share/applications/dogfile.desktop"
+          echo "Dogfile was added to your applications menu."
+          SH
+          chmod +x $d/install.sh
+          tar -C dist -czf dist/Dogfile-$v-linux-x64.tar.gz Dogfile-$v-linux-x64
+          echo "::notice title=linux::$(ls -la dist/*.tar.gz | awk '{print $5, $9}')"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64
+          path: dist/*.tar.gz
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: mac-${{ hashFiles('Cargo.lock') }}
+          restore-keys: mac-
+      - name: Build and package (Mac, Apple silicon)
+        run: |
+          set -o pipefail
+          cargo build --release -p dogfile 2>&1 | tail -40 | tee build.log || { echo "::error title=mac-build::$(grep -E '^error' -A5 build.log | head -60 | tr '\n' '~' | sed 's/~/%0A/g')"; exit 1; }
+          v=$(node -p "require('./app/tauri.conf.json').version")
+          a=dist/Dogfile.app/Contents; mkdir -p $a/MacOS $a/Resources
+          cp target/release/dogfile $a/MacOS/dogfile; cp -r src/renderer $a/Resources/renderer
+          mkdir -p icon.iconset && for s in 16 32 128 256 512; do sips -z $s $s app/icons/icon.png --out icon.iconset/icon_${s}x${s}.png > /dev/null; done
+          iconutil -c icns icon.iconset -o $a/Resources/dogfile.icns || true
+          cat > $a/Info.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+          <key>CFBundleName</key><string>Dogfile</string><key>CFBundleDisplayName</key><string>Dogfile</string>
+          <key>CFBundleIdentifier</key><string>app.dogfile</string><key>CFBundleVersion</key><string>$v</string>
+          <key>CFBundleShortVersionString</key><string>$v</string><key>CFBundleExecutable</key><string>dogfile</string>
+          <key>CFBundleIconFile</key><string>dogfile</string><key>CFBundlePackageType</key><string>APPL</string>
+          <key>LSMinimumSystemVersion</key><string>11.0</string><key>NSHighResolutionCapable</key><true/>
+          </dict></plist>
+          PLIST
+          codesign --force --deep -s - dist/Dogfile.app || true
+          (cd dist && ditto -c -k --keepParent Dogfile.app Dogfile-$v-mac-arm64.zip)
+          echo "::notice title=mac::$(ls -la dist/*.zip | awk '{print $5, $9}')"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-arm64
+          path: dist/*.zip

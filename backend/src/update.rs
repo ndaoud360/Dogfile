@@ -88,8 +88,9 @@ fn status_json() -> Value {
     let (available, latest, notes, date, size) = match &l.manifest {
         Some(m) => {
             let v = m["version"].as_str().unwrap_or("");
-            let avail = !v.is_empty() && newer(v, cur);
             let comps = components();
+            // only when this version has a build for this system
+            let avail = !v.is_empty() && newer(v, cur) && needed(m, &comps).iter().any(|p| p["id"] == "app");
             let size: u64 = needed(m, &comps).iter().map(|p| p["size"].as_u64().unwrap_or(0)).sum();
             (avail, json!(v), m["notes"].clone(), m["date"].clone(), json!(size))
         }
@@ -99,16 +100,28 @@ fn status_json() -> Value {
             "checked": if l.checked > 0.0 { json!(l.checked) } else { Value::Null }, "error": l.error,
             "canInstall": cfg!(windows), "downloading": DOWNLOADING.load(Ordering::Relaxed), "ready": staged_version().is_some() })
 }
+const THIS_ARCH: &str = if cfg!(target_arch = "aarch64") { "arm64" } else { "x64" };
+const THIS_OS: &str = if cfg!(windows) { "windows" } else if cfg!(target_os = "macos") { "macos" } else { "linux" };
 fn needed(m: &Value, comps: &Value) -> Vec<Value> {
     m["packages"].as_array().cloned().unwrap_or_default().into_iter().filter(|p| {
         let id = p["id"].as_str().unwrap_or("");
         let want = p["version"].as_str().unwrap_or("");
-        !id.is_empty() && (id == "app" || comps[id].as_str() != Some(want))
+        // packages built for another processor (x64 / arm64) or system are not for this copy
+        let arch = p["arch"].as_str().unwrap_or("x64");
+        let os = p["os"].as_str().unwrap_or("windows");
+        arch == THIS_ARCH && os == THIS_OS && !id.is_empty() && (id == "app" || comps[id].as_str() != Some(want))
     }).collect()
 }
 
 /// update:check — look for a new version now
+/// the Microsoft Store copy (store.txt beside the program) is updated by the Store, not by Dogfile
+pub fn from_store() -> bool {
+    crate::st().res_dir.join("store.txt").is_file()
+}
 pub async fn check(_a: &Args) -> R {
+    if from_store() {
+        return Ok(json!({ "current": current_version(), "available": false, "checked": util::now_ms(), "store": true, "canInstall": false }));
+    }
     let url = manifest_url();
     let r = async {
         let resp = util::http().get(&url).header("Cache-Control", "no-cache").timeout(std::time::Duration::from_secs(20)).send().await.map_err(|e| short_err(&e.to_string()))?;

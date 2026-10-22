@@ -29,6 +29,8 @@ pub fn item_json(e: &Ent) -> Value {
 fn content_match(path: &Path, size: u64, s: &Spec) -> bool {
     let Some(re) = &s.content else { return true };
     if size > s.max_content { return false }
+    // an online-only cloud file would be downloaded just to look inside
+    if util::online_only(path) { return false }
     let Ok(mut f) = File::open(path) else { return false };
     let mut buf = Vec::with_capacity(size.min(1 << 24) as usize);
     if f.read_to_end(&mut buf).is_err() { return false }
@@ -143,7 +145,7 @@ pub fn dupes(id: u64, j: &Value, cancel: &AtomicBool) -> Result<Value, String> {
     let opts = WalkOpts { recursive: true, skip_dirs: &[], cancel: Some(cancel) };
     walk::walk(&roots, &opts, |parent, e| {
         let n = scanned.fetch_add(1, Ordering::Relaxed);
-        if !e.is_dir && !e.is_link && e.size >= min {
+        if !e.is_dir && !e.is_link && e.size >= min && !util::online_only(&e.path) {
             by_size.lock().unwrap().entry(e.size).or_default().push(e.clone());
         }
         if prog.due() { prog.send(json!({ "phase": "Scanning", "scanned": n, "current": util::path_str(parent) })); }
@@ -384,7 +386,7 @@ pub fn list(j: &Value) -> Result<Value, String> {
         } else { (ft.is_dir(), false, md.clone()) };
         Some(json!({ "name": name, "path": util::path_str(&d.path()), "isDir": is_dir, "isLink": is_link, "broken": broken,
             "size": if is_dir { Value::Null } else { json!(tmd.len()) }, "mtime": util::ms(tmd.modified()), "ctime": util::ctime(&tmd),
-            "atime": util::ms(tmd.accessed()), "hidden": a.hidden, "system": a.system, "readonly": a.readonly,
+            "atime": util::ms(tmd.accessed()), "hidden": a.hidden, "system": a.system, "readonly": a.readonly, "cloud": a.cloud,
             "ext": if is_dir { String::new() } else { util::ext_of(&name) } }))
     }).collect();
     Ok(json!({ "path": dir, "items": items }))
@@ -405,6 +407,8 @@ struct Item {
     hidden: bool,
     system: bool,
     readonly: bool,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    cloud: bool,
     ext: String,
 }
 /// The same listing as `list`, written straight to JSON text (no intermediate values): big folders list fast.
@@ -428,7 +432,7 @@ pub fn list_raw(dir: &str) -> Result<String, String> {
             } else { (ft.is_dir(), false, md) };
             let it = Item { ext: if is_dir { String::new() } else { util::ext_of(&name) }, path: util::path_str(&d.path()), name, is_dir, is_link, broken,
                 size: if is_dir { None } else { Some(tmd.len()) }, mtime: util::ms(tmd.modified()), ctime: util::ctime(&tmd), atime: util::ms(tmd.accessed()),
-                hidden: a.hidden, system: a.system, readonly: a.readonly };
+                hidden: a.hidden, system: a.system, readonly: a.readonly, cloud: a.cloud };
             if !out.is_empty() { out.push(',') }
             if let Ok(j) = serde_json::to_string(&it) { out.push_str(&j) }
         }

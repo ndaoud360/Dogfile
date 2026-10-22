@@ -87,20 +87,53 @@ pub fn is_file_dialog(h: HWND) -> bool {
     if h.0.is_null() || !unsafe { IsWindow(h) }.as_bool() || class_of(h) != "#32770" {
         return false;
     }
-    let has_name_box = unsafe { GetDlgItem(h, FILENAME_ID) }.map(|x| !x.0.is_null()).unwrap_or(false);
-    let has_view = unsafe { FindWindowExW(h, HWND::default(), w!("DUIViewWndClassName"), PCWSTR::null()) }.map(|x| !x.0.is_null()).unwrap_or(false);
-    has_name_box || has_view
+    find_class(h, "DUIViewWndClassName").is_some() || find_id(h, FILENAME_ID).is_some()
+}
+/// the first descendant of `parent` with this control id (Vista-style dialogs nest the "File name" box deep inside)
+fn find_id(parent: HWND, id: i32) -> Option<HWND> {
+    unsafe {
+        if let Ok(h) = GetDlgItem(parent, id) {
+            if !h.0.is_null() {
+                return Some(h);
+            }
+        }
+        let found = Mutex::new((id, None::<isize>));
+        unsafe extern "system" fn each(h: HWND, l: LPARAM) -> BOOL {
+            let f = &*(l.0 as *const Mutex<(i32, Option<isize>)>);
+            let mut g = f.lock();
+            if GetDlgCtrlID(h) == g.0 {
+                g.1 = Some(h.0 as isize);
+                return FALSE;
+            }
+            TRUE
+        }
+        let _ = EnumChildWindows(parent, Some(each), LPARAM(&found as *const _ as isize));
+        let r = found.lock().1;
+        r.map(|v| HWND(v as *mut _))
+    }
+}
+fn find_class(parent: HWND, class: &str) -> Option<HWND> {
+    let found = Mutex::new((class.to_string(), None::<isize>));
+    unsafe extern "system" fn each(h: HWND, l: LPARAM) -> BOOL {
+        let f = &*(l.0 as *const Mutex<(String, Option<isize>)>);
+        let mut g = f.lock();
+        if class_of(h) == g.0 {
+            g.1 = Some(h.0 as isize);
+            return FALSE;
+        }
+        TRUE
+    }
+    let _ = unsafe { EnumChildWindows(parent, Some(each), LPARAM(&found as *const _ as isize)) };
+    let r = found.lock().1;
+    r.map(|v| HWND(v as *mut _))
 }
 fn name_edit(dlg: HWND) -> Option<HWND> {
-    unsafe {
-        let item = GetDlgItem(dlg, FILENAME_ID).ok().filter(|x| !x.0.is_null())?;
-        if class_of(item) == "Edit" {
-            return Some(item);
-        }
-        // ComboBoxEx32 > ComboBox > Edit
-        let cb = FindWindowExW(item, HWND::default(), w!("ComboBox"), PCWSTR::null()).ok().filter(|x| !x.0.is_null()).unwrap_or(item);
-        FindWindowExW(cb, HWND::default(), w!("Edit"), PCWSTR::null()).ok().filter(|x| !x.0.is_null())
+    let item = find_id(dlg, FILENAME_ID)?;
+    if class_of(item) == "Edit" {
+        return Some(item);
     }
+    // ComboBoxEx32 > ComboBox > Edit (or ComboBox > Edit)
+    find_class(item, "Edit")
 }
 fn get_text(h: HWND) -> String {
     let mut buf = vec![0u16; 4096];
@@ -182,8 +215,19 @@ pub fn test(folder: &str, name: &str) -> Result<String, String> {
         if let Some(h) = *found.lock() {
             break HWND(h as *mut _);
         }
-        if t0.elapsed().as_secs() > 15 {
-            return Err("no file dialog appeared".into());
+        if t0.elapsed().as_secs() > 14 {
+            // say what was on screen, to see why
+            let seen = Mutex::new(Vec::<String>::new());
+            unsafe extern "system" fn list(h: HWND, l: LPARAM) -> BOOL {
+                let v = &*(l.0 as *const Mutex<Vec<String>>);
+                if IsWindowVisible(h).as_bool() {
+                    v.lock().push(format!("{}:{}", class_of(h), get_text(h)));
+                }
+                TRUE
+            }
+            let _ = unsafe { EnumWindows(Some(list), LPARAM(&seen as *const _ as isize)) };
+            let v = seen.lock().iter().take(12).cloned().collect::<Vec<_>>().join(" | ");
+            return Err(format!("no file dialog appeared; windows: {v}"));
         }
         std::thread::sleep(std::time::Duration::from_millis(300));
     };

@@ -217,6 +217,7 @@ jobs:
           if (-not $nsis) { choco install nsis -y --no-progress | Out-Null; $nsis = "C:\Program Files (x86)\NSIS\makensis.exe" }
           & $nsis /V2 "/DVERSION=$ver" "/DSRC=..\..\dist\Dogfile" "/DOUT=..\..\dist\Dogfile-Setup-$ver.exe" build\win\setup.nsi
           Sign "dist/Dogfile-Setup-$ver.exe"
+          Copy-Item "dist/Dogfile-Setup-$ver.exe" "$out/"
           # silent install + uninstall check
           $p = Start-Process "dist/Dogfile-Setup-$ver.exe" -ArgumentList '/S' -PassThru -Wait
           $inst = Test-Path "$env:LOCALAPPDATA\Programs\Dogfile\Dogfile.exe"
@@ -259,7 +260,7 @@ jobs:
           $d = "$env:RUNNER_TEMP/binbranch"
           New-Item -ItemType Directory -Force $d | Out-Null
           Copy-Item target/release/dogfile.exe $d/Dogfile.exe
-          if (Test-Path "$env:RUNNER_TEMP/smoke") { Copy-Item "$env:RUNNER_TEMP/smoke/*" $d/ }
+          if (Test-Path "$env:RUNNER_TEMP/smoke") { Copy-Item -Recurse "$env:RUNNER_TEMP/smoke/*" $d/ }
           Set-Location $d
           git init -q -b app-bin
           git config user.name "github-actions"; git config user.email "actions@github.com"
@@ -296,6 +297,18 @@ jobs:
         with:
           name: windows-arm64
           path: target/aarch64-pc-windows-msvc/release/dogfile.exe
+      - name: Publish to the app-bin-arm64 branch (readable with git)
+        shell: pwsh
+        run: |
+          $d = "$env:RUNNER_TEMP/binbranch"
+          New-Item -ItemType Directory -Force $d | Out-Null
+          Copy-Item target/aarch64-pc-windows-msvc/release/dogfile.exe $d/Dogfile.exe
+          Set-Location $d
+          git init -q -b app-bin-arm64
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          git add -A
+          git commit -q -m "Dogfile.exe (ARM64) from ${{ github.sha }}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" app-bin-arm64
   linux:
     runs-on: ubuntu-22.04
     steps:

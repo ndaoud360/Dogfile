@@ -3,7 +3,7 @@
   const api = (n, ...a) => window.atlas.invoke(n, ...a);
   const log = (s) => api('test:log', s);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  const T = async (name, fn) => { const t0 = performance.now(); try { const r = await Promise.race([fn(), wait(20000).then(() => 'TIMEOUT')]); await log(`${r === false || r === 'TIMEOUT' ? 'FAIL' : 'ok  '} ${name} ${Math.round(performance.now() - t0)}ms ${r === true || r === false ? '' : String(typeof r === 'string' ? r : JSON.stringify(r)).slice(0, 300)}`); } catch (e) { await log(`ERR  ${name}: ${e && e.message || e}`); } };
+  const T = async (name, fn, ms = 20000) => { const t0 = performance.now(); try { const r = await Promise.race([fn(), wait(ms).then(() => 'TIMEOUT')]); await log(`${r === false || r === 'TIMEOUT' ? 'FAIL' : 'ok  '} ${name} ${Math.round(performance.now() - t0)}ms ${r === true || r === false ? '' : String(typeof r === 'string' ? r : JSON.stringify(r)).slice(0, 300)}`); } catch (e) { await log(`ERR  ${name}: ${e && e.message || e}`); } };
   const ev = (ch, pred, ms = 15000) => new Promise((res) => { const off = window.atlas.on(ch, (d) => { if (pred(d)) { off(); res(d); } }); setTimeout(() => { off(); res(null); }, ms); });
   const job = async (spec) => { const fin = ev('ops:finished', () => true, 30000); const id = await api('ops:start', spec); let d = await fin; return d && d.id === id ? d.status + (d.errors?.length ? ' ' + d.errors[0] : '') : 'no event ' + JSON.stringify(d); };
   const info = await api('sys:info');
@@ -64,7 +64,7 @@
     for (let i = 0; i < 20 && !(await api('fs:exists', D + '\\dlg-result.txt')); i++) await wait(500);
     const res = (await api('fs:readText', D + '\\dlg-result.txt', 1000).catch(() => ({ text: 'no result' }))).text.trim();
     return `${r} → ${res}`;
-  });
+  }, 40000);
   await T('window buttons drawn', async () => document.querySelectorAll('#win-ctl .wc-btn').length === 3 || document.querySelectorAll('#win-ctl .wc-btn').length);
   await log('DONE');
 })()

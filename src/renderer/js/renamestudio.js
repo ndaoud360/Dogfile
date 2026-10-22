@@ -177,7 +177,7 @@ export async function renameStudio(items, initial = {}) {
   presetMenu.onchange = () => { const p = presets()[presetMenu.value]; if (p) { Object.assign(R, p); drawControls(); upd(); } presetMenu.value = ''; };
   const body = h('div', { class: 'rs' }, h('div', { class: 'rs-left' }, controls), h('div', { class: 'rs-right' }, h('div', { class: 'rs-top' }, status, h('span', { class: 'st-spacer' }), presetMenu, h('button', { class: 'btn small', onclick: async () => { const n = await prompt('Save preset', '', { label: 'Name' }); if (!n) return; state.settings.renamePresets = { ...presets(), [n]: { ...R } }; saveSettings(); fillPresets(); toast('Preset saved'); } }, 'Save preset')), table));
   await upd();
-  return modal({ title: `Rename ${items.length} item${items.length === 1 ? '' : 's'}`, body, width: 1180, className: 'rs-modal', buttons: [
+  return modal({ title: `Rename Studio · ${items.length} item${items.length === 1 ? "" : "s"}`, body, width: 1180, className: 'rs-modal', buttons: [
     { label: 'Reset', left: true, run: () => { Object.assign(R, { find: '', replace: '', template: '', prefix: '', suffix: '', caseMode: 'Keep case', spaces: '', trim: false, removeNumbers: false, removeBrackets: false, insert: '', removeCount: 0, newExt: '', extCase: '' }); describe.value = ''; drawControls(); upd(); return false; } },
     { label: 'Cancel', value: null },
     { label: 'Rename', primary: true, run: async (close) => {

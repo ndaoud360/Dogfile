@@ -20,8 +20,57 @@ export function onHost(handlers) {
     if (m.type === 'cmd') handlers.cmd?.(m.id, m.arg);
     if (m.type === 'settings') handlers.settings?.(m.settings);
     if (m.type === 'fileChanged') handlers.fileChanged?.(m.path);
+    if (m.type === 'leave') answerLeave(m.token);
   });
 }
+// Before the tab closes or goes to a folder: unsaved work? The app's handler asks the person and says yes or no.
+let leaveHandler = null;
+export function onLeave(fn) { leaveHandler = fn; }
+async function answerLeave(token) {
+  let ok = true;
+  try { if (leaveHandler) ok = await leaveHandler(() => tellHost({ type: 'leaveAsking', token })); } catch { ok = true; }
+  tellHost({ type: 'leaveAnswer', token, ok });
+}
+// In its own window: closing the window asks the same question first (the window waits for the answer).
+export function onWindowClose(fn) {
+  if (EMBED) return;
+  window.atlas.on('app:closeRequested', async () => {
+    let ok = true;
+    try { ok = await fn(() => api('win:control', 'closeAsking')); } catch { ok = true; }
+    api('win:control', ok ? 'closeNow' : 'closeCancel');
+  });
+}
+// The app's menus (File, Edit, Search, View…) shown from the main window's ribbon: the host asks for a menu by
+// name, gets a plain copy of it, and sends back which item was picked.
+let menuSource = null, menuAfter = null;
+const menuRuns = new Map();
+let menuSeq = 0;
+export function exposeMenus(get, { after } = {}) { menuSource = get; menuAfter = after; }
+async function plainMenu(items) {
+  if (typeof items === 'function') items = await items();
+  const out = [];
+  for (const it of items || []) {
+    if (!it || it.hidden || it.custom) continue;
+    const o = {};
+    for (const k of ['label', 'keys', 'icon', 'checked', 'radio', 'selected', 'disabled', 'separator', 'header', 'danger', 'swatch', 'tone']) if (it[k] != null && it[k] !== false) o[k] = it[k];
+    if (it.submenu) o.submenu = await plainMenu(it.submenu);
+    else if (it.run) { const id = ++menuSeq; menuRuns.set(id, it.run); o.id = id; }
+    out.push(o);
+  }
+  return out;
+}
+if (EMBED) window.addEventListener('message', async (e) => {
+  const m = e.data || {};
+  if (m.atlasHost !== true) return;
+  if (m.type === 'menuSpec') {
+    let items = [];
+    try { const all = menuSource ? await menuSource() : {}; if (m.name === '*') items = Object.keys(all); else { menuRuns.clear(); items = await plainMenu(all[m.name]); } } catch (err) { console.error(err); }
+    tellHost({ type: 'menuSpec', token: m.token, items });
+  } else if (m.type === 'menuRun') {
+    const run = menuRuns.get(m.id);
+    if (run) { try { await run(); } finally { menuAfter?.(); } }
+  }
+});
 export function showInFiles(path, isDir) {
   const dir = isDir ? path : path.replace(/[\\/][^\\/]*$/, '');
   if (EMBED) tellHost({ type: 'showInFiles', path: dir, select: isDir ? null : path });

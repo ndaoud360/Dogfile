@@ -54,10 +54,23 @@ export function showTabInPane(tabId, paneIdx) {
   bus.emit('layout');
 }
 
-export function closeTab(t, { force = false } = {}) {
+// A built-in app in a tab (Notepad, Photos, Player) is asked before it goes away: unsaved work gets a
+// Save / Don't save / Cancel question. apptabs.js answers; without it, leaving is always fine.
+let confirmLeaveApp = async () => true;
+export function setLeaveHandler(fn) { confirmLeaveApp = fn; }
+// every app tab in this window, one after another (closing the window, quitting)
+export async function confirmLeaveAll(asking) {
+  const apps = state.tabs.filter((x) => x.app);
+  if (apps.length) asking?.();
+  for (const t of apps) {
+    if (!(await confirmLeaveApp(t))) return false;
+  }
+  return true;
+}
+export async function closeTab(t, { force = false } = {}) {
   if (!t) return;
   if (t.locked && !force) { toast('Tab is locked. Unlock it to close'); return; }
-  if (t.app === 'editor' && t.appDirty && !force) { bus.emit('requestAppClose', t); return; }
+  if (t.app && !force && !(await confirmLeaveApp(t))) return;
   if (t.searchJob) api('work:cancel', t.searchJob);
   const i = state.tabs.indexOf(t);
   if (!t.app) state.closedTabs.unshift({ path: t.path, view: t.view, sort: t.sort, history: t.history, hi: t.hi });
@@ -145,7 +158,18 @@ const listCache = new Map(); // archive listings
 const folderSizeCache = new Map();
 
 export async function navigate(t, rawPath, { push = true, select = null, keepScroll = false, fromSync = false } = {}) {
-  if (!t || t.app) return;
+  if (!t) return;
+  // a built-in app in this tab: going somewhere else turns the tab back into a folder (after asking to save)
+  if (t.app) {
+    if (fromSync) return;
+    if (!(await confirmLeaveApp(t))) return false;
+    bus.emit('tabClosed', t);
+    for (const k of ['app', 'appTitle', 'appPath', 'appState', 'appDirty']) delete t[k];
+    t.path = null; t.history = []; t.hi = -1; t.items = []; t.shown = []; t._loadedOnce = false; t._viewInit = false;
+    if (!t.view) t.view = state.settings.defaultView || 'details';
+    if (!t.sort) t.sort = { key: 'name', dir: 1 };
+    t.sel = new Set();
+  }
   let p = isVirtual(rawPath) ? rawPath : normalize(expandUserPath(rawPath));
   if (!p) return;
   if (!isVirtual(p) && !/^\\\\[^\\]+\\?$/.test(p)) {

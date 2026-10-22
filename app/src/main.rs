@@ -38,6 +38,9 @@ pub struct AppHost {
     quitting: AtomicBool,
     tray: Mutex<Option<tauri::tray::TrayIcon>>,
     corners: Mutex<String>,
+    close_ok: Mutex<std::collections::HashSet<String>>,
+    asking: Mutex<std::collections::HashSet<String>>,
+    answered: Mutex<std::collections::HashSet<String>>,
 }
 
 impl AppHost {
@@ -261,6 +264,20 @@ impl Host for AppHost {
             }
             "close" => {
                 let _ = w.close();
+            }
+            // the page has dealt with unsaved work: close without asking again
+            "closeNow" => {
+                self.close_ok.lock().insert(win.to_string());
+                self.asking.lock().remove(win);
+                let _ = w.close();
+            }
+            // the page is asking the person (or decided to stay open): don't close it from behind
+            "closeAsking" => {
+                self.asking.lock().insert(win.to_string());
+            }
+            "closeCancel" => {
+                self.asking.lock().remove(win);
+                self.answered.lock().insert(win.to_string());
             }
             "devtools" => {
                 #[cfg(debug_assertions)]
@@ -563,6 +580,9 @@ fn main() {
         quitting: AtomicBool::new(false),
         tray: Mutex::new(None),
         corners: Mutex::new("round".into()),
+        close_ok: Mutex::new(Default::default()),
+        asking: Mutex::new(Default::default()),
+        answered: Mutex::new(Default::default()),
     });
     let _ = HOST.set(h.clone());
     let (renderer_dir, res_dir) = resource_dirs();
@@ -605,6 +625,25 @@ fn main() {
             WindowEvent::CloseRequested { api, .. } => {
                 let h = host();
                 if h.quitting.load(Ordering::Relaxed) {
+                    return;
+                }
+                // the page checks for unsaved work first (Save / Don't save / Cancel), then closes for real
+                if !h.close_ok.lock().remove(w.label()) {
+                    api.prevent_close();
+                    h.emit(w.label(), "app:closeRequested", json!({}));
+                    // a page that doesn't answer (still loading, stuck) still lets the window close
+                    let label = w.label().to_string();
+                    std::thread::spawn(move || {
+                        std::thread::sleep(std::time::Duration::from_millis(1500));
+                        let h = host();
+                        if h.asking.lock().contains(&label) { return }
+                        if h.close_ok.lock().contains(&label) { return }
+                        if let Some(w) = h.win(&label) {
+                            if h.answered.lock().remove(&label) { return }
+                            h.close_ok.lock().insert(label.clone());
+                            let _ = w.close();
+                        }
+                    });
                     return;
                 }
                 let mains = h.windows().into_iter().filter(|x| x.starts_with("main")).count();

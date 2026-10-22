@@ -178,3 +178,6 @@ body.ed-ref-on #ed-ref { display: flex; }
 .fr-guide { display: flex; align-items: center; gap: 10px; margin: 6px 0 14px; }
 #ed-host { grid-column: 1; grid-row: 1; } #ed-split { grid-column: 2; grid-row: 1; } #ed-preview { grid-column: 3; grid-row: 1; } #ed-ref { grid-column: 4; grid-row: 1; }
 @media (max-width: 760px) { body.ed-ref-on #ed-ref { grid-column: 1 / -1; } }
+
+/* in a tab of the main window the menus and buttons are on the ribbon's Notepad tab */
+.embedded #ed-menubar, .embedded #ed-toolbar { display: none; }

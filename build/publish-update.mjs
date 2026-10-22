@@ -1,7 +1,9 @@
-// Publishes dist/update/ (made by make-update.mjs) as release v<version> in the public updates repository,
-// marked as the latest release, so every installed Dogfile finds it. Needs the GitHub CLI (gh) signed in with
-// access to that repository.  usage: node build/publish-update.mjs
+// Publishes dist/update/ (made by make-update.mjs) to the public updates repository: the files are pushed to its
+// `outbox` branch, and that repository's own workflow turns them into release v<version>, marked latest, so every
+// installed Dogfile finds it at .../releases/latest/download/latest.json.
+//   node build/publish-update.mjs            (needs git access to the updates repository)
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
@@ -9,13 +11,14 @@ const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 const REPO = process.env.DOGFILE_UPDATES_REPO || 'ndaoud360/dogfile-updates';
 const dir = path.join(root, 'dist', 'update');
 const m = JSON.parse(fs.readFileSync(path.join(dir, 'latest.json'), 'utf8'));
-const tag = `v${m.version}`;
-const gh = (...a) => execFileSync('gh', a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] });
-const release = JSON.parse(gh('api', '-X', 'POST', `repos/${REPO}/releases`, '-f', `tag_name=${tag}`, '-f', `name=Dogfile ${m.version}`, '-f', `body=${m.notes}`, '-F', 'make_latest=true'));
-for (const f of fs.readdirSync(dir)) {
-  const file = path.join(dir, f);
-  console.log('uploading', f);
-  execFileSync('curl', ['-sSf', '-X', 'POST', '-H', `Authorization: Bearer ${gh('auth', 'token').trim()}`, '-H', 'Content-Type: application/octet-stream', '--data-binary', `@${file}`,
-    `https://uploads.github.com/repos/${REPO}/releases/${release.id}/assets?name=${encodeURIComponent(f)}`], { stdio: ['ignore', 'ignore', 'inherit'] });
-}
-console.log('published', release.html_url);
+const work = fs.mkdtempSync(path.join(os.tmpdir(), 'dogfile-outbox-'));
+const git = (...a) => execFileSync('git', a, { cwd: work, stdio: ['ignore', 'inherit', 'inherit'] });
+git('init', '-q', '-b', 'outbox');
+for (const f of fs.readdirSync(dir)) fs.copyFileSync(path.join(dir, f), path.join(work, f));
+// the workflow travels with the files (a push runs the workflow found in the pushed commit)
+fs.mkdirSync(path.join(work, '.github', 'workflows'), { recursive: true });
+fs.copyFileSync(path.join(root, 'build', 'updates-repo', 'publish.yml'), path.join(work, '.github', 'workflows', 'publish.yml'));
+git('add', '-A');
+git('-c', 'user.name=Dogfile release', '-c', 'user.email=releases@dogfile.invalid', 'commit', '-qm', `Dogfile ${m.version}`);
+git('push', '-qf', `https://github.com/${REPO}.git`, 'outbox');
+console.log(`pushed ${m.version}; the release appears at https://github.com/${REPO}/releases in about a minute`);

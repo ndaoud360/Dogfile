@@ -6,7 +6,7 @@ import { icon } from './icons.js';
 import {
   activeTab, paneTab, paneCount, navigate, goBack, goForward, goUp, openTab, closeTab, reopenClosedTab, duplicateTab, setLayout,
   focusPane, selectedItems, selectAll, selectNone, invertSelection, setView, loadTab, otherPaneTab, startPathEdit, paneEls,
-  renderAll, recompute, renderTabPanes, clearThumbCache, touchView, showTabInPane, selectOnly,
+  renderAll, recompute, renderTabPanes, clearThumbCache, touchView, showTabInPane, selectOnly, confirmLeaveAll,
 } from './pane.js';
 import * as A from './actions.js';
 import * as T from './tools.js';
@@ -88,7 +88,7 @@ def('copyName', 'Copy name', { keys: ['Ctrl+Alt+C'], cat: 'Edit', run: () => A.c
 def('delete', 'Delete', { icon: 'trash', keys: ['Delete', 'Ctrl+D'], cat: 'Edit', run: () => A.remove(S_()) });
 def('deleteForever', 'Delete permanently', { icon: 'trash', keys: ['Shift+Delete'], cat: 'Edit', run: () => A.remove(S_(), true) });
 def('rename', 'Rename', { icon: 'rename', keys: ['F2'], cat: 'Edit', run: () => A.rename(S_()) });
-def('batchRename', 'Batch rename…', { icon: 'rename', keys: ['Ctrl+Shift+R'], cat: 'Edit', run: () => A.batchRename(S_().length ? S_() : T_().shown) });
+def('batchRename', 'Rename Studio…', { icon: 'rename', keys: ['Ctrl+Shift+R'], cat: 'Edit', run: () => A.batchRename(S_().length ? S_() : T_().shown) });
 def('newFolder', 'New folder', { icon: 'newFolder', keys: ['Ctrl+Shift+N'], cat: 'Edit', run: () => A.newFolder(T_()) });
 def('newFile', 'New file…', { icon: 'newFile', keys: ['Ctrl+Alt+N'], cat: 'Edit', run: () => A.newFileNamed(T_()) });
 def('newFolderSel', 'New folder with selection', { icon: 'newFolder', keys: ['Ctrl+Alt+Shift+N'], cat: 'Edit', run: () => A.newFolder(T_(), true) });
@@ -197,7 +197,7 @@ def('settings', 'Settings', { icon: 'settings', keys: ['Ctrl+,'], cat: 'App', ru
 def('shortcuts', 'Keyboard shortcuts', { icon: 'keyboard', keys: ['F1', 'Ctrl+/'], cat: 'App', run: () => bus.emit('openSettings', 'keys') });
 def('setDefault', 'Make Dogfile the default file manager', { icon: 'shield', cat: 'App', run: () => bus.emit('openSettings', 'general') });
 def('devtools', 'Toggle developer tools', { keys: ['Ctrl+Shift+I'], cat: 'App', run: () => api('win:control', 'devtools') });
-def('quit', 'Quit', { keys: ['Ctrl+Q'], cat: 'App', run: () => api('win:control', 'quit') });
+def('quit', 'Quit', { keys: ['Ctrl+Q'], cat: 'App', run: async () => { if (await confirmLeaveAll()) api('win:control', 'quit'); } });
 def('closeWindow', 'Close window', { keys: ['Ctrl+Shift+W', 'Alt+F4'], cat: 'App', run: () => api('win:control', 'close') });
 
 // Tag shortcuts Alt+1..7

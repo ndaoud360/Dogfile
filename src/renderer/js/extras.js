@@ -126,7 +126,7 @@ async function shelfActions(paths, x, y, chipPath) {
     { label: 'Copy to clipboard', icon: 'copy', run: () => A.copy(items) },
     { label: 'Copy paths', icon: 'link', run: () => A.copyPaths(items) },
     { separator: true },
-    items.length > 1 && { label: 'Batch rename…', icon: 'rename', run: async () => { await A.batchRename(items); setShelf((state.settings.shelf || []).filter((p) => !paths.includes(p))); } },
+    items.length > 1 && { label: 'Rename Studio…', icon: 'rename', run: async () => { await A.batchRename(items); setShelf((state.settings.shelf || []).filter((p) => !paths.includes(p))); } },
     audio.length && { label: 'Detect BPM & key', icon: 'music', run: () => bus.emit('analyzeAudio', audio.map((i) => i.path)) },
     imgs.length && { label: 'Convert pictures', icon: 'convert', submenu: ['jpg', 'png', 'webp'].map((f) => ({ label: f.toUpperCase(), run: () => import('./mediatools.js').then((m) => m.convertImages(imgs.map((i) => i.path), f)) })) },
     audio.length && { label: 'Convert audio', icon: 'convert', submenu: ['mp3', 'flac', 'wav', 'm4a'].map((f) => ({ label: f.toUpperCase(), run: () => import('./mediatools.js').then((m) => m.convertMedia(audio.map((i) => i.path), f)) })) },

@@ -22,7 +22,7 @@ let seq = 1;
 
 // ---------------- CodeMirror setup ----------------
 import { hlStyle } from './cmtheme.js';
-import { EMBED, pendingFiles, onHost, showInFiles, setTitle, closeApp, tellHost } from './embed.js';
+import { EMBED, pendingFiles, onHost, showInFiles, setTitle, closeApp, tellHost, onLeave, onWindowClose, exposeMenus } from './embed.js';
 
 // bookmarks (Ctrl+F2 toggle, F2 / Shift+F2 next / previous): like Notepad++
 const toggleBm = CM.StateEffect.define();
@@ -282,6 +282,24 @@ async function closeDoc(doc, { force = false } = {}) {
   renderTabs(); saveSessionSoon();
   return true;
 }
+// leaving the tab (closing it, or going to a folder from it): Save / Don't save / Cancel for each unsaved document
+async function confirmLeave(asking) {
+  const dirty = docs.filter((d) => d.dirty);
+  if (!dirty.length) return true;
+  asking?.();
+  for (const d of dirty) {
+    if (d !== active) activate_(d);
+    const r = await api('dialog:confirm', { type: 'warning', title: 'Dogfile Notepad', message: `Save changes to “${d.name}”?`, buttons: ['Save', "Don't save", 'Cancel'], cancelId: 2 });
+    if (r === 2) return false;
+    if (r === 0) { if (!(await save(d))) return false; }
+    else { d.discarded = true; d.dirty = false; }
+  }
+  renderTabs();
+  return true;
+}
+onLeave(confirmLeave);
+// its own window keeps unsaved documents for next time (like Notepad++), so closing it needs no question
+onWindowClose(async () => { api('store:set', 'editor-session', snapshot()); return true; });
 function reopenClosed() { const p = closed.shift(); if (p) openPaths([p]); }
 function cycle(d) { if (docs.length < 2) return; const i = docs.indexOf(active); activate_(docs[(i + d + docs.length) % docs.length]); }
 
@@ -351,6 +369,7 @@ function formatJson(min) {
 }
 
 // ---------------- view toggles ----------------
+function sendState() { if (EMBED) tellHost({ type: 'state', kind: 'text', path: active?.path || null, wrap: !!ed.wrap, whitespace: !!ed.whitespace, preview: !!ed.preview }); }
 function toggle(k) {
   ed[k] = !ed[k];
   for (const d of docs) {
@@ -360,7 +379,7 @@ function toggle(k) {
     if (k === 'autoComplete') d.view.dispatch({ effects: acC.reconfigure(ed.autoComplete ? [CM.autocompletion(), CM.EditorState.languageData.of(() => [{ autocomplete: CM.completeAnyWord }])] : []) });
   }
   if (k === 'preview') { document.body.classList.toggle('ed-preview-on', ed.preview); updatePreview(); }
-  saveEd(); renderToolbar(); renderStatus();
+  saveEd(); renderToolbar(); renderStatus(); sendState();
 }
 function setTab(n) { ed.tabSize = n; for (const d of docs) d.view.dispatch({ effects: tabC.reconfigure([CM.EditorState.tabSize.of(n), CM.indentUnit.of(' '.repeat(n))]) }); saveEd(); renderStatus(); }
 function zoom(d) { ed.fontSize = d === 0 ? 14 : Math.max(8, Math.min(40, ed.fontSize + d)); applyFont(); saveEd(); }
@@ -379,7 +398,7 @@ const updatePreviewSoon = debounce(updatePreview, 250);
 
 // ---------------- UI: tabs, menus, toolbar, status ----------------
 function renderTabs() {
-  if (EMBED) { const dirty = docs.some((d) => d.dirty); if (dirty !== renderTabs._dirty) { renderTabs._dirty = dirty; tellHost({ type: 'dirty', dirty }); } if (active?.path) tellHost({ type: 'state', kind: 'text', path: active.path }); }
+  if (EMBED) { const dirty = docs.some((d) => d.dirty); if (dirty !== renderTabs._dirty) { renderTabs._dirty = dirty; tellHost({ type: 'dirty', dirty }); } sendState(); }
   const host = $('ed-tabs');
   host.innerHTML = '';
   for (const d of docs) {
@@ -572,12 +591,15 @@ function renderToolbar() {
 // ---------------- features (user-made tools) ----------------
 let features = null;
 async function featuresMenu(e) {
+  const r = e.currentTarget?.getBoundingClientRect?.() || { left: e.clientX, bottom: e.clientY };
+  showMenu(await featureItems(), r.left, r.bottom + 4);
+}
+async function featureItems() {
   const X = await import('./extensions.js');
   const cmds = features?.commands() || [];
   const code = active?.view.state.doc.toString() || '';
   const meta = X.parseFeature(code);
-  const r = e.currentTarget?.getBoundingClientRect?.() || { left: e.clientX, bottom: e.clientY };
-  showMenu([
+  return [
     ...(cmds.length ? [{ header: 'Your features' }, ...cmds.map((c) => ({ label: c.title, icon: c.icon || 'puzzle', run: () => c.run({ fileName: active?.name }) })), { separator: true }] : []),
     { label: 'Add a feature…', icon: 'plus', run: () => newFeature() },
     { label: 'Feature help & API reference', icon: 'book', keys: 'F1', run: () => toggleRef(true, 'ref') },
@@ -591,8 +613,10 @@ async function featuresMenu(e) {
     { label: 'Import a feature…', icon: 'folderOpen', run: async () => { const f = await api('dialog:openFiles', { title: 'Import a feature', filters: [{ name: 'Dogfile mod', extensions: ['dogmod', 'atlasfeature', 'js', 'json'] }] }); if (!f?.[0]) return; const t = (await api('fs:readText', f[0], 2 * 1048576)).text; const j = X.readFeatureFile(t); api('ext:install', { code: j.code, meta: j.dogmod || j.atlasFeature ? j : null, source: f[0] }); } },
     { label: 'Manage features…', icon: 'settings', run: () => api('ext:install', { manage: true }) },
     { label: 'Browse features…', icon: 'store', run: () => api('ext:install', { store: true }) },
-  ].filter(Boolean), r.left, r.bottom + 4);
+  ].filter(Boolean);
 }
+// in a tab of the main window, these menus live on the ribbon's Notepad tab
+exposeMenus(() => ({ ...MENUS, Features: featureItems }), { after: () => active?.view.focus() });
 async function newFeature(prefer) {
   const X = await import('./extensions.js');
   const pick = await X.pickStarter(prefer);
@@ -763,7 +787,7 @@ function closeCompare() { if (!compareView) return; compareView.destroy(); compa
 function snapshot() {
   return {
     active: docs.indexOf(active),
-    docs: docs.map((d) => {
+    docs: docs.filter((d) => !d.discarded).map((d) => {
       const cur = d.view.state.doc.toString();
       return { path: d.path, name: d.name, langId: d.langId, enc: d.enc, eol: d.eol, cursor: d.view.state.selection.main.head,
         backup: d.dirty || !d.path ? (cur.length < 4 * 1024 * 1024 ? cur : null) : null };
@@ -822,7 +846,9 @@ async function boot() {
 }
 
 onMain('editor:open', ({ files, compare }) => (compare && files.length === 2 ? openCompare(files[0], files[1]) : openPaths(files)));
-onHost({ open: (m) => (m.compare && m.files?.length === 2 ? openCompare(m.files[0], m.files[1]) : openPaths(m.files || [])), settings: (v) => { settings = { ...settings, ...v }; applyColors(settings); features?.reload(); }, cmd: (id) => ({ save: () => save(active), new: () => newDoc(), open: () => openDialog(), requestClose: () => closeDoc(active) }[id]?.()), fileChanged: (p) => fileChanged(p) });
+onHost({ open: (m) => (m.compare && m.files?.length === 2 ? openCompare(m.files[0], m.files[1]) : openPaths(m.files || [])), settings: (v) => { settings = { ...settings, ...v }; applyColors(settings); features?.reload(); }, cmd: (id) => { ({ save: () => save(active), saveAs: () => saveAs(active), saveAll, new: () => newDoc(), open: () => openDialog(), requestClose: () => closeDoc(active),
+  undo: () => CM.undo(view()), redo: () => CM.redo(view()), find: () => CM.openSearchPanel(view()), replace: () => { CM.openSearchPanel(view()); setTimeout(() => document.querySelector('.cm-search [name=replace]')?.focus(), 10); },
+  bookmark: toggleBookmark, wrap: () => toggle('wrap'), whitespace: () => toggle('whitespace'), zoomIn: () => zoom(1), zoomOut: () => zoom(-1), preview: () => toggle('preview'), stats }[id]?.()); if (id !== 'requestClose') active?.view.focus(); }, fileChanged: (p) => fileChanged(p) });
 onMain('settings:changed', (v) => { settings = { ...settings, ...v }; applyColors(settings); features?.reload(); });
 onMain('file:changed', (p) => fileChanged(p));
 async function fileChanged(p) {

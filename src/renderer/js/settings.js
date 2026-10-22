@@ -430,7 +430,7 @@ export async function openSettings(section = 'general', opts = {}) {
     about: ['About', 'info', async (el) => {
       const info = await api('sys:info');
       el.append(h('div', { class: 'about' }, h('div', { class: 'about-name' }, 'Dogfile'), h('div', { class: 'hint' }, `Version ${info.version} · ${info.platform} · ${info.has7z ? '7-Zip detected' : 'Using Windows tar for archives'}`),
-        h('p', {}, 'A fast, keyboard-driven file manager with tabs, up to four panes, previews, tags, batch rename, folder compare, duplicate finder and more.')));
+        h('p', {}, 'A fast, keyboard-driven file manager with tabs, up to four panes, previews, tags, Rename Studio, folder compare, duplicate finder and more.')));
     }],
   };
 

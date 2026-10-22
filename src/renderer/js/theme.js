@@ -53,7 +53,11 @@ export function isDark(settings) {
 }
 
 let applied = [];
+// pages that follow the system theme redraw when Windows switches between light and dark
+let lastSettings = null;
+if (typeof matchMedia !== 'undefined') matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (lastSettings) { applyColors(lastSettings); window.dispatchEvent(new CustomEvent('dogfile:theme')); } });
 export function applyColors(settings) {
+  lastSettings = settings;
   const dark = isDark(settings);
   const root = document.documentElement;
   root.dataset.theme = dark ? 'dark' : 'light';

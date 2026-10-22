@@ -11,7 +11,8 @@ function applyMediaTheme() {
   if (!EMBED && sys?.platform === 'win32') api('win:overlay', dark ? { color: '#101012', symbolColor: '#c9cacc' } : { color: getComputedStyle(document.documentElement).getPropertyValue('--tabbar').trim() || '#efeff0', symbolColor: '#3a3a3a' });
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyMediaTheme());
-import { EMBED, pendingFiles, onHost, tellHost, showInFiles, setTitle } from './embed.js';
+import { EMBED, pendingFiles, onHost, tellHost, showInFiles, setTitle, onWindowClose } from './embed.js';
+onWindowClose(async () => true);
 import { analyzeAudio, cachedAnalysis } from './audio-analysis.js';
 
 const $ = (id) => document.getElementById(id);

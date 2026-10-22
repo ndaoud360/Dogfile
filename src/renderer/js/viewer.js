@@ -11,7 +11,7 @@ function applyMediaTheme() {
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyMediaTheme());
 import { readExif } from './exif.js';
-import { EMBED, pendingFiles, onHost, tellHost, showInFiles, setTitle } from './embed.js';
+import { EMBED, pendingFiles, onHost, tellHost, showInFiles, setTitle, onLeave, onWindowClose } from './embed.js';
 
 const $ = (id) => document.getElementById(id);
 const NATIVE = new Set(['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'bmp', 'ico', 'svg', 'avif', 'apng']);
@@ -459,6 +459,19 @@ function resizeWork(w, hh) {
   }
 })();
 
+// leaving with unsaved edits (closing the tab or window, going to a folder): save them first?
+async function confirmLeave(asking) {
+  if (!E?.dirty) return true;
+  asking?.();
+  const v = await modal({ title: 'Save your edits?', width: 440, body: h('div', {}, `“${V.list[V.idx]?.name || 'This photo'}” has edits that aren’t saved.`),
+    buttons: [{ label: 'Cancel', value: 'cancel' }, { label: 'Don’t save', value: 'discard' }, { label: 'Overwrite', value: 'overwrite' }, { label: 'Save a copy', primary: true, value: 'copy' }], closeOnBackdrop: false });
+  if (v === 'discard') { E.dirty = false; return true; }
+  if (v === 'copy' || v === 'overwrite') { try { return (await save(v)) === true; } catch (e) { toast(e.message, { error: true }); return false; } }
+  return false;
+}
+onLeave(confirmLeave);
+onWindowClose(confirmLeave);
+
 // ---- save ----
 async function save(mode) {
   if (!E) return;
@@ -474,7 +487,7 @@ async function save(mode) {
   const stem = it.name.replace(/\.[^.]+$/, '');
   let target;
   if (mode === 'overwrite') {
-    if (!(await confirm('Overwrite original?', `Replace <b>${esc(it.name)}</b> with the edited image? This can’t be undone (photo metadata such as camera info isn’t kept).`, { ok: 'Overwrite', danger: true }))) return;
+    if (!(await confirm('Overwrite original?', `Replace <b>${esc(it.name)}</b> with the edited image? This can’t be undone (photo metadata such as camera info isn’t kept).`, { ok: 'Overwrite', danger: true }))) return false;
     target = outExt === ext || (outExt === 'jpg' && ext === 'jpeg') ? it.path : `${dir}${sys.sep}${stem}.${outExt}`;
   } else target = await api('fs:uniqueName', dir, `${stem} (edited).${outExt}`, 'number');
   await api('fs:writeDataUrl', target, data);
@@ -483,6 +496,7 @@ async function save(mode) {
   toast(mode === 'overwrite' ? 'Saved' : `Saved a copy: ${target.split(/[\\/]/).pop()}`, { action: { label: 'Show', run: () => showInFiles(target) } });
   if (mode !== 'overwrite') { V.list.splice(V.idx + 1, 0, { path: target, name: target.split(/[\\/]/).pop() }); exitEdit(); show(V.idx + 1); }
   else { exitEdit(); show(V.idx); }
+  return true;
 }
 
 function renderTools() {

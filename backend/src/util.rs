@@ -149,6 +149,7 @@ pub fn spawn_detached(program: &str, args: &[String], cwd: Option<&str>, show_wi
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
+        crate::win::allow_foreground();
         // DETACHED_PROCESS for console helpers we don't want to see; GUI apps show their own windows
         c.creation_flags(if show_window { 0x0000_0200 } else { 0x0800_0000 | 0x0000_0200 });
     }

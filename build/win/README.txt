@@ -25,7 +25,7 @@ FIRST THINGS TO TRY
   Tab            jump between panes     F5 / F6        copy / move to other pane
   Space          Quick Look             Alt+P          preview pane
   Ctrl+F         filter this folder     Ctrl+E         search (regex, content…)
-  F2             rename (Tab = next)    Ctrl+Shift+R   batch rename
+  F2             rename (Tab = next)    Ctrl+Shift+R   Rename Studio
   Ctrl+Z / Y     undo / redo            Alt+1..7       color tags
   Ctrl+`         terminal here          Ctrl+L         type a path
   F1             all shortcuts (remappable in Settings)
@@ -134,7 +134,7 @@ MORE IN 1.4
   Tidy up: right-click empty space > Tidy up this folder. Groups files by
           topic ("invoice", "wedding") then by kind, shows the new folders
           first, and every move can be undone. Optional AI grouping.
-  Rename by describing it: in Batch rename, type "format as
+  Rename by describing it: in Rename Studio, type "format as
           YYYY-MM-DD_Invoice_### and lowercase everything" and watch the
           preview.
   Drag a tab to the left, right or bottom of the window to split the view.

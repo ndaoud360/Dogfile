@@ -1521,3 +1521,7 @@ body.item-dragging iframe { pointer-events: none !important; }
 .upd-auto { margin-top: 2px; }
 .upd-pop { display: flex; align-items: center; gap: 14px; }
 .upd-logo { width: 44px; height: 44px; flex: none; background: url(assets/icon.png) center / contain no-repeat; }
+
+/* a built-in app alone in the window: no preview column */
+body.show-preview.app-only #workspace { grid-template-columns: minmax(0, 1fr) 0 0; }
+body.app-only #preview, body.app-only #preview-resizer { display: none; }

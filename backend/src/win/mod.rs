@@ -196,6 +196,8 @@ pub fn read_shortcut(lnk: &str) -> Option<String> {
 // ---------------- open, Open with, run as administrator, Properties ----------------
 pub fn shell_execute(file: &str, verb: &str, params: Option<&str>, dir: Option<&str>) -> Result<(), String> {
     com_init();
+    // the program we start may bring its window to the front, over Dogfile
+    allow_foreground();
     let (f, v) = (HSTRING::from(file), HSTRING::from(verb));
     let p = params.map(HSTRING::from);
     let d = dir.map(HSTRING::from);
@@ -605,3 +607,10 @@ pub fn copy_file_progress(j: &Job, src: &std::path::Path, dst: &std::path::Path,
 
 #[allow(dead_code)]
 fn unused(_: Option<IShellItem>) {}
+
+/// Let whatever Dogfile starts next take the foreground (so it opens on top of Dogfile, not under it).
+pub fn allow_foreground() {
+    unsafe {
+        let _ = windows::Win32::UI::WindowsAndMessaging::AllowSetForegroundWindow(windows::Win32::UI::WindowsAndMessaging::ASFW_ANY);
+    }
+}

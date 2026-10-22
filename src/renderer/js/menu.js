@@ -21,8 +21,12 @@ function placeAt(el, x, y, alignRight) {
   el.style.top = top + 'px';
 }
 
+// a second click on the button that opened a menu closes it (the click's mousedown already closed it; don't reopen)
+let closedBy = null, closedAt = 0;
 export async function showMenu(items, x, y, opts = {}) {
   const depth = opts.depth || 0;
+  const ev = window.event;
+  if (!depth && ev && ev.type === 'click' && closedBy && Date.now() - closedAt < 600 && ev.target?.nodeType === 1 && (ev.target === closedBy || ev.target.contains(closedBy) || closedBy.contains(ev.target))) { closedBy = null; return null; }
   closeMenus(depth);
   if (typeof items === 'function') items = await items();
   items = (items || []).filter((i) => i && !i.hidden);
@@ -93,7 +97,7 @@ export async function showMenu(items, x, y, opts = {}) {
 
 document.addEventListener('mousedown', (e) => {
   if (!stack.length) return;
-  if (!e.target.closest?.('.menu')) closeMenus(0);
+  if (!e.target.closest?.('.menu')) { closedBy = e.target.closest?.('button, .menu-tab, [role=button], .tab') || e.target; closedAt = Date.now(); closeMenus(0); }
 }, true);
 window.addEventListener('blur', () => closeMenus(0));
 window.addEventListener('resize', () => closeMenus(0));

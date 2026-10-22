@@ -7,7 +7,7 @@ import {
 import { icon } from './icons.js';
 import {
   bindActions, buildPanes, activeTab, paneTab, paneCount, openTab, closeTab, showTabInPane, setLayout, loadTab, navigate, focusPane,
-  selectedItems, renderAll, onWatchChanged, duplicateTab, tabById, attachDropTarget, paneEls, renderTabPanes, sortMenu, newTabState, recompute,
+  selectedItems, renderAll, onWatchChanged, duplicateTab, tabById, attachDropTarget, paneEls, renderTabPanes, sortMenu, newTabState, recompute, confirmLeaveAll,
 } from './pane.js';
 import * as A from './actions.js';
 import * as T from './tools.js';
@@ -43,6 +43,7 @@ const $ = (id) => document.getElementById(id);
 // Theme
 // ======================================================================
 let systemDark = matchMedia('(prefers-color-scheme: dark)').matches;
+let lastThemeSig = '';
 function applyTheme() {
   const s = state.settings;
   const dark = applyColors(s);
@@ -55,6 +56,9 @@ function applyTheme() {
   document.body.classList.toggle('show-preview', !!s.showPreview);
   document.body.classList.toggle('ribbon-pinned', !!s.ribbonPinned);
   document.body.classList.toggle('no-status', s.showStatusBar === false);
+  // built-in apps in tabs follow at once (light/dark, colours, roundness)
+  const sig = JSON.stringify([s.theme, s.mediaTheme, s.accent, s.colors, s.corners, s.fontScale, dark]);
+  if (sig !== lastThemeSig) { lastThemeSig = sig; bus.emit('settings'); }
   if (IS_WIN() && !sys.customControls) { const cs = getComputedStyle(root); api('win:overlay', { color: cs.getPropertyValue('--tabbar').trim() || (dark ? '#151618' : '#efeff0'), symbolColor: cs.getPropertyValue('--text-2').trim() || (dark ? '#c9cacc' : '#3a3a3a') }); }
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => { systemDark = e.matches; applyTheme(); });
@@ -161,9 +165,9 @@ function tabMenu(t, e) {
     { label: 'Copy path', icon: 'link', run: () => !isVirtual(t.path) && api('clip:writeText', t.path) },
     { separator: true },
     { label: 'Close tab', icon: 'close', keys: 'Ctrl+W', run: () => closeTab(t) },
-    { label: 'Close other tabs', run: () => state.tabs.filter((x) => x !== t && !x.locked && !x.pinned).forEach((x) => closeTab(x)) },
-    { label: 'Close tabs to the right', run: () => state.tabs.slice(state.tabs.indexOf(t) + 1).filter((x) => !x.locked && !x.pinned).forEach((x) => closeTab(x)) },
-    { label: 'Close tabs to the left', run: () => state.tabs.slice(0, state.tabs.indexOf(t)).filter((x) => !x.locked && !x.pinned).forEach((x) => closeTab(x)) },
+    { label: 'Close other tabs', run: () => closeEach(state.tabs.filter((x) => x !== t && !x.locked && !x.pinned)) },
+    { label: 'Close tabs to the right', run: () => closeEach(state.tabs.slice(state.tabs.indexOf(t) + 1).filter((x) => !x.locked && !x.pinned)) },
+    { label: 'Close tabs to the left', run: () => closeEach(state.tabs.slice(0, state.tabs.indexOf(t)).filter((x) => !x.locked && !x.pinned)) },
     { label: 'Reopen closed tab', icon: 'history', keys: 'Ctrl+Shift+T', disabled: !state.closedTabs.length, run: () => bus.cmd('reopenTab') },
     { separator: true },
     { label: 'Save tabs as workspace…', icon: 'workspace', run: () => bus.cmd('saveWorkspace') },
@@ -187,7 +191,7 @@ const R = {
   ],
   organize: [
     ['Sort files', [['declutter', 'Tidy up', true], ['folderRules', 'Automate', true], ['automations', 'All automations']]],
-    ['Rename', [['batchRename', 'Rename many', true]]],
+    ['Rename', [['batchRename', 'Rename Studio', true]]],
     ['Compress', [['quickZip', 'Zip', true], ['compress', 'Compress…'], ['extract'], ['extractTo']]],
     ['Find', [['newCollection', 'New collection'], ['dupes', 'Duplicates'], ['similarImages', 'Similar pictures']]],
     ['Share', [['copyPath', 'Copy path'], ['copyName'], ['createShortcut'], ['symlink'], ['addToShelf', 'Add to Drop Shelf']]],
@@ -229,7 +233,7 @@ function renderCtxRibbon(r) {
   for (const [gname, btns] of ctxCache.groups) {
     const list = btns.filter(Boolean);
     if (!list.length) continue;
-    r.append(ribbonGroup(gname, list.map((bt) => ({ icon: bt.icon || 'command', label: bt.label, title: bt.label, big: bt.big, run: bt.run }))));
+    r.append(ribbonGroup(gname, list.map((bt) => ({ icon: bt.icon || 'command', label: bt.label, title: bt.title || bt.label, big: bt.big, on: bt.on, run: bt.run, menu: bt.menu }))));
   }
 }
 // one ribbon group: big buttons, then small ones in columns of three, and the group name under them
@@ -238,8 +242,10 @@ function ribbonGroup(gname, entries) {
   const big = h('div', { class: 'rb-big' }), small = h('div', { class: 'rb-small' });
   const after = () => { if (!state.settings.ribbonPinned) { ribbonOpen = null; renderRibbon(); } else setTimeout(renderRibbon, 50); };
   for (const e of entries) {
-    const b = h('button', { class: `rb-btn ${e.big ? 'big' : ''}${e.on ? ' on' : ''}`, title: e.title || e.label, html: `${icon(e.icon)}<span>${esc(e.label)}</span>` });
-    b.addEventListener('click', () => { e.run(); after(); });
+    const b = h('button', { class: `rb-btn ${e.big ? 'big' : ''}${e.on ? ' on' : ''}${e.menu ? ' has-menu' : ''}`, title: e.title || e.label, html: `${icon(e.icon)}<span>${esc(e.label)}${e.menu ? ' ▾' : ''}</span>` });
+    // a button with a menu drops it down under itself (and a second click closes it)
+    if (e.menu) b.addEventListener('click', () => { const r = b.getBoundingClientRect(); showMenu(e.menu, r.left, r.bottom + 2); });
+    else b.addEventListener('click', () => { e.run(); after(); });
     (e.big ? big : small).append(b);
   }
   g.append(h('div', { class: 'rb-btns' }, big.childElementCount ? big : null, small.childElementCount ? small : null), h('div', { class: 'rb-label' }, gname));
@@ -247,7 +253,7 @@ function ribbonGroup(gname, entries) {
     g.innerHTML = '';
     g.classList.add('folded');
     const b = h('button', { class: 'rb-btn big', title: gname, html: `${icon(entries[0].icon)}<span>${esc(gname)} ▾</span>` });
-    b.addEventListener('click', () => { const r = b.getBoundingClientRect(); showMenu(entries.map((e) => ({ label: e.label, icon: e.icon, checked: e.on || undefined, run: () => { e.run(); after(); } })), r.left, r.bottom + 2); });
+    b.addEventListener('click', () => { const r = b.getBoundingClientRect(); showMenu(entries.map((e) => (e.menu ? { label: e.label, icon: e.icon, submenu: e.menu } : { label: e.label, icon: e.icon, checked: e.on || undefined, run: () => { e.run(); after(); } })), r.left, r.bottom + 2); });
     g.append(h('div', { class: 'rb-btns' }, h('div', { class: 'rb-big' }, b)), h('div', { class: 'rb-label' }, gname));
   };
   return g;
@@ -512,6 +518,13 @@ onMain('work:msg', (m) => { if (Array.isArray(m.items)) m.items.forEach(fillItem
 onMain('watch:changed', onWatchChanged);
 onMain('theme:changed', ({ dark }) => { systemDark = dark; applyTheme(); });
 onMain('app:beforeHide', () => saveSession());
+// closing the window: apps in tabs with unsaved work ask first (Save / Don't save / Cancel)
+onMain('app:closeRequested', async () => {
+  let ok = true;
+  try { ok = await confirmLeaveAll(() => api('win:control', 'closeAsking')); } catch { ok = true; }
+  api('win:control', ok ? 'closeNow' : 'closeCancel');
+});
+async function closeEach(tabs) { for (const x of tabs) await closeTab(x); }
 onMain('settings:changed', (v) => { state.settings = { ...state.settings, ...v }; applyTheme(); renderAll(); });
 onMain('drives:changed', async () => {
   await A.refreshDrives();

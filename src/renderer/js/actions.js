@@ -1019,7 +1019,7 @@ export function buildItemsMenu(t, items) {
     real.length && { label: 'Move to…', icon: 'moveTo', run: async () => { const d = await api('dialog:pickFolder', 'Move to'); if (d) transfer(paths, d, 'move'); } },
     { separator: true },
     real.length && { label: 'Rename', icon: 'rename', keys: 'F2', run: () => rename(items) },
-    real.length > 1 && { label: 'Batch rename…', icon: 'rename', keys: 'Ctrl+Shift+R', run: () => batchRename(items) },
+    real.length > 1 && { label: 'Rename Studio…', icon: 'rename', keys: 'Ctrl+Shift+R', run: () => batchRename(items) },
     real.length && { label: 'Delete', icon: 'trash', keys: 'Del', run: () => remove(items) },
     real.length && { label: 'Delete permanently', icon: 'trash', keys: 'Shift+Del', danger: true, run: () => remove(items, true) },
     { separator: true },

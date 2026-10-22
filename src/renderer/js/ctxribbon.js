@@ -3,7 +3,7 @@
 import { state, KINDS, dirname, basename } from './core.js';
 import { activeTab, selectedItems, navigate } from './pane.js';
 import * as A from './actions.js';
-import { activeAppTab, appCmd } from './apptabs.js';
+import { activeAppTab, appCmd, appMenu } from './apptabs.js';
 import { convertMedia, analyzeDialog, convertImages, setWallpaper } from './mediatools.js';
 
 const B = (icon, label, run, big = false) => ({ icon, label, run, big });
@@ -16,6 +16,15 @@ export function contextRibbon() {
   const app = activeAppTab();
   if (app) {
     const st = app.appState || {};
+    if (app.app === 'editor') {
+      const M = (name, ic) => ({ icon: ic, label: name, menu: () => appMenu(name) });
+      return { key: 'notepad', label: 'Notepad', groups: [
+        ['Menus', [M('File', 'page'), M('Edit', 'rename'), M('Search', 'search'), M('View', 'eye'), M('Encoding', 'code'), M('Language', 'globe'), M('EOL', 'flatten'), M('Tools', 'settings'), M('Features', 'puzzle')]],
+        ['Document', [B('newFile', 'New', () => appCmd('new')), B('folderOpen', 'Open…', () => appCmd('open')), B('check', 'Save', () => appCmd('save')), B('save', 'Save as…', () => appCmd('saveAs')), B('copy', 'Save all', () => appCmd('saveAll'))]],
+        ['Edit', [B('undo', 'Undo', () => appCmd('undo')), B('redo', 'Redo', () => appCmd('redo')), B('search', 'Find', () => appCmd('find')), B('rename', 'Replace', () => appCmd('replace')), B('star', 'Bookmark', () => appCmd('bookmark'))]],
+        ['View', [{ ...B('flatten', 'Word wrap', () => appCmd('wrap')), on: st.wrap }, { ...B('eye', 'Whitespace', () => appCmd('whitespace')), on: st.whitespace }, { ...B('panel', 'Preview', () => appCmd('preview')), on: st.preview }, B('zoomIn', 'Zoom in', () => appCmd('zoomIn')), B('zoomOut', 'Zoom out', () => appCmd('zoomOut')), B('info', 'Statistics', () => appCmd('stats'))]],
+      ] };
+    }
     if (app.app === 'viewer') return { key: 'editor', label: 'Editor', groups: [
       ['Edit', [B('rename', 'Edit', () => appCmd('edit'), true), B('crop', 'Crop', () => appCmd('crop'), true), B('palette', 'Filters', () => appCmd('filters')), B('rename', 'Draw', () => appCmd('draw'))]],
       ['Rotate', [B('undo', 'Rotate left', () => appCmd('rotateL')), B('redo', 'Rotate right', () => appCmd('rotateR')), B('swap', 'Flip', () => appCmd('flip'))]],

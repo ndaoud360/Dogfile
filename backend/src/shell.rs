@@ -243,7 +243,9 @@ pub async fn icon(a: &Args) -> R {
 pub async fn recycle_list() -> R {
     #[cfg(windows)]
     return Ok(json!(blocking(win::recycle_list).await?));
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
+    return Ok(json!([]));
+    #[cfg(all(unix, not(target_os = "macos")))]
     {
         let items = blocking(|| trash::os_limited::list().unwrap_or_default()).await?;
         Ok(json!(items.iter().map(|i| json!({ "name": i.name.to_string_lossy(), "path": format!("trash:{}", i.id.to_string_lossy()), "isDir": false, "size": 0, "from": i.original_parent.to_string_lossy(), "deleted": crate::fsx::iso_ms(i.time_deleted * 1000), "modified": crate::fsx::iso_ms(i.time_deleted * 1000) })).collect::<Vec<_>>()))
@@ -262,7 +264,9 @@ pub async fn recycle_restore_original(a: &Args) -> R {
     let paths = a.strs(0);
     #[cfg(windows)]
     blocking(move || win::recycle_restore(&paths, true)).await?;
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
+    let _ = paths;
+    #[cfg(all(unix, not(target_os = "macos")))]
     blocking(move || {
         let want: Vec<String> = paths.iter().map(|p| util::low(p)).collect();
         if let Ok(items) = trash::os_limited::list() {

@@ -169,8 +169,17 @@ fn app_file(rest: &str) -> Resp {
     let root = &st().renderer_dir;
     let file: PathBuf = root.join(&rel);
     let ext = crate::util::ext(&rel);
+    // the interface packed into the program
+    let packed = st().ui.as_ref().map(|p| p.get(&rel.replace('\\', "/")));
+    if packed == Some(None) {
+        return Resp::text(404, "Not found");
+    }
     if ext == "html" {
-        let Ok(mut html) = std::fs::read_to_string(&file) else { return Resp::text(404, "Not found") };
+        let html = match packed {
+            Some(Some(b)) => String::from_utf8(b).ok(),
+            _ => std::fs::read_to_string(&file).ok(),
+        };
+        let Some(mut html) = html else { return Resp::text(404, "Not found") };
         if let Some(i) = html.find("<head>") {
             html.insert_str(i + 6, BRIDGE_TAG);
         } else {
@@ -180,7 +189,10 @@ fn app_file(rest: &str) -> Resp {
         // test runs can profile the page
         return if st().test_mode { r.header("Document-Policy", "js-profiling") } else { r };
     }
-    let mut r = serve_file(&file, None, true, "no-cache");
+    let mut r = match packed {
+        Some(Some(b)) => Resp::bytes(200, mime(&ext), b).header("Cache-Control", "no-cache"),
+        _ => serve_file(&file, None, true, "no-cache"),
+    };
     // the feature sandbox may run the feature's code but can't load other scripts or reach the network
     if rel.ends_with("js/ext-worker.js") {
         r.headers.push(("Content-Security-Policy".into(), "default-src 'none'; script-src 'self' 'unsafe-eval'; connect-src 'none'; worker-src 'none'".into()));

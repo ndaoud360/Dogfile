@@ -10,7 +10,7 @@ async fn main() {
     let renderer = args.get(2).map(PathBuf::from).unwrap_or(root.join("src").join("renderer"));
     let data = args.get(3).map(PathBuf::from).unwrap_or(std::env::temp_dir().join("dogfile-dev-data"));
     let host = dogfile_backend::server::DevHost::new();
-    dogfile_backend::start(dogfile_backend::Config { data_dir: data, renderer_dir: renderer, res_dir: root.clone(), test_mode: true }, host.clone());
+    dogfile_backend::start(dogfile_backend::Config { data_dir: data, renderer_dir: renderer, ui_pak: std::env::var("DOGFILE_TEST_PAK").ok().and_then(|f| std::fs::read(f).ok()).map(|b| &*Box::leak(b.into_boxed_slice())), res_dir: root.clone(), test_mode: true }, host.clone());
     println!("Dogfile dev server on http://{addr}/app/index.html");
     if let Err(e) = dogfile_backend::server::serve_dev(host, &addr).await {
         eprintln!("{e}");

@@ -221,7 +221,10 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
             let dir = st().data_dir.join("Features");
             std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
             let dst = dir.join("Feature guide.md");
-            std::fs::copy(st().renderer_dir.join("assets").join("FEATURES.md"), &dst).map_err(|e| e.to_string())?;
+            match st().ui.as_ref().and_then(|p| p.get("assets/FEATURES.md")) {
+                Some(b) => std::fs::write(&dst, b).map_err(|e| e.to_string())?,
+                None => { std::fs::copy(st().renderer_dir.join("assets").join("FEATURES.md"), &dst).map_err(|e| e.to_string())?; }
+            }
             Ok(json!(dst.to_string_lossy()))
         }
         "ext:log" => {

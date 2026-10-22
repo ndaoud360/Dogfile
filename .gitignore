@@ -5,3 +5,4 @@ core/target/
 vendor/ffmpeg/
 *.zip
 target/
+app/gen/ui.pak

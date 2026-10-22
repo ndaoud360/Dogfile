@@ -1,6 +1,6 @@
 // Builds the ready-to-run Windows x64 folder + zip for Dogfile 2 (Tauri):
-//   Dogfile.exe (built by GitHub Actions, .github/workflows/app.yml, fetched from the app-bin branch),
-//   renderer/ (the interface), ffmpeg/ (Dogfile Player), 7zip/ (archives), installer scripts.
+//   Dogfile.exe (the program with its interface inside, built by GitHub Actions, .github/workflows/app.yml, fetched from the app-bin branch),
+//   ffmpeg/ (Dogfile Player), 7zip/ (archives), installer scripts.
 // usage: node build/package-win.mjs <Dogfile.exe> <ffmpeg-win64-shared.zip>
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,8 +19,7 @@ else fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
 
 fs.copyFileSync(exe, path.join(outDir, 'Dogfile.exe'));
-// the interface (development-only files left out)
-fs.cpSync(path.join(root, 'src', 'renderer'), path.join(outDir, 'renderer'), { recursive: true, filter: (s) => !s.endsWith('.map') });
+// the interface is inside Dogfile.exe (build/pack-ui.mjs before the build), so no renderer/ folder ships
 
 // media engine: ffmpeg + ffprobe (shared build) for Dogfile Player, thumbnails and conversions
 if (ffZip) {

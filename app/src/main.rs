@@ -575,9 +575,35 @@ fn data_dir() -> PathBuf {
     // the same folder the Electron version used, so settings, tags and the index carry over
     dirs::config_dir().unwrap_or(exe_dir).join("Dogfile")
 }
+/// the interface, packed into the program by the release build (build/pack-ui.mjs)
+#[cfg(ui_pak)]
+static UI_PAK: Option<&[u8]> = Some(include_bytes!(env!("DOGFILE_UI_PAK")));
+#[cfg(not(ui_pak))]
+static UI_PAK: Option<&[u8]> = None;
+/// DOGFILE_UI_DIR=<folder> runs a packed build with an interface folder instead (development)
+fn ui_pak() -> Option<&'static [u8]> {
+    if std::env::var_os("DOGFILE_UI_DIR").is_some() { None } else { UI_PAK }
+}
+
 /// where the interface and the bundled tools are: beside the exe (installed / portable), or the source tree
 fn resource_dirs() -> (PathBuf, PathBuf) {
     let exe_dir = std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.to_path_buf())).unwrap_or_default();
+    if let Some(d) = std::env::var_os("DOGFILE_UI_DIR") {
+        return (PathBuf::from(d), exe_dir);
+    }
+    if ui_pak().is_some() {
+        // a Mac app bundle keeps the tools in Contents/Resources
+        let mac = exe_dir.join("..").join("Resources");
+        let res = if mac.is_dir() { mac } else { exe_dir.clone() };
+        // an update from a version that kept the interface beside the program left that folder behind
+        let old = res.join("renderer");
+        if res.join("components.json").exists() && old.join("index.html").exists() {
+            std::thread::spawn(move || {
+                let _ = std::fs::remove_dir_all(&old);
+            });
+        }
+        return (res.join("renderer"), res);
+    }
     // beside the program, in resources/, or in a Mac app bundle's Contents/Resources
     for base in [exe_dir.clone(), exe_dir.join("resources"), exe_dir.join("..").join("Resources")] {
         if base.join("renderer").join("index.html").exists() {
@@ -617,7 +643,7 @@ fn main() {
     let (renderer_dir, res_dir) = resource_dirs();
     {
         let _g = rt.enter();
-        dogfile_backend::start(dogfile_backend::Config { data_dir: data_dir(), renderer_dir, res_dir, test_mode }, h.clone());
+        dogfile_backend::start(dogfile_backend::Config { data_dir: data_dir(), renderer_dir, ui_pak: ui_pak(), res_dir, test_mode }, h.clone());
     }
     *h.corners.lock() = dogfile_backend::setting("windowCorners").as_str().unwrap_or("round").to_string();
 

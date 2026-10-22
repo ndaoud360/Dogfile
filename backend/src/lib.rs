@@ -3,6 +3,7 @@
 // The app (Tauri) and the development server both run this same code; they differ only in the `Host` they
 // provide (windows, dialogs, events).
 pub mod args;
+pub mod uipak;
 pub mod dispatch;
 pub mod engine;
 pub mod events;
@@ -47,6 +48,8 @@ pub struct State {
     pub data_dir: PathBuf,
     /// the interface files (index.html, js/, styles.css…)
     pub renderer_dir: PathBuf,
+    /// the interface packed into the program (then renderer_dir isn't used)
+    pub ui: Option<uipak::Pak>,
     /// bundled tools: ffmpeg/, 7zip/
     pub res_dir: PathBuf,
     pub settings: RwLock<Value>,
@@ -64,6 +67,8 @@ pub fn st() -> &'static State {
 pub struct Config {
     pub data_dir: PathBuf,
     pub renderer_dir: PathBuf,
+    /// the packed interface (app/gen/ui.pak compiled in), served instead of renderer_dir
+    pub ui_pak: Option<&'static [u8]>,
     pub res_dir: PathBuf,
     pub test_mode: bool,
 }
@@ -77,6 +82,7 @@ pub fn start(cfg: Config, host: Arc<dyn Host>) {
         host,
         data_dir: cfg.data_dir,
         renderer_dir: cfg.renderer_dir,
+        ui: cfg.ui_pak.and_then(uipak::Pak::parse),
         res_dir: cfg.res_dir,
         settings: RwLock::new(settings),
         test_mode: cfg.test_mode,

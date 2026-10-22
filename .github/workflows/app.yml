@@ -1,10 +1,14 @@
 # Builds Dogfile (Tauri + Rust) for Windows, runs the engine's tests, starts the app once on the runner to
 # check that it draws and to measure its memory, and publishes Dogfile.exe on the app-bin branch.
+# The interface (src/renderer) is minified and packed into the program (build/pack-ui.mjs): nothing else ships.
+# Pushing a tag v<version> also publishes that version to the public updates repository (the publish job).
 # Results go into annotations (readable through the API).
 name: app
 on:
   push:
     branches: [main]
+    # a v<version> tag builds and publishes that version (see the publish job)
+    tags: ['v*']
     paths: ['core/**', 'backend/**', 'app/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/app.yml', 'src/renderer/**']
   workflow_dispatch:
 permissions:
@@ -24,6 +28,11 @@ jobs:
             target
           key: app-${{ hashFiles('Cargo.lock') }}
           restore-keys: app-
+      - name: Pack the interface into the program
+        shell: bash
+        run: |
+          npm install --prefix "$RUNNER_TEMP/esbuild" --no-audit --no-fund --silent esbuild@0.24.2
+          ESBUILD_DIR="$RUNNER_TEMP/esbuild" node build/pack-ui.mjs
       - name: Build
         shell: pwsh
         run: |
@@ -56,7 +65,6 @@ jobs:
           $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
           $files = "$env:RUNNER_TEMP\files"; New-Item -ItemType Directory -Force $files | Out-Null
           1..300 | ForEach-Object { Set-Content "$files/file $_.txt" "hello $_" }
-          Copy-Item -Recurse src/renderer target/release/renderer
           New-Item -ItemType File -Force target/release/portable.txt | Out-Null
           $noIndex = '{"indexEnabled":false,"welcomed":true,"uiMode":"simple"}'
           # Dogfile 2 without the index
@@ -73,7 +81,6 @@ jobs:
         continue-on-error: true
         run: |
           $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
-          if (-not (Test-Path target/release/renderer)) { Copy-Item -Recurse src/renderer target/release/renderer }
           New-Item -ItemType File -Force target/release/portable.txt | Out-Null
           New-Item -ItemType Directory -Force target/release/data | Out-Null
           Set-Content target/release/data/settings.json '{"welcomed":true}'
@@ -99,7 +106,6 @@ jobs:
           trap { Write-Output "::error title=wintest::$_"; continue }
           $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
           Remove-Item -Recurse -Force target/release/data -ErrorAction SilentlyContinue
-          if (-not (Test-Path target/release/renderer)) { Copy-Item -Recurse src/renderer target/release/renderer }
           New-Item -ItemType File -Force target/release/portable.txt | Out-Null
           New-Item -ItemType Directory -Force target/release/data, target/release/7zip | Out-Null
           Copy-Item vendor/7zip/win32/7za.exe target/release/7zip/
@@ -137,10 +143,9 @@ jobs:
         run: |
           trap { Write-Output "::error title=updtest::$_"; continue }
           $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
-          $srv = "$env:RUNNER_TEMP/updsrv"; New-Item -ItemType Directory -Force "$srv/pkg/renderer" | Out-Null
-          # the "new version": this build plus a marker file
+          $srv = "$env:RUNNER_TEMP/updsrv"; New-Item -ItemType Directory -Force "$srv/pkg" | Out-Null
+          # the "new version": this build plus a marker file (a real update holds only Dogfile.exe)
           Copy-Item target/release/dogfile.exe "$srv/pkg/Dogfile.exe"
-          Copy-Item -Recurse -Force src/renderer/* "$srv/pkg/renderer/"
           Set-Content "$srv/pkg/updated.txt" 'updated'
           Compress-Archive -Path "$srv/pkg/*" -DestinationPath "$srv/Dogfile-9.9.9-app.zip" -Force
           $hash = (Get-FileHash "$srv/Dogfile-9.9.9-app.zip" -Algorithm SHA256).Hash.ToLower()
@@ -150,7 +155,6 @@ jobs:
           $py = Start-Process python -ArgumentList '-m', 'http.server', '47961', '--directory', $srv -PassThru -WindowStyle Hidden
           Start-Sleep -Seconds 2
           Remove-Item -Recurse -Force target/release/data, target/release/updated.txt -ErrorAction SilentlyContinue
-          if (-not (Test-Path target/release/renderer)) { Copy-Item -Recurse src/renderer target/release/renderer }
           New-Item -ItemType File -Force target/release/portable.txt | Out-Null
           New-Item -ItemType Directory -Force target/release/data | Out-Null
           Set-Content target/release/data/settings.json '{"welcomed":true}'
@@ -252,6 +256,7 @@ jobs:
           name: windows-x64
           path: |
             dist/Dogfile-Setup-*.exe
+            dist/Dogfile/Dogfile.exe
             dist/*.msix
           if-no-files-found: warn
       - name: Publish to the app-bin branch (readable with git)
@@ -285,6 +290,11 @@ jobs:
             target
           key: arm64-${{ hashFiles('Cargo.lock') }}
           restore-keys: arm64-
+      - name: Pack the interface into the program
+        shell: bash
+        run: |
+          npm install --prefix "$RUNNER_TEMP/esbuild" --no-audit --no-fund --silent esbuild@0.24.2
+          ESBUILD_DIR="$RUNNER_TEMP/esbuild" node build/pack-ui.mjs
       - name: Build (ARM64)
         shell: pwsh
         run: |
@@ -328,13 +338,18 @@ jobs:
             target
           key: linux-${{ hashFiles('Cargo.lock') }}
           restore-keys: linux-
+      - name: Pack the interface into the program
+        shell: bash
+        run: |
+          npm install --prefix "$RUNNER_TEMP/esbuild" --no-audit --no-fund --silent esbuild@0.24.2
+          ESBUILD_DIR="$RUNNER_TEMP/esbuild" node build/pack-ui.mjs
       - name: Build and package (Linux x64)
         run: |
           set -o pipefail
           cargo build --release -p dogfile > build.log 2>&1 || { echo "::error title=linux-build::$(grep -E '^error' -A12 build.log | head -120 | tr '\n' '~' | sed 's/~/%0A/g')"; exit 1; }
           v=$(node -p "require('./app/tauri.conf.json').version")
           d=dist/Dogfile-$v-linux-x64; mkdir -p $d
-          cp target/release/dogfile $d/dogfile; cp -r src/renderer $d/renderer; mkdir -p $d/7zip && cp vendor/7zip/linux/* $d/7zip/ 2>/dev/null || true
+          cp target/release/dogfile $d/dogfile; mkdir -p $d/7zip && cp vendor/7zip/linux/* $d/7zip/ 2>/dev/null || true
           cp app/icons/icon.png $d/dogfile.png
           cat > $d/install.sh <<'SH'
           #!/bin/sh
@@ -363,13 +378,18 @@ jobs:
             target
           key: mac-${{ hashFiles('Cargo.lock') }}
           restore-keys: mac-
+      - name: Pack the interface into the program
+        shell: bash
+        run: |
+          npm install --prefix "$RUNNER_TEMP/esbuild" --no-audit --no-fund --silent esbuild@0.24.2
+          ESBUILD_DIR="$RUNNER_TEMP/esbuild" node build/pack-ui.mjs
       - name: Build and package (Mac, Apple silicon)
         run: |
           set -o pipefail
           cargo build --release -p dogfile > build.log 2>&1 || { echo "::error title=mac-build::$(grep -E '^error' -A12 build.log | head -120 | tr '\n' '~' | sed 's/~/%0A/g')"; exit 1; }
           v=$(node -p "require('./app/tauri.conf.json').version")
           a=dist/Dogfile.app/Contents; mkdir -p $a/MacOS $a/Resources
-          cp target/release/dogfile $a/MacOS/dogfile; cp -r src/renderer $a/Resources/renderer
+          cp target/release/dogfile $a/MacOS/dogfile
           mkdir -p icon.iconset && for s in 16 32 128 256 512; do sips -z $s $s app/icons/icon.png --out icon.iconset/icon_${s}x${s}.png > /dev/null; done
           iconutil -c icns icon.iconset -o $a/Resources/dogfile.icns || true
           cat > $a/Info.plist <<PLIST
@@ -390,3 +410,37 @@ jobs:
         with:
           name: mac-arm64
           path: dist/*.zip
+  # A tag v<version> publishes that version: the program zips (Dogfile.exe only), the setup program and latest.json
+  # become release v<version> of the public updates repository. Nothing else is pushed there: no commits, no source.
+  # Needs the secret DOGFILE_UPDATES_TOKEN: a fine-grained token with "Contents: read and write" on
+  # ndaoud360/dogfile-updates only. The notes come from release-notes/<version>.md.
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, windows-arm64, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: art
+      - name: Check the version, the notes and the files
+        id: check
+        run: |
+          set -e
+          ver="${GITHUB_REF_NAME#v}"
+          conf=$(node -p "require('./app/tauri.conf.json').version")
+          [ "$ver" = "$conf" ] || { echo "::error title=publish::tag $GITHUB_REF_NAME but app/tauri.conf.json says $conf"; exit 1; }
+          [ -f "release-notes/$ver.md" ] || { echo "::error title=publish::write release-notes/$ver.md first"; exit 1; }
+          setup=$(ls art/windows-x64/Dogfile-Setup-*.exe 2>/dev/null | head -1)
+          exe=$(ls art/windows-x64/Dogfile/Dogfile.exe 2>/dev/null || true)
+          [ -n "$setup" ] && [ -n "$exe" ] || { echo "::error title=publish::the Windows build didn't produce Dogfile.exe and the setup program"; ls -R art; exit 1; }
+          [ -n "${{ secrets.DOGFILE_UPDATES_TOKEN }}" ] || { echo "::error title=publish::add the secret DOGFILE_UPDATES_TOKEN (Settings > Secrets and variables > Actions)"; exit 1; }
+          echo "ver=$ver" >> $GITHUB_OUTPUT; echo "setup=$setup" >> $GITHUB_OUTPUT; echo "exe=$exe" >> $GITHUB_OUTPUT
+      - name: Make the update
+        run: node build/make-update.mjs ${{ steps.check.outputs.ver }} release-notes/${{ steps.check.outputs.ver }}.md --x64 "${{ steps.check.outputs.exe }}" --arm64 art/windows-arm64/dogfile.exe --setup "${{ steps.check.outputs.setup }}"
+      - name: Publish to the public updates repository
+        env:
+          GH_TOKEN: ${{ secrets.DOGFILE_UPDATES_TOKEN }}
+        run: |
+          node build/publish-update.mjs
+          echo "::notice title=published::Dogfile ${{ steps.check.outputs.ver }}: https://github.com/ndaoud360/dogfile-updates/releases/tag/v${{ steps.check.outputs.ver }}"

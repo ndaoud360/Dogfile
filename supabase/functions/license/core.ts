@@ -160,6 +160,8 @@ export async function checkout(d: Deps, body: any) {
     'line_items[0][price_data][unit_amount]': String(PRICE_CENTS),
     'line_items[0][price_data][product_data][name]': 'Dogfile Pro',
     'line_items[0][price_data][product_data][description]': 'Lifetime licence for 2 PCs. Your serial number is emailed to you.',
+    // Stripe's product tax code (needed with Managed Payments): Downloadable Software - Personal Use, unless set otherwise
+    'line_items[0][price_data][product_data][tax_code]': d.env('STRIPE_TAX_CODE') || 'txcd_10202000',
     success_url: (d.env('SUCCESS_URL') || `${d.self}/thanks`) + '?session_id={CHECKOUT_SESSION_ID}',
     cancel_url: d.env('CANCEL_URL') || `${d.self}/cancelled`,
     'invoice_creation[enabled]': 'true',
@@ -173,8 +175,18 @@ export async function checkout(d: Deps, body: any) {
   if (m) form['metadata[machine]'] = machineText(m);
   await ensureWebhook(d).catch((e) => console.error('webhook setup', e));
   if (typeof body?.email === 'string' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email)) form.customer_email = body.email;
-  const s = await d.stripe('POST', '/v1/checkout/sessions', form);
-  if (!s?.url) throw new HttpError(502, 'The payment page couldn’t be opened. Try again in a minute.', 'stripe');
+  let s = await d.stripe('POST', '/v1/checkout/sessions', form);
+  // Managed Payments (Stripe as merchant of record) sends its own receipts and refuses invoice options: the serial
+  // number then goes in the product description, which the checkout page and Stripe's receipt both show
+  if (!s?.url && /managed payments/i.test(s?.error?.message || '')) {
+    for (const k of Object.keys(form)) if (k.startsWith('invoice_creation')) delete form[k];
+    form['line_items[0][price_data][product_data][description]'] = `Lifetime licence for 2 PCs. Serial number: ${serial} (Dogfile: Settings > Licence > Enter serial number)`;
+    s = await d.stripe('POST', '/v1/checkout/sessions', form);
+  }
+  if (!s?.url) {
+    console.error('stripe checkout', JSON.stringify(s?.error || s).slice(0, 500));
+    throw new HttpError(502, 'The payment page couldn’t be opened. Try again in a minute.' + (s?.error?.message ? ` (Stripe: ${s.error.message})` : ''), 'stripe');
+  }
   return { url: s.url, session: s.id };
 }
 

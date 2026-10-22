@@ -8,11 +8,15 @@ const sql = postgres(Deno.env.get('DB_URL')!, { prepare: false, max: 2, onnotice
 const emails: { to: string; text: string }[] = [];
 const sessions: Record<string, any> = {};
 const env: Record<string, string> = { ADMIN_SECRET: 'admin-secret-123456', STRIPE_SECRET_KEY: 'sk_test_x' };
+let managed = false; // pretend the Stripe account uses Managed Payments
+let lastForm: Record<string, string> = {};
 const d: core.Deps = {
   sql, env: (k) => env[k], now: () => Date.now(), self: 'https://example.supabase.co/functions/v1/license',
   email: async (to, _s, _h, text) => { emails.push({ to, text }); return true; },
   stripe: async (method, path, form) => {
     if (method === 'POST' && path === '/v1/checkout/sessions') {
+      lastForm = { ...form! };
+      if (managed && Object.keys(form!).some((k) => k.startsWith('invoice_creation'))) return { error: { message: 'invoice_creation[invoice_data] is not supported when Managed Payments is enabled.' } };
       const id = 'cs_test_' + crypto.randomUUID().replace(/-/g, '');
       sessions[id] = { id, url: 'https://checkout.stripe.com/c/pay/' + id, payment_status: 'unpaid', metadata: { product: 'dogfile-pro', machine: form!['metadata[machine]'], serial: form!['metadata[serial]'] }, invoice_serial: form!['invoice_creation[invoice_data][custom_fields][0][value]'], amount_total: 1999, currency: 'usd', payment_intent: 'pi_' + id.slice(8, 20), customer_details: { email: 'buyer@example.com' } };
       return sessions[id];
@@ -147,6 +151,15 @@ Deno.test('licence server', async (t) => {
     await core.webhook(d, raw, await stripeSig(raw));
     eq(emails.length, n0, 'no second licence or email');
     eq((await sql`select count(*)::int as n from dogfile.licenses where stripe_session = ${co.session}`)[0].n, 1, 'one licence');
+  });
+
+  await t.step('Managed Payments accounts: no invoice options, the serial goes in the description', async () => {
+    managed = true;
+    const co = await core.checkout(d, { machine: mid(50) });
+    ok(co.url && co.session, 'payment page opened after the retry');
+    eq(lastForm['line_items[0][price_data][product_data][tax_code]'], 'txcd_10202000', 'tax code sent');
+    ok(String(lastForm['line_items[0][price_data][product_data][description]']).includes(sessions[co.session].metadata.serial), 'serial in the description');
+    managed = false;
   });
 
   await t.step('moving between PCs is limited', async () => {

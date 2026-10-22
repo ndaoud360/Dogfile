@@ -54,7 +54,7 @@ export function toggle(open = !!state.settings.sidebarCollapsed) {
   if (animating) return;
   ripple();
   if (matchMedia('(prefers-reduced-motion: reduce)').matches || state.settings.foldAnimation === false) {
-    state.settings.sidebarCollapsed = !open; saveSettings(); bus.emit('settings'); syncBurger(); if (open) setTimeout(growHighlight, 30); return;
+    state.settings.sidebarCollapsed = !open; saveSettings(); document.body.classList.toggle('no-sidebar', !open); syncBurger(); bus.emit('sidebarToggled', open); if (open) setTimeout(growHighlight, 30); return;
   }
   run(open); // starts immediately, together with the ripple
 }
@@ -112,11 +112,12 @@ function run(open) {
     document.body.classList.toggle('no-sidebar', !open);
     document.body.classList.remove('folding');
     layer.remove();
-    saveSettings();
     syncBurger();
-    bus.emit('settings');
-    bus.emit('relayout');
     animating = false;
+    // only what depends on the sidebar: a full "settings" broadcast restyles every window and app tab
+    bus.emit('sidebarToggled', open);
+    const later = window.requestIdleCallback || ((f) => setTimeout(f, 200));
+    later(() => saveSettings(), { timeout: 1000 });
     if (open) growHighlight();
   };
   requestAnimationFrame(step);

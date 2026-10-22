@@ -60,10 +60,26 @@ function applyTheme() {
   document.body.classList.toggle('show-preview', !!s.showPreview);
   document.body.classList.toggle('ribbon-pinned', !!s.ribbonPinned);
   document.body.classList.toggle('no-status', s.showStatusBar === false);
+  applyGlass(!!s.sidebarGlass);
   // built-in apps in tabs follow at once (light/dark, colours, roundness)
   const sig = JSON.stringify([s.theme, s.mediaTheme, s.accent, s.colors, s.corners, s.fontScale, dark]);
   if (sig !== lastThemeSig) { lastThemeSig = sig; bus.emit('settings'); }
   if (IS_WIN() && !sys.customControls) { const cs = getComputedStyle(root); api('win:overlay', { color: cs.getPropertyValue('--tabbar').trim() || (dark ? '#151618' : '#efeff0'), symbolColor: cs.getPropertyValue('--text-2').trim() || (dark ? '#c9cacc' : '#3a3a3a') }); }
+}
+// glass sidebar: blur + translucency in the page; on Windows the window itself turns see-through (Acrylic)
+let glassOn = null;
+function applyGlass(on) {
+  if (on === glassOn) return;
+  const first = glassOn === null;
+  glassOn = on;
+  document.body.classList.toggle('glass', on);
+  if (!on) document.body.classList.remove('see-through');
+  if (!IS_WIN()) return;
+  api('win:control', on ? 'glassOn' : 'glassOff').then((r) => {
+    if (!r || typeof r !== 'object') return;
+    document.body.classList.toggle('see-through', on && !!r.seeThrough);
+    if (on && !r.seeThrough && !first) toast('Glass is on. To see your desktop through the sidebar, open a new window (Ctrl+N) or restart Dogfile.');
+  }).catch(() => {});
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => { systemDark = e.matches; applyTheme(); });
 bus.on('theme', applyTheme);
@@ -213,7 +229,7 @@ const R = {
     ['Layout', [['viewGrid', 'Grid', true], ['viewDetails', 'Details', true], ['viewGallery', 'Gallery', true], ['viewList', 'List'], ['viewColumns', 'Columns'], ['zoomIn', 'Bigger'], ['zoomOut', 'Smaller']]],
     ['Sort & group', [['sort_name', 'By name'], ['sort_mtime', 'By date'], ['sort_size', 'By size'], ['sort_type', 'By type'], ['group_type', 'Group by type'], ['group_date', 'Group by date'], ['groupNone', 'No groups'], ['mediaFilter', 'Media filter']]],
     ['Panes', [['togglePreview', 'Preview pane'], ['toggleSidebar', 'Sidebar'], ['layout1', 'One pane'], ['layout2v', 'Side by side'], ['layout2h', 'Stacked'], ['layout3', 'Three'], ['layout4', 'Four'], ['syncNav', 'Sync browsing'], ['swapPanes', 'Swap panes']]],
-    ['Show', [['toggleHidden', 'Hidden items'], ['toggleExt', 'File extensions'], ['toggleFolderSizes', 'Folder sizes'], ['toggleCheckboxes', 'Check boxes'], ['flatten', 'Flatten folder']]],
+    ['Show', [['toggleHidden', 'Hidden items'], ['toggleExt', 'File extensions'], ['toggleFolderSizes', 'Folder sizes'], ['toggleCheckboxes', 'Check boxes'], ['flatten', 'Flatten folder'], ['toggleGlass', 'Glass sidebar']]],
     ['Workspace', [['workspaces', 'Workspaces', true], ['profiles', 'Profiles'], ['pinToWorkspace', 'Pin files']]],
     ['Theme', [['themeSystem', 'System'], ['themeLight', 'Light'], ['themeDark', 'Dark'], ['customizeToolbar', 'Toolbar…']]],
   ],
@@ -269,6 +285,8 @@ function fitRibbon(r) {
   for (let i = groups.length - 1; i >= 1 && r.scrollWidth > r.clientWidth + 1; i--) groups[i]._fold?.();
 }
 window.addEventListener('resize', debounce(() => { if ($('ribbon').classList.contains('open')) renderRibbon(); }, 150));
+// the sidebar opened or closed: the ribbon has a new width (refit it once the browser is idle)
+bus.on('sidebarToggled', () => { const r = $('ribbon'); const go = () => { if (r.classList.contains('open')) renderRibbon(); }; (window.requestIdleCallback || setTimeout)(go, { timeout: 500 }); });
 
 // tools that only show in Full mode (Simple mode keeps them in the command palette and the right-click "More")
 const ADVANCED_CMDS = new Set(['selectAll', 'selectNone', 'invertSel', 'shelf', 'pin', 'clipHistory', 'allVersions', 'emptyRecycle', 'showInExplorer', 'symlink', 'pasteShortcut', 'copyToOther', 'moveToOther', 'newFolderSel', 'openNewTab', 'terminal', 'runAsAdmin', 'selectPattern', 'selectSameType', 'createShortcut', 'symlink', 'hashes', 'whoLocks', 'addToShelf', 'terminalDrawer', 'gotoFile', 'winProperties', 'windowsMenu', 'syncNav', 'swapPanes', 'layout3', 'layout4', 'viewColumns', 'group_type', 'group_date', 'groupNone', 'flatten', 'toggleCheckboxes', 'toggleFolderSizes', 'sort_type', 'extractTo', 'copyName', 'editor', 'compare', 'hashes', 'similarMedia', 'makeChecksums', 'verifyChecksums', 'macros', 'startMacro', 'featureStore', 'features', 'addConnection', 'pinToWorkspace', 'automations', 'profiles', 'clipHistory', 'newCollection', 'mediaFilter']);

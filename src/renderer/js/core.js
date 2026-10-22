@@ -304,7 +304,7 @@ export const DEFAULT_SETTINGS = {
   openWithApps: [], networkPlaces: [], userTemplates: [], ribbonTab: 'home',
   corners: { radius: 8, tabs: false, tiles: true, controls: true, menus: true, dialogs: true, panels: true, items: true, window: true },
   colorPresets: {}, toolsInTabs: false, sidebarActions: false, useAtlasViewer: true, slideshowSeconds: 4, playerAnalyze: true, nativeDialogs: false, clickEmptyDeselects: true, mediaTheme: 'app', aiSearch: true, uiMode: 'full', welcomed: false, folderNotes: true,
-  useAtlasEditor: true, useAtlasPlayer: true, playerAutoPlaylist: true, foldAnimation: true, shadowStrength: 1, colors: { light: {}, dark: {} },
+  useAtlasEditor: true, useAtlasPlayer: true, playerAutoPlaylist: true, foldAnimation: true, sidebarGlass: false, shadowStrength: 1, colors: { light: {}, dark: {} },
   throttleMBps: 0, sizeBars: true, terminalSync: true, terminalShell: 'powershell', terminalHeight: 260, shelf: [],
   highlightRules: [
     { name: 'Changed in the last 10 minutes', type: 'recent', minutes: 10, color: '#30a46c', on: true },

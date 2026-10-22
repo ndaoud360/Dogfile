@@ -60,20 +60,21 @@ export function applyColors(settings) {
   lastSettings = settings;
   const dark = isDark(settings);
   const root = document.documentElement;
-  root.dataset.theme = dark ? 'dark' : 'light';
-  for (const v of applied) root.style.removeProperty(v);
-  applied = [];
+  if (root.dataset.theme !== (dark ? 'dark' : 'light')) root.dataset.theme = dark ? 'dark' : 'light';
+  const want = {};
   const over = (settings.colors && settings.colors[dark ? 'dark' : 'light']) || {};
-  const accent = over['--accent'] || settings.accent || '#3b82f6';
-  root.style.setProperty('--accent', accent); applied.push('--accent');
-  for (const [k, v] of Object.entries(over)) { if (k === '--accent' || !v) continue; root.style.setProperty(k, v); applied.push(k); }
-  root.style.setProperty('--shadow-k', String(settings.shadowStrength ?? 1)); applied.push('--shadow-k');
-  root.style.setProperty('--fs', String(settings.fontScale || 1)); applied.push('--fs');
+  want['--accent'] = over['--accent'] || settings.accent || '#3b82f6';
+  for (const [k, v] of Object.entries(over)) { if (k === '--accent' || !v) continue; want[k] = v; }
+  want['--shadow-k'] = String(settings.shadowStrength ?? 1);
+  want['--fs'] = String(settings.fontScale || 1);
   // rounded corners: one roundness value, applied only to the element types that are ticked
   const c = { radius: 8, tabs: false, tiles: true, controls: true, menus: true, dialogs: true, panels: true, items: true, ...(settings.corners || {}) };
   const r = (on, k) => (on ? Math.round(c.radius * k * 10) / 10 : 0) + 'px';
-  const vars = { '--r-tab': r(c.tabs, 1), '--r-tile': r(c.tiles, 0.45), '--r-ctl': r(c.controls, 1), '--r-menu': r(c.menus, 1.25), '--r-dlg': r(c.dialogs, 1.75), '--r-panel': r(c.panels, 1.4), '--r-item': r(c.items, 0.8) };
-  for (const [k, v] of Object.entries(vars)) { root.style.setProperty(k, v); applied.push(k); }
+  Object.assign(want, { '--r-tab': r(c.tabs, 1), '--r-tile': r(c.tiles, 0.45), '--r-ctl': r(c.controls, 1), '--r-menu': r(c.menus, 1.25), '--r-dlg': r(c.dialogs, 1.75), '--r-panel': r(c.panels, 1.4), '--r-item': r(c.items, 0.8) });
+  // only touch what changed: re-setting every variable makes the browser restyle the whole window
+  for (const v of applied) if (!(v in want)) root.style.removeProperty(v);
+  for (const [k, v] of Object.entries(want)) if (root.style.getPropertyValue(k) !== v) root.style.setProperty(k, v);
+  applied = Object.keys(want);
   return dark;
 }
 

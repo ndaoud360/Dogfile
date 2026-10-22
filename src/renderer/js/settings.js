@@ -103,6 +103,7 @@ export async function openSettings(section = 'general', opts = {}) {
         row('Full breadcrumb path', toggle('fullCrumbs'), 'Show the drive and every folder instead of starting at your user folder.'),
         row('Show status bar', toggle('showStatusBar')),
         row('Folding sidebar animation', toggle('foldAnimation'), 'The paper-fold effect when the sidebar opens or closes.'),
+        row('Glass sidebar', toggle('sidebarGlass'), 'Aero / liquid-glass look: the sidebar turns see-through and Windows blurs whatever is behind the window.'),
         row('Colors', h('button', { class: 'btn small', onclick: () => show('colors') }, 'Customize colors…'), 'Accent color, presets and every part of the interface.'),
       );
       // ---- rounded corners ----

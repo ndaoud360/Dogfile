@@ -19,6 +19,17 @@ export function initSidebar(el) {
   bus.on('collections', render);
   bus.on('projectFiles', render);
   bus.on('connections', render);
+  // right-click on the sidebar's empty space: its own look
+  root.addEventListener('contextmenu', (e) => {
+    if (e.defaultPrevented || e.target.closest('.side-item, .tag-dot, input, button')) return;
+    e.preventDefault();
+    showMenu([
+      { label: 'Glass sidebar', icon: 'sidebar', checked: !!state.settings.sidebarGlass, run: () => window.__atlas?.commands.get('toggleGlass')?.run() },
+      { label: 'Folding animation', checked: state.settings.foldAnimation !== false, run: () => { state.settings.foldAnimation = state.settings.foldAnimation === false; saveSettings(); bus.emit('settings'); } },
+      { separator: true },
+      { label: 'Sidebar settings…', icon: 'settings', run: () => import('./settings.js').then((m) => m.openSettings('appearance')) },
+    ], e.clientX, e.clientY);
+  });
   bus.on('activePane', highlight);
   bus.on('tabs', highlight);
   bus.on('loaded', highlight);

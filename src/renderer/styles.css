@@ -1563,3 +1563,21 @@ body.touch .drow { font-size: calc(14px * var(--fs)); }
 /* online-only cloud files (OneDrive placeholders): a small cloud after the name, like Explorer's status column */
 .cloud-item .nm::after, .cloud-item .name-text::after { content: ''; display: inline-block; width: 13px; height: 13px; margin-left: 6px; vertical-align: -2px; opacity: .55;
   background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Cpath d='M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 9.1 4.5 4.5 0 0 0 7 18z'/%3E%3C/svg%3E") center/contain no-repeat; }
+
+/* ------------------------------------------------------------------ glass sidebar (aero / liquid glass) */
+body.glass.see-through, body.glass.see-through #app { background: transparent; }
+html:has(body.glass.see-through) { background: transparent; }
+body.glass .sidebar {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--side-bg) 52%, transparent) 0%, color-mix(in srgb, var(--side-bg2) 64%, transparent) 100%);
+  -webkit-backdrop-filter: blur(26px) saturate(175%); backdrop-filter: blur(26px) saturate(175%);
+  box-shadow: inset -1px 0 0 rgba(255,255,255,.14), inset 1px 1px 0 rgba(255,255,255,.08), 4px 0 18px rgba(0,0,0,calc(.22 * var(--shadow-k)));
+}
+/* the specular sheen of liquid glass: a soft light falling from the top-left edge */
+body.glass .sidebar::before { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: -1;
+  background: linear-gradient(155deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,.05) 22%, transparent 45%), radial-gradient(120% 40% at 0% 100%, rgba(255,255,255,.06), transparent 70%); }
+body.glass .sidebar .side-item.active, body.glass .sidebar .side-item:hover { background-color: rgba(255,255,255,.12); }
+/* without a see-through window (older Windows, or until a new window opens) the glass blurs a soft colour field */
+body.glass:not(.see-through) #app::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: var(--side-w); z-index: 0; pointer-events: none;
+  background: radial-gradient(60% 35% at 20% 15%, color-mix(in srgb, var(--accent) 70%, transparent), transparent 70%), radial-gradient(70% 40% at 85% 60%, rgba(236,72,153,.45), transparent 70%), radial-gradient(60% 40% at 10% 90%, rgba(20,184,166,.45), transparent 70%), var(--side-bg2); }
+body.glass.no-sidebar #app::before { display: none; }
+@media (prefers-reduced-transparency: reduce) { body.glass .sidebar { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--side-bg); } }

@@ -29,6 +29,16 @@ fn page_url(page: &str, query: &str) -> WebviewUrl {
     WebviewUrl::External(s.parse().unwrap())
 }
 
+fn glass_effect(w: &WebviewWindow, on: bool) -> bool {
+    use tauri::window::{Effect, EffectsBuilder};
+    if on {
+        // Acrylic blurs whatever is behind the window (Windows 10 1809+ / 11); Mica (wallpaper only) as a fallback
+        w.set_effects(EffectsBuilder::new().effect(Effect::Acrylic).build()).or_else(|_| w.set_effects(EffectsBuilder::new().effect(Effect::Mica).build())).is_ok()
+    } else {
+        w.set_effects(None).is_ok()
+    }
+}
+
 // ---------------- the host: windows, events, dialogs ----------------
 pub struct AppHost {
     app: OnceLock<AppHandle>,
@@ -41,6 +51,8 @@ pub struct AppHost {
     close_ok: Mutex<std::collections::HashSet<String>>,
     asking: Mutex<std::collections::HashSet<String>>,
     answered: Mutex<std::collections::HashSet<String>>,
+    /// windows created see-through (the glass sidebar shows the desktop behind them)
+    glassy: Mutex<std::collections::HashSet<String>>,
 }
 
 impl AppHost {
@@ -90,12 +102,15 @@ impl AppHost {
     }
 
     fn build(&self, b: WebviewWindowBuilder<'_, tauri::Wry, AppHandle>, kind: &str) -> tauri::Result<WebviewWindow> {
+        // glass sidebar: the main window is made see-through so Windows can blur the desktop behind it
+        let glass = kind == "main" && cfg!(windows) && dogfile_backend::setting_bool("sidebarGlass", false);
         let b = b
             .decorations(false)
             .shadow(true)
             .visible(false)
-            .resizable(true)
-            .background_color(self.theme_bg(kind))
+            .resizable(true);
+        let b = if glass { b.transparent(true).background_color(tauri::window::Color(0, 0, 0, 0)) } else { b.background_color(self.theme_bg(kind)) };
+        let b = b
             .zoom_hotkeys_enabled(false)
             .additional_browser_args(BROWSER_ARGS)
             .on_page_load(|w, p| {
@@ -107,6 +122,10 @@ impl AppHost {
         #[cfg(windows)]
         let b = b.data_directory(webview_data_dir());
         let w = b.build()?;
+        if glass {
+            self.glassy.lock().insert(w.label().to_string());
+            glass_effect(&w, true);
+        }
         #[cfg(windows)]
         if let Ok(h) = w.hwnd() {
             winx::set_corners(h.0 as isize, &self.corners.lock());
@@ -249,6 +268,13 @@ impl Host for AppHost {
     fn win_control(&self, win: &str, action: &str) -> Value {
         let Some(w) = self.win(win) else { return json!(false) };
         match action {
+            // glass sidebar on / off: real see-through needs a window created transparent (a new window or restart)
+            "glassOn" | "glassOff" => {
+                let on = action == "glassOn";
+                let see_through = self.glassy.lock().contains(win);
+                let applied = see_through && glass_effect(&w, on);
+                return json!({ "seeThrough": see_through, "applied": applied, "supported": cfg!(windows) });
+            }
             "min" => {
                 let _ = w.minimize();
             }
@@ -585,6 +611,7 @@ fn main() {
         close_ok: Mutex::new(Default::default()),
         asking: Mutex::new(Default::default()),
         answered: Mutex::new(Default::default()),
+        glassy: Mutex::new(Default::default()),
     });
     let _ = HOST.set(h.clone());
     let (renderer_dir, res_dir) = resource_dirs();

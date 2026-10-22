@@ -327,14 +327,6 @@ jobs:
           npx -y eslint@8.57.0 --no-eslintrc -c build/eslint-undef.json src/renderer/js/*.js
           node build/test-assistant-apps.mjs
           node build/test-assistant-files.mjs
-      - name: Licence server tests (against a real Postgres)
-        run: |
-          sudo systemctl start postgresql.service
-          sudo -u postgres psql -qc "alter user postgres password 'pg'" -c "create role anon" -c "create role authenticated" -c "create database lic"
-          sudo -u postgres psql -q -d lic -f supabase/migrations/20261022000000_licensing.sql
-          npm install --prefix "$RUNNER_TEMP/deno" --no-audit --no-fund --silent deno@2.5.6
-          cd supabase/functions/license
-          DB_URL=postgres://postgres:pg@127.0.0.1:5432/lic NO_COLOR=1 "$RUNNER_TEMP/deno/node_modules/.bin/deno" test -A --no-check test.ts
       - name: System libraries
         run: sudo apt-get update -qq && sudo apt-get install -y -qq libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf > /dev/null
       - uses: actions/cache@v4
@@ -417,3 +409,29 @@ jobs:
         with:
           name: mac-arm64
           path: dist/*.zip
+  # the licence server (supabase/functions/license) against a real Postgres, with Stripe and email faked
+  license-server:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: pg
+          POSTGRES_DB: lic
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Licence server tests
+        env:
+          PGPASSWORD: pg
+        run: |
+          set -o pipefail
+          psql -h 127.0.0.1 -U postgres -d lic -qc "create role anon" -c "create role authenticated"
+          psql -h 127.0.0.1 -U postgres -d lic -q -v ON_ERROR_STOP=1 -f supabase/migrations/20261022000000_licensing.sql
+          npm install --prefix "$RUNNER_TEMP/deno" --no-audit --no-fund --silent deno@2.5.6
+          cd supabase/functions/license
+          if ! DB_URL=postgres://postgres:pg@127.0.0.1:5432/lic NO_COLOR=1 "$RUNNER_TEMP/deno/node_modules/.bin/deno" test -A --no-check test.ts > "$RUNNER_TEMP/t.log" 2>&1; then
+            echo "::error title=license-server::$(grep -vE '^\s+at ' "$RUNNER_TEMP/t.log" | tail -30 | tr '\n' '~' | sed 's/~/%0A/g')"; exit 1
+          fi
+          echo "::notice title=license-server::$(grep -E 'ok \||passed|failed' "$RUNNER_TEMP/t.log" | tail -3 | tr '\n' ' ')"

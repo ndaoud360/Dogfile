@@ -4,6 +4,11 @@
   const log = (s) => api('test:log', s);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   try {
+    // the writing helper is Pro: this fresh PC starts its trial on the live licence server (also checks that works)
+    const lic = await api('license:status');
+    if (!lic.pro) {
+      try { await api('license:startTrial'); const s = await api('license:status'); await log(`licence: trial started on the live server (${s.mode}, ${s.daysLeft} days)`); } catch (e) { await log('FAIL licence: trial: ' + e.message); }
+    } else await log('licence: ' + lic.mode);
     const ai = await import(new URL('js/ai.js', location.href).href);
     const kind = await ai.writerKind();
     await log('webgpu adapter: ' + (kind === 'writer-gpu'));

@@ -2,7 +2,7 @@
 // column, Windows Search): System.Keywords through the Windows property system (photos, music, video, Office…);
 // Office files and PDFs directly; everywhere else an extended attribute (user.xdg.tags on Linux).
 use crate::args::{Args, R};
-use serde_json::{json, Value};
+use serde_json::json;
 
 pub async fn read(a: &Args) -> R {
     let p = a.s(0)?;

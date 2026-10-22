@@ -154,6 +154,8 @@ fn ftp_list(f: &mut Ftp, dir: &str) -> Result<Vec<Ent>, String> {
 enum Kind {
     Sftp(SftpConn),
     Ftp(Arc<parking_lot::Mutex<Ftp>>),
+    /// S3, Google Drive, Dropbox, OneDrive (cloudapi.rs)
+    Cloud(Arc<crate::cloudapi::Api>),
 }
 struct Session {
     kind: Kind,
@@ -197,6 +199,10 @@ async fn open(id: &str) -> Result<Shared, String> {
             let f = tokio::task::spawn_blocking(move || ftp_connect(&c2, &pw)).await.map_err(|e| e.to_string())?.map_err(|e| friendly(&e, &c))?;
             Kind::Ftp(Arc::new(parking_lot::Mutex::new(f)))
         }
+        "s3" => Kind::Cloud(Arc::new(crate::cloudapi::Api::S3(crate::cloudapi::S3::from(&c, &pw)?))),
+        "gdrive" => Kind::Cloud(Arc::new(crate::cloudapi::Api::Drive(crate::cloudapi::OAuth::new("gdrive", id)))),
+        "dropbox" => Kind::Cloud(Arc::new(crate::cloudapi::Api::Dropbox(crate::cloudapi::OAuth::new("dropbox", id)))),
+        "onedrive" => Kind::Cloud(Arc::new(crate::cloudapi::Api::OneDrive(crate::cloudapi::OAuth::new("onedrive", id)))),
         _ => return Err("Unsupported connection type".into()),
     };
     let s: Shared = Arc::new(AMutex::new(Session { kind, last: Instant::now() }));
@@ -229,6 +235,7 @@ pub async fn close(id: &str) {
                 let f = f.clone();
                 let _ = tokio::task::spawn_blocking(move || ftp_do!(&mut *f.lock(), s => { let _ = s.quit(); })).await;
             }
+            Kind::Cloud(_) => {}
         }
     }
 }
@@ -250,6 +257,7 @@ async fn list_raw(s: &mut Session, dir: &str) -> Result<Vec<Ent>, String> {
             let (f, d) = (f.clone(), dir.to_string());
             tokio::task::spawn_blocking(move || ftp_list(&mut f.lock(), &d)).await.map_err(|e| e.to_string())?
         }
+        Kind::Cloud(api) => Ok(api.list(dir).await?.into_iter().map(|e| Ent { name: e.name, is_dir: e.is_dir, size: e.size, mtime: e.mtime }).collect()),
     }
 }
 /// (is folder, size) or None when it's gone
@@ -271,6 +279,7 @@ async fn stat_raw(s: &mut Session, p: &str) -> Option<(bool, u64)> {
             .ok()
             .flatten()
         }
+        Kind::Cloud(api) => api.stat(p).await,
     }
 }
 
@@ -347,6 +356,11 @@ async fn get_into(id: &str, paths: &[String], local_dir: &Path, prog: &mut Progr
                     .await
                     .map_err(|e| e.to_string())??;
                 }
+                Kind::Cloud(api) => {
+                    let api = api.clone();
+                    let nm = name.clone();
+                    api.download(&r, &l, &mut |n| prog.tick(&nm, n, false)).await?;
+                }
             }
             prog.done += size;
         }
@@ -381,6 +395,7 @@ pub async fn put(win: &str, a: &Args) -> R {
                         let (f, r2) = (f.clone(), r.clone());
                         let _ = tokio::task::spawn_blocking(move || ftp_do!(&mut *f.lock(), s => { let _ = s.mkdir(&r2); })).await;
                     }
+                    Kind::Cloud(api) => { let _ = api.mkdir(&r).await; }
                 }
                 for e in std::fs::read_dir(&l).map_err(|e| e.to_string())?.flatten() {
                     stack.push((e.path(), rjoin(&r, &e.file_name().to_string_lossy())));
@@ -413,6 +428,7 @@ pub async fn put(win: &str, a: &Args) -> R {
                     .await
                     .map_err(|e| e.to_string())??;
                 }
+                Kind::Cloud(api) => api.upload(&l, &r).await?,
             }
             prog.done += md.len();
         }
@@ -427,6 +443,11 @@ pub async fn remove(a: &Args) -> R {
         let p = rp(&p0);
         let mut g = s.lock().await;
         g.last = Instant::now();
+        // cloud services delete a folder with everything in it in one go
+        if let Kind::Cloud(api) = &g.kind {
+            api.remove(&p).await?;
+            continue;
+        }
         let Some((is_dir, _)) = stat_raw(&mut g, &p).await else { continue };
         // depth first: files, then the folders (deepest first)
         let mut files = vec![];
@@ -462,6 +483,7 @@ pub async fn remove(a: &Args) -> R {
                 .await
                 .map_err(|e| e.to_string())??;
             }
+            Kind::Cloud(_) => {}
         }
     }
     Ok(json!(true))
@@ -477,6 +499,7 @@ pub async fn rename(a: &Args) -> R {
             let f = f.clone();
             tokio::task::spawn_blocking(move || ftp_do!(&mut *f.lock(), s => s.rename(from.as_str(), to.as_str()).map_err(|e| e.to_string()))).await.map_err(|e| e.to_string())??
         }
+        Kind::Cloud(api) => api.rename(&from, &to).await?,
     }
     Ok(json!(true))
 }
@@ -501,6 +524,7 @@ pub async fn mkdir(a: &Args) -> R {
             .await
             .map_err(|e| e.to_string())?
         }
+        Kind::Cloud(api) => api.mkdir(&p).await?,
     }
     Ok(json!(true))
 }
@@ -515,14 +539,20 @@ pub async fn open_local(a: &Args) -> R {
 pub async fn test(a: &Args) -> R {
     let mut c = a.v(0);
     let pw = a.s_or(1, "");
-    let id = format!("__test_{}", util::now_ms() as u64);
+    // a signed-in cloud account keeps its own id (its sign-in token is saved under it)
+    let oauth = matches!(c["type"].as_str(), Some("gdrive" | "dropbox" | "onedrive"));
+    let id = if oauth { c["id"].as_str().unwrap_or("").to_string() } else { format!("__test_{}", util::now_ms() as u64) };
     c["id"] = json!(id);
     test_conns().lock().insert(id.clone(), c.clone());
-    secrets::set_in("connection-secrets", &id, &pw);
+    if !oauth {
+        secrets::set_in("connection-secrets", &id, &pw);
+    }
     let path = c["path"].as_str().unwrap_or("/").to_string();
     let r = list(&Args(vec![json!(id), json!(path)])).await;
     close(&id).await;
-    secrets::set_in("connection-secrets", &id, "");
+    if !oauth {
+        secrets::set_in("connection-secrets", &id, "");
+    }
     test_conns().lock().remove(&id);
     Ok(match r {
         Ok(items) => json!({ "ok": true, "count": items.as_array().map(|a| a.len()).unwrap_or(0) }),
@@ -591,6 +621,9 @@ pub async fn status(a: &Args) -> R {
     if t == "smb" || t == "webdav" {
         return Ok(json!({ "ok": reachable(&unc_of(&c), 4000).await }));
     }
+    if crate::cloudapi::is_cloud(t) {
+        return Ok(json!({ "ok": true, "connected": sessions().lock().contains_key(&id) }));
+    }
     if sessions().lock().contains_key(&id) {
         return Ok(json!({ "ok": true, "connected": true }));
     }
@@ -601,3 +634,18 @@ pub async fn status(a: &Args) -> R {
 }
 #[allow(dead_code)]
 fn unused(_: &mut dyn Read, _: &mut dyn Write) {}
+
+/// sign in to Google Drive, Dropbox or OneDrive in the browser; the refresh token is saved for connection `id`
+pub async fn sign_in(a: &Args) -> R {
+    let kind = a.s(0)?;
+    let id = a.s(1)?;
+    match crate::cloudapi::sign_in(&kind).await {
+        Ok((refresh, who)) => {
+            secrets::set_in("connection-secrets", &id, &refresh);
+            close(&id).await;
+            Ok(json!({ "ok": true, "who": who }))
+        }
+        Err(e) if e.starts_with("NO_CLIENT_ID") => Ok(json!({ "ok": false, "needsApp": true })),
+        Err(e) => Ok(json!({ "ok": false, "error": e })),
+    }
+}

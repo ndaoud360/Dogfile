@@ -340,6 +340,22 @@ function initMenubar() {
   { const ab = h('button', { class: 'icon-btn top-ic', id: 'btn-assistant', title: 'Ask the file assistant (Ctrl+J)', html: icon('sparkle') }); ab.addEventListener('click', () => import('./assistant.js').then((m) => m.toggleAssistant())); $('btn-search').before(ab); }
   import('./toolbar.js').then((m) => m.renderToolbar());
   if (state.settings.settingsSync?.folder) import('./settingsync.js').then((m) => m.startSync());
+  // Open / Save dialogs of other programs: Ctrl+G jumps to a folder open here (Windows)
+  if (IS_WIN() && state.settings.dialogJump !== false) {
+    let last = '';
+    const send = debounce(() => {
+      const cur = activeTab()?.path;
+      const list = [cur, ...state.tabs.map((x) => x.path)].filter((p) => p && !isVirtual(p) && !/^[a-z]+:\/\//i.test(p));
+      const uniq = [...new Set(list)];
+      const k = sys.known || {};
+      const known = [['Desktop', k.desktop], ['Documents', k.documents], ['Downloads', k.downloads], ['Pictures', k.pictures]].filter(([, p]) => p).map(([label, path]) => ({ label, path }));
+      const sig = JSON.stringify(uniq);
+      if (sig === last) return; last = sig;
+      api('dialogjump:folders', uniq, known).catch(() => {});
+    }, 400);
+    for (const ev of ['tabs', 'activePane', 'loaded']) bus.on(ev, send);
+    send();
+  }
   // how long starting took (shown in About; logged in test runs)
   { const off = bus.on('loaded', async () => { off?.(); const up = await api('sys:uptime').catch(() => 0); state.startupMs = up; if (sys.test) api('test:log', `startup: window ready ${up} ms after the program started (page ${Math.round(performance.now())} ms)`); }); }
   $('btn-newwin').addEventListener('click', () => api('win:new', { path: activeTab()?.path }));

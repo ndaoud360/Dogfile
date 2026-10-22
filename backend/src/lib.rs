@@ -23,6 +23,7 @@ pub mod ai;
 pub mod imgmeta;
 pub mod netdiscover;
 pub mod remote;
+pub mod cloudapi;
 pub mod git;
 pub mod pty;
 pub mod clip;

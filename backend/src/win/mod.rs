@@ -1,6 +1,7 @@
 // Windows-only parts, straight on the Windows APIs (no PowerShell): drives, attributes, shortcuts, the clipboard
 // with Explorer, the shell (open, Open with, Properties, verbs, Recycle Bin, network, phones), thumbnails and
 // icons, file locks, protected secrets and copying with progress.
+pub mod dialogjump;
 pub mod mtp;
 pub mod reg;
 pub mod shellx;

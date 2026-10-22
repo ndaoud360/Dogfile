@@ -24,6 +24,19 @@ pub async fn open(a: &Args) -> R {
         Ok(json!(true))
     }
 }
+/// open a web address in the default browser
+pub fn open_url(url: &str) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        return win::shell_execute(url, "open", None, None).map(|_| ());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        return util::spawn_detached("open", &[url.to_string()], None, true).map(|_| ()).map_err(|e| e.to_string());
+    }
+    #[allow(unreachable_code)]
+    util::spawn_detached("xdg-open", &[url.to_string()], None, true).map(|_| ()).map_err(|e| e.to_string())
+}
 pub async fn open_external(a: &Args) -> R {
     let url = a.s(0)?;
     if !(url.starts_with("http://") || url.starts_with("https://") || url.starts_with("mailto:") || url.starts_with("ms-settings:")) {
@@ -35,7 +48,7 @@ pub async fn open_external(a: &Args) -> R {
     }
     #[cfg(not(windows))]
     {
-        util::spawn_detached("xdg-open", &[url], None, true).map_err(|e| e.to_string())?;
+        open_url(&url)?;
         Ok(json!(true))
     }
 }

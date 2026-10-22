@@ -12,7 +12,7 @@ pub const NAMES: &[&str] = &[
     "shell:runCommand", "fs:findUnder", "sys:findEditor", "clip:writeFiles", "clip:readFiles", "clip:writeText", "clip:readText", "clip:hasImage", "clip:formats", "clip:watch", "ops:start",
     "shell:wallpaper", "archive:test", "archive:caps", "ops:control", "ops:list", "ops:configure", "ops:resolveConflict", "archive:list", "work:start", "work:cancel", "index:status", "index:configure",
     "index:refresh", "index:search", "index:sizes", "index:fastBuild", "core:info", "everything:search", "everything:available", "everything:status", "git:branches", "git:checkout", "git:log", "git:pull",
-    "git:status", "recycle:list", "recycle:restore", "recycle:restoreOriginal", "recycle:deleteForever", "recycle:empty", "watch:set", "rules:watch", "remote:list", "remote:get", "remote:put",
+    "git:status", "recycle:list", "recycle:restore", "recycle:restoreOriginal", "recycle:deleteForever", "recycle:empty", "watch:set", "rules:watch", "remote:list", "remote:signIn", "remote:get", "remote:put",
     "remote:remove", "remote:rename", "remote:mkdir", "remote:open", "remote:test", "remote:setSecret", "remote:disconnect", "net:connectShare", "net:unc", "net:reachable", "net:status", "cloud:detect",
     "ext:fetch", "docs:featureGuide", "ext:log", "ext:logs", "ext:clearLogs", "ext:install", "secret:set", "secret:has", "gh:request", "doc:read", "doc:text", "doc:titles", "doc:setProps", "media:setMeta",
     "versions:save", "versions:list", "versions:restore", "versions:remove", "versions:overview", "versions:track", "watched:add", "watched:get", "store:get", "store:set", "store:path", "default:get",
@@ -20,7 +20,7 @@ pub const NAMES: &[&str] = &[
     "media:imgMeta", "media:quickProbe", "media:sheetCancel", "media:contactSheet", "media:encoder", "media:shotDir", "media:export", "ai:status", "ai:download", "ai:remove", "ai:cacheGet", "ai:cacheSet",
     "tags:read", "tags:write", "keywords:read", "keywords:write", "tags:lookup", "tags:identify", "tags:fetchArt", "media:job", "media:cancel", "fs:trash", "fs:copyFile", "fs:writeDataUrl", "fs:readBuffer", "fs:writeEncoded",
     "archive:watchEdit", "fs:watchFile", "mtp:list", "mtp:copyOut", "mtp:copyIn", "mtp:delete", "mtp:mkdir", "mtp:rename", "mtp:fetch", "win:corners", "net:discover", "net:open", "locks:who", "locks:kill",
-    "shellverbs:set", "pty:available", "pty:spawn", "pty:write", "pty:resize", "pty:kill", "test:capture", "win:startDrag", "win:dragOut", "win:startResize", "test:log", "sys:uptime", "update:check", "update:status", "update:download", "update:cancel", "update:install",
+    "shellverbs:set", "pty:available", "pty:spawn", "pty:write", "pty:resize", "pty:kill", "test:capture", "win:startDrag", "win:dragOut", "win:startResize", "test:log", "sys:uptime", "dialogjump:folders", "dialogjump:test", "update:check", "update:status", "update:download", "update:cancel", "update:install",
 ];
 
 fn dialog_opts(v: &Value) -> DialogOpts {
@@ -52,6 +52,25 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
         "update:cancel" => update::cancel(&a),
         "update:install" => update::install(&a),
         "sys:uptime" => Ok(json!(crate::uptime_ms())),
+        "dialogjump:folders" => {
+            #[cfg(windows)]
+            {
+                let list = args::strs(&a.v(0));
+                let known: Vec<(String, String)> = a.v(1).as_array().map(|x| x.iter().filter_map(|k| Some((k["label"].as_str()?.to_string(), k["path"].as_str()?.to_string()))).collect()).unwrap_or_default();
+                crate::win::dialogjump::set_folders(list, known);
+                if crate::setting_bool("dialogJump", true) { crate::win::dialogjump::start(); }
+            }
+            Ok(json!(true))
+        }
+        "dialogjump:test" => {
+            #[cfg(windows)]
+            {
+                let (f, n) = (a.s(0)?, a.s(1)?);
+                return tokio::task::spawn_blocking(move || crate::win::dialogjump::test(&f, &n)).await.map_err(|e| e.to_string())?.map(|s| json!(s));
+            }
+            #[allow(unreachable_code)]
+            Err("Windows only".into())
+        }
         "test:log" => {
             let line = a.s_or(0, "");
             match std::env::var("DOGFILE_TEST_LOG") {
@@ -175,6 +194,7 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
 
         // ---------- servers & network ----------
         "remote:list" => remote::list(&a).await,
+        "remote:signIn" => remote::sign_in(&a).await,
         "remote:get" => remote::get(win, &a).await,
         "remote:put" => remote::put(win, &a).await,
         "remote:remove" => remote::remove(&a).await,

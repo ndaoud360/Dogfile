@@ -290,7 +290,7 @@ export const uid = () => Math.random().toString(36).slice(2, 10);
 
 // ---------------- settings & state ----------------
 export const DEFAULT_SETTINGS = {
-  theme: 'system', accent: '#3b82f6', density: 'comfortable', fontScale: 1,
+  theme: 'system', accent: '#3b82f6', density: 'comfortable', fontScale: 1, dialogJump: true, dialogJumpAuto: false,
   showHidden: false, showSystem: false, showExtensions: true, foldersFirst: true, showCheckboxes: false,
   defaultView: 'grid', gridSize: 160, gridLabels: 'smart', showPreview: false, previewWidth: 340,
   dateFormat: 'locale', sizeUnits: 'binary', folderSizes: false, rememberFolderViews: true,

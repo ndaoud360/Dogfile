@@ -56,6 +56,15 @@
     return `len ${L.length} list=${list} copy=${cp} renamed=${!!st} delete=${del} gone=${!(await api('fs:exists', D + '\\long'))}`;
   });
   await T('keywords into a file (System.Keywords)', async () => { const png = D + '\\pic.png'; const jpg = D + '\\kw.jpg'; const data = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA='; await api('fs:writeDataUrl', jpg, data); const w = await api('keywords:write', jpg, ['Red', 'Holiday']); const r = await api('keywords:read', jpg); const w2 = await api('keywords:write', png, ['Blue']); return JSON.stringify({ w, r, png: w2 }); });
+  await T('dialog jump (another program\'s Open dialog goes to a folder)', async () => {
+    const ps = `Add-Type -AssemblyName System.Windows.Forms\r\n$d = New-Object System.Windows.Forms.OpenFileDialog\r\n$d.InitialDirectory = 'C:\\Windows'\r\n$r = $d.ShowDialog()\r\nSet-Content -Path '${D}\\dlg-result.txt' -Value (\"$r \" + $d.FileName)\r\n`;
+    await api('fs:writeText', D + '\\dlg.ps1', ps);
+    await api('shell:runCommand', `powershell -NoProfile -STA -ExecutionPolicy Bypass -File "${D}\\dlg.ps1"`);
+    const r = await api('dialogjump:test', D, 'a.txt').catch((e) => 'ERR ' + e.message);
+    for (let i = 0; i < 20 && !(await api('fs:exists', D + '\\dlg-result.txt')); i++) await wait(500);
+    const res = (await api('fs:readText', D + '\\dlg-result.txt', 1000).catch(() => ({ text: 'no result' }))).text.trim();
+    return `${r} → ${res}`;
+  });
   await T('window buttons drawn', async () => document.querySelectorAll('#win-ctl .wc-btn').length === 3 || document.querySelectorAll('#win-ctl .wc-btn').length);
   await log('DONE');
 })()

@@ -46,6 +46,7 @@ export async function openSettings(section = 'general', opts = {}) {
         row('Closing the last tab closes the window', toggle('closeLastTabClosesWindow')),
         row('Keep running in the background', toggle('keepRunning'), 'Lives in the tray so folders open instantly.'),
         row('Updates', h('div', { class: 'row-inline' }, toggle('autoUpdates'), h('button', { class: 'btn small', onclick: () => import('./updates.js').then((m) => m.openUpdates()) }, 'Check now…')), 'Dogfile checks for a new version a few seconds after it starts and every few hours, and asks before installing.'),
+        IS_WIN() && row('Open and Save dialogs', h('div', { class: 'stack' }, h('label', { class: 'check' }, toggle('dialogJump'), ' Ctrl+G in any program’s Open or Save dialog jumps to a folder open in Dogfile'), h('label', { class: 'check' }, toggle('dialogJumpAuto'), ' Go to the folder I’m in automatically when a dialog opens')), 'Works in the standard Windows dialogs of every program. Restart Dogfile after turning it on or off.'),
         row('Your settings on other PCs', (() => {
           const box = h('div', { class: 'row-inline', style: { flexWrap: 'wrap', gap: '6px' } });
           const st = h('div', { class: 'hint', style: { width: '100%' } });

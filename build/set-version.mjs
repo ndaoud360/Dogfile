@@ -1,7 +1,8 @@
 // Sets Dogfile's version everywhere it's written: node build/set-version.mjs 2.0.1
 import fs from 'node:fs';
 import path from 'node:path';
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+import { fileURLToPath } from 'node:url';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const v = process.argv[2];
 if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(v || '')) { console.error('usage: node build/set-version.mjs 2.0.1'); process.exit(1); }
 const edit = (f, re, rep) => { const p = path.join(root, f); const s = fs.readFileSync(p, 'utf8'); const n = s.replace(re, rep); if (n === s) console.warn('unchanged:', f); fs.writeFileSync(p, n); };

@@ -38,7 +38,12 @@ export async function openSettings(section = 'general', opts = {}) {
         group('Basics'),
         row('Interface', seg('uiMode', [['simple', 'Simple'], ['full', 'Full (everything)']]), 'Simple keeps menus short and tucks power-user tools under “More”. Nothing is removed; switch any time.'),
         row('Theme', seg('theme', [['system', 'System', 'monitor'], ['light', 'Light', 'sun'], ['dark', 'Dark', 'moon']])),
-        row('Language & region', h('div', { class: 'hint' }, 'Dates and numbers follow your Windows region format.')),
+        row('Language', (() => {
+          const sel = h('select', { class: 'input', translate: 'no' });
+          import('./i18n.js').then((m) => { for (const [v, l] of m.LANGS) sel.append(h('option', { value: v, 'data-raw': '1' }, l)); sel.value = S.language || 'auto'; });
+          sel.onchange = () => { S.language = sel.value; changed(); toast('Restarting the window in the new language…'); setTimeout(() => location.reload(), 700); };
+          return sel;
+        })(), 'Dates and numbers follow your Windows region format.'),
         group('Windows & tabs'),
         row('On startup', select('startupPath', [['restore', 'Restore previous tabs'], ['home', 'Open Home'], [sys.known.desktop, 'Open Desktop'], [sys.known.downloads, 'Open Downloads'], [sys.known.documents, 'Open Documents']])),
         row('New tab opens', select('newTabPath', [['home', 'Home'], ['current', 'Current folder']])),

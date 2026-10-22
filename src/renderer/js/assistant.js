@@ -447,6 +447,13 @@ async function askApp(t, text) {
   return true;
 }
 const NO_UNDO = new Set(['count', 'find', 'goto', 'top', 'bottom', 'copy', 'save', 'saveAs', 'saveCopy', 'overwrite', 'info', 'next', 'prev', 'ocr', 'stats', 'apply', 'applyCrop', 'cropAspect', 'zoomIn', 'zoomOut', 'fit', 'wrap', 'whitespace', 'preview', 'zoom', 'fontSize', 'lang', 'eol', 'encoding', 'readonly', 'hash', 'new', 'open', 'selectAll', 'drawMode', 'drawColor', 'format', 'edit', 'exitEdit', 'slideshow', 'fullscreen', 'extract', 'undo', 'redo', 'bookmark', 'fold', 'lineNumbers', 'tabSize', 'close', 'delete']);
+// small models like to say "Sure, here is the corrected text:" and wrap the answer in quotes: keep just the text
+function cleanWriting(t) {
+  let s = String(t || '').replace(/^```\w*\n?|\n?```$/g, '').replace(/^<<<\n?|\n?>>>$/g, '').trim();
+  s = s.replace(/^(?:sure|certainly|of course|okay|ok|here(?:'s| is| are)|absolutely)[^\n]{0,120}:\s*\n+/i, '').trim();
+  if (/^["“].*["”]$/s.test(s) && !/["“”]/.test(s.slice(1, -1))) s = s.slice(1, -1).trim();
+  return s;
+}
 // writing with the local model: summaries and answers show here; new text goes into the document
 async function writeInNotepad(t, text, { mode }) {
   const card = startCard(text);
@@ -470,7 +477,7 @@ async function writeInNotepad(t, text, { mode }) {
   catch (e) { status.textContent = /Stopped/.test(e.message) ? 'Stopped.' : `Couldn’t write that: ${e.message}`; setBusy(false); return; }
   setBusy(false);
   if (res == null) { status.textContent = 'The writing helper needs its one-time download to work.'; return; }
-  res = res.replace(/^```\w*\n?|\n?```$/g, '').replace(/^<<<\n?|\n?>>>$/g, '').trim();
+  res = cleanWriting(res);
   out.textContent = res;
   status.textContent = mode === 'answer' ? '' : 'Ready:';
   const put = (m, label, primary) => h('button', { class: 'btn small' + (primary ? ' primary' : ''), onclick: async () => { const r = await appAsk('write', { text: res, mode: m }, t); toast(r?.ok === false ? r.msg : 'Done'); } }, label);

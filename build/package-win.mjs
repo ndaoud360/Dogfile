@@ -4,9 +4,10 @@
 // usage: node build/package-win.mjs <Dogfile.exe> <ffmpeg-win64-shared.zip>
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const [exe, ffZip] = process.argv.slice(2);
 if (!exe || !fs.existsSync(exe)) { console.error('usage: node build/package-win.mjs <Dogfile.exe> <ffmpeg.zip>'); process.exit(1); }
 // DOGFILE_ARCH=arm64 builds the Windows on ARM folder (dist/Dogfile-arm64) next to the x64 one

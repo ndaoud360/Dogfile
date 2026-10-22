@@ -493,6 +493,8 @@ async function boot() {
     state.pinned = [];
   }
   applyTheme();
+  // the interface language (translates as things appear)
+  if ((state.settings.language || 'auto') !== 'en') await import('./i18n.js').then((m) => m.initI18n(state.settings.language || 'auto')).catch(() => {});
   initMenubar();
   initSidebar($('side-list'));
   initPreview($('preview'));

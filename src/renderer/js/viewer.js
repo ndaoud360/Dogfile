@@ -844,6 +844,7 @@ async function boot() {
   sys = await api('sys:info');
   document.body.classList.toggle('win-overlay', sys.platform === 'win32' && !EMBED);
   const st = await api('store:get', 'settings');
+  if ((st?.language || 'auto') !== 'en') import('./i18n.js').then((m) => m.initI18n(st?.language || 'auto')).catch(() => {});
   settings = { ...DEFAULT_SETTINGS, ...(st || {}) };
   setNativeDialogs(settings.nativeDialogs);
   applyMediaTheme();

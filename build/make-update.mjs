@@ -6,10 +6,11 @@
 // latest.json at .../releases/latest/download/latest.json.
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const [version, notesFile, ...flags] = process.argv.slice(2);
 if (!version || !notesFile) { console.error('usage: node build/make-update.mjs <version> <notes.md> [--ffmpeg]'); process.exit(1); }
 const REPO = process.env.DOGFILE_UPDATES_REPO || 'ndaoud360/dogfile-updates';

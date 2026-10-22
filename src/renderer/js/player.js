@@ -1024,6 +1024,7 @@ async function boot() {
   sys = await api('sys:info');
   document.body.classList.toggle('win-overlay', sys.platform === 'win32' && !EMBED);
   const [st, pr, rs, sess] = await Promise.all([api('store:get', 'settings'), api('store:get', 'player-prefs'), api('store:get', 'player-resume'), api('store:get', 'player-session')]);
+  if ((st?.language || 'auto') !== 'en') import('./i18n.js').then((m) => m.initI18n(st?.language || 'auto')).catch(() => {});
   settings = { ...DEFAULT_SETTINGS, ...(st || {}) };
   setNativeDialogs(settings.nativeDialogs);
   prefs = { ...prefs, ...(pr || {}), eq: { ...prefs.eq, ...((pr && pr.eq) || {}) } };

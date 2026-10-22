@@ -4,13 +4,22 @@
 use crate::args::{Args, R};
 use serde_json::json;
 
+/// "C:\\a\\\\b" → "C:\\a\\b" (the property system rejects doubled separators); UNC prefixes are kept
+fn norm(p: &str) -> String {
+    let (pre, rest) = if p.starts_with("\\\\") { ("\\\\", &p[2..]) } else { ("", p) };
+    let mut s = rest.to_string();
+    while s.contains("\\\\") {
+        s = s.replace("\\\\", "\\");
+    }
+    format!("{pre}{s}")
+}
 pub async fn read(a: &Args) -> R {
-    let p = a.s(0)?;
+    let p = norm(&a.s(0)?);
     let v = tokio::task::spawn_blocking(move || read_words(&p)).await.map_err(|e| e.to_string())?;
     Ok(json!(v))
 }
 pub async fn write(a: &Args) -> R {
-    let p = a.s(0)?;
+    let p = norm(&a.s(0)?);
     let words: Vec<String> = crate::args::strs(&a.v(1)).into_iter().map(|w| w.trim().to_string()).filter(|w| !w.is_empty()).collect();
     let r = tokio::task::spawn_blocking(move || write_words(&p, &words)).await.map_err(|e| e.to_string())?;
     match r {

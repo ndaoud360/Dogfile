@@ -177,7 +177,7 @@ jobs:
           STORE_PUBLISHER: ${{ vars.STORE_PUBLISHER }}
           STORE_PUBLISHER_NAME: ${{ vars.STORE_PUBLISHER_NAME }}
         run: |
-          trap { Write-Output "::error title=package::$($_.InvocationInfo.PositionMessage -replace "`n",'%0A') $_"; continue }
+          trap { Write-Output "::error title=package::$_ %0A$($_.InvocationInfo.PositionMessage -replace "[`r`n]+",'%0A')"; continue }
           $dl = "$env:RUNNER_TEMP/dl"; New-Item -ItemType Directory -Force $dl | Out-Null
           $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
           $ProgressPreference = 'SilentlyContinue'
@@ -200,7 +200,8 @@ jobs:
           }
           Copy-Item target/release/dogfile.exe "$dl/Dogfile.exe"
           $env:DOGFILE_7Z_FULL = "$dl/7zfull"
-          node build/package-win.mjs "$dl/Dogfile.exe" "$dl/ff.zip"
+          $pk = node build/package-win.mjs "$dl/Dogfile.exe" "$dl/ff.zip" 2>&1
+          Write-Output "::notice title=package-win::$(($pk | Out-String) -replace "[`r`n]+",'%0A')"
           $ver = (Get-Content app/tauri.conf.json -Raw | ConvertFrom-Json).version
           $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe | Where-Object { $_.FullName -like '*\x64\*' } | Select-Object -First 1
           function Sign($file) {
@@ -312,7 +313,7 @@ jobs:
       - name: Build and package (Linux x64)
         run: |
           set -o pipefail
-          cargo build --release -p dogfile 2>&1 | tail -30 | tee build.log || { echo "::error title=linux-build::$(grep -E '^error' -A5 build.log | head -60 | sed ':a;N;$!ba;s/\n/%0A/g')"; exit 1; }
+          cargo build --release -p dogfile > build.log 2>&1 || { echo "::error title=linux-build::$(grep -E '^error' -A12 build.log | head -120 | tr '\n' '~' | sed 's/~/%0A/g')"; exit 1; }
           v=$(node -p "require('./app/tauri.conf.json').version")
           d=dist/Dogfile-$v-linux-x64; mkdir -p $d
           cp target/release/dogfile $d/dogfile; cp -r src/renderer $d/renderer; mkdir -p $d/7zip && cp vendor/7zip/linux/* $d/7zip/ 2>/dev/null || true
@@ -347,7 +348,7 @@ jobs:
       - name: Build and package (Mac, Apple silicon)
         run: |
           set -o pipefail
-          cargo build --release -p dogfile 2>&1 | tail -40 | tee build.log || { echo "::error title=mac-build::$(grep -E '^error' -A5 build.log | head -60 | tr '\n' '~' | sed 's/~/%0A/g')"; exit 1; }
+          cargo build --release -p dogfile > build.log 2>&1 || { echo "::error title=mac-build::$(grep -E '^error' -A12 build.log | head -120 | tr '\n' '~' | sed 's/~/%0A/g')"; exit 1; }
           v=$(node -p "require('./app/tauri.conf.json').version")
           a=dist/Dogfile.app/Contents; mkdir -p $a/MacOS $a/Resources
           cp target/release/dogfile $a/MacOS/dogfile; cp -r src/renderer $a/Resources/renderer

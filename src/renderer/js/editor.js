@@ -821,6 +821,7 @@ async function boot() {
   sys = await api('sys:info');
   document.body.classList.toggle('win-overlay', sys.platform === 'win32' && !EMBED);
   const [st, prefs, sess, rec] = await Promise.all([api('store:get', 'settings'), api('store:get', 'editor-prefs'), api('store:get', 'editor-session'), api('store:get', 'editor-recent')]);
+  if ((st?.language || 'auto') !== 'en') import('./i18n.js').then((m) => m.initI18n(st?.language || 'auto')).catch(() => {});
   settings = { ...DEFAULT_SETTINGS, ...(st || {}) };
   setNativeDialogs(settings.nativeDialogs);
   ed = { ...ed, ...(prefs || {}) };

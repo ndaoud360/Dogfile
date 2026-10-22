@@ -103,7 +103,10 @@ fn status_json() -> Value {
 const THIS_ARCH: &str = if cfg!(target_arch = "aarch64") { "arm64" } else { "x64" };
 const THIS_OS: &str = if cfg!(windows) { "windows" } else if cfg!(target_os = "macos") { "macos" } else { "linux" };
 fn needed(m: &Value, comps: &Value) -> Vec<Value> {
-    m["packages"].as_array().cloned().unwrap_or_default().into_iter().filter(|p| {
+    // "packages" holds the Windows x64 ones (all that 2.0.x understands); "otherPackages" the ARM64 / Mac / Linux ones
+    let mut all = m["packages"].as_array().cloned().unwrap_or_default();
+    all.extend(m["otherPackages"].as_array().cloned().unwrap_or_default());
+    all.into_iter().filter(|p| {
         let id = p["id"].as_str().unwrap_or("");
         let want = p["version"].as_str().unwrap_or("");
         // packages built for another processor (x64 / arm64) or system are not for this copy

@@ -28,15 +28,17 @@ const appEntries = fs.readdirSync(pkg).filter((n) => n !== 'ffmpeg' && n !== 'da
 const packages = [info('app', version, zipOf(`Dogfile-${version}-app.zip`, pkg, appEntries))];
 if (flags.includes('--ffmpeg') && comps.ffmpeg) packages.push(info('ffmpeg', comps.ffmpeg, zipOf(`ffmpeg-${comps.ffmpeg}.zip`, pkg, ['ffmpeg'])));
 
-// Windows on ARM, when dist/Dogfile-arm64 was packaged too
+// Windows on ARM, when dist/Dogfile-arm64 was packaged too. These go in "otherPackages": Dogfile 2.0.x reads only
+// "packages" and would install every "app" it finds there.
+const otherPackages = [];
 const armDir = path.join(root, 'dist', 'Dogfile-arm64');
 if (fs.existsSync(path.join(armDir, 'components.json'))) {
   const ac = JSON.parse(fs.readFileSync(path.join(armDir, 'components.json'), 'utf8'));
   if (ac.app === version) {
-    packages.push({ ...info('app', version, zipOf(`Dogfile-${version}-arm64-app.zip`, armDir, fs.readdirSync(armDir).filter((n) => n !== 'ffmpeg' && n !== 'data' && n !== 'portable.txt'))), arch: 'arm64' });
-    if (flags.includes('--ffmpeg') && ac.ffmpeg) packages.push({ ...info('ffmpeg', ac.ffmpeg, zipOf(`ffmpeg-${ac.ffmpeg}-arm64.zip`, armDir, ['ffmpeg'])), arch: 'arm64' });
+    otherPackages.push({ ...info('app', version, zipOf(`Dogfile-${version}-arm64-app.zip`, armDir, fs.readdirSync(armDir).filter((n) => n !== 'ffmpeg' && n !== 'data' && n !== 'portable.txt'))), arch: 'arm64' });
+    if (flags.includes('--ffmpeg') && ac.ffmpeg) otherPackages.push({ ...info('ffmpeg', ac.ffmpeg, zipOf(`ffmpeg-${ac.ffmpeg}-arm64.zip`, armDir, ['ffmpeg'])), arch: 'arm64' });
   }
 }
-const manifest = { version, date: new Date().toISOString().slice(0, 10), notes: fs.readFileSync(notesFile, 'utf8').trim(), packages };
+const manifest = { version, date: new Date().toISOString().slice(0, 10), notes: fs.readFileSync(notesFile, 'utf8').trim(), packages, otherPackages };
 fs.writeFileSync(path.join(out, 'latest.json'), JSON.stringify(manifest, null, 2));
 for (const f of fs.readdirSync(out)) console.log(f, fs.statSync(path.join(out, f)).size);

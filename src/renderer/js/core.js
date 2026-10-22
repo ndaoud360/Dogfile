@@ -5,7 +5,10 @@ let nativeDialogs = null;
 export const setNativeDialogs = (v) => { nativeDialogs = !!v; };
 export const api = (name, ...args) => {
   if (PICKERS[name] && !nativeDialogs) return import('./picker.js').then((m) => PICKERS[name](m, args));
-  return window.atlas.invoke(name, ...args);
+  const p = window.atlas.invoke(name, ...args);
+  // a Pro call refused by the program (backend/src/license.rs): explain and offer Pro
+  p?.catch?.((e) => { if (String(e?.message || e).startsWith('PRO_REQUIRED')) bus.emit('proRequired', name); });
+  return p;
 };
 export const onMain = (ch, fn) => window.atlas.on(ch, fn);
 

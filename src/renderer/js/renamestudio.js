@@ -6,6 +6,7 @@ import { modal, prompt, interpretRename } from './dialogs.js';
 import { icon } from './icons.js';
 import * as A from './actions.js';
 import * as MM from './mediameta.js';
+import { requirePro } from './license.js';
 
 const z = (x, n = 2) => String(x).padStart(n, '0');
 const CASES = ['Keep case', 'lowercase', 'UPPERCASE', 'Title Case', 'Sentence case', 'camelCase', 'kebab-case', 'snake_case'];
@@ -103,6 +104,7 @@ function diffHtml(a, b) {
 }
 
 export async function renameStudio(items, initial = {}) {
+  if (!requirePro('rename')) return;
   const R = { find: '', replace: '', regex: false, cs: false, withExt: false, template: '', start: 1, step: 1, pad: 0, resetPerFolder: false, caseMode: 'Keep case', prefix: '', suffix: '', trim: false, spaces: '', removeNumbers: false, removeBrackets: false, insert: '', insertAt: '', removeFrom: 0, removeCount: 0, removeFromEnd: false, newExt: '', extCase: '', order: 'name', ...initial };
   const extra = { tags: new Map(), titles: new Map(), existing: new Set() };
   let list = [...items];

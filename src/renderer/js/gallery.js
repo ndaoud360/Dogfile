@@ -6,6 +6,7 @@ import { modal, confirm } from './dialogs.js';
 import { activeTab, recompute, renderTabPanes, selectedItems, navigate } from './pane.js';
 import * as MM from './mediameta.js';
 import * as A from './actions.js';
+import { requirePro } from './license.js';
 
 let openPanel = null;
 function popover(anchor, content) {
@@ -93,6 +94,7 @@ export async function analyzeFolder(t = activeTab()) {
 }
 
 export async function contactSheets(items) {
+  if (!requirePro('convert')) return;
   const vids = items.filter(MM.isVid);
   if (!vids.length) return toast('Select one or more videos');
   let made = [];
@@ -117,6 +119,7 @@ export async function contactSheets(items) {
 
 // similar videos (frames that look alike) and songs (same length & tempo & key, or same sound fingerprint)
 export async function findSimilarMedia(t = activeTab()) {
+  if (!requirePro('dupes')) return;
   const vids = (t.items || []).filter(MM.isVid), auds = (t.items || []).filter(MM.isAud);
   if (vids.length + auds.length < 2) return toast('This folder needs at least two videos or songs');
   const status = h('div', { class: 'hint' }, 'Reading media…');

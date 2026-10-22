@@ -432,6 +432,7 @@ export async function openSettings(section = 'general', opts = {}) {
         row('Reset all settings', h('button', { class: 'btn small danger', onclick: async () => { if (await confirm('Reset settings?', 'Restore every setting to its default?', { danger: true, ok: 'Reset' })) { Object.assign(S, DEFAULT_SETTINGS); saveSettings(); bus.emit('theme'); renderAll(); toast('Settings reset'); openSettingsSection('data'); } } }, 'Reset')),
       );
     }],
+    license: ['Licence', 'star', async (el) => (await import('./license.js')).licenseSettings(el, row)],
     about: ['About', 'info', async (el) => {
       const info = await api('sys:info');
       el.append(h('div', { class: 'about' }, h('div', { class: 'about-name' }, 'Dogfile'), h('div', { class: 'hint' }, `Version ${info.version} · ${info.platform} · ${info.has7z ? '7-Zip detected' : 'Using Windows tar for archives'}${state.startupMs ? ` · started in ${state.startupMs} ms` : ''}`),

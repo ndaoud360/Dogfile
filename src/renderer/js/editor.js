@@ -4,6 +4,7 @@
 import * as CM from '../vendor/cm.js';
 import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce } from './core.js';
 import { icon } from './icons.js';
+import { initLicense } from './license.js';
 import { showMenu, closeMenus } from './menu.js';
 import { prompt, modal } from './dialogs.js';
 import { applyColors } from './theme.js';
@@ -873,7 +874,7 @@ document.addEventListener('keydown', (e) => {
   if (e.ctrlKey && e.key.toLowerCase() === 's' && !document.activeElement.closest('.cm-editor')) { e.preventDefault(); save(active); }
 });
 window.__ed = { toggleRef, newFeature, installFromDoc, openGuide, openCompare, closeCompare, docs, get active() { return active; }, openPaths, save, setLanguage, toggle, CM };
-boot().catch((e) => { console.error(e); document.body.innerHTML = `<pre style="padding:20px;color:#c00">${esc(e.stack || e.message)}</pre>`; });
+boot().then(() => initLicense({ test: true })).catch((e) => { console.error(e); document.body.innerHTML = `<pre style="padding:20px;color:#c00">${esc(e.stack || e.message)}</pre>`; });
 
 // a new document holding some text (in a tab of the main window: a new tab)
 function newDocWithText(text) {

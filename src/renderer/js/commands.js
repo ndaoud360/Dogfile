@@ -13,6 +13,8 @@ import * as T from './tools.js';
 import { quickLook } from './preview.js';
 import { selectPatternDialog, patternToTest, modal } from './dialogs.js';
 import { closeMenus } from './menu.js';
+import { requirePro } from './license.js';
+import { PRO_COMMANDS } from './pro-marks.js';
 
 export const commands = new Map();
 const def = (id, title, opts = {}) => commands.set(id, { id, title, ...opts });
@@ -205,6 +207,14 @@ def('closeWindow', 'Close window', { keys: ['Ctrl+Shift+W', 'Alt+F4'], cat: 'App
 // Tag shortcuts Alt+1..7
 for (let i = 1; i <= 7; i++) def('tag' + i, `Toggle tag ${i}`, { keys: [`Alt+${i}`], cat: 'Tags', hidden: true, run: async () => { const d = state.tags.defs[i - 1]; const s = S_(); if (!d || !s.length) return; const { setTags, tagsOf } = await import('./core.js'); const on = !s.every((x) => tagsOf(x.path).includes(d.id)); setTags(s.map((x) => x.path), d.id, on); toast(`${on ? 'Tagged' : 'Untagged'} ${d.name}`); renderAll(); } });
 
+// Dogfile Pro commands: a star in menus and the ribbon, and the Pro check before they run
+for (const [id, f] of Object.entries(PRO_COMMANDS)) {
+  const c = commands.get(id);
+  if (!c) continue;
+  const run = c.run;
+  c.pro = f;
+  c.run = (...a) => (requirePro(f) ? run(...a) : undefined);
+}
 bus.cmd = (id) => commands.get(id)?.run();
 
 function setTheme(th) { state.settings.theme = th; saveSettings(); bus.emit('theme'); toast(`Theme: ${th[0].toUpperCase() + th.slice(1)}`); }
@@ -442,3 +452,4 @@ function filePalette() {
   }
   const drawSoon = debounce(draw, 120);
 }
+

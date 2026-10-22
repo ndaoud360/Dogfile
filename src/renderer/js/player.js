@@ -3,6 +3,7 @@
 // the bundled ffmpeg remuxes (video copied, audio → AAC) or transcodes (GPU encoder when available) on the fly.
 import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce, isMediaFile, KINDS, natCmp, fileUrl } from './core.js';
 import { icon } from './icons.js';
+import { initLicense } from './license.js';
 import { showMenu } from './menu.js';
 import { modal } from './dialogs.js';
 import { applyColors, mediaSettings } from './theme.js';
@@ -1093,4 +1094,4 @@ onAsk(async (op, a = {}) => {
 });
 window.addEventListener('beforeunload', () => saveResume());
 window.__pl = { P, ED, TX, openTranscript, openEdit, runExport, showAnalysis, v, load, seek, setAudio, setSub, pos, dur, get AG() { return AG; }, prefs };
-boot().then(() => startPlayerFeatures()).catch((e) => { console.error(e); document.body.innerHTML = `<pre style="padding:20px;color:#f66">${esc(e.stack || e.message)}</pre>`; });
+boot().then(() => { initLicense({ test: true }); return startPlayerFeatures(); }).catch((e) => { console.error(e); document.body.innerHTML = `<pre style="padding:20px;color:#f66">${esc(e.stack || e.message)}</pre>`; });

@@ -32,6 +32,7 @@ jobs:
         id: check
         run: |
           ver=$(node -p "require('./app/tauri.conf.json').version")
+          node -e "const c=require('./backend/license.json'); if(!c.api||!c.pubkey){console.error('backend/license.json is empty'); process.exit(1)}" || { echo "::error title=publish::licensing isn't set up in backend/license.json, so this build would unlock Pro for everyone"; exit 1; }
           [ -f "release-notes/$ver.md" ] || { echo "::error title=publish::write release-notes/$ver.md first"; exit 1; }
           git --work-tree=bin/x64 checkout origin/app-bin -- "Dogfile-Setup-$ver.exe" 2>/dev/null || { echo "::error title=publish::the app-bin branch has no Dogfile-Setup-$ver.exe: wait for the app workflow to finish building $ver"; exit 1; }
           [ -n "$GH_TOKEN" ] || { echo "::error title=publish::add the secret DOGFILE_UPDATES_TOKEN (Settings > Secrets and variables > Actions)"; exit 1; }

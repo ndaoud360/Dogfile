@@ -8,6 +8,7 @@ import {
 import { icon, folderArt, fileArt } from './icons.js';
 import { showMenu, closeMenus } from './menu.js';
 import * as MM from './mediameta.js';
+import { requirePro } from './license.js';
 
 let A = null; // actions module (late bound to avoid circular init)
 export function bindActions(actions) { A = actions; }
@@ -123,6 +124,7 @@ export function duplicateTab(t) {
 }
 
 export function setLayout(layout) {
+  if ((layout === '3' || layout === '4') && !requirePro('panes')) return;
   state.layout = layout;
   const n = paneCount();
   const panes = state.panes.slice(0, n).filter(Boolean);

@@ -6,6 +6,7 @@ import { modal, confirm, prompt } from './dialogs.js';
 import { icon } from './icons.js';
 import { activeTab, navigate, selectedItems, renderTabPanes, recompute, loadTab, otherPaneTab, setView } from './pane.js';
 import * as A from './actions.js';
+import { requirePro } from './license.js';
 
 const macros = () => (state.settings.macros ||= []);
 export const STEP_TYPES = {
@@ -50,6 +51,7 @@ function noteSelection() {
   else rec.steps.push({ type: 'select', how: 'none' });
 }
 export async function startRecording({ trigger = null } = {}) {
+  if (!requirePro('automation')) return;
   if (rec) return;
   rec = { steps: [], lastSel: null, offs: [], running: false, trigger };
   const t = activeTab();
@@ -244,6 +246,7 @@ export async function editMacro(m0, isNew = false) {
   toast(`Macro “${m.name}” saved${trig.type === 'key' && trig.keys ? ` (${trig.keys})` : ''}. Find it in the command palette.`);
 }
 export async function macrosManager() {
+  if (!requirePro('automation')) return;
   const list = h('div', { class: 'ws-list' });
   const draw = () => {
     list.innerHTML = '';

@@ -3,6 +3,7 @@
 import { api, h, esc, toast, basename, dirname, stem, bus, IS_WIN, fileUrl } from './core.js';
 import { modal } from './dialogs.js';
 import { analyzeAudio, fmtAnalysis } from './audio-analysis.js';
+import { requirePro } from './license.js';
 
 export function progressToast(title, onCancel) {
   const host = document.getElementById('toasts');
@@ -25,6 +26,7 @@ async function waitJob(id, onPct) {
 
 // convert audio / video files with ffmpeg; copies are written next to the originals
 export async function convertMedia(paths, format, { normalize = false, audioOnly = false, bitrate = 0 } = {}) {
+  if (!requirePro('convert')) return;
   if (!paths.length) return;
   let cancelled = false, curJob = null;
   const p = progressToast(`Converting ${paths.length === 1 ? basename(paths[0]) : paths.length + ' files'}…`, () => { cancelled = true; if (curJob) api('media:cancel', curJob); });
@@ -77,6 +79,7 @@ export async function analyzeDialog(paths) {
 
 // image conversion via canvas (JPEG / PNG / WebP), copies next to the originals
 export async function convertImages(paths, format, { maxSide = 0 } = {}) {
+  if (!requirePro('convert')) return;
   const mime = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[format];
   let ok = 0;
   for (const p of paths) {

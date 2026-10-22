@@ -7,6 +7,7 @@ import { icon } from './icons.js';
 import { activeTab, selectedItems, navigate, loadTab } from './pane.js';
 import * as A from './actions.js';
 import * as X from './extensions.js';
+import { requirePro } from './license.js';
 
 const list = () => (state.settings.extensions ||= []);
 let host = null;
@@ -67,6 +68,7 @@ onMain('ext:install', async (p) => {
   if (p?.code) return install(p.code, { source: p.source, meta: p.meta });
 });
 export async function createFeature(target) {
+  if (!requirePro('features')) return;
   const pick = await X.pickStarter(target);
   if (!pick) return;
   if (pick.action === 'install') return install(pick.code, { source: 'Example' });
@@ -94,6 +96,7 @@ export async function exportFeature(f) {
 
 // ---------------- manager ----------------
 export async function featuresManager() {
+  if (!requirePro('features')) return;
   const box = h('div', { class: 'ws-list' });
   const draw = () => {
     box.innerHTML = '';

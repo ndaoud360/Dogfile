@@ -14,6 +14,7 @@ import * as T from './tools.js';
 import { initSidebar } from './sidebar.js';
 import { initPreview, quickLookOpen } from './preview.js';
 import { commands, handleKey, keysFor, palette, rebuildKeymap } from './commands.js';
+import { initLicense, starHtml } from './license.js';
 import { showMenu, closeMenus } from './menu.js';
 import { openSettings } from './settings.js';
 import { anyModalOpen } from './dialogs.js';
@@ -262,7 +263,7 @@ function ribbonGroup(gname, entries) {
   const big = h('div', { class: 'rb-big' }), small = h('div', { class: 'rb-small' });
   const after = () => { if (!state.settings.ribbonPinned) { ribbonOpen = null; renderRibbon(); } else setTimeout(renderRibbon, 50); };
   for (const e of entries) {
-    const b = h('button', { class: `rb-btn ${e.big ? 'big' : ''}${e.on ? ' on' : ''}${e.menu ? ' has-menu' : ''}`, title: e.title || e.label, html: `${icon(e.icon)}<span>${esc(e.label)}${e.menu ? ' ▾' : ''}</span>` });
+    const b = h('button', { class: `rb-btn ${e.big ? 'big' : ''}${e.on ? ' on' : ''}${e.menu ? ' has-menu' : ''}`, title: e.title || e.label, html: `${icon(e.icon)}<span>${esc(e.label)}${e.pro ? starHtml : ''}${e.menu ? ' ▾' : ''}</span>` });
     // a button with a menu drops it down under itself (and a second click closes it)
     if (e.menu) b.addEventListener('click', () => { const r = b.getBoundingClientRect(); showMenu(e.menu, r.left, r.bottom + 2); });
     else b.addEventListener('click', () => { e.run(); after(); });
@@ -273,8 +274,10 @@ function ribbonGroup(gname, entries) {
   g._fold = () => {
     g.innerHTML = '';
     g.classList.add('folded');
-    const b = h('button', { class: 'rb-btn big', title: gname, html: `${icon(entries[0].icon)}<span>${esc(gname)} ▾</span>` });
-    b.addEventListener('click', () => { const r = b.getBoundingClientRect(); showMenu(entries.map((e) => (e.menu ? { label: e.label, icon: e.icon, submenu: e.menu } : { label: e.label, icon: e.icon, checked: e.on || undefined, run: () => { e.run(); after(); } })), r.left, r.bottom + 2); });
+    // a folded group of Pro features keeps its star
+    const allPro = entries.every((e) => e.pro);
+    const b = h('button', { class: 'rb-btn big', title: gname, html: `${icon(entries[0].icon)}<span>${esc(gname)}${allPro ? starHtml : ''} ▾</span>` });
+    b.addEventListener('click', () => { const r = b.getBoundingClientRect(); showMenu(entries.map((e) => (e.menu ? { label: e.label, icon: e.icon, submenu: e.menu } : { label: e.label, icon: e.icon, pro: e.pro, checked: e.on || undefined, run: () => { e.run(); after(); } })), r.left, r.bottom + 2); });
     g.append(h('div', { class: 'rb-btns' }, h('div', { class: 'rb-big' }, b)), h('div', { class: 'rb-label' }, gname));
   };
   return g;
@@ -310,7 +313,7 @@ function renderRibbon() {
       if (!c || (c.when && !c.when())) continue;
       const k = keysFor(id)[0];
       const on = c.check?.() || (id === 'theme' + state.settings.theme[0].toUpperCase() + state.settings.theme.slice(1)) || (id === 'layout' + state.layout) || (id.startsWith('view') && activeTab()?.view === id.slice(4).toLowerCase());
-      entries.push({ id, icon: c.icon || 'command', label: label || c.title, title: `${c.title}${k ? ` (${k})` : ''}`, big: isBig, on, run: c.run });
+      entries.push({ id, icon: c.icon || 'command', label: label || c.title, title: `${c.title}${c.pro ? ' (Dogfile Pro)' : ''}${k ? ` (${k})` : ''}`, big: isBig, on, run: c.run, pro: c.pro });
     }
     if (entries.length) r.append(ribbonGroup(gname, entries));
   }
@@ -318,7 +321,7 @@ function renderRibbon() {
 }
 function fileMenu(btn) {
   const r = btn.getBoundingClientRect();
-  const C = (id, label) => { const c = commands.get(id); return { label: label || c.title, icon: c.icon, keys: keysFor(id)[0], run: c.run }; };
+  const C = (id, label) => { const c = commands.get(id); return { label: label || c.title, icon: c.icon, keys: keysFor(id)[0], run: c.run, pro: c.pro }; };
   const full = state.settings.uiMode !== 'simple';
   const featureCmds = () => [...commands.values()].filter((c) => c.id.startsWith('feature:')).map((c) => ({ label: c.title, icon: c.icon, run: c.run }));
   showMenu([
@@ -523,6 +526,8 @@ async function boot() {
 
   const launch = info.launch || {};
   // only the first window brings back the last session; New window starts fresh
+  // Dogfile Pro: the licence state first (a saved 4-pane layout needs it), the trial offer after the welcome tour
+  await initLicense({ test: info.test && !window.__dogTestLicense });
   const restored = (state.settings.startupPath === 'restore' && !info.test && !launch.fresh) && T.restoreSnapshot(session);
   if (!restored) {
     const t = newTabState();
@@ -540,6 +545,7 @@ async function boot() {
   bus.on('updateStatus', () => document.querySelector('.menu-tab[data-menu="file"]')?.classList.toggle('has-update', !!U.U.status?.available));
   if (launch.select) setTimeout(() => navigate(activeTab(), launch.path, { select: launch.select }), 50);
   focusPane(state.activePane);
+  initLicense({ test: info.test && !window.__dogTestLicense });
   document.body.classList.add('ready');
 }
 

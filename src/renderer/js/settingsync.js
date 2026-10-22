@@ -4,7 +4,7 @@ import { api, state, bus, sys, toast, saveSettings, saveLibrary, saveTags, fmtDa
 
 const FILE = 'Dogfile settings.json';
 // things that belong to this PC only
-const LOCAL = new Set(['lastVersion', 'updateSnoozeUntil', 'settingsSync', 'windowBounds', 'welcomed', 'recentCommands']);
+const LOCAL = new Set(['lastVersion', 'updateSnoozeUntil', 'settingsSync', 'windowBounds', 'welcomed', 'recentCommands', 'trialOfferCount', 'trialOfferAt', 'trialEndedShown']);
 const EXTRA = ['editor-prefs', 'player-prefs', 'filenotes'];
 
 async function bundle() {

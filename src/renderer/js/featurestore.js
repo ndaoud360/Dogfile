@@ -6,6 +6,7 @@ import { api, state, bus, h, esc, toast, saveSettings, fmtDate } from './core.js
 import { modal, prompt, confirm } from './dialogs.js';
 import { icon } from './icons.js';
 import * as X from './extensions.js';
+import { requirePro } from './license.js';
 
 const TOPIC = 'dogfile-mod';
 const gh = async (method, path, body, auth = true) => { const r = await api('gh:request', method, path, body ?? null, auth); return r; };
@@ -48,6 +49,7 @@ async function manifestOf(repo) {
 }
 
 export async function featureBrowser() {
+  if (!requirePro('features')) return;
   const q = h('input', { class: 'input', placeholder: 'Search features (e.g. screenplay, rename, photos)…', spellcheck: 'false' });
   q.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') load(); });
   let target = '';

@@ -5,6 +5,7 @@ import { api, state, sys, bus, h, esc, toast, saveSettings, uid, IS_WIN, basenam
 import { modal, confirm } from './dialogs.js';
 import { icon } from './icons.js';
 import { activeTab, navigate } from './pane.js';
+import { requirePro } from './license.js';
 
 export const conns = () => (state.settings.connections ||= []);
 const TYPES = [['smb', 'Windows share (SMB)'], ['sftp', 'SFTP (SSH)'], ['ftp', 'FTP'], ['ftps', 'FTPS (FTP over TLS)'], ['webdav', 'WebDAV (https)'],
@@ -39,6 +40,7 @@ setInterval(() => { if (conns().length && document.visibilityState === 'visible'
 setTimeout(refreshStatus, 3000);
 
 export async function editConnection(c0) {
+  if (!requirePro('remote')) return;
   const isNew = !c0?.id;
   const c = { id: uid(), type: 'sftp', name: '', host: '', port: '', share: '', path: '', user: '', ...(c0 || {}) };
   let pw = '';
@@ -122,6 +124,7 @@ export async function cloudAppDialog(kind) {
   return true;
 }
 export async function connectionsDialog() {
+  if (!requirePro('remote')) return;
   const list = h('div', { class: 'ws-list' });
   const draw = () => {
     list.innerHTML = '';

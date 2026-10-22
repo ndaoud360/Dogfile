@@ -8,6 +8,7 @@ import { icon } from './icons.js';
 import { activeTab, loadTab } from './pane.js';
 import * as A from './actions.js';
 import { planRules, describeRule, KIND_FOLDERS, SIZE_UNITS } from './organize.js';
+import { requirePro } from './license.js';
 
 const autos = () => (state.settings.automations ||= []);
 const PARTIAL = /\.(crdownload|part|partial|tmp|download|opdownload|!ut|downloading|filepart)$/i;
@@ -165,6 +166,7 @@ function ruleEditor(rule, onChange, onRemove, onMove) {
 }
 
 export async function automationDialog(folder, { preset, rules: add = [] } = {}) {
+  if (!requirePro('automation')) return;
   folder = folder || activeTab()?.path;
   if (!folder || isVirtual(folder)) return toast('Open the folder you want to automate first');
   let auto = autos().find((a) => a.folder === folder);
@@ -214,6 +216,7 @@ export async function runNowDialog(auto, { only } = {}) {
 }
 
 export async function automationsManager() {
+  if (!requirePro('automation')) return;
   const list = h('div', { class: 'ru-mgr' });
   const draw = () => {
     list.innerHTML = '';

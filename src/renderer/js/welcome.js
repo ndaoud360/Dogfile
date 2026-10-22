@@ -40,7 +40,12 @@ export async function showWelcome() {
     back.style.visibility = step ? 'visible' : 'hidden';
     next.textContent = step === steps.length - 1 ? 'Start using Dogfile' : 'Next';
   };
-  const finish = () => { S.uiMode = mode; S.welcomed = true; saveSettings(); bus.emit('settings'); document.body.classList.toggle('ui-simple', mode === 'simple'); };
+  const finish = () => {
+    const first = !S.welcomed;
+    S.uiMode = mode; S.welcomed = true; saveSettings(); bus.emit('settings'); document.body.classList.toggle('ui-simple', mode === 'simple');
+    // the end of the first welcome: offer the Pro trial
+    if (first) setTimeout(() => import('./license.js').then((m) => m.maybeOffer()), 350);
+  };
   let back, next;
   const p = modal({
     title: '', body, width: 620, className: 'wl-modal', closeOnBackdrop: false,

@@ -3,6 +3,7 @@
 // Embeddings are cached, so a folder is only analyzed once.
 import { api, state, bus, h, esc, toast, KINDS, IS_WIN, fileUrl, basename } from './core.js';
 import { confirm, modal } from './dialogs.js';
+import { requirePro } from './license.js';
 
 // ---------------- understanding the request ----------------
 const IMG_WORDS = /\b(photos?|pictures?|pics?|images?|screenshots?|selfies?|wallpapers?)\b/i;
@@ -254,6 +255,7 @@ export async function runAiSearch(t, query, roots) {
 
 // Settings > Tools: manage downloaded models
 export async function modelsDialog() {
+  if (!requirePro('assistant')) return;
   const st = await api('ai:status');
   const rows = Object.entries(st).map(([k, s]) => h('div', { class: 'set-row' }, h('div', { class: 'set-label' }, h('div', {}, s.label), h('div', { class: 'hint' }, s.ready ? `Installed · ${fmtMB(s.bytes)}` : 'Not downloaded')),
     h('div', { class: 'set-ctl row-inline' }, s.ready ? h('button', { class: 'btn small', onclick: async () => { await api('ai:remove', k); toast('Removed'); } }, 'Remove') : h('button', { class: 'btn small primary', onclick: () => ensureModels([k]) }, 'Download'))));

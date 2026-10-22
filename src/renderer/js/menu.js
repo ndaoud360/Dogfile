@@ -1,6 +1,7 @@
 // Context / dropdown menus with submenus, async items, checkmarks, shortcut hints and keyboard nav.
 import { h, esc } from './core.js';
 import { icon } from './icons.js';
+import { proForLabel, starHtml } from './pro-marks.js';
 
 let stack = [];
 
@@ -43,7 +44,7 @@ export async function showMenu(items, x, y, opts = {}) {
     if (it.header) { el.append(h('div', { class: 'menu-header' }, it.header)); return; }
     if (it.custom) { el.append(it.custom); return; }
     const row = h('div', { class: 'menu-item' + (it.disabled ? ' disabled' : '') + (it.danger ? ' danger' : '') + (it.tone ? ' tone-' + it.tone : ''), role: 'menuitem' });
-    row.innerHTML = `<span class="mi-icon">${it.checked ? icon('check') : it.radio ? (it.selected ? '<span class="dot"></span>' : '') : it.swatch ? `<span class="swatch" style="background:${it.swatch}"></span>` : it.img ? `<img src="${it.img}">` : it.icon ? icon(it.icon) : ''}</span><span class="mi-label">${esc(it.label)}</span>${it.keys ? `<span class="mi-keys">${esc(it.keys)}</span>` : ''}${it.submenu ? `<span class="mi-sub">${icon('chevronRight')}</span>` : ''}`;
+    row.innerHTML = `<span class="mi-icon">${it.checked ? icon('check') : it.radio ? (it.selected ? '<span class="dot"></span>' : '') : it.swatch ? `<span class="swatch" style="background:${it.swatch}"></span>` : it.img ? `<img src="${it.img}">` : it.icon ? icon(it.icon) : ''}</span><span class="mi-label">${esc(it.label)}${it.pro || (it.run && proForLabel(it.label)) ? starHtml : ''}</span>${it.keys ? `<span class="mi-keys">${esc(it.keys)}</span>` : ''}${it.submenu ? `<span class="mi-sub">${icon('chevronRight')}</span>` : ''}`;
     const openSub = () => {
       if (!it.submenu || it.disabled) return;
       const r = row.getBoundingClientRect();

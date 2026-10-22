@@ -13,6 +13,7 @@ import { planRules, describeAction } from './organize.js';
 import { parseAppRequest, writingRequest, APP_SUGGEST } from './assistant-apps.js';
 import { matchIntent, OVER_APPS } from './assistant-intents.js';
 import { activeAppTab, appAsk } from './apptabs.js';
+import { requirePro } from './license.js';
 
 export const results = new Map(); // id -> items (shown in a tab as atlas:search?assist=id)
 let panel = null, log = null, input = null, sendBtn = null;
@@ -35,8 +36,10 @@ function stopNow() {
 const SUGGEST = ['What can you do?', 'Show me PDFs about taxes from last year', 'Group these by type', 'Find files I haven’t opened in six months', 'Rename these using their contents', 'How much space do my videos take?', 'Top 20 largest files on this drive', 'Organize my Downloads', 'Switch to dark mode'];
 
 export function toggleAssistant(force) {
+  const wantOpen = force ?? !panel?.classList.contains('open');
+  if (wantOpen && !requirePro('assistant')) return;
   if (!panel) build();
-  const open = force ?? !panel.classList.contains('open');
+  const open = wantOpen;
   panel.classList.toggle('open', open);
   document.body.classList.toggle('assistant-open', open);
   if (open) { placeholder(); setTimeout(() => input.focus(), 50); }

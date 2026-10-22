@@ -1,7 +1,7 @@
 {
   "name": "dogfile",
   "productName": "Dogfile",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "description": "A power-user file manager for Windows with tabs, 4-pane split view, previews, tags and more.",
   "main": "src/main/main.js",
   "author": "Dogfile",

@@ -7,6 +7,7 @@ import { icon } from './icons.js';
 import { activeTab, navigate, selectedItems, loadTab } from './pane.js';
 import * as A from './actions.js';
 import { onWorkMsgFor } from './tools.js';
+import { requirePro } from './license.js';
 
 let log = null; // newest first
 const limit = () => Math.max(50, +state.settings.historyLimit || 1000);
@@ -113,6 +114,7 @@ export function explainError(msg = '') {
 
 // ---------------- versions ----------------
 export async function versionsDialog(p) {
+  if (!requirePro('versions')) return;
   if (!p) { const it = selectedItems(activeTab())[0]; p = it?.path; }
   if (!p || p.startsWith('atlas:')) return toast('Select a file or folder first');
   const list = h('div', { class: 'vs-list' });
@@ -147,6 +149,7 @@ export async function versionsDialog(p) {
   return p2;
 }
 export async function versionsOverview() {
+  if (!requirePro('versions')) return;
   const all = await api('versions:overview');
   const list = h('div', { class: 'vs-list' }, ...(all.length ? all.map((x) => h('div', { class: 'vs-row' }, h('span', { class: 'hi-ic', html: icon('history') }), h('div', { class: 'hi-main' }, h('b', {}, basename(x.path)), h('span', { class: 'hint' }, `${x.path} · ${x.count} version${x.count === 1 ? '' : 's'} · ${fmtSize(x.size)} · last ${fmtDate(x.last)}${(state.settings.trackedFiles || []).includes(x.path) ? ' · automatic' : ''}`)), h('div', { class: 'hi-acts' }, h('button', { class: 'btn small', onclick: () => versionsDialog(x.path) }, 'Open')))) : [h('div', { class: 'hint pad' }, 'No versions saved yet. Right-click a file > More > Versions… to start.')]));
   await modal({ title: 'All saved versions', width: 720, body: h('div', { class: 'stack' }, h('div', { class: 'hint' }, `Dogfile keeps up to ${state.settings.versionsKeep || 20} versions per file and ${fmtSize((state.settings.versionsMaxMB || 5000) * 1048576)} in total (change this in Settings > Files).`), list), buttons: [{ label: 'Close', primary: true, value: true }] });

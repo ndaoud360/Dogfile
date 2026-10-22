@@ -6,6 +6,7 @@ use crate::*;
 use serde_json::{json, Value};
 
 pub const NAMES: &[&str] = &[
+    "license:status", "license:startTrial", "license:activate", "license:offlineRequest", "license:offlineApply", "license:deactivate", "license:checkout", "license:claim", "license:refresh",
     "sys:info", "fs:list", "fs:subdirs", "fs:stat", "fs:exists", "fs:isDir", "fs:mkdir", "fs:newFile", "fs:rename", "fs:uniqueName", "fs:readText", "fs:readBytes", "fs:writeText", "fs:writeImage", "fs:hash",
     "fs:attributes", "fs:setAttributes", "fs:setTimes", "fs:symlink", "fs:shortcut", "fs:readLink", "fs:drives", "fs:eject", "fs:mapped", "fs:recentWindows", "fs:statMany", "thumb:get", "icon:get",
     "shell:open", "shell:openExternal", "shell:openWith", "shell:runAs", "shell:showInExplorer", "shell:terminal", "shell:properties", "shell:verbs", "shell:invokeVerb", "shell:beep", "shell:launch",
@@ -37,7 +38,21 @@ async fn host_blocking<T: Send + 'static>(f: impl FnOnce(&dyn Host) -> T + Send 
 pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
     let a = Args(args);
     let w = win.to_string();
+    // Dogfile Pro calls need the trial or a licence
+    if let Some(r) = license::gate(name, &a) {
+        return r;
+    }
     match name {
+        // ---------- Dogfile Pro ----------
+        "license:status" => license::status(&a),
+        "license:startTrial" => license::start_trial(&a).await,
+        "license:activate" => license::activate(&a).await,
+        "license:offlineRequest" => license::offline_request(&a),
+        "license:offlineApply" => license::offline_apply(&a),
+        "license:deactivate" => license::deactivate(&a).await,
+        "license:checkout" => license::checkout(&a).await,
+        "license:claim" => license::claim(&a).await,
+        "license:refresh" => license::refresh(true).await,
         // ---------- system ----------
         "sys:info" => sys::info(win),
         "sys:findEditor" => sys::find_editor().await,

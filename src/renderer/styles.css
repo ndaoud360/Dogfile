@@ -1581,3 +1581,67 @@ body.glass:not(.see-through) #app::before { content: ''; position: absolute; lef
   background: radial-gradient(60% 35% at 20% 15%, color-mix(in srgb, var(--accent) 70%, transparent), transparent 70%), radial-gradient(70% 40% at 85% 60%, rgba(236,72,153,.45), transparent 70%), radial-gradient(60% 40% at 10% 90%, rgba(20,184,166,.45), transparent 70%), var(--side-bg2); }
 body.glass.no-sidebar #app::before { display: none; }
 @media (prefers-reduced-transparency: reduce) { body.glass .sidebar { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--side-bg); } }
+
+/* ---------------- Dogfile Pro: stars, the trial pill, licence popups ---------------- */
+:root { --pro: #d99a0b; --pro-soft: rgba(217, 154, 11, .13); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --pro: #f2b632; --pro-soft: rgba(242, 182, 50, .14); } }
+:root[data-theme="dark"] { --pro: #f2b632; --pro-soft: rgba(242, 182, 50, .14); }
+.pro-star { display: none; color: var(--pro); font-size: 9px; line-height: 1; margin-left: 3px; vertical-align: super; font-style: normal; }
+body.show-pro-stars .pro-star { display: inline; }
+.rb-btn.big .pro-star { margin-left: 2px; }
+.pro-pill { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; margin-right: 4px; border: 1px solid var(--pro); border-radius: 13px; background: var(--pro-soft); color: var(--text); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; -webkit-app-region: no-drag; }
+.pro-pill svg { width: 13px; height: 13px; color: var(--pro); }
+.pro-pill:hover { background: var(--pro); color: #1d1d1f; }
+.pro-pill:hover svg { color: #1d1d1f; }
+.pro-pill.ending { border-style: dashed; }
+@media (max-width: 760px) { .pro-pill span { display: none; } .pro-pill { padding: 0 7px; } }
+.lic { display: flex; flex-direction: column; gap: 12px; }
+.lic-modal .modal-head { padding-bottom: 0; }
+.lic-hero { text-align: center; padding: 0 8px; }
+.lic-hero h2 { margin: 8px 0 4px; font-size: 20px; font-weight: 600; color: var(--text); }
+.lic-hero p { margin: 0; color: var(--text-2); line-height: 1.45; }
+.lic-badge { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 50%; background: var(--pro-soft); color: var(--pro); }
+.lic-badge svg { width: 24px; height: 24px; }
+.lic-hl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lic-hl-row { display: flex; gap: 9px; align-items: flex-start; padding: 9px 10px; border: 1px solid var(--line); border-radius: var(--r-tile, 8px); }
+.lic-hl-ic { color: var(--pro); flex: none; }
+.lic-hl-ic svg { width: 18px; height: 18px; }
+.lic-hl-row b { display: block; color: var(--text); font-weight: 600; }
+@media (max-width: 560px) { .lic-hl { grid-template-columns: 1fr; } }
+.lic-links { display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; }
+.lic-link { background: none; border: 0; padding: 2px 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.lic-link:hover { text-decoration-thickness: 2px; }
+.lic-err { display: none; padding: 8px 10px; border-radius: 6px; background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--text); border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); line-height: 1.4; }
+.lic-price { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.lic-price b { font-size: 26px; font-weight: 600; color: var(--text); }
+.lic-input { width: 100%; font-family: var(--mono); font-size: 15px; letter-spacing: .5px; text-align: center; text-transform: uppercase; }
+.lic-code { width: 100%; font-family: var(--mono); font-size: 13px; resize: vertical; text-transform: uppercase; }
+.lic-wait { display: flex; align-items: center; gap: 10px; justify-content: center; color: var(--text-2); }
+.lic-serial { display: flex; align-items: center; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.lic-serial code { font-family: var(--mono); font-size: 15px; padding: 6px 10px; border-radius: 6px; background: var(--bg-hover); color: var(--text); user-select: all; }
+.lic-step { display: flex; gap: 10px; align-items: flex-start; }
+.lic-step > div { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.lic-num { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+.lic-url { display: block; padding: 7px 9px; border-radius: 6px; background: var(--bg-hover); color: var(--text); font-family: var(--mono); font-size: 12px; word-break: break-all; user-select: all; }
+.lic-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.lic-table { width: 100%; border-collapse: collapse; }
+.lic-table th, .lic-table td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: center; color: var(--text); }
+.lic-table th:first-child, .lic-table td:first-child { text-align: left; }
+.lic-table th { font-weight: 600; font-size: 12px; color: var(--text-2); }
+.lic-table th.pro { color: var(--pro); white-space: nowrap; }
+.lic-table th.pro span svg { width: 12px; height: 12px; vertical-align: -1px; margin-right: 3px; }
+.lic-table td.pro { background: var(--pro-soft); }
+.lic-table tr.is-pro td:first-child { font-weight: 500; }
+.lic-yes svg { width: 15px; height: 15px; color: var(--ok, #2e9d58); vertical-align: middle; }
+.lic-table td.pro .lic-yes svg { color: var(--pro); }
+.lic-no { color: var(--text-4); }
+.lic-foot { text-align: center; margin: 0; }
+.lic-card { display: flex; gap: 12px; align-items: center; padding: 12px 14px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: var(--r-panel, 10px); }
+.lic-card .lic-badge { width: 36px; height: 36px; flex: none; }
+.lic-card .lic-badge svg { width: 20px; height: 20px; }
+.lic-card b { color: var(--text); font-size: 15px; }
+.lic-card.licensed { border-color: var(--pro); background: var(--pro-soft); }
+.lic-wait .spinner { width: 16px; height: 16px; border: 2px solid var(--line-2); border-top-color: var(--pro); border-radius: 50%; animation: spin .8s linear infinite; flex: none; }
+/* the assistant button: a star in its corner */
+#btn-assistant { position: relative; }
+body.show-pro-stars #btn-assistant::after { content: '★'; position: absolute; top: 3px; right: 3px; font-size: 8px; line-height: 1; color: var(--pro); }

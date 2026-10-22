@@ -15,6 +15,7 @@ bus.on('aiSearchUpdate', (t) => { recompute(t); renderTabPanes(t); bus.emit('sta
 // ======================================================================
 // (work-message routing lives in core.js so every module shares the early-message buffer)
 import { onWorkMsgFor, onWorkMsg, offWorkMsg } from './core.js';
+import { requirePro, isPro } from './license.js';
 export { onWorkMsgFor, onWorkMsg };
 // job messages by id (the router lives in core.js; early messages are kept until a listener is set)
 const workHandlers = { set: (id, fn) => onWorkMsgFor(id, fn), delete: (id) => offWorkMsg(id) };
@@ -199,6 +200,7 @@ export async function advancedSearch(initial = '') {
 // Compare folders (two panes)
 // ======================================================================
 export async function compareFolders() {
+  if (!requirePro('compare')) return;
   // remember the layout so closing the dialog puts it back (unless you chose to look at the differences)
   const restoreLayout = paneCount() < 2 ? state.layout : null;
   if (restoreLayout) setLayout('2v');
@@ -258,6 +260,7 @@ export async function compareFolders() {
 // Duplicate finder
 // ======================================================================
 export async function findDuplicates() {
+  if (!requirePro('dupes')) return;
   const t = activeTab();
   if (isVirtual(t.path)) return toast('Open a folder first');
   const status = h('div', { class: 'hint' }, 'Scanning…');
@@ -333,6 +336,7 @@ export async function similarImageGroups(files, { onProgress, cancelled = () => 
 
 // Similar pictures: perceptual hashes (dHash) find the same photo at different sizes, crops of quality or formats
 export async function findSimilarImages() {
+  if (!requirePro('dupes')) return;
   const t = activeTab();
   if (isVirtual(t.path)) return toast('Open a folder first');
   const status = h('div', { class: 'hint' }, 'Finding pictures…');
@@ -370,6 +374,7 @@ export async function findSimilarImages() {
 // Storage analyzer (what's taking up space)
 // ======================================================================
 export async function analyzeSpace(path) {
+  if (!requirePro('space')) return;
   const t = activeTab();
   path = path || (isVirtual(t.path) ? null : t.path);
   if (!path) return toast('Open a folder or drive first');
@@ -426,6 +431,7 @@ export async function analyzeSpace(path) {
 }
 
 export async function analyzeSelection() {
+  if (!requirePro('space')) return;
   const t = activeTab();
   const sel = selectedItems(t).filter((i) => !i.virtual);
   if (sel.length === 1 && sel[0].isDir) return analyzeSpace(sel[0].path);
@@ -451,6 +457,8 @@ export function restoreSnapshot(s) {
     t.path = st.path; t.history = [st.path]; t.hi = 0; t._restoredView = true;
   }
   state.layout = s.layout || '1';
+  // three or four panes are Pro: a saved layout opens with two without it
+  if ((state.layout === '3' || state.layout === '4') && !isPro()) state.layout = '2v';
   state.paneSizes = s.paneSizes || { v: 0.5, h: 0.5 };
   const n = { 1: 1, '2v': 2, '2h': 2, 3: 3, 4: 4 }[state.layout] || 1;
   state.panes = (s.panes || [0]).slice(0, n).map((i) => state.tabs[i]?.id).filter(Boolean);

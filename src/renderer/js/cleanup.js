@@ -9,6 +9,7 @@ import { activeTab, navigate } from './pane.js';
 import * as A from './actions.js';
 import { onWorkMsgFor, similarImageGroups } from './tools.js';
 import { renderPreview } from './preview.js';
+import { requirePro } from './license.js';
 
 const CATS = [
   ['overview', 'Overview', 'chart'],
@@ -34,6 +35,7 @@ export function docKey(name) {
 }
 
 export async function openCleanup(initialRoot) {
+  if (!requirePro('space')) return;
   const k = sys.known || {};
   const S = { root: initialRoot || null, data: null, groups: {}, checked: new Map(), cat: 'overview', scanning: false, recycle: [] };
   const nav = h('div', { class: 'cl-nav' });

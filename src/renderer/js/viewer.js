@@ -11,6 +11,7 @@ function applyMediaTheme() {
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyMediaTheme());
 import { readExif } from './exif.js';
+import { requirePro, initLicense } from './license.js';
 import { EMBED, pendingFiles, onHost, tellHost, showInFiles, setTitle, onLeave, onWindowClose, onAsk } from './embed.js';
 
 const $ = (id) => document.getElementById(id);
@@ -104,6 +105,7 @@ async function runOcr() {
   const it = V.list[V.idx];
   if (!it || !V.nat.w) return;
   if (OCR && OCR.path === it.path) { clearOcr(); renderBar(); return; }
+  if (!requirePro('ocr')) return;
   clearOcr();
   osd('Reading text…');
   document.body.classList.add('ocr-busy');
@@ -900,4 +902,4 @@ onAsk(async (op, a) => {
   return { ok: true, w: E?.work.width, h: E?.work.height };
 });
 window.__vw = { V, get E() { return E; }, show, enterEdit, save, setQueue, cmd, transformWork, applyCrop, startCrop, setEditZoom, geom };
-boot().then(() => startViewerFeatures()).catch((e) => { console.error(e); document.body.innerHTML = `<pre style="padding:20px;color:#f66">${esc(e.stack || e.message)}</pre>`; });
+boot().then(() => { initLicense({ test: true }); return startViewerFeatures(); }).catch((e) => { console.error(e); document.body.innerHTML = `<pre style="padding:20px;color:#f66">${esc(e.stack || e.message)}</pre>`; });

@@ -3,6 +3,7 @@
 // The app (Tauri) and the development server both run this same code; they differ only in the `Host` they
 // provide (windows, dialogs, events).
 pub mod args;
+pub mod license;
 pub mod uipak;
 pub mod dispatch;
 pub mod engine;
@@ -93,6 +94,7 @@ pub fn start(cfg: Config, host: Arc<dyn Host>) {
         return;
     }
     engine::init();
+    license::start_background();
     ops::configure_from_settings();
     // the media server for live video conversion (a page can't stream from a custom scheme)
     tokio::spawn(async {

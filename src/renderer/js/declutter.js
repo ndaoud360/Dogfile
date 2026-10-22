@@ -8,6 +8,7 @@ import { icon } from './icons.js';
 import { activeTab, loadTab } from './pane.js';
 import * as A from './actions.js';
 import { groupByName, matchExisting, kindFolder, monthFolder, groupBy, nameWords } from './organize.js';
+import { requirePro } from './license.js';
 
 const LEAVE = '\u0000leave';
 const dot = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; };
@@ -52,6 +53,7 @@ function propose(files, mode, { vectors, existing, folderName, rest: restMode })
 }
 
 export async function declutter(t = activeTab()) {
+  if (!requirePro('automation')) return;
   if (!t?.path || isVirtual(t.path)) return toast('Open the folder you want to tidy up first');
   const files = (t.items || []).filter((i) => !i.isDir && !i.hidden && !i.virtual && i.name !== '.folder.md');
   if (files.length < 3) return toast('This folder is already tidy (fewer than 3 loose files)');

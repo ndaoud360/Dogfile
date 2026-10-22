@@ -22,7 +22,7 @@ jobs:
       - name: Get the finished build
         run: |
           set -e
-          git fetch -q --depth 1 origin app-bin app-bin-arm64
+          git fetch -q --depth 1 origin +refs/heads/app-bin:refs/remotes/origin/app-bin +refs/heads/app-bin-arm64:refs/remotes/origin/app-bin-arm64
           mkdir -p bin/x64 bin/arm64
           git --work-tree=bin/x64 checkout origin/app-bin -- Dogfile.exe
           git --work-tree=bin/arm64 checkout origin/app-bin-arm64 -- Dogfile.exe

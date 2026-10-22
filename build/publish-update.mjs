@@ -27,3 +27,13 @@ try { execFileSync('gh', ['release', 'view', 'v' + m.version, '-R', REPO], { std
 if (exists) gh('release', 'upload', 'v' + m.version, ...files, '--clobber', '-R', REPO);
 else gh('release', 'create', 'v' + m.version, ...files, '-R', REPO, '--target', 'main', '--title', `Dogfile ${m.version}`, '--notes-file', notes, ...(pre ? ['--prerelease', '--latest=false'] : ['--latest']));
 console.log(`published Dogfile ${m.version} at https://github.com/${REPO}/releases/tag/v${m.version}`);
+
+// Releases before 2.1.2 carried the interface's source files (a renderer folder): they go, with their tags, and so
+// does the outbox branch the old publishing used. Installed copies only ever read the latest release.
+const ver = (t) => t.replace(/^v/, '').split(/[.-]/).map((x) => parseInt(x, 10) || 0);
+const older = (a, b) => { const x = ver(a), y = ver(b); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] < y[i]; return false; };
+if (!pre) {
+  const tags = JSON.parse(execFileSync('gh', ['api', `repos/${REPO}/releases?per_page=100`, '--jq', '[.[].tag_name]'], { encoding: 'utf8' }));
+  for (const t of tags.filter((t) => older(t, 'v2.1.2'))) { gh('release', 'delete', t, '-R', REPO, '--yes', '--cleanup-tag'); console.log('removed release ' + t); }
+  try { execFileSync('gh', ['api', '-X', 'DELETE', `repos/${REPO}/git/refs/heads/outbox`], { stdio: 'ignore' }); console.log('removed the outbox branch'); } catch { /* already gone */ }
+}

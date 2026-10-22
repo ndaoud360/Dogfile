@@ -8,6 +8,7 @@
 //   GET  /claim?session=cs_…  ·  GET /thanks?session_id=cs_…  ·  GET /cancelled
 //   POST /webhook                                       Stripe events (paid, refunded, disputed)
 //   POST /admin/<setup|issue|revoke|restore|lookup|resend|free-slot>   header x-admin-secret: ADMIN_SECRET
+//   GET  /status                                        what is set up (never the values)
 // Secrets: STRIPE_SECRET_KEY, RESEND_API_KEY, RESEND_FROM, ADMIN_SECRET (SUPABASE_DB_URL is provided by Supabase).
 import postgres from 'npm:postgres@3.4.5';
 import * as core from './core.ts';
@@ -53,6 +54,12 @@ Deno.serve(async (req) => {
     switch (`${req.method} ${route}`) {
       case 'GET /': return text('Dogfile licence server\n');
       case 'GET /pubkey': return json({ pubkey: (await core.keys(d)).pubText });
+      // what's set up (never the values): for checking the configuration
+      case 'GET /status': {
+        const k = env('STRIPE_SECRET_KEY') || '';
+        const names = Object.keys(Deno.env.toObject()).filter((n) => /stripe|resend/i.test(n)).sort();
+        return json({ stripe: k ? (k.startsWith('sk_live_') ? 'live' : k.startsWith('sk_test_') ? 'test' : k.startsWith('rk_') ? 'restricted key' : k.startsWith('pk_') ? 'publishable key (wrong kind)' : 'unrecognised') : null, email: !!env('RESEND_API_KEY'), settings: names });
+      }
       case 'POST /trial': return json(await core.trial(d, await body(), ip));
       case 'POST /activate': return json(await core.activate(d, await body(), ip));
       case 'GET /offline': {

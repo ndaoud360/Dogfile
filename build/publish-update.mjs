@@ -2,7 +2,7 @@
 // latest, so every installed Dogfile finds it at .../releases/latest/download/latest.json. Only the release is
 // created there (its files: the program zips, the setup program, latest.json): no commits, no source.
 //   GH_TOKEN=<token that can write to the updates repository> node build/publish-update.mjs
-// Run by the publish job in .github/workflows/app.yml when a v<version> tag is pushed.
+// Run by .github/workflows/publish.yml (Actions > publish > Run workflow).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

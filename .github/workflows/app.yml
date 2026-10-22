@@ -1,21 +1,14 @@
 # Builds Dogfile (Tauri + Rust) for Windows, runs the engine's tests, starts the app once on the runner to
 # check that it draws and to measure its memory, and publishes Dogfile.exe on the app-bin branch.
 # The interface (src/renderer) is minified and packed into the program (build/pack-ui.mjs): nothing else ships.
-# Pushing a tag v<version> also publishes that version to the public updates repository (the publish job).
+# Publishing a finished build is the separate publish workflow (.github/workflows/publish.yml).
 # Results go into annotations (readable through the API).
 name: app
 on:
   push:
     branches: [main]
-    # a v<version> tag builds and publishes that version (see the publish job)
-    tags: ['v*']
     paths: ['core/**', 'backend/**', 'app/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/app.yml', 'src/renderer/**']
   workflow_dispatch:
-    inputs:
-      publish:
-        description: 'Publish this version (the one in app/tauri.conf.json) to the public updates repository'
-        type: boolean
-        default: false
 permissions:
   contents: write
 jobs:
@@ -269,7 +262,8 @@ jobs:
         run: |
           $d = "$env:RUNNER_TEMP/binbranch"
           New-Item -ItemType Directory -Force $d | Out-Null
-          Copy-Item target/release/dogfile.exe $d/Dogfile.exe
+          # the signed program from the package step when there is one
+          if (Test-Path dist/Dogfile/Dogfile.exe) { Copy-Item dist/Dogfile/Dogfile.exe $d/Dogfile.exe } else { Copy-Item target/release/dogfile.exe $d/Dogfile.exe }
           if (Test-Path "$env:RUNNER_TEMP/smoke") { Copy-Item -Recurse "$env:RUNNER_TEMP/smoke/*" $d/ }
           Set-Location $d
           git init -q -b app-bin
@@ -415,40 +409,3 @@ jobs:
         with:
           name: mac-arm64
           path: dist/*.zip
-  # Actions > app > Run workflow with "Publish" ticked (or a tag v<version>) publishes that version: the program zips (Dogfile.exe only), the setup program and latest.json
-  # become release v<version> of the public updates repository. Nothing else is pushed there: no commits, no source.
-  # Needs the secret DOGFILE_UPDATES_TOKEN: a fine-grained token with "Contents: read and write" on
-  # ndaoud360/dogfile-updates only. The notes come from release-notes/<version>.md.
-  publish:
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
-    needs: [windows, windows-arm64, linux]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          path: art
-      - name: Check the version, the notes and the files
-        id: check
-        run: |
-          set -e
-          conf=$(node -p "require('./app/tauri.conf.json').version")
-          ver="$conf"
-          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
-            ver="${GITHUB_REF_NAME#v}"
-            [ "$ver" = "$conf" ] || { echo "::error title=publish::tag $GITHUB_REF_NAME but app/tauri.conf.json says $conf"; exit 1; }
-          fi
-          [ -f "release-notes/$ver.md" ] || { echo "::error title=publish::write release-notes/$ver.md first"; exit 1; }
-          setup=$(ls art/windows-x64/Dogfile-Setup-*.exe 2>/dev/null | head -1)
-          exe=$(ls art/windows-x64/Dogfile/Dogfile.exe 2>/dev/null || true)
-          [ -n "$setup" ] && [ -n "$exe" ] || { echo "::error title=publish::the Windows build didn't produce Dogfile.exe and the setup program"; ls -R art; exit 1; }
-          [ -n "${{ secrets.DOGFILE_UPDATES_TOKEN }}" ] || { echo "::error title=publish::add the secret DOGFILE_UPDATES_TOKEN (Settings > Secrets and variables > Actions)"; exit 1; }
-          echo "ver=$ver" >> $GITHUB_OUTPUT; echo "setup=$setup" >> $GITHUB_OUTPUT; echo "exe=$exe" >> $GITHUB_OUTPUT
-      - name: Make the update
-        run: node build/make-update.mjs ${{ steps.check.outputs.ver }} release-notes/${{ steps.check.outputs.ver }}.md --x64 "${{ steps.check.outputs.exe }}" --arm64 art/windows-arm64/dogfile.exe --setup "${{ steps.check.outputs.setup }}"
-      - name: Publish to the public updates repository
-        env:
-          GH_TOKEN: ${{ secrets.DOGFILE_UPDATES_TOKEN }}
-        run: |
-          node build/publish-update.mjs
-          echo "::notice title=published::Dogfile ${{ steps.check.outputs.ver }}: https://github.com/ndaoud360/dogfile-updates/releases/tag/v${{ steps.check.outputs.ver }}"

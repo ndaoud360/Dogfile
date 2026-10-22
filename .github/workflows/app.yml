@@ -11,6 +11,11 @@ on:
     tags: ['v*']
     paths: ['core/**', 'backend/**', 'app/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/app.yml', 'src/renderer/**']
   workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish this version (the one in app/tauri.conf.json) to the public updates repository'
+        type: boolean
+        default: false
 permissions:
   contents: write
 jobs:
@@ -410,12 +415,12 @@ jobs:
         with:
           name: mac-arm64
           path: dist/*.zip
-  # A tag v<version> publishes that version: the program zips (Dogfile.exe only), the setup program and latest.json
+  # Actions > app > Run workflow with "Publish" ticked (or a tag v<version>) publishes that version: the program zips (Dogfile.exe only), the setup program and latest.json
   # become release v<version> of the public updates repository. Nothing else is pushed there: no commits, no source.
   # Needs the secret DOGFILE_UPDATES_TOKEN: a fine-grained token with "Contents: read and write" on
   # ndaoud360/dogfile-updates only. The notes come from release-notes/<version>.md.
   publish:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
     needs: [windows, windows-arm64, linux]
     runs-on: ubuntu-latest
     steps:
@@ -427,9 +432,12 @@ jobs:
         id: check
         run: |
           set -e
-          ver="${GITHUB_REF_NAME#v}"
           conf=$(node -p "require('./app/tauri.conf.json').version")
-          [ "$ver" = "$conf" ] || { echo "::error title=publish::tag $GITHUB_REF_NAME but app/tauri.conf.json says $conf"; exit 1; }
+          ver="$conf"
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            ver="${GITHUB_REF_NAME#v}"
+            [ "$ver" = "$conf" ] || { echo "::error title=publish::tag $GITHUB_REF_NAME but app/tauri.conf.json says $conf"; exit 1; }
+          fi
           [ -f "release-notes/$ver.md" ] || { echo "::error title=publish::write release-notes/$ver.md first"; exit 1; }
           setup=$(ls art/windows-x64/Dogfile-Setup-*.exe 2>/dev/null | head -1)
           exe=$(ls art/windows-x64/Dogfile/Dogfile.exe 2>/dev/null || true)

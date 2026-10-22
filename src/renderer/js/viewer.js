@@ -271,6 +271,30 @@ function undo() { if (!E) return; if (!isDefaultAdj(E.adj)) { E.adj = defaultAdj
 function redo() { if (!E || !E.redo.length) return; E.undo.push({ work: E.work, photo: E.photo }); ({ work: E.work, photo: E.photo } = E.redo.pop()); drawCanvas(); renderBar(); renderTools(); }
 // apply the same picture change to what you see and to the photo under the drawing
 function both(fn) { E.zoom = 1; E.panX = E.panY = 0; const same = E.photo.width === E.work.width && E.photo.height === E.work.height; E.work = fn(E.work); E.photo = same ? fn(E.photo) : cloneCanvas(E.work); }
+// pixelate (mosaic) the area chosen with the crop box, or the whole picture; block = pixel size of the squares
+function pixelate(block = 12) {
+  if (!E) return false;
+  bakeAdjust();
+  const G = geom();
+  let r = { x: 0, y: 0, w: E.work.width, h: E.work.height };
+  if (E.crop) r = { x: Math.round((E.crop.x - G.x) / G.s), y: Math.round((E.crop.y - G.y) / G.s), w: Math.round(E.crop.w / G.s), h: Math.round(E.crop.h / G.s) };
+  r.x = Math.max(0, r.x); r.y = Math.max(0, r.y); r.w = Math.min(E.work.width - r.x, r.w); r.h = Math.min(E.work.height - r.y, r.h);
+  if (r.w < 2 || r.h < 2) return false;
+  const b = Math.max(2, Math.round(block));
+  pushHistory();
+  const mosaic = (src) => {
+    const out = cloneCanvas(src), g = out.getContext('2d');
+    const sw = Math.max(1, Math.ceil(r.w / b)), sh = Math.max(1, Math.ceil(r.h / b));
+    const tiny = document.createElement('canvas'); tiny.width = sw; tiny.height = sh;
+    const tg = tiny.getContext('2d'); tg.imageSmoothingQuality = 'medium'; tg.drawImage(src, r.x, r.y, r.w, r.h, 0, 0, sw, sh);
+    g.imageSmoothingEnabled = false; g.drawImage(tiny, 0, 0, sw, sh, r.x, r.y, sw * b, sh * b);
+    return out;
+  };
+  E.work = mosaic(E.work); E.photo = E.photo.width === E.work.width ? mosaic(E.photo) : cloneCanvas(E.work);
+  E.crop = null; document.body.classList.remove('cropping'); E.tool = 'adjust'; renderTools(); drawCanvas();
+  osd(`Pixelated ${r.w} × ${r.h} px (blocks of ${b})`);
+  return true;
+}
 // remove pen / highlighter / text, keep everything else
 function clearDrawing() { if (!E) return; bakeAdjust(); pushHistory(); E.work = cloneCanvas(E.photo); drawCanvas(); osd('Drawing removed'); }
 // back to the picture as it was when editing started
@@ -782,6 +806,7 @@ function ensureEdit(tool) { if (!E) enterEdit(tool || 'adjust'); return !!E; }
 function cmd(id, arg) {
   const map = {
     clearDrawing: () => ensureEdit() && clearDrawing(),
+    pixelate: () => ensureEdit() && pixelate(arg?.block || 12),
     resetAll: () => ensureEdit() && resetAll(),
     adjust: () => { if (!ensureEdit()) return; for (const [k, v] of Object.entries(arg || {})) if (k in E.adj) E.adj[k] = Math.max(k === 'hue' ? -180 : 0, Math.min(k === 'hue' ? 180 : k === 'saturate' ? 300 : k === 'blur' ? 20 : ['grayscale', 'sepia', 'invert', 'vignette'].includes(k) ? 100 : 200, +v)); E.dirty = true; if (E.tool !== 'adjust') { E.tool = 'adjust'; } renderTools(); drawCanvas(); },
     filter: () => { if (!ensureEdit('filters')) return; const name = Object.keys(PRESET_FX).find((n) => n.toLowerCase() === String(arg || '').toLowerCase()); if (!name) return; E.adj = { ...defaultAdj(), ...PRESET_FX[name] }; E.dirty = true; renderTools(); drawCanvas(); },
@@ -864,14 +889,14 @@ onHost({ open: (m) => setQueue(m.files, { autoPlaylist: m.autoPlaylist || m.file
 // the assistant: "erase everything and apply sepia", "resize to 1920 wide", "crop to square", "save a copy as PNG"
 onAsk(async (op, a) => {
   const it = V.list[V.idx];
-  if (op === 'context') return { ok: true, name: it?.name || '', editing: !!E, w: E ? E.work.width : V.nat.w, h: E ? E.work.height : V.nat.h };
+  if (op === 'context') return { ok: true, name: it?.name || '', path: it?.path || '', editing: !!E, w: E ? E.work.width : V.nat.w, h: E ? E.work.height : V.nat.h };
   if (!it) return { ok: false, msg: 'Open a photo first' };
   if (op === 'saveCopy' || op === 'overwrite') { if (!E) return { ok: false, msg: 'There are no edits to save' }; const ok = await save(op === 'overwrite' ? 'overwrite' : 'copy'); return { ok: !!ok, msg: ok ? 'Saved' : 'Not saved' }; }
   if (op === 'delete') { await del(); return { ok: true }; }
-  const known = ['clearDrawing', 'resetAll', 'adjust', 'filter', 'apply', 'resize', 'rotate180', 'flipV', 'cropAspect', 'applyCrop', 'drawMode', 'drawColor', 'format', 'exitEdit', 'ocr', 'prev', 'next', 'slideshow', 'fullscreen', 'edit', 'rotateL', 'rotateR', 'flip', 'zoomIn', 'zoomOut', 'fit', 'info', 'crop', 'draw', 'filters', 'undo', 'redo', 'queue'];
+  const known = ['pixelate', 'clearDrawing', 'resetAll', 'adjust', 'filter', 'apply', 'resize', 'rotate180', 'flipV', 'cropAspect', 'applyCrop', 'drawMode', 'drawColor', 'format', 'exitEdit', 'ocr', 'prev', 'next', 'slideshow', 'fullscreen', 'edit', 'rotateL', 'rotateR', 'flip', 'zoomIn', 'zoomOut', 'fit', 'info', 'crop', 'draw', 'filters', 'undo', 'redo', 'queue'];
   if (!known.includes(op)) return { ok: false, msg: `I can’t do “${op}” in Photos` };
   await cmd(op, a);
-  if (['adjust', 'filter', 'resize', 'rotate180', 'cropAspect', 'clearDrawing', 'resetAll', 'apply'].includes(op) && !E) return { ok: false, msg: 'This picture can’t be edited' };
+  if (['adjust', 'filter', 'resize', 'rotate180', 'cropAspect', 'clearDrawing', 'resetAll', 'apply', 'pixelate'].includes(op) && !E) return { ok: false, msg: 'This picture can’t be edited' };
   return { ok: true, w: E?.work.width, h: E?.work.height };
 });
 window.__vw = { V, get E() { return E; }, show, enterEdit, save, setQueue, cmd, transformWork, applyCrop, startCrop, setEditZoom, geom };

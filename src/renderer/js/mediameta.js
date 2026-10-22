@@ -26,7 +26,7 @@ export function setMeta(it, patch) { const k = keyOf(it); meta.set(k, { ...(meta
 
 // ask for whatever is missing, a batch at a time; calls onUpdate when something new arrived
 const inflight = new Set();
-export async function ensureMeta(items, { onUpdate, audio = true } = {}) {
+export async function ensureMeta(items, { onUpdate, audio = true, need = [] } = {}) {
   await load();
   const pics = [], av = [];
   for (const it of items) {
@@ -34,8 +34,9 @@ export async function ensureMeta(items, { onUpdate, audio = true } = {}) {
     const k = keyOf(it);
     if (inflight.has(k)) continue;
     const m = meta.get(k);
-    if (isPic(it) && !(m && 'w' in m)) pics.push(it);
-    else if ((isVid(it) || (audio && isAud(it))) && !(m && 'dur' in m)) av.push(it);
+    // "need": details added later (GPS, codecs) are read again for entries cached before them
+    if (isPic(it) && !(m && 'w' in m && need.every((k) => k !== 'gps' || 'gps' in m))) pics.push(it);
+    else if ((isVid(it) || (audio && isAud(it))) && !(m && 'dur' in m && need.every((k) => k !== 'vcodec' || 'vcodec' in m))) av.push(it);
   }
   let changed = false;
   for (let i = 0; i < pics.length; i += 200) {
@@ -50,7 +51,7 @@ export async function ensureMeta(items, { onUpdate, audio = true } = {}) {
     const part = av.slice(i, i + 16);
     part.forEach((it) => inflight.add(keyOf(it)));
     const r = await api('media:quickProbe', part.map((x) => x.path)).catch(() => []);
-    part.forEach((it, j) => { inflight.delete(keyOf(it)); const x = r[j] || {}; const rot = x.rot === 90 || x.rot === 270; setMeta(it, { dur: x.dur || 0, w: rot ? x.h : x.w, h: rot ? x.w : x.h }); });
+    part.forEach((it, j) => { inflight.delete(keyOf(it)); const x = r[j] || {}; const rot = x.rot === 90 || x.rot === 270; setMeta(it, { dur: x.dur || 0, w: rot ? x.h : x.w, h: rot ? x.w : x.h, vcodec: x.vcodec || '', acodec: x.acodec || '' }); });
     changed = true;
     if (i % 64 === 0) onUpdate?.();
   }

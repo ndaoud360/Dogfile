@@ -50,12 +50,14 @@ fn tiff(b: &[u8], t: usize, out: &mut Map<String, Value>) {
                 }
                 3 => { res.insert(key, json!(u16_(vo))); }
                 4 => { res.insert(key, json!(u32_(vo))); }
+                // rationals (GPS latitude / longitude): only that they're there
+                5 | 10 => { res.insert(key, json!(true)); }
                 _ => {}
             }
         }
         res
     };
-    let i0 = ifd(u32_(4) as usize, &[0x010f, 0x0110, 0x0112, 0x0132, 0x8769, 0x0131]);
+    let i0 = ifd(u32_(4) as usize, &[0x010f, 0x0110, 0x0112, 0x0132, 0x8769, 0x0131, 0x8825]);
     let g = |m: &Map<String, Value>, k: u32| m.get(&k.to_string()).cloned();
     let ex = g(&i0, 0x8769).and_then(|v| v.as_u64()).map(|o| ifd(o as usize, &[0x9003, 0x9004, 0xa002, 0xa003])).unwrap_or_default();
     let make = g(&i0, 0x010f).and_then(|v| v.as_str().map(String::from)).unwrap_or_default();
@@ -66,6 +68,9 @@ fn tiff(b: &[u8], t: usize, out: &mut Map<String, Value>) {
         out.insert("camera".into(), json!(cam));
     }
     if let Some(o) = g(&i0, 0x0112) { out.insert("orient".into(), o); }
+    // a GPS block that holds a position (photos with a location)
+    let gps = g(&i0, 0x8825).and_then(|v| v.as_u64()).filter(|&o| o > 0).map(|o| ifd(o as usize, &[0x0002, 0x0004])).map(|m| !m.is_empty()).unwrap_or(false);
+    out.insert("gps".into(), json!(gps));
     if let Some(s) = g(&i0, 0x0131) { out.insert("software".into(), s); }
     let d = g(&ex, 0x9003).or(g(&ex, 0x9004)).or(g(&i0, 0x0132)).and_then(|v| v.as_str().map(String::from));
     if let Some(d) = d {

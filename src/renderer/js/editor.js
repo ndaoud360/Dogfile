@@ -938,6 +938,48 @@ const LINEFN = {
   spacesToTabs: (l) => l.map((x) => x.replace(new RegExp(`^((?: {${ed.tabSize}})+)`), (m) => '\t'.repeat(m.length / ed.tabSize))),
   indent: (l) => l.map((x) => (x ? ' '.repeat(ed.tabSize) + x : x)), outdent: (l) => l.map((x) => x.replace(new RegExp(`^( {1,${ed.tabSize}}|\\t)`), '')),
 };
+// British ⇄ American spelling: the common word families (colour, organise, centre, travelled, catalogue…)
+const UK_US = { colour: 'color', flavour: 'flavor', honour: 'honor', humour: 'humor', labour: 'labor', neighbour: 'neighbor', rumour: 'rumor', vapour: 'vapor', favour: 'favor', behaviour: 'behavior', harbour: 'harbor', armour: 'armor', endeavour: 'endeavor', odour: 'odor', savour: 'savor', vigour: 'vigor', glamour: 'glamor', parlour: 'parlor', splendour: 'splendor', tumour: 'tumor', valour: 'valor',
+  centre: 'center', metre: 'meter', litre: 'liter', theatre: 'theater', fibre: 'fiber', calibre: 'caliber', sombre: 'somber', spectre: 'specter', lustre: 'luster', meagre: 'meager', sabre: 'saber',
+  analyse: 'analyze', paralyse: 'paralyze', catalyse: 'catalyze', breathalyse: 'breathalyze',
+  catalogue: 'catalog', dialogue: 'dialog', analogue: 'analog', monologue: 'monolog', prologue: 'prolog', epilogue: 'epilog',
+  defence: 'defense', offence: 'offense', licence: 'license', pretence: 'pretense',
+  travelled: 'traveled', travelling: 'traveling', traveller: 'traveler', cancelled: 'canceled', cancelling: 'canceling', labelled: 'labeled', labelling: 'labeling', modelled: 'modeled', modelling: 'modeling', fuelled: 'fueled', fuelling: 'fueling', levelled: 'leveled', counsellor: 'counselor', jewellery: 'jewelry', marvellous: 'marvelous', woollen: 'woolen',
+  grey: 'gray', programme: 'program', tyre: 'tire', aluminium: 'aluminum', cheque: 'check', kerb: 'curb', plough: 'plow', mould: 'mold', moult: 'molt', smoulder: 'smolder', manoeuvre: 'maneuver', paediatric: 'pediatric', encyclopaedia: 'encyclopedia', oestrogen: 'estrogen', anaemia: 'anemia', anaesthetic: 'anesthetic', diarrhoea: 'diarrhea', foetus: 'fetus', haemorrhage: 'hemorrhage',
+  enrol: 'enroll', fulfil: 'fulfill', instil: 'instill', skilful: 'skillful', wilful: 'willful', judgement: 'judgment', ageing: 'aging', storey: 'story', pyjamas: 'pajamas', draught: 'draft', sceptical: 'skeptical', artefact: 'artifact', practise: 'practice', learnt: 'learned', spelt: 'spelled', dreamt: 'dreamed' };
+// -ise / -isation words that are -ize in American English (not "advise", "exercise", "surprise"…)
+const ISE_KEEP = /(advis|apprais|aris|chastis|circumcis|compromis|compris|concis|demis|despis|devis|disguis|enterpris|excis|exercis|expertis|franchis|improvis|incis|merchandis|premis|precis|promis|revis|supervis|surmis|surpris|televis|advertis|wis|nois|pois|prais|rais|cruis|bruis|guis|chemis|tis)$/;
+function toUS(text) {
+  const keepCase = (from, to) => (from === from.toUpperCase() ? to.toUpperCase() : from[0] === from[0].toUpperCase() ? to[0].toUpperCase() + to.slice(1) : to);
+  let n = 0;
+  const words = Object.keys(UK_US).sort((a, b) => b.length - a.length).join('|');
+  let out = text.replace(new RegExp(`\\b(${words})(s|ed|ing|ly|ful|ite|ites|ist|ists|ation|ations)?\\b`, 'gi'), (m, w, suf = '') => { n++; return keepCase(m, UK_US[w.toLowerCase()] + suf.toLowerCase()); });
+  out = out.replace(/\b([A-Za-z]{3,})is(e|es|ed|ing|ation|ations|er|ers)\b/g, (m, stem, suf) => { if (ISE_KEEP.test((stem + 'is').toLowerCase()) || stem.length < 3) return m; n++; return stem + (m.slice(stem.length, stem.length + 2) === 'IS' ? 'IZ' : 'iz') + suf; });
+  out = out.replace(/\b([A-Za-z]{3,})ys(e|es|ed|ing)\b/g, (m, stem, suf) => { if (!/^(anal|paral|catal|breathal|dial)$/i.test(stem)) return m; n++; return stem + 'yz' + suf; });
+  return { out, n };
+}
+function toUK(text) {
+  const keepCase = (from, to) => (from === from.toUpperCase() ? to.toUpperCase() : from[0] === from[0].toUpperCase() ? to[0].toUpperCase() + to.slice(1) : to);
+  const back = Object.fromEntries(Object.entries(UK_US).map(([k, v]) => [v, k]));
+  let n = 0;
+  const words = Object.keys(back).sort((a, b) => b.length - a.length).join('|');
+  const out = text.replace(new RegExp(`\\b(${words})(s|ed|ing)?\\b`, 'gi'), (m, w, suf = '') => { n++; return keepCase(m, back[w.toLowerCase()] + suf.toLowerCase()); }).replace(/\b([A-Za-z]{3,})iz(e|es|ed|ing|ation|ations)\b/g, (m, stem, suf) => { if (/^(pr|s|capsiz)$/i.test(stem)) return m; n++; return stem + 'is' + suf; });
+  return { out, n };
+}
+// CSV / TSV lines ⇄ a Markdown table
+function csvRows(t) {
+  const sep = (t.match(/\t/g) || []).length > (t.match(/,/g) || []).length ? '\t' : (t.match(/;/g) || []).length > (t.match(/,/g) || []).length ? ';' : ',';
+  return t.split(/\r?\n/).filter((l) => l.trim()).map((line) => { const out = []; let cur = '', q = false; for (let i = 0; i < line.length; i++) { const c = line[i]; if (q) { if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c; } else if (c === '"') q = true; else if (c === sep) { out.push(cur); cur = ''; } else cur += c; } out.push(cur); return out.map((x) => x.trim()); });
+}
+function csvToMd(t) {
+  const rows = csvRows(t); if (!rows.length) return t;
+  const w = Math.max(...rows.map((r) => r.length)); const cell = (x) => String(x ?? '').replace(/\|/g, '\\|');
+  const pad = (r) => [...r, ...Array(w - r.length).fill('')];
+  return [`| ${pad(rows[0]).map(cell).join(' | ')} |`, `| ${Array(w).fill('---').join(' | ')} |`, ...rows.slice(1).map((r) => `| ${pad(r).map(cell).join(' | ')} |`)].join('\n');
+}
+function mdToCsv(t) {
+  return t.split(/\r?\n/).filter((l) => /^\s*\|/.test(l) && !/^\s*\|?\s*:?-{2,}/.test(l)).map((l) => l.trim().replace(/^\||\|$/g, '').split(/(?<!\\)\|/).map((c) => { const v = c.trim().replace(/\\\|/g, '|'); return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; }).join(',')).join('\n');
+}
 async function assistantOp(op, a = {}) {
   const v = view();
   if (!v && !['new', 'open'].includes(op)) return { ok: false, msg: 'No document is open' };
@@ -951,7 +993,25 @@ async function assistantOp(op, a = {}) {
       const r = opText(v, a, (t) => t.replace(re, (...m) => { n++; return a.regex ? m[0].replace(makeRe({ ...a, find: a.find }), a.with ?? '') : (a.with ?? ''); }));
       return n ? { ok: true, msg: `${a.with ? 'Replaced' : 'Removed'} ${plural(n, 'match')} of “${a.find}”${a.with ? ` with “${a.with}”` : ''} in ${where(r.whole)}` } : { ok: false, msg: `“${a.find}” isn’t in ${where(r.whole)}` };
     }
-    case 'case': { const f = CASES[a.to]; if (!f) return { ok: false }; const r = opText(v, a, f); return { ok: true, msg: `Changed ${where(r.whole)} to ${{ upper: 'UPPERCASE', lower: 'lowercase', title: 'Title Case', sentence: 'Sentence case', invert: 'iNVERTED cASE', camel: 'camelCase', snake: 'snake_case', kebab: 'kebab-case' }[a.to]}` }; }
+    case 'spelling': {
+      let n = 0; const r = opText(v, a, (t) => { const x = a.to === 'uk' ? toUK(t) : toUS(t); n = x.n; return x.out; });
+      return n ? { ok: true, msg: `Changed ${plural(n, 'word')} to ${a.to === 'uk' ? 'British' : 'American'} spelling in ${where(r.whole)}` } : { ok: true, msg: `No ${a.to === 'uk' ? 'American' : 'British'} spellings found in ${where(r.whole)}` };
+    }
+    case 'table': {
+      const r = opText(v, a, (t) => (a.to === 'csv' ? mdToCsv(t) : csvToMd(t)));
+      return r.changed ? { ok: true, msg: a.to === 'csv' ? `Turned the table in ${where(r.whole)} into CSV` : `Turned ${where(r.whole)} into a Markdown table` } : { ok: false, msg: 'There’s nothing to turn into a table' };
+    }
+    case 'compareWith': {
+      if (!active?.path) return { ok: false, msg: 'Save this document first, then I can compare it' };
+      const name = String(a.file || '').trim();
+      let other = /^([a-z]:[\\/]|\\\\|\/)/i.test(name) ? name : dirname(active.path) + (sys.platform === 'win32' ? '\\' : '/') + name;
+      if (!name || !(await api('fs:stat', other).catch(() => null))) { const [f] = await api('dialog:openFiles', { title: `Compare with${name ? ` (couldn’t find ${name})` : ''}…`, defaultPath: dirname(active.path) }) || []; if (!f) return { ok: false, msg: name ? `I couldn’t find “${name}” next to this file` : 'Pick a file to compare with' }; other = f; }
+      await openCompare(active.path, other);
+      if (a.jump !== false && compareView) setTimeout(() => { try { CM.goToNextChunk(compareView.b); } catch {} }, 150);
+      return { ok: true, msg: `Comparing with ${basename(other)} — F7 jumps to the next difference` };
+    }
+    case 'case': { if (a.scope === 'headings') { let n = 0; opLines(v, { ...a, scope: 'all' }, (l) => l.map((x) => (/^\s{0,3}#{1,6}\s/.test(x) || /^[A-Z0-9][^.!?]{0,60}$/.test(x.trim()) && x.trim().split(/\s+/).length <= 10 && x === x.trim() && !/[.,;:]$/.test(x) ? (n++, x.replace(/^(\s*#*\s*)(.*)$/, (m, p, t) => p + CASES[a.to](t))) : x))); return { ok: true, msg: `Changed ${plural(n, 'heading')} to ${{ title: 'Title Case', upper: 'UPPERCASE', lower: 'lowercase', sentence: 'Sentence case' }[a.to] || a.to}` }; }
+      const f = CASES[a.to]; if (!f) return { ok: false }; const r = opText(v, a, f); return { ok: true, msg: `Changed ${where(r.whole)} to ${{ upper: 'UPPERCASE', lower: 'lowercase', title: 'Title Case', sentence: 'Sentence case', invert: 'iNVERTED cASE', camel: 'camelCase', snake: 'snake_case', kebab: 'kebab-case' }[a.to]}` }; }
     case 'lines': {
       const f = LINEFN[a.fn]; if (!f) return { ok: false };
       const r = opLines(v, a, f);

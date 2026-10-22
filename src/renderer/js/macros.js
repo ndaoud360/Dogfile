@@ -49,9 +49,9 @@ function noteSelection() {
   else if (names.length) rec.steps.push({ type: 'select', how: 'names', names });
   else rec.steps.push({ type: 'select', how: 'none' });
 }
-export async function startRecording() {
+export async function startRecording({ trigger = null } = {}) {
   if (rec) return;
-  rec = { steps: [], lastSel: null, offs: [], running: false };
+  rec = { steps: [], lastSel: null, offs: [], running: false, trigger };
   const t = activeTab();
   if (t?.path && !isVirtual(t.path)) rec.steps.push({ type: 'go', path: t.path });
   // commands (palette, keys, ribbon) are wrapped while recording
@@ -70,15 +70,17 @@ export async function startRecording() {
   drawChip();
   toast('Recording a macro. Do the steps, then press Stop in the status bar.');
 }
+// the assistant can set when the macro will run while it's being recorded
+export function setRecordingTrigger(trigger) { if (rec) rec.trigger = trigger; return !!rec; }
 export async function stopRecording() {
   if (!rec) return;
   for (const [c, orig] of rec.wrapped || []) c.run = orig;
   rec.offs.forEach((off) => off());
-  const steps = rec.steps;
+  const steps = rec.steps, trigger = rec.trigger;
   rec = null;
   drawChip();
   if (steps.length < 1) return toast('Nothing was recorded');
-  const m = { id: uid(), name: `Macro ${macros().length + 1}`, steps, trigger: { type: 'manual' }, enabled: true, created: Date.now() };
+  const m = { id: uid(), name: `Macro ${macros().length + 1}`, steps, trigger: trigger || { type: 'manual' }, enabled: true, created: Date.now() };
   await editMacro(m, true);
 }
 let chip = null;
@@ -226,7 +228,9 @@ export async function editMacro(m0, isNew = false) {
     trigBox.append(tsel);
     const inp = (k, ph, w) => { const x = h('input', { class: 'input sm', placeholder: ph, style: { width: w } }); x.value = trig[k] ?? ''; x.oninput = () => { trig[k] = x.value; }; x.addEventListener('keydown', (e) => e.stopPropagation()); return x; };
     if (trig.type === 'key') { const x = inp('keys', 'e.g. Ctrl+Alt+M', '150px'); x.readOnly = true; x.placeholder = 'press the keys here'; x.addEventListener('keydown', (e) => { e.preventDefault(); if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return; const k = [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift', e.key.length === 1 ? e.key.toUpperCase() : e.key].filter(Boolean).join('+'); trig.keys = k; x.value = k; }); trigBox.append(x); }
-    if (trig.type === 'schedule') { const mode = h('select', { class: 'input sm' }, h('option', { value: 'every' }, 'Every'), h('option', { value: 'daily' }, 'Every day at')); mode.value = trig.mode || 'every'; trig.mode = mode.value; mode.onchange = () => { trig.mode = mode.value; drawTrig(); }; trigBox.append(mode, trig.mode === 'daily' ? inp('at', '08:00', '80px') : inp('minutes', '60', '70px'), trig.mode === 'daily' ? null : h('span', { class: 'hint' }, 'minutes'), h('span', { class: 'hint' }, '(while Dogfile is open)')); }
+    if (trig.type === 'schedule') { const mode = h('select', { class: 'input sm' }, h('option', { value: 'every' }, 'Every'), h('option', { value: 'daily' }, 'Every day at'), h('option', { value: 'weekly' }, 'Every week on')); mode.value = trig.mode || 'every'; trig.mode = mode.value; mode.onchange = () => { trig.mode = mode.value; drawTrig(); };
+      const daySel = h('select', { class: 'input sm' }, ...DAYS.map((d, i) => h('option', { value: String(i) }, d))); daySel.value = String(trig.day ?? 5); trig.day = +daySel.value; daySel.onchange = () => { trig.day = +daySel.value; };
+      trigBox.append(mode, trig.mode === 'weekly' ? daySel : null, trig.mode === 'weekly' ? h('span', { class: 'hint' }, 'at') : null, trig.mode !== 'every' ? inp('at', '08:00', '80px') : inp('minutes', '60', '70px'), trig.mode !== 'every' ? null : h('span', { class: 'hint' }, 'minutes'), h('span', { class: 'hint' }, '(while Dogfile is open)')); }
     if (trig.type === 'folder') trigBox.append(inp('folder', 'Folder', '260px'), h('button', { class: 'btn small', onclick: async () => { const d = await api('dialog:pickFolder', 'Watch which folder?'); if (d) { trig.folder = d; drawTrig(); } } }, 'Browse…'), h('span', { class: 'hint' }, 'Tip: start with “Select files: Files that just arrived”'));
   };
   drawTrig();
@@ -247,7 +251,7 @@ export async function macrosManager() {
     for (const m of macros()) {
       const on = h('input', { type: 'checkbox', class: 'switch' }); on.checked = m.enabled !== false; on.onchange = () => { m.enabled = on.checked; saveSettings(); syncMacros(); };
       const tr = m.trigger || {};
-      list.append(h('div', { class: 'ws-row ext-row' }, on, h('div', { class: 'hi-main' }, h('b', {}, m.name), h('span', { class: 'hint' }, `${m.steps.length} step${m.steps.length === 1 ? '' : 's'} · ${{ manual: 'run by hand', key: `shortcut ${tr.keys || ''}`, startup: 'at startup', schedule: tr.mode === 'daily' ? `daily at ${tr.at}` : `every ${tr.minutes} min`, folder: `when files arrive in ${basename(tr.folder || '')}` }[tr.type] || ''}`)),
+      list.append(h('div', { class: 'ws-row ext-row' }, on, h('div', { class: 'hi-main' }, h('b', {}, m.name), h('span', { class: 'hint' }, `${m.steps.length} step${m.steps.length === 1 ? '' : 's'} · ${{ manual: 'run by hand', key: `shortcut ${tr.keys || ''}`, startup: 'at startup', schedule: tr.mode === 'weekly' ? `${DAYS[tr.day ?? 5]}s at ${tr.at}` : tr.mode === 'daily' ? `daily at ${tr.at}` : `every ${tr.minutes} min`, folder: `when files arrive in ${basename(tr.folder || '')}` }[tr.type] || ''}`)),
         h('div', { class: 'hi-acts' }, h('button', { class: 'btn small primary', onclick: () => { closeIt(); runMacro(m); } }, 'Run'), h('button', { class: 'btn small', onclick: async () => { await editMacro(m); draw(); } }, 'Edit'))));
     }
   };
@@ -262,6 +266,7 @@ export async function macrosManager() {
 }
 
 // ---------------- triggers ----------------
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 let timers = [];
 export async function syncMacros() {
   const { commands, rebuildKeymap } = await import('./commands.js');
@@ -271,7 +276,8 @@ export async function syncMacros() {
   timers.forEach(clearInterval); timers = [];
   for (const m of macros().filter((x) => x.enabled !== false && x.trigger?.type === 'schedule')) {
     const tr = m.trigger;
-    if (tr.mode === 'daily') { let last = ''; timers.push(setInterval(() => { const d = new Date(); const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; const day = d.toDateString(); if (hm === (tr.at || '').padStart(5, '0') && last !== day) { last = day; runMacro(m); } }, 20000)); }
+    if (tr.mode === 'weekly') { let last = ''; timers.push(setInterval(() => { const d = new Date(); const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; const day = d.toDateString(); if (d.getDay() === +(tr.day ?? 5) && hm === (tr.at || '').padStart(5, '0') && last !== day) { last = day; runMacro(m); } }, 20000)); }
+    else if (tr.mode === 'daily') { let last = ''; timers.push(setInterval(() => { const d = new Date(); const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; const day = d.toDateString(); if (hm === (tr.at || '').padStart(5, '0') && last !== day) { last = day; runMacro(m); } }, 20000)); }
     else { const min = Math.max(1, +tr.minutes || 60); timers.push(setInterval(() => runMacro(m), min * 60000)); }
   }
   bus.emit('automations:sync');

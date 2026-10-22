@@ -39,6 +39,7 @@ const SU = { KB: 1024, MB: 1048576, GB: 1073741824 };
 export function collectionSpec(c) {
   const now = Date.now();
   const exts = [...kindExts(c.kinds || []), ...String(c.exts || '').split(/[\s,;]+/).map((e) => e.replace(/^\*?\./, '').toLowerCase()).filter(Boolean)];
+  if (c._dirs) return { type: 'search', roots: c._dirs.length ? c._dirs : [], query: '', kind: 'file', recursive: false, includeHidden: true, maxResults: c.max || 5000 };
   return {
     type: 'search', roots: rootsFor(c), query: '', kind: 'file', extensions: exts.join(','), recursive: true, includeHidden: false, maxResults: c.max || 5000,
     minSize: c.minSize ? +c.minSize * (SU[c.sizeUnit || 'MB']) : null, maxSize: c.maxSize ? +c.maxSize * (SU[c.sizeUnit || 'MB']) : null,
@@ -51,7 +52,21 @@ export function collectionSpec(c) {
   };
 }
 // files filtered after the scan (things the scanner doesn't know)
+// collections of tagged or rated files: the files are already known, so only their folders are read
+export async function prepareCollection(c) {
+  delete c._dirs; delete c._paths;
+  if (!c.tags?.length && !c.minRating) return;
+  const { loadNotes } = await import('./docpreview.js');
+  const notes = await loadNotes();
+  const ids = (c.tags || []).map((w) => state.tags.defs.find((d) => d.id === w || d.name.toLowerCase() === String(w).toLowerCase())?.id).filter(Boolean);
+  const paths = new Set();
+  for (const [p, tl] of Object.entries(state.tags.map || {})) if (tl.some((x) => ids.includes(x))) paths.add(p);
+  if (c.minRating) for (const [p, n] of Object.entries(notes || {})) if ((n.rating || 0) >= c.minRating) paths.add(p);
+  c._paths = paths;
+  c._dirs = [...new Set([...paths].map((p) => p.replace(/[\\/][^\\/]*$/, '')))].filter(Boolean);
+}
 export async function postFilter(c, items) {
+  if (c._paths) { const win = sys.platform === 'win32'; items = items.filter((i) => c._paths.has(win ? i.path.toLowerCase() : i.path)); }
   if (!c.unwatched) return items;
   const w = await api('watched:get').catch(() => ({}));
   const seen = new Set(Object.keys(w).map((p) => p.toLowerCase()));
@@ -65,6 +80,8 @@ export function describeCollection(c) {
   else bits.push('files');
   if (c.exts) bits.push(`ending in ${c.exts}`);
   if (c.words) bits.push(`named with “${c.words}”`);
+  if (c.tags?.length) bits.push(`tagged ${c.tags.join(' or ')}`);
+  if (c.minRating) bits.push(`${c.tags?.length ? 'or ' : ''}rated ${c.minRating}★ or more`);
   if (+c.minSize) bits.push(`over ${c.minSize} ${c.sizeUnit || 'MB'}`);
   if (+c.maxSize) bits.push(`under ${c.maxSize} ${c.sizeUnit || 'MB'}`);
   if (c.modified === 'month') bits.push('changed this month'); else if (c.modified === 'week') bits.push('changed this week'); else if (+c.modified) bits.push(`changed in the last ${c.modified} days`);
@@ -72,7 +89,7 @@ export function describeCollection(c) {
   if (+c.created) bits.push(`added in the last ${c.created} days`);
   if (+c.notOpened) bits.push(`not opened for ${c.notOpened} days`);
   if (c.unwatched) bits.push('not played in Dogfile yet');
-  bits.push({ downloads: 'in Downloads', drives: 'on all drives', folders: `in ${(c.folders || []).map(basename).join(', ') || 'chosen folders'}`, personal: 'in your personal folders' }[c.where || 'personal']);
+  if (!c.tags?.length && !c.minRating) bits.push({ downloads: 'in Downloads', drives: 'on all drives', folders: `in ${(c.folders || []).map(basename).join(', ') || 'chosen folders'}`, personal: 'in your personal folders' }[c.where || 'personal']);
   return bits.join(' · ');
 }
 

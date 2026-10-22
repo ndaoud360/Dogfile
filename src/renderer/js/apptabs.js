@@ -28,7 +28,8 @@ function newAppTab(kind, pending, { activate = true, after = null } = {}) {
   return t;
 }
 export function openTool(kind, files = [], opts = {}) {
-  if (!state.settings.toolsInTabs) return api('tool:open', kind, files, opts);
+  // opts.inTab: the assistant opens a file to work on it here, even when built-in apps normally get their own window
+  if (!state.settings.toolsInTabs && !opts.inTab) return api('tool:open', kind, files, opts);
   // Dogfile Notepad: every document is its own tab, like a browser
   if (kind === 'editor') {
     if (opts.compare) { const t = newAppTab('editor', { files, compare: true }); t.appTitle = files.map((f) => f.split(/[\\/]/).pop()).join(' ↔ '); return t; }

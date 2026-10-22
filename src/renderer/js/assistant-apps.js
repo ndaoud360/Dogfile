@@ -22,8 +22,11 @@ const SPLIT = /\s*(?:;|,?\s*\band then\b|,?\s*\bthen\b|,?\s*\balso\b|,?\s*\band\
 export function parseAppRequest(app, text) {
   const P = PARSERS[app];
   if (!P) return { steps: [], rest: [text] };
-  const { t, q } = protect(String(text || '').trim());
+  // "(or minify it)", "(e.g. …)", "(thumbnail grid preview)": asides, not steps
+  const { t, q } = protect(String(text || '').trim().replace(/\s*\((?:or|e\.g\.?|eg|i\.e\.?|like|such as|for example|thumbnail|speech)\b[^)]*\)/gi, ''));
   const whole = P(clean(t), q);
+  // requests that read as one step even with commas and "and" inside ("how many words, lines and characters")
+  if (whole && !Array.isArray(whole) && WHOLE_FIRST.has(whole.op)) return { steps: [whole], rest: [] };
   const parts = t.split(SPLIT).map((x) => x.trim()).filter(Boolean);
   const steps = [], rest = [];
   if (parts.length <= 1) { if (whole) steps.push(...[].concat(whole)); else rest.push(restore(t, q)); return { steps, rest }; }
@@ -37,6 +40,7 @@ export function parseAppRequest(app, text) {
   if (!steps.length && whole) return { steps: [].concat(whole), rest: [] };
   return { steps, rest };
 }
+const WHOLE_FIRST = new Set(['count', 'compareWith', 'table', 'trim', 'ab', 'subDelay']);
 const clean = (s) => s.replace(/^(?:(?:please|can you|could you|would you|kindly|i want (?:you )?to|i'?d like (?:you )?to|let'?s|go ahead and|now|just|ok(?:ay)?|hey|also|and)\b[\s,]*)+/i, '').replace(/[\s!?.]+$/, '').replace(/\s+please$/i, '').trim();
 
 // ---------------- Notepad ----------------
@@ -47,8 +51,16 @@ function notepad(s, q) {
   const scope = /\b(selection|selected)\b/.test(S) ? 'sel' : /\b(whole|entire|all of the|everything)\b/.test(S) ? 'all' : undefined;
   const st = (op, arg, label) => ({ op, arg: { ...(arg || {}), ...(scope && !(arg && arg.scope) ? { scope } : {}) }, label });
   let m;
+  // British ⇄ American spelling
+  if (/\b(british|uk|english|australian|canadian)\b.*\b(us|u\.s\.|american)\b|\bamericani[sz]e\b|\b(?:to|into|in) (?:us|american) (?:english|spelling)\b/i.test(S)) return st('spelling', { to: 'us' }, 'American spelling');
+  if (/\b(us|u\.s\.|american)\b.*\b(british|uk)\b|\bbritici[sz]e\b|\b(?:to|into|in) (?:british|uk) (?:english|spelling)\b/i.test(S)) return st('spelling', { to: 'uk' }, 'British spelling');
+  // tables
+  if (/\b(markdown|md)\s+table\b.*\b(?:to|into|as)\s+(?:a\s+)?csv\b/i.test(S)) return st('table', { to: 'csv' }, 'Table to CSV');
+  if (/\b(csv|comma[- ]separated|tab[- ]separated|tsv|spreadsheet)\b.*\btable\b|\b(?:into|to|as)\s+(?:a\s+)?(?:clean\s+|nice\s+|proper\s+)?(?:markdown|md)\s+table\b/i.test(S)) return st('table', { to: 'md' }, 'Markdown table');
+  // compare with another file
+  if (!/\bfolders?\b|\bdirector(?:y|ies)\b/i.test(S) && (m = s.match(/\b(?:compare|diff)\b.*?\b(?:with|against|to|and)\s+["“']?([^\s"”']+\.[a-z0-9]{1,8}|(?:the |another |a )?(?:other |saved |original |backup )?(?:file|version|copy))["”']?(?:\s+(?:and|then)\b.*)?$/i))) return { op: 'compareWith', arg: { file: U(m[1]) }, label: `Compare with ${U(m[1])}` };
   // replace / swap / delete words
-  if ((m = s.match(/^(?:replace|change|switch|swap|substitute|turn)\s+(?:all\s+|every\s+|each\s+)?(?:(?:the\s+)?(?:words?|text|occurrences?|instances?)\s+(?:of\s+)?)?(.+?)\s+(?:with|to|into|by|for)\s+(.+?)(?:\s+(?:everywhere|throughout|in (?:the )?(?:whole )?(?:document|text|file)))?$/i)) && !/\b(case|upper|lower)\b/i.test(m[2])) {
+  if (!/\b(line endings?|eol|newlines?|encoding|utf-?8|utf-?16|bom)\b/i.test(S) && (m = s.match(/^(?:replace|change|switch|swap|substitute|turn)\s+(?:all\s+|every\s+|each\s+)?(?:(?:the\s+)?(?:words?|text|occurrences?|instances?)\s+(?:of\s+)?)?(.+?)\s+(?:with|to|into|by|for)\s+(.+?)(?:\s+(?:everywhere|throughout|in (?:the )?(?:whole )?(?:document|text|file)))?$/i)) && !/\b(case|upper|lower)\b/i.test(m[2]) && !/\bspellings?\b/i.test(m[1])) {
     const find = U(m[1]), wth = U(m[2]);
     if (find && !/^(it|this|that|everything)$/i.test(find)) return st('replace', { find, with: /^(nothing|blank|empty)$/i.test(wth) ? '' : wth, wholeWord: /\bwords?\b/i.test(s) || undefined, caseSensitive: /\b(case[- ]sensitive|exact case|match case)\b/i.test(s) || undefined }, `Replace “${find}” with “${wth}”`);
   }
@@ -89,7 +101,7 @@ function notepad(s, q) {
   // case
   if (/\b(upper ?case|all caps|capital letters|caps lock|uppercase)\b/i.test(S) || /^(?:capitali[sz]e|caps)\s+(?:everything|it all|all)$/i.test(s)) return st('case', { to: 'upper' }, 'UPPERCASE');
   if (/\b(lower ?case|small letters|lowercase)\b/i.test(S) || /^(?:decapitali[sz]e|uncapitali[sz]e)\b/i.test(S)) return st('case', { to: 'lower' }, 'lowercase');
-  if (/\btitle ?case\b|\bcapitali[sz]e (?:each|every|the first letter of (?:each|every)) word\b|\bcapitali[sz]e (?:all )?(?:the )?words\b/i.test(S)) return st('case', { to: 'title' }, 'Title Case');
+  if (/\btitle ?case\b|\bcapitali[sz]e (?:each|every|the first letter of (?:each|every)) word\b|\bcapitali[sz]e (?:all )?(?:the )?words\b/i.test(S)) return /\bheadings?|headers?|titles\b/i.test(S) ? { op: 'case', arg: { to: 'title', scope: 'headings' }, label: 'Headings in Title Case' } : st('case', { to: 'title' }, 'Title Case');
   if (/\bsentence ?case\b|\bcapitali[sz]e (?:the )?(?:first letter of )?(?:each |every )?sentences?\b|\bfix (?:the )?capitali[sz]ation\b/i.test(S)) return st('case', { to: 'sentence' }, 'Sentence case');
   if (/\b(invert|toggle|swap|flip) (?:the )?case\b/i.test(S)) return st('case', { to: 'invert' }, 'Invert case');
   if (/\bcamel ?case\b/i.test(S)) return st('case', { to: 'camel' }, 'camelCase');
@@ -109,7 +121,7 @@ function notepad(s, q) {
   if ((m = s.match(/^(?:sha-?(1|256|512)|md5)\b|\bhash\b/i))) { const algo = /512/.test(S) ? 'SHA-512' : /sha-?1\b/.test(S) ? 'SHA-1' : 'SHA-256'; return st('hash', { algo }, `Copy the ${algo} hash`); }
   // counting & statistics
   if ((m = s.match(/^(?:how many times (?:does|do|is|are)\s+(.+?)\s+(?:appear|occur|show up|used|come up|there)|count (?:the )?(?:occurrences|instances|times) of\s+(.+)|how many\s+(.+?)\s+(?:are there|is there|do i have)(?: in (?:it|the (?:text|document)))?)$/i))) { const f = U(m[1] || m[2] || m[3]); if (!/^(words?|lines?|characters?|letters?|sentences?|paragraphs?)$/i.test(f)) return st('count', { find: f.replace(/s$/i, (x) => (f.length > 3 ? '' : x)) }, `Count “${f}”`); }
-  if (/\b(word ?count|count (?:the )?words|how many (words|characters|letters|lines|sentences|paragraphs)|how long is (?:it|this|the (?:text|document))|reading time|character count|statistics|stats)\b/i.test(S)) return st('count', {}, 'Count words and lines');
+  if (/\b(word ?count|count (?:the )?(?:words|lines|characters)|how many (words|characters|letters|lines|sentences|paragraphs)|how long is (?:it|this|the (?:text|document))|reading time|character count|statistics|stats)\b/i.test(S)) return st('count', {}, 'Count words and lines');
   // find / navigate
   if ((m = s.match(/^(?:find|search(?: for)?|look for|where(?:'s| is| are)|locate|highlight|select)\s+(?:all\s+(?:the\s+)?(?:occurrences of\s+|instances of\s+)?|every\s+)?(.+?)(?:\s+in (?:the )?(?:text|document|file))?$/i)) && !/^(?:all|everything|the whole (?:thing|document)|line\b|duplicates?|lines?\b.*)$/i.test(m[1])) { const all = /\b(all|every|highlight|select)\b/i.test(s.split(/\s+/).slice(0, 3).join(' ')); return st('find', { find: U(m[1]), all }, `Find “${U(m[1])}”`); }
   if ((m = s.match(new RegExp(`^(?:go|jump|move|scroll|take me|skip)\\s+(?:to\\s+)?(?:line\\s+)(?:number\\s+)?${N}$`, 'i'))) || (m = s.match(new RegExp(`^line\\s+${N}$`, 'i')))) return { op: 'goto', arg: { line: num(m[1]) }, label: `Go to line ${num(m[1])}` };
@@ -155,6 +167,12 @@ const FX = ['original', 'vivid', 'mono', 'noir', 'vintage', 'warm', 'cool', 'fad
 function photos(s, q) {
   const S = s.toLowerCase();
   let m;
+  // pixelate / mosaic (the crop box chooses the area)
+  if (/\b(pixel+(?:ate|ize|ise)|mosaic|censor|blur out)\b/.test(S)) {
+    const b = (m = S.match(/\b(?:block|square|pixel|tile)s?(?:\s+size)?\s*(?:of|=|:|to)?\s*(\d{1,3})\b|\b(\d{1,3})\s*(?:px|pixel)?\s*(?:blocks?|squares?|tiles?)\b/)) ? +(m[1] || m[2]) : /\b(heav|strong|big)/.test(S) ? 24 : 12;
+    return { op: 'pixelate', arg: { block: Math.max(2, Math.min(200, b)) }, label: `Pixelate (${b} px blocks)` };
+  }
+  if (/^save (?:it )?(?:as )?(?:a )?(?:new )?copy$|^save a copy$|^keep (?:the )?original and save a copy$/.test(S)) return { op: 'saveCopy', label: 'Save a copy' };
   // start over / clear the drawing
   if (/\b(erase|remove|clear|delete|undo|reset|revert|wipe|discard|scrap|get rid of)\b.*\b(drawings?|scribbles?|pen|marks?|annotations?|doodles?|lines i drew|what i drew|ink|text i added|highlights?)\b/i.test(S)) return { op: 'clearDrawing', label: 'Remove the drawing' };
   if (/\b(erase|remove|clear|undo|reset|revert|wipe|discard|scrap)\b.*\b(everything|all(?: (?:the|my))? (?:edits|changes)|all of it|it all|every (?:edit|change))\b|^(?:start (?:over|fresh|again)|reset(?: (?:it|the (?:photo|picture|image)))?|revert(?: to (?:the )?original)?|back to (?:the )?original|undo all|go back to the original)$/i.test(S)) return { op: 'resetAll', label: 'Start from the original' };
@@ -255,6 +273,8 @@ function player(s) {
   if (/\b(previous|prev|last (?:song|track|video)|go back a (?:song|track))\b/.test(S)) return { op: 'prev', label: 'Previous' };
   if (/\bunmute\b/.test(S)) return { op: 'mute', arg: { on: false }, label: 'Unmute' };
   if (/\b(mute|silence|no sound)\b/.test(S)) return { op: 'mute', arg: { on: true }, label: 'Mute' };
+  if ((m = S.match(/\b(lower|reduce|decrease|drop|cut|turn down|quieter)\b.*?\bby\s+(\d{1,3})\s*%|\bvolume down\s+(?:by\s+)?(\d{1,3})\s*%/))) return { op: 'volume', arg: { delta: -(+(m[2] || m[3])) }, label: `Volume −${m[2] || m[3]}%` };
+  if ((m = S.match(/\b(raise|increase|boost|turn up|louder)\b.*?\bby\s+(\d{1,3})\s*%|\bvolume up\s+(?:by\s+)?(\d{1,3})\s*%/))) return { op: 'volume', arg: { delta: +(m[2] || m[3]) }, label: `Volume +${m[2] || m[3]}%` };
   if ((m = S.match(/\bvolume\b.*?(\d{1,3})\s*%?|(\d{1,3})\s*%\s*volume/))) return { op: 'volume', arg: { set: +(m[1] || m[2]) }, label: `Volume ${m[1] || m[2]}%` };
   if (/\b(louder|turn (?:it )?up|volume up|increase (?:the )?volume|raise (?:the )?volume|more volume)\b/.test(S)) return { op: 'volume', arg: { delta: /\b(lot|much|way)\b/.test(S) ? 30 : 10 }, label: 'Louder' };
   if (/\b(quieter|softer|turn (?:it )?down|volume down|decrease (?:the )?volume|lower (?:the )?volume|less volume)\b/.test(S)) return { op: 'volume', arg: { delta: /\b(lot|much|way)\b/.test(S) ? -30 : -10 }, label: 'Quieter' };
@@ -266,6 +286,16 @@ function player(s) {
   if ((m = S.match(/\b(?:go|jump|skip|seek|move)\s+(?:to\s+)?(?:the\s+)?(?:(\d+)\s*(?:%|percent)|(halfway|middle|half way)|(start|beginning)|(end))/))) return { op: 'seek', arg: m[1] ? { pct: +m[1] } : m[2] ? { pct: 50 } : m[3] ? { to: 0 } : { pct: 99 }, label: 'Jump' };
   if ((m = S.match(new RegExp(`\\b(?:skip|jump|go|fast forward|forward|ahead|rewind|back(?:wards)?)\\b.*?${N}\\s*(seconds?|secs?|s|minutes?|mins?|m)\\b`)))) { const k = /^m/.test(m[2]) ? 60 : 1; const back = /\b(back|rewind|backwards?)\b/.test(S); return { op: 'seek', arg: { by: (back ? -1 : 1) * num(m[1]) * k }, label: `${back ? 'Back' : 'Forward'} ${num(m[1])} ${k === 60 ? 'min' : 's'}` }; }
   if (/^(?:restart|start over|from the (?:start|beginning)|replay)$/.test(S)) return { op: 'seek', arg: { to: 0 }, label: 'From the start' };
+  const T = String.raw`(\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?)`;
+  const secs = (x) => String(x).split(':').reverse().reduce((a, v, i) => a + (parseFloat(v) || 0) * 60 ** i, 0);
+  if ((m = S.match(new RegExp(`\\b(?:trim|cut|clip|keep|export|save)\\b.*?(?:from\\s+)?${T}\\s*(?:to|-|–|until|till|and)\\s*${T}`)))) { const from = secs(m[1]), to = secs(m[2]); const mode = /\b(precise|exact|frame[- ]accurate|re-?encode)\b/.test(S) ? 'precise' : 'fast'; return { op: 'trim', arg: { from, to, mode, save: !/\b(show|set up|prepare|open)\b/.test(S) }, label: `Trim ${m[1]} → ${m[2]}` }; }
+  if ((m = S.match(new RegExp(`\\b(?:a ?-? ?b|repeat|loop)\\b.*?${T}\\s*(?:and|to|-|–|until|till)\\s*${T}`)))) return { op: 'ab', arg: { a: secs(m[1]), b: secs(m[2]) }, label: `Loop ${m[1]} → ${m[2]}` };
+  if (/\b(?:a ?-? ?b|repeat|loop)\b.*\b(off|stop|clear|cancel|remove)\b|\b(?:stop|turn off|clear|cancel)\b.*\b(?:a-?b|loop)\b/.test(S)) return { op: 'abOff', label: 'Loop off' };
+  if ((m = S.match(/\b(?:delay|shift|move|offset|sync|adjust)\b.*\b(?:sub(?:title)?s?|captions?)\b.*?(-?\d+(?:\.\d+)?)\s*(ms|milliseconds?|s|secs?|seconds?)\b|\b(?:sub(?:title)?s?|captions?)\b.*?\b(earlier|sooner|later|delay(?:ed)?|behind|ahead)\b.*?(-?\d+(?:\.\d+)?)\s*(ms|milliseconds?|s|secs?|seconds?)\b/))) {
+    const v = +(m[1] ?? m[4]) / (/^m/.test(m[2] ?? m[5]) ? 1000 : 1); const earlier = /\b(earlier|sooner|ahead)\b/.test(S) || /^-/.test(m[1] ?? m[4]);
+    return { op: 'subDelay', arg: { by: earlier ? -Math.abs(v) : Math.abs(v) }, label: `Subtitles ${earlier ? 'earlier' : 'later'} by ${Math.abs(v)} s` };
+  }
+  if (/\bcontact sheet\b|\bthumbnail (?:grid|sheet)\b|\bstoryboard\b/.test(S)) return { op: 'contactSheet', label: 'Contact sheet' };
   if (/\bshuffle\b/.test(S)) return { op: 'shuffle', label: 'Shuffle' };
   if (/\b(repeat|loop)\b/.test(S)) return /\ba ?-? ?b\b|\bsection\b|\bpart\b/.test(S) ? { op: 'ab', label: 'A-B loop' } : { op: 'loop', label: 'Repeat' };
   if (/\bfull ?screen\b/.test(S)) return { op: 'fullscreen', label: 'Fullscreen' };

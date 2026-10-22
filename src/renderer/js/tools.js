@@ -14,8 +14,10 @@ bus.on('aiSearchUpdate', (t) => { recompute(t); renderTabPanes(t); bus.emit('sta
 // Search
 // ======================================================================
 // (work-message routing lives in core.js so every module shares the early-message buffer)
-import { onWorkMsgFor, onWorkMsg } from './core.js';
+import { onWorkMsgFor, onWorkMsg, offWorkMsg } from './core.js';
 export { onWorkMsgFor, onWorkMsg };
+// job messages by id (the router lives in core.js; early messages are kept until a listener is set)
+const workHandlers = { set: (id, fn) => onWorkMsgFor(id, fn), delete: (id) => offWorkMsg(id) };
 
 export function searchUrl(o) {
   const q = new URLSearchParams();
@@ -97,6 +99,7 @@ async function runCollection(t, id) {
   if (!state.drives?.length && c.where === 'drives') await A.refreshDrives();
   const started = Date.now();
   t.searchInfo = { running: true, text: `Collecting… ${C.describeCollection(c)}` };
+  await C.prepareCollection?.(c);
   const id2 = await api('work:start', C.collectionSpec(c));
   t.searchJob = id2;
   let pending = false;

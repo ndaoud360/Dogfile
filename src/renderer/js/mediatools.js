@@ -24,7 +24,7 @@ async function waitJob(id, onPct) {
 }
 
 // convert audio / video files with ffmpeg; copies are written next to the originals
-export async function convertMedia(paths, format, { normalize = false, audioOnly = false } = {}) {
+export async function convertMedia(paths, format, { normalize = false, audioOnly = false, bitrate = 0 } = {}) {
   if (!paths.length) return;
   let cancelled = false, curJob = null;
   const p = progressToast(`Converting ${paths.length === 1 ? basename(paths[0]) : paths.length + ' files'}…`, () => { cancelled = true; if (curJob) api('media:cancel', curJob); });
@@ -38,7 +38,7 @@ export async function convertMedia(paths, format, { normalize = false, audioOnly
     const ext = format;
     const suffix = normalize ? ' (normalized)' : '';
     const out = await api('fs:uniqueName', dirname(src), `${stem(basename(src)) || basename(src)}${suffix}.${ext}`, 'number');
-    const spec = { src, out, duration, hasVideo, audioOnly: audioOnly || ['mp3', 'm4a', 'flac', 'wav', 'ogg', 'opus'].includes(ext), normalize, mode: 'fast', convert: true, copyOk: ['mp4', 'mkv', 'mov'].includes(ext) };
+    const spec = { src, out, duration, hasVideo, audioOnly: audioOnly || ['mp3', 'm4a', 'flac', 'wav', 'ogg', 'opus'].includes(ext), normalize, mode: 'fast', convert: true, ...(bitrate ? { bitrate } : {}), copyOk: ['mp4', 'mkv', 'mov'].includes(ext) };
     const prog = (pct) => p.set(((i + pct / 100) / paths.length) * 100, `Converting ${basename(src)} (${i + 1}/${paths.length})…`);
     curJob = await api('media:export', spec);
     let st = await waitJob(curJob, prog);
@@ -95,6 +95,29 @@ export async function convertImages(paths, format, { maxSide = 0 } = {}) {
   }
   if (ok) toast(`Saved ${ok} image${ok > 1 ? 's' : ''} as ${format.toUpperCase()}`);
   bus.emit('refreshPanes');
+}
+
+// rotate / flip pictures in place (a version of each is saved first, so “Versions of this file” brings it back)
+export async function transformImages(paths, { rotate = 0, flipH = false, flipV = false } = {}) {
+  let ok = 0;
+  const mimeOf = (p) => (/\.png$/i.test(p) ? 'image/png' : /\.webp$/i.test(p) ? 'image/webp' : /\.jpe?g$|\.jfif$/i.test(p) ? 'image/jpeg' : null);
+  for (const p of paths) {
+    const mime = mimeOf(p);
+    if (!mime) { toast(`${basename(p)}: only JPG, PNG and WebP can be turned in place`, { error: true }); continue; }
+    try {
+      const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('Can’t decode')); im.src = fileUrl(p) + (fileUrl(p).includes('?') ? '&' : '?') + 't=' + Date.now(); });
+      const r = ((rotate % 360) + 360) % 360, sw = img.naturalWidth, sh = img.naturalHeight;
+      const c = document.createElement('canvas'); c.width = r === 90 || r === 270 ? sh : sw; c.height = r === 90 || r === 270 ? sw : sh;
+      const g = c.getContext('2d');
+      g.translate(c.width / 2, c.height / 2); g.rotate((r * Math.PI) / 180); g.scale(flipH ? -1 : 1, flipV ? -1 : 1);
+      g.drawImage(img, -sw / 2, -sh / 2);
+      await api('versions:save', p, 'Before rotating').catch(() => {});
+      await api('fs:writeDataUrl', p, c.toDataURL(mime, 0.95));
+      ok++;
+    } catch (e) { toast(`${basename(p)}: ${e.message}`, { error: true }); }
+  }
+  bus.emit('refreshPanes');
+  return ok;
 }
 
 export async function setWallpaper(p) {

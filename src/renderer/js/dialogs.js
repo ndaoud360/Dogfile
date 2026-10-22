@@ -195,45 +195,8 @@ export async function batchRenameDialog(items, doRename) {
 }
 
 // plain-English rename instructions -> batch rename options
-export function interpretRename(text) {
-  const r = { notes: [] };
-  let s = ' ' + String(text || '').trim() + ' ';
-  const q = (x) => x.replace(/^["'“”‘’]|["'“”‘’]$/g, '');
-  const take = (re, fn) => { const m = s.match(re); if (m) { fn(m); s = s.replace(m[0], ' '); } };
-  take(/\b(lower ?case|all lower|small letters)\b[^,.;]*/i, () => { r.caseMode = 'lowercase'; r.notes.push('lowercase'); });
-  take(/\b(upper ?case|all caps|capital letters)\b[^,.;]*/i, () => { r.caseMode = 'UPPERCASE'; r.notes.push('UPPERCASE'); });
-  take(/\btitle ?case|capitali[sz]e (each|every) word\b/i, () => { r.caseMode = 'Title Case'; r.notes.push('Title Case'); });
-  take(/\bsentence ?case\b/i, () => { r.caseMode = 'Sentence case'; r.notes.push('Sentence case'); });
-  take(/\bcamel ?case\b/i, () => { r.caseMode = 'camelCase'; r.notes.push('camelCase'); });
-  take(/\b(kebab ?case)\b/i, () => { r.caseMode = 'kebab-case'; r.notes.push('kebab-case'); });
-  take(/\b(snake ?case)\b/i, () => { r.caseMode = 'snake_case'; r.notes.push('snake_case'); });
-  take(/\bspaces? (?:to|with|into|as) underscores?\b/i, () => { r.spaces = true; r.notes.push('spaces to _'); });
-  take(/\bspaces? (?:to|with|into|as) (?:dashes|hyphens)\b/i, () => { r.find = ' '; r.replace = '-'; r.notes.push('spaces to -'); });
-  take(/\btrim\b/i, () => { r.trim = true; r.notes.push('trim'); });
-  take(/\bformat(?:ted)?(?: them| it| names?)? (?:as|like|to) (\S+)/i, (m) => {
-    let t = q(m[1]);
-    t = t.replace(/YYYY/g, '{yyyy}').replace(/(^|[^{])YY(?![a-z])/g, '$1{yy}').replace(/(^|[^{a-z])MM(?![a-z])/g, '$1{mm}').replace(/(^|[^{a-z])DD(?![a-z])/g, '$1{dd}')
-      .replace(/(?<![A-Za-z{])(name|filename|original)(?![A-Za-z}])/gi, '{name}').replace(/#{2,}/g, (h) => `{n:${h.length}}`).replace(/(^|[^{])#(?!\w)/g, '$1{n}');
-    r.template = t; r.notes.push('pattern ' + t);
-  });
-  take(/\breplace ["“']?(.+?)["”']? (?:with|by) ["“']?(.*?)["”']?(?=\s*(?:\band\b|,|;|$))/i, (m) => { r.find = q(m[1]); r.replace = q(m[2]); r.notes.push(`replace “${r.find}” with “${r.replace}”`); });
-  take(/\bremove (?:all )?(numbers|digits)\b/i, () => { r.find = '\\d+'; r.replace = ''; r.regex = true; r.notes.push('remove numbers'); });
-  take(/\bremove (?:all )?(brackets|parenthes[ie]s|\(.*?\))\b/i, () => { r.find = '\\s*[\\(\\[][^\\)\\]]*[\\)\\]]'; r.replace = ''; r.regex = true; r.notes.push('remove brackets'); });
-  take(/\bremove (?:all )?spaces\b/i, () => { r.find = ' '; r.replace = ''; r.notes.push('remove spaces'); });
-  take(/\b(?:remove|delete|strip) ["“']?(.+?)["”']?(?=\s*(?:\band\b|,|;|$))/i, (m) => { r.find = q(m[1].trim()); r.replace = ''; r.notes.push(`remove “${r.find}”`); });
-  take(/\b(?:add|put|prepend|start (?:it |them )?with) ["“']?(.+?)["”']?(?: (?:at the (?:start|beginning|front)|in front|before(?: the name)?|as (?:a )?prefix))(?=\s*(?:\band\b|,|;|$))/i, (m) => { r.prefix = q(m[1]); r.notes.push(`prefix “${r.prefix}”`); });
-  take(/\bprefix(?: them| it)?(?: with)? ["“']?(.+?)["”']?(?=\s*(?:\band\b|,|;|$))/i, (m) => { r.prefix = q(m[1]); r.notes.push(`prefix “${r.prefix}”`); });
-  take(/\b(?:add|put|append|end (?:it |them )?with) ["“']?(.+?)["”']?(?: (?:at the end|after(?: the name)?|as (?:a )?suffix))(?=\s*(?:\band\b|,|;|$))/i, (m) => { r.suffix = q(m[1]); r.notes.push(`suffix “${r.suffix}”`); });
-  take(/\bsuffix(?: them| it)?(?: with)? ["“']?(.+?)["”']?(?=\s*(?:\band\b|,|;|$))/i, (m) => { r.suffix = q(m[1]); r.notes.push(`suffix “${r.suffix}”`); });
-  take(/\bnumber(?:ed| them| it)?(?: starting)?(?: (?:at|from) (\d+))?(?:,? with (\d+) digits)?(?: (?:by|step) (\d+))?/i, (m) => {
-    r.start = m[1] ? +m[1] : 1; if (m[3]) r.step = +m[3];
-    const w = m[2] ? +m[2] : 0;
-    if (!r.template || !/\{n/.test(r.template)) r.template = (r.template || '{name}') + `_{n${w ? ':' + w : ''}}`;
-    else if (w) r.template = r.template.replace(/\{n(?::\d+)?\}/, `{n:${w}}`);
-    r.notes.push(`numbered from ${r.start}${w ? `, ${w} digits` : ''}`);
-  });
-  return r;
-}
+export { interpretRename } from './rename-words.js';
+import { interpretRename } from './rename-words.js';
 function applyInterpretation(f, r) {
   f.find.value = r.find ?? ''; f.replace.value = r.replace ?? ''; f.regex.checked = !!r.regex;
   f.template.value = r.template ?? ''; f.start.value = String(r.start ?? 1); f.step.value = String(r.step ?? 1);

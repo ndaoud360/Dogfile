@@ -26,7 +26,7 @@ const CATS = [
 export function docKey(name) {
   const e = extname(name);
   const fam = /^(docx?|odt|rtf|pages)$/.test(e) ? 'doc' : /^(xlsx?|ods|csv|numbers)$/.test(e) ? 'sheet' : /^(pptx?|odp|key)$/.test(e) ? 'slides' : e;
-  let s = name.replace(/\.[^.]+$/, '').toLowerCase();
+  let s = name.replace(/\.[^.]+$/, '').toLowerCase().replace(/_+/g, ' ');
   s = s.replace(/\s*-\s*copy(\s*\(\d+\))?$/g, '').replace(/\bcopy( of)?\b/g, '').replace(/\(\d+\)/g, '').replace(/\[\d+\]/g, '')
     .replace(/\b(final|draft|edited|edit|new|old|latest|updated|revised|rev\s?\d*|v\s?\d+(\.\d+)*|version\s?\d*|\d{4}[-_.]\d{2}[-_.]\d{2}|\d{8})\b/g, '')
     .replace(/[_\-.]+/g, ' ').replace(/\s+\d{1,2}$/, '').replace(/\s+/g, ' ').trim();

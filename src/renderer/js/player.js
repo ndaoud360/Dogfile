@@ -1059,7 +1059,7 @@ onHost({
 });
 // the assistant: "louder", "play at 1.5x", "skip 30 seconds", "go to 2:15", "mute"
 onAsk(async (op, a = {}) => {
-  if (op === 'context') return { ok: true, name: P.item?.name || '', kind: P.item ? (v.videoWidth ? 'video' : 'audio') : '', playing: !v.paused, pos: pos(), dur: dur() };
+  if (op === 'context') return { ok: true, name: P.item?.name || '', path: P.item?.path || '', kind: P.item ? (v.videoWidth ? 'video' : 'audio') : '', playing: !v.paused, pos: pos(), dur: dur() };
   if (!P.item && !['play', 'open'].includes(op)) return { ok: false, msg: 'Nothing is playing' };
   switch (op) {
     case 'volume': setVolume(a.set != null ? a.set / 100 : (prefs.volume ?? 1) + (a.delta || 0) / 100); return { ok: true, msg: `Volume ${Math.round(prefs.volume * 100)}%` };
@@ -1069,6 +1069,22 @@ onAsk(async (op, a = {}) => {
     case 'pause': if (!v.paused) togglePlay(); return { ok: true, msg: 'Paused' };
     case 'resume': if (v.paused) togglePlay(); return { ok: true, msg: 'Playing' };
     case 'open': openFiles(); return { ok: true, msg: 'Choose what to play' };
+    // "set an A-B loop between 0:45 and 1:10"
+    case 'ab': if (a.a != null) { const b = a.b != null ? a.b : Math.min(dur(), a.a + 10); P.ab = { a: a.a, b: Math.max(a.a + 0.5, b) }; seek(P.ab.a); renderTime(); osd(`Looping ${fmt(P.ab.a)} → ${fmt(P.ab.b)}`); return { ok: true, msg: `Looping ${fmt(P.ab.a)} → ${fmt(P.ab.b)}` }; } break;
+    case 'abOff': P.ab = null; renderTime(); return { ok: true, msg: 'A-B loop off' };
+    // "delay the subtitles by 500 ms" (positive = later)
+    case 'subDelay': { if (a.set != null) P.subDelay = 0; subDelay(a.set != null ? a.set : a.by || 0); return { ok: true, msg: `Subtitle delay ${P.subDelay >= 0 ? '+' : ''}${P.subDelay.toFixed(2)} s${P.sub == null && !P.subCues.length ? ' (turn subtitles on to see it)' : ''}` }; }
+    // "trim from 1:15 to 4:30 (fast / lossless)": opens Edit with the part chosen; save = make the file now
+    case 'trim': {
+      if (!sys.ffmpeg) return { ok: false, msg: 'Trimming needs the bundled ffmpeg component' };
+      openEdit();
+      const d = dur();
+      ED.a = Math.max(0, Math.min(d, a.from || 0)); ED.b = a.to ? Math.max(ED.a + 0.2, Math.min(d || a.to, a.to)) : d;
+      ED.mode = a.mode === 'precise' ? 'precise' : 'fast';
+      renderEdit();
+      if (a.save) { runExport(false, document.querySelector('#edit-panel .ed-prog')); return { ok: true, msg: `Saving ${fmt(ED.a)} → ${fmt(ED.b)} as a new file (${ED.mode === 'fast' ? 'fast, no re-encode' : 'precise'})` }; }
+      return { ok: true, msg: `Trim ${fmt(ED.a)} → ${fmt(ED.b)} is ready in Edit — press Save copy` };
+    }
   }
   const c = { play: togglePlay, stop, next: () => $('b-next').click(), prev: () => $('b-prev').click(), edit: openEdit, analyze: () => showAnalysis(true), fullscreen: toggleFullscreen, screenshot, info: mediaInfo, eq: () => $('b-eq').click(), list: () => $('b-list').click(), shuffle: () => $('pl-shuffle').click(), loop: cycleRepeat, ab: abLoop, transcript: openTranscript, extract: () => { openEdit(); ED.format = 'mp3'; renderEdit(); } }[op];
   if (!c) return { ok: false, msg: `I can’t do “${op}” in the player` };

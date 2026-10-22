@@ -29,6 +29,14 @@ bus.on('jobDone', (j) => {
   add({ kind: j.type, title: j.title, count: j.sourceCount || 0, status: j.status, errors: (j.errors || []).slice(0, 20), dest: j.dest, failed: j.failed });
 });
 bus.on('history', (e) => add(e));
+// for the assistant: the log (newest first), and undoing one entry
+export async function historyEntries() { return (await ensure()).slice(); }
+export const canUndoEntry = (e) => !!(e.rec && !e.undone && ['renamed', 'moved', 'created', 'trashed'].includes(e.rec.type));
+export async function undoEntry(e) {
+  await A.reverseRecord(e.rec);
+  state.undo = state.undo.filter((x) => !(x.at === e.rec.at && x.title === e.rec.title));
+  e.undone = true; save(); bus.emit('refreshPanes'); bus.emit('historyChanged');
+}
 bus.on('historyUndone', async (r) => { await ensure(); const e = log.find((x) => x.rec && x.rec.at === r.at && x.rec.title === r.title); if (e) { e.undone = !!r.undone; save(); bus.emit('historyChanged'); } });
 
 export async function historyDialog() {

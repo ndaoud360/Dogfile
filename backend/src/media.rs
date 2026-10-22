@@ -58,7 +58,8 @@ pub async fn quick_probe(a: &Args) -> R {
             Ok(i) => {
                 let v = i["streams"].as_array().and_then(|ss| ss.iter().find(|s| s["codec_type"] == "video" && s["disposition"]["attached_pic"].as_i64().unwrap_or(0) == 0)).cloned().unwrap_or(Value::Null);
                 let rot = v["tags"]["rotate"].as_str().and_then(|r| r.parse::<i64>().ok()).or_else(|| v["side_data_list"].as_array().and_then(|l| l.iter().find_map(|d| d["rotation"].as_i64()))).unwrap_or(0).abs();
-                out.push(json!({ "dur": i["format"]["duration"].as_str().and_then(|d| d.parse::<f64>().ok()).unwrap_or(0.0), "w": v["width"].as_u64().unwrap_or(0), "h": v["height"].as_u64().unwrap_or(0), "rot": rot }));
+                let ac = i["streams"].as_array().and_then(|ss| ss.iter().find(|s| s["codec_type"] == "audio")).map(|s| s["codec_name"].as_str().unwrap_or("").to_string()).unwrap_or_default();
+                out.push(json!({ "dur": i["format"]["duration"].as_str().and_then(|d| d.parse::<f64>().ok()).unwrap_or(0.0), "w": v["width"].as_u64().unwrap_or(0), "h": v["height"].as_u64().unwrap_or(0), "rot": rot, "vcodec": v["codec_name"].as_str().unwrap_or(""), "acodec": ac }));
             }
             Err(_) => out.push(json!({})),
         }
@@ -319,7 +320,15 @@ pub async fn export(a: &Args) -> R {
     let remove_audio = o["removeAudio"].as_bool().unwrap_or(false);
     if audio_only {
         args.extend(["-vn".into(), "-map".into(), format!("0:a:{}", o["audioTrack"].as_u64().unwrap_or(0))]);
-        args.extend(audio_codec(&oext).unwrap_or_default());
+        let mut ac = audio_codec(&oext).unwrap_or_default();
+        // a chosen bitrate ("320kbps MP3") replaces the default quality setting
+        if let Some(k) = o["bitrate"].as_u64().filter(|k| (32..=640).contains(k)) {
+            if let Some(i) = ac.iter().position(|x| x == "-q:a" || x == "-b:a") {
+                ac[i] = "-b:a".into();
+                ac[i + 1] = format!("{k}k");
+            }
+        }
+        args.extend(ac);
         if oext == "mp3" {
             args.extend(sv(&["-id3v2_version", "3"]));
         }

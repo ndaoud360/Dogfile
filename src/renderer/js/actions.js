@@ -859,7 +859,7 @@ function tagMenu(paths) {
       { label: 'Clear tags', run: () => { for (const d of state.tags.defs) setTags(paths, d.id, false); } }]);
 }
 // Auto-tag: colour tags by a rule you pick now, songs' details from online, or a rule that keeps tagging new files
-async function autoTagDialog(paths) {
+export async function autoTagDialog(paths) {
   const items = paths.map((p) => ({ path: p, name: basename(p) }));
   const { modal } = await import('./dialogs.js');
   const songs = items.filter((it) => /\.(mp3|flac|m4a|aac|ogg|opus|wav|wma)$/i.test(it.name));

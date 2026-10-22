@@ -164,13 +164,15 @@ function ruleEditor(rule, onChange, onRemove, onMove) {
   return box;
 }
 
-export async function automationDialog(folder, { preset } = {}) {
+export async function automationDialog(folder, { preset, rules: add = [] } = {}) {
   folder = folder || activeTab()?.path;
   if (!folder || isVirtual(folder)) return toast('Open the folder you want to automate first');
   let auto = autos().find((a) => a.folder === folder);
   const isNew = !auto;
   auto = auto ? JSON.parse(JSON.stringify(auto)) : { id: uid(), folder, name: basename(folder), on: true, watch: true, rules: [] };
   if (preset && PRESETS[preset] && !auto.rules.some((r) => r.action?.type === PRESETS[preset].action.type)) auto.rules.push({ id: uid(), ...JSON.parse(JSON.stringify(PRESETS[preset])) });
+  // rules described to the assistant ("whenever a .zip arrives, move it to Archives"), to review before saving
+  for (const r of add) auto.rules.push({ id: uid(), ...JSON.parse(JSON.stringify(r)) });
   const list = h('div', { class: 'ru-list' });
   const draw = () => {
     list.innerHTML = '';

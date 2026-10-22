@@ -1,0 +1,1 @@
+{ "root": true, "env": { "browser": true, "es2022": true, "worker": true }, "parserOptions": { "ecmaVersion": 2022, "sourceType": "module" }, "rules": { "no-undef": "error" }, "globals": { "__TAURI__": "readonly" } }

@@ -409,6 +409,7 @@ export function onWorkMsgFor(id, fn) {
   const q = workEarly.get(id);
   if (q) { workEarly.delete(id); for (const m of q) h(m); }
 }
+export function offWorkMsg(id) { workHandlers.delete(id); workEarly.delete(id); }
 export function onWorkMsg(m) {
   const f = workHandlers.get(m.id);
   if (f) { f(m); return true; }

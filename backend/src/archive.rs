@@ -222,7 +222,10 @@ pub fn extract(j: &Arc<Job>) -> JR {
     for file in &j.sources {
         j.checkpoint().map_err(|_| Ok(Cancelled))?;
         let mut dest = jdest.clone();
-        if j.opts["smart"].as_bool() != Some(false) {
+        // "Extract to a folder": always a new folder named after the archive
+        if j.opts["toFolder"].as_bool().unwrap_or(false) {
+            dest = util::unique_name(&jdest, &strip.replace(&basename(file), ""), "number");
+        } else if j.opts["smart"].as_bool() != Some(false) {
             // one folder at the top of the archive: straight into dest; otherwise a folder named after the archive
             let mut roots = std::collections::HashSet::new();
             if let Ok(items) = list(file) {

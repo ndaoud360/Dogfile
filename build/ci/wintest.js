@@ -65,6 +65,22 @@
     const res = (await api('fs:readText', D + '\\dlg-result.txt', 1000).catch(() => ({ text: 'no result' }))).text.trim();
     return `${r} → ${res}`;
   }, 40000);
+  await T('sidebar fold: busy time and what covers the panes afterwards', async () => {
+    const P = await import(new URL('js/pane.js', location.href).href);
+    await P.navigate(P.activeTab(), 'C:\\Windows\\Web\\Wallpaper\\Windows').catch(() => {});
+    await wait(1500);
+    const probe = async (label) => {
+      const gaps = [], covers = new Set(); let last = performance.now(), stop = false; const t0 = last;
+      const lt = []; let po = null; try { po = new PerformanceObserver((l) => l.getEntries().forEach((e) => lt.push(Math.round(e.startTime - t0) + '+' + Math.round(e.duration)))); po.observe({ type: 'longtask' }); } catch {}
+      const loop = () => { const n = performance.now(); if (n - last > 40) gaps.push(Math.round(last - t0) + '+' + Math.round(n - last)); last = n; if (n - t0 > 700) { const m = document.getElementById('main').getBoundingClientRect(); const el = document.elementFromPoint(m.left + m.width / 2, m.top + m.height / 2); if (el && !el.closest('#main')) covers.add(Math.round(n - t0) + ':' + (el.id || el.className || el.tagName)); } if (!stop) setTimeout(loop, 0); };
+      document.getElementById('burger').click(); loop();
+      await wait(2500); stop = true; po?.disconnect();
+      return `${label}: gaps ${gaps.join(',') || 'none'}; long tasks ${lt.join(',') || 'none'}; covered ${[...covers].slice(0, 4).join(',') || 'never'}`;
+    };
+    const a = await probe('close'), b = await probe('open');
+    const e0 = performance.now(); window.__atlas.bus.emit('settings'); const e1 = performance.now();
+    return `${a} | ${b} | settings event ${Math.round(e1 - e0)} ms`;
+  }, 15000);
   await T('window buttons drawn', async () => document.querySelectorAll('#win-ctl .wc-btn').length === 3 || document.querySelectorAll('#win-ctl .wc-btn').length);
   await log('DONE');
 })()

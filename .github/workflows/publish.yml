@@ -46,5 +46,8 @@ jobs:
           node build/publish-update.mjs > "$RUNNER_TEMP/pub.log" 2>&1
           code=$?
           cat "$RUNNER_TEMP/pub.log"
+          if [ $code -ne 0 ] && grep -q "not accessible by personal access token" "$RUNNER_TEMP/pub.log"; then
+            echo "::error title=publish::The token can see $REPO but isn't allowed to make releases. Edit it (GitHub > Settings > Developer settings > Fine-grained tokens): Repository permissions > Contents > Read and write, with $REPO selected. Then run publish again."; exit 1
+          fi
           if [ $code -ne 0 ]; then echo "::error title=publish::$(tail -25 "$RUNNER_TEMP/pub.log" | tr '\n' '~' | sed 's/~/%0A/g')"; exit $code; fi
           echo "::notice title=published::$(tail -8 "$RUNNER_TEMP/pub.log" | tr '\n' '~' | sed 's/~/%0A/g')"

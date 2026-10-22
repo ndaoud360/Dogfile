@@ -455,7 +455,7 @@ bus.on('openSettings', (s) => openSettings(s));
 // ======================================================================
 async function boot() {
   const info = await api('sys:info');
-  Object.assign(sys, { platform: info.platform, sep: info.sep, known: info.known });
+  Object.assign(sys, info); // platform, sep, known folders, version, customControls (Dogfile 2 draws its own window buttons)…
   state.hostname = info.hostname;
   const [settings, library, tags, session] = await Promise.all([api('store:get', 'settings'), api('store:get', 'library'), api('store:get', 'tags'), api('store:get', 'session')]);
   state.settings = { ...DEFAULT_SETTINGS, ...(settings || {}) };

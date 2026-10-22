@@ -22,7 +22,7 @@ let seq = 1;
 
 // ---------------- CodeMirror setup ----------------
 import { hlStyle } from './cmtheme.js';
-import { EMBED, pendingFiles, onHost, showInFiles, setTitle, closeApp, tellHost, onLeave, onWindowClose, exposeMenus } from './embed.js';
+import { EMBED, pendingFiles, onHost, showInFiles, setTitle, closeApp, tellHost, onLeave, onWindowClose, exposeMenus, onAsk } from './embed.js';
 
 // bookmarks (Ctrl+F2 toggle, F2 / Shift+F2 next / previous): like Notepad++
 const toggleBm = CM.StateEffect.define();
@@ -841,6 +841,7 @@ async function boot() {
   const pending = await pendingFiles();
   if (pending?.compare && pending.files?.length === 2) { if (!docs.length) newDoc('', { here: true }); await openCompare(pending.files[0], pending.files[1]); }
   else if (pending?.files?.length) await openPaths(pending.files);
+  else if (pending?.text != null && !docs.length) { const d = makeDoc({ text: '', dirtyText: pending.text }); docs.push(d); activate_(d); renderTabs(); }
   if (!docs.length) newDoc();
   document.body.classList.add('ready');
 }
@@ -872,3 +873,190 @@ document.addEventListener('keydown', (e) => {
 });
 window.__ed = { toggleRef, newFeature, installFromDoc, openGuide, openCompare, closeCompare, docs, get active() { return active; }, openPaths, save, setLanguage, toggle, CM };
 boot().catch((e) => { console.error(e); document.body.innerHTML = `<pre style="padding:20px;color:#c00">${esc(e.stack || e.message)}</pre>`; });
+
+// a new document holding some text (in a tab of the main window: a new tab)
+function newDocWithText(text) {
+  if (EMBED && docs.length) { tellHost({ type: 'open', kind: 'editor', files: [], opts: { text } }); return; }
+  const d = makeDoc({ text: '', dirtyText: text }); docs.push(d); activate_(d); renderTabs();
+}
+// ---------------- the assistant: plain-language edits ("sort the lines", "replace cat with dog", "make it uppercase") ----------------
+// Each operation works on the selection when there is one, otherwise on the whole document, in one undo step.
+function opRange(v, a = {}) {
+  const sel = v.state.selection.main;
+  if (a.scope === 'all' || sel.empty) return { from: 0, to: v.state.doc.length, whole: true };
+  return { from: sel.from, to: sel.to, whole: false };
+}
+function opLines(v, a, fn) {
+  const r = opRange(v, a);
+  const from = r.whole ? 0 : v.state.doc.lineAt(r.from).from, to = r.whole ? v.state.doc.length : v.state.doc.lineAt(r.to).to;
+  const before = v.state.sliceDoc(from, to).split('\n');
+  const after = fn(before.slice());
+  v.dispatch({ changes: { from, to, insert: after.join('\n') }, userEvent: 'input.assistant' });
+  return { before: before.length, after: after.length, whole: r.whole };
+}
+function opText(v, a, fn) {
+  const r = opRange(v, a);
+  const t = v.state.sliceDoc(r.from, r.to);
+  const out = fn(t);
+  if (out !== t) v.dispatch({ changes: { from: r.from, to: r.to, insert: out }, userEvent: 'input.assistant' });
+  return { changed: out !== t, whole: r.whole };
+}
+const where = (w) => (w ? 'the whole document' : 'the selection');
+const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const plural = (n, w) => `${n.toLocaleString()} ${w}${n === 1 ? '' : 's'}`;
+function makeRe(a) {
+  let src = a.regex ? a.find : escRe(a.find);
+  if (a.wholeWord) src = `\\b${src}\\b`;
+  return new RegExp(src, 'g' + (a.caseSensitive ? '' : 'i') + (a.regex ? 'm' : ''));
+}
+const CASES = {
+  upper: (s) => s.toUpperCase(), lower: (s) => s.toLowerCase(),
+  title: (s) => s.replace(/\w\S*/g, (w) => w[0].toUpperCase() + w.slice(1).toLowerCase()),
+  sentence: (s) => s.toLowerCase().replace(/(^\s*\w|[.!?]\s+\w|\n\s*\w)/g, (c) => c.toUpperCase()),
+  invert: (s) => [...s].map((c) => (c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase())).join(''),
+  camel: (s) => s.toLowerCase().replace(/[^a-z0-9]+(.)/g, (_, c) => c.toUpperCase()),
+  snake: (s) => s.replace(/([a-z])([A-Z])/g, '$1_$2').replace(/[\s-]+/g, '_').toLowerCase(),
+  kebab: (s) => s.replace(/([a-z])([A-Z])/g, '$1-$2').replace(/[\s_]+/g, '-').toLowerCase(),
+};
+const LINEFN = {
+  sortAsc: (l) => l.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })),
+  sortDesc: (l) => l.sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' })),
+  sortLen: (l) => l.sort((a, b) => a.length - b.length), sortLenDesc: (l) => l.sort((a, b) => b.length - a.length),
+  sortNum: (l) => l.sort((a, b) => (parseFloat(a.replace(/[^\d.-]/g, '')) || 0) - (parseFloat(b.replace(/[^\d.-]/g, '')) || 0)),
+  reverse: (l) => l.reverse(),
+  shuffle: (l) => { for (let i = l.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [l[i], l[j]] = [l[j], l[i]]; } return l; },
+  unique: (l) => [...new Set(l)],
+  uniqueCI: (l) => { const seen = new Set(); return l.filter((x) => { const k = x.trim().toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }); },
+  removeEmpty: (l) => l.filter((x) => x.trim()),
+  collapseEmpty: (l) => l.filter((x, i) => x.trim() || (i > 0 && l[i - 1].trim())),
+  trimTrailing: (l) => l.map((x) => x.replace(/\s+$/, '')), trimLeading: (l) => l.map((x) => x.replace(/^\s+/, '')), trim: (l) => l.map((x) => x.trim()),
+  number: (l) => { const w = String(l.length).length; return l.map((x, i) => `${String(i + 1).padStart(w, ' ')}. ${x}`); },
+  unnumber: (l) => l.map((x) => x.replace(/^\s*(\d+[.):]|[-*•])\s+/, '')),
+  bullets: (l) => l.map((x) => (x.trim() ? `- ${x}` : x)),
+  tabsToSpaces: (l) => l.map((x) => x.replace(/\t/g, ' '.repeat(ed.tabSize))),
+  spacesToTabs: (l) => l.map((x) => x.replace(new RegExp(`^((?: {${ed.tabSize}})+)`), (m) => '\t'.repeat(m.length / ed.tabSize))),
+  indent: (l) => l.map((x) => (x ? ' '.repeat(ed.tabSize) + x : x)), outdent: (l) => l.map((x) => x.replace(new RegExp(`^( {1,${ed.tabSize}}|\\t)`), '')),
+};
+async function assistantOp(op, a = {}) {
+  const v = view();
+  if (!v && !['new', 'open'].includes(op)) return { ok: false, msg: 'No document is open' };
+  if (active?.readonly && !['find', 'goto', 'count', 'stats', 'save', 'saveAs', 'new', 'open', 'wrap', 'zoom', 'selectAll', 'copy', 'lang', 'readonly', 'ask', 'preview'].includes(op)) return { ok: false, msg: 'This document is read-only' };
+  const T = () => v.state.doc.toString();
+  switch (op) {
+    case 'replace': {
+      if (!a.find) return { ok: false, msg: 'What should I replace?' };
+      let re; try { re = makeRe(a); } catch (e) { return { ok: false, msg: `That pattern doesn’t work: ${e.message}` }; }
+      let n = 0;
+      const r = opText(v, a, (t) => t.replace(re, (...m) => { n++; return a.regex ? m[0].replace(makeRe({ ...a, find: a.find }), a.with ?? '') : (a.with ?? ''); }));
+      return n ? { ok: true, msg: `${a.with ? 'Replaced' : 'Removed'} ${plural(n, 'match')} of “${a.find}”${a.with ? ` with “${a.with}”` : ''} in ${where(r.whole)}` } : { ok: false, msg: `“${a.find}” isn’t in ${where(r.whole)}` };
+    }
+    case 'case': { const f = CASES[a.to]; if (!f) return { ok: false }; const r = opText(v, a, f); return { ok: true, msg: `Changed ${where(r.whole)} to ${{ upper: 'UPPERCASE', lower: 'lowercase', title: 'Title Case', sentence: 'Sentence case', invert: 'iNVERTED cASE', camel: 'camelCase', snake: 'snake_case', kebab: 'kebab-case' }[a.to]}` }; }
+    case 'lines': {
+      const f = LINEFN[a.fn]; if (!f) return { ok: false };
+      const r = opLines(v, a, f);
+      const what = { sortAsc: 'Sorted the lines A → Z', sortDesc: 'Sorted the lines Z → A', sortLen: 'Sorted the lines shortest first', sortLenDesc: 'Sorted the lines longest first', sortNum: 'Sorted the lines by number', reverse: 'Reversed the line order', shuffle: 'Shuffled the lines', unique: 'Removed duplicate lines', uniqueCI: 'Removed duplicate lines (ignoring case)', removeEmpty: 'Removed empty lines', collapseEmpty: 'Collapsed runs of empty lines', trimTrailing: 'Trimmed trailing spaces', trimLeading: 'Trimmed leading spaces', trim: 'Trimmed spaces at both ends of each line', number: 'Numbered the lines', unnumber: 'Removed numbering and bullets', bullets: 'Made each line a bullet', tabsToSpaces: 'Turned tabs into spaces', spacesToTabs: 'Turned leading spaces into tabs', indent: 'Indented the lines', outdent: 'Outdented the lines' }[a.fn];
+      const diff = r.before - r.after;
+      return { ok: true, msg: `${what}${diff > 0 ? ` (${plural(diff, 'line')} removed)` : ''}` };
+    }
+    case 'affix': { const r = opLines(v, a, (l) => l.map((x) => (a.skipEmpty !== false && !x.trim() ? x : `${a.before || ''}${x}${a.after || ''}`))); return { ok: true, msg: `Added ${[a.before && `“${a.before}” to the start`, a.after && `“${a.after}” to the end`].filter(Boolean).join(' and ')} of every line${r.whole ? '' : ' in the selection'}` }; }
+    case 'filterLines': {
+      let re; try { re = makeRe(a); } catch (e) { return { ok: false, msg: e.message }; }
+      const r = opLines(v, a, (l) => l.filter((x) => { re.lastIndex = 0; const hit = re.test(x); return a.keep ? hit : !hit; }));
+      return { ok: true, msg: `${a.keep ? 'Kept only' : 'Deleted'} the lines containing “${a.find}” (${plural(Math.abs(r.before - r.after), 'line')} removed)` };
+    }
+    case 'joinLines': { opText(v, a, (s) => s.replace(/\s*\n\s*/g, a.sep ?? ' ')); return { ok: true, msg: 'Joined the lines' }; }
+    case 'splitLines': { if (!a.sep) return { ok: false }; let n = 0; opText(v, a, (s) => s.split(a.sep).map((x, i, all) => { if (i < all.length - 1) n++; return a.trim === false ? x : x.trim(); }).join('\n')); return { ok: true, msg: `Split at “${a.sep}” (${plural(n, 'new line')})` }; }
+    case 'spaces': { opText(v, a, (s) => s.replace(/[ \t]{2,}/g, ' ')); return { ok: true, msg: 'Collapsed repeated spaces' }; }
+    case 'json': { const before = T(); formatJson(!!a.min); return T() !== before ? { ok: true, msg: a.min ? 'Minified the JSON' : 'Formatted the JSON' } : { ok: false, msg: 'This isn’t valid JSON' }; }
+    case 'encode': {
+      const F = { base64: (s) => btoa(unescape(encodeURIComponent(s))), base64d: (s) => decodeURIComponent(escape(atob(s.trim()))), url: encodeURIComponent, urld: decodeURIComponent, escapeHtml: esc,
+        stripHtml: (s) => { const d = new DOMParser().parseFromString(s, 'text/html'); return d.body.textContent || ''; }, reverseText: (s) => [...s].reverse().join(''), smartQuotes: (s) => s.replace(/(^|[\s(\[])"/g, '$1“').replace(/"/g, '”').replace(/(^|[\s(\[])'/g, '$1‘').replace(/'/g, '’'), plainQuotes: (s) => s.replace(/[“”]/g, '"').replace(/[‘’]/g, "'") };
+      if (!F[a.kind]) return { ok: false };
+      try { opText(v, a, F[a.kind]); } catch { return { ok: false, msg: 'That text can’t be decoded' }; }
+      return { ok: true, msg: { base64: 'Encoded as Base64', base64d: 'Decoded the Base64', url: 'URL-encoded', urld: 'URL-decoded', escapeHtml: 'Escaped the HTML', stripHtml: 'Removed the HTML tags', reverseText: 'Reversed the text', smartQuotes: 'Changed to curly quotes', plainQuotes: 'Changed to straight quotes' }[a.kind] };
+    }
+    case 'extract': {
+      const RX = { emails: /[\w.+-]+@[\w-]+\.[\w.-]+/g, urls: /\bhttps?:\/\/[^\s<>"')]+/g, numbers: /-?\d+(?:[.,]\d+)?/g, phones: /\+?\d[\d\s().-]{6,}\d/g, hashtags: /#\w+/g };
+      const r = opRange(v, a);
+      const found = [...new Set(v.state.sliceDoc(r.from, r.to).match(RX[a.kind]) || [])];
+      if (!found.length) return { ok: false, msg: `No ${a.kind} found` };
+      newDocWithText(found.join('\n'));
+      return { ok: true, msg: `Put ${plural(found.length, a.kind.replace(/s$/, ''))} in a new document` };
+    }
+    case 'insert': {
+      const text = String(a.text ?? '');
+      const pos = a.where === 'start' ? 0 : a.where === 'end' ? v.state.doc.length : null;
+      if (pos == null) v.dispatch(v.state.replaceSelection(text));
+      else { const pre = a.where === 'end' && pos > 0 && !T().endsWith('\n') && a.newline !== false ? '\n' : ''; const post = a.where === 'start' && a.newline !== false && v.state.doc.length ? '\n' : ''; v.dispatch({ changes: { from: pos, insert: pre + text + post } }); }
+      return { ok: true, msg: `Inserted ${a.label || `“${text.length > 40 ? text.slice(0, 40) + '…' : text}”`}${a.where === 'start' ? ' at the top' : a.where === 'end' ? ' at the end' : ''}` };
+    }
+    case 'date': return assistantOp('insert', { text: a.iso ? new Date().toISOString().slice(0, 10) : new Date().toLocaleString(), label: 'the date and time' });
+    case 'clear': { v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: '' } }); return { ok: true, msg: 'Cleared the document (Ctrl+Z brings it back)' }; }
+    case 'deleteLine': { const n = a.line; if (n) { if (n < 1 || n > v.state.doc.lines) return { ok: false, msg: `There’s no line ${n}` }; const L = v.state.doc.line(n); v.dispatch({ changes: { from: L.from, to: Math.min(v.state.doc.length, L.to + 1) } }); return { ok: true, msg: `Deleted line ${n}` }; } CM.deleteLine(v); return { ok: true, msg: 'Deleted the line' }; }
+    case 'duplicateLine': { CM.copyLineDown(v); return { ok: true, msg: 'Duplicated the line' }; }
+    case 'goto': {
+      const n = a.line === 'last' ? v.state.doc.lines : Math.max(1, Math.min(v.state.doc.lines, a.line | 0));
+      const L = v.state.doc.line(n); v.dispatch({ selection: { anchor: L.from }, scrollIntoView: true }); v.focus();
+      return { ok: true, msg: `Went to line ${n}` };
+    }
+    case 'top': v.dispatch({ selection: { anchor: 0 }, scrollIntoView: true }); return { ok: true, msg: 'Went to the top' };
+    case 'bottom': v.dispatch({ selection: { anchor: v.state.doc.length }, scrollIntoView: true }); return { ok: true, msg: 'Went to the end' };
+    case 'find': {
+      let re; try { re = makeRe({ ...a, find: a.find || '' }); } catch (e) { return { ok: false, msg: e.message }; }
+      const t = T(); const all = [...t.matchAll(re)];
+      if (!all.length) return { ok: false, msg: `“${a.find}” isn’t in the document` };
+      const ranges = all.slice(0, 5000).map((m) => CM.EditorSelection.range(m.index, m.index + m[0].length));
+      v.dispatch({ selection: a.all ? CM.EditorSelection.create(ranges) : CM.EditorSelection.create([ranges[0]]), scrollIntoView: true });
+      v.focus();
+      return { ok: true, msg: `Found ${plural(all.length, 'match')} of “${a.find}”${a.all ? ' and selected them all' : ` (first one is on line ${v.state.doc.lineAt(all[0].index).number})`}` };
+    }
+    case 'count': {
+      if (a.find) { let re; try { re = makeRe(a); } catch (e) { return { ok: false, msg: e.message }; } const n = (T().match(re) || []).length; return { ok: true, msg: `“${a.find}” appears ${n === 1 ? 'once' : `${n.toLocaleString()} times`}` }; }
+      const r = opRange(v, a); const t = v.state.sliceDoc(r.from, r.to);
+      const words = (t.match(/\S+/g) || []).length, lines = t ? t.split('\n').length : 0, sentences = (t.match(/[^.!?]+[.!?]+/g) || []).length, paras = t.split(/\n\s*\n/).filter((x) => x.trim()).length;
+      return { ok: true, msg: `${r.whole ? 'The document' : 'The selection'} has ${plural(words, 'word')}, ${plural(t.length, 'character')} (${t.replace(/\s/g, '').length.toLocaleString()} without spaces), ${plural(lines, 'line')}, ${plural(sentences, 'sentence')} and ${plural(paras, 'paragraph')}. About ${Math.max(1, Math.round(words / 230))} min to read.`, info: true };
+    }
+    case 'selectAll': CM.selectAll(v); v.focus(); return { ok: true, msg: 'Selected everything' };
+    case 'copy': { const r = opRange(v, a); await api('clip:writeText', v.state.sliceDoc(r.from, r.to)); return { ok: true, msg: `Copied ${where(r.whole)}` }; }
+    case 'undo': CM.undo(v); return { ok: true, msg: 'Undid the last change' };
+    case 'redo': CM.redo(v); return { ok: true, msg: 'Redid the change' };
+    case 'save': { const ok = await save(active); return { ok, msg: ok ? `Saved ${active.name}` : 'Not saved' }; }
+    case 'saveAs': { const ok = await saveAs(active); return { ok, msg: ok ? `Saved as ${active.name}` : 'Not saved' }; }
+    case 'new': newDoc(); return { ok: true, msg: 'Opened a new document' };
+    case 'open': openDialog(); return { ok: true, msg: 'Choose a file to open' };
+    case 'wrap': if (!!ed.wrap !== !!a.on) toggle('wrap'); return { ok: true, msg: `Word wrap ${a.on ? 'on' : 'off'}` };
+    case 'whitespace': if (!!ed.whitespace !== !!a.on) toggle('whitespace'); return { ok: true, msg: `Whitespace ${a.on ? 'shown' : 'hidden'}` };
+    case 'preview': if (!!ed.preview !== !!a.on) toggle('preview'); return { ok: true, msg: `Preview ${a.on ? 'on' : 'off'}` };
+    case 'lineNumbers': if (!!ed.lineNumbers !== !!a.on) toggle('lineNumbers'); return { ok: true, msg: `Line numbers ${a.on ? 'on' : 'off'}` };
+    case 'zoom': zoom(a.dir); return { ok: true, msg: a.dir === 0 ? 'Zoom reset' : a.dir > 0 ? 'Zoomed in' : 'Zoomed out' };
+    case 'fontSize': ed.fontSize = Math.max(8, Math.min(40, a.size | 0)); applyFont(); saveEd(); return { ok: true, msg: `Font size ${ed.fontSize}` };
+    case 'tabSize': setTab(a.size); return { ok: true, msg: `Tab size ${a.size}` };
+    case 'lang': {
+      const q = String(a.name || '').toLowerCase().replace(/^\./, '');
+      const L = CM.LANGS.find((l) => l.id === q || l.name.toLowerCase() === q) || CM.LANGS.find((l) => l.name.toLowerCase().startsWith(q) || (l.ext || []).includes?.(q)) || CM.LANGS.find((l) => CM.langForName('x.' + q).id === l.id && l.id !== 'text');
+      if (!L) return { ok: false, msg: `I don’t know the language “${a.name}”` };
+      setLanguage(active, L.id); return { ok: true, msg: `Language set to ${L.name}` };
+    }
+    case 'eol': { const k = { windows: '\r\n', crlf: '\r\n', unix: '\n', lf: '\n', linux: '\n', mac: '\r', cr: '\r' }[a.kind]; if (!k) return { ok: false }; active.eol = k; active.dirty = true; renderTabs(); renderStatus(); return { ok: true, msg: `Line endings: ${eolName(k)}` }; }
+    case 'encoding': { const E = ENCODINGS.find(([k, l]) => k === a.enc || l.toLowerCase().includes(String(a.enc).toLowerCase())); if (!E) return { ok: false, msg: `Unknown encoding “${a.enc}”` }; active.enc = E[0]; active.dirty = true; renderTabs(); renderStatus(); return { ok: true, msg: `Will save as ${E[1]}` }; }
+    case 'readonly': active.readonly = !!a.on; active.view.dispatch({ effects: roC.reconfigure(CM.EditorState.readOnly.of(active.readonly)) }); renderTabs(); return { ok: true, msg: a.on ? 'Read-only on' : 'Read-only off' };
+    case 'hash': { await hashText(a.algo || 'SHA-256'); return { ok: true, msg: `${a.algo || 'SHA-256'} copied to the clipboard` }; }
+    case 'stats': stats(); return { ok: true, msg: 'Here are the statistics' };
+    case 'bookmark': toggleBookmark(); return { ok: true, msg: 'Toggled a bookmark on this line' };
+    case 'fold': (a.on ? CM.foldAll : CM.unfoldAll)(v); return { ok: true, msg: a.on ? 'Folded everything' : 'Unfolded everything' };
+    case 'comment': CM.toggleComment(v); return { ok: true, msg: 'Toggled comments' };
+    case 'close': setTimeout(() => closeDoc(active), 0); return { ok: true, msg: 'Closing the document' };
+    case 'context': { const r = opRange(v, a); return { ok: true, name: active.name, lang: active.langId, selection: r.whole ? '' : v.state.sliceDoc(r.from, r.to), text: T().slice(0, 12000), length: v.state.doc.length }; }
+    case 'write': {
+      // text from the writing model: replace the selection / the document, or insert at the cursor / end
+      const text = String(a.text ?? '');
+      if (a.mode === 'replaceAll') v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: text } });
+      else if (a.mode === 'replaceSel') { const r = opRange(v, a); v.dispatch({ changes: { from: r.from, to: r.to, insert: text } }); }
+      else if (a.mode === 'end') return assistantOp('insert', { text, where: 'end', label: 'the text' });
+      else v.dispatch(v.state.replaceSelection(text));
+      return { ok: true, msg: 'Done' };
+    }
+  }
+  return { ok: false, msg: `I can’t do “${op}” in Notepad` };
+}
+onAsk(assistantOp);

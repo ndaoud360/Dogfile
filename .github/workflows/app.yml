@@ -100,6 +100,23 @@ jobs:
           $log = if (Test-Path "$out/wintest.log") { Get-Content "$out/wintest.log" } else { @('no log') }
           Write-Output "::notice title=wintest::$($log -join '%0A')"
           Remove-Item Env:ATLAS_TEST, Env:DOGFILE_TEST_LOG, Env:ATLAS_STEPS
+      - name: Notepad writing helper (download the model, write on the processor and graphics card)
+        shell: pwsh
+        continue-on-error: true
+        timeout-minutes: 30
+        run: |
+          trap { Write-Output "::error title=writertest::$_"; continue }
+          $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
+          $js = Get-Content -Raw build/ci/writertest.js
+          $env:ATLAS_TEST = '1'
+          $env:DOGFILE_TEST_LOG = "$out/writertest.log"
+          $env:ATLAS_STEPS = (ConvertTo-Json -Compress -Depth 3 @(@{ js = $js; wait = 1500000 }))
+          $p = Start-Process -FilePath target/release/dogfile.exe -PassThru
+          if (-not $p.WaitForExit(1560000)) { Stop-Process -Id $p.Id -Force; Write-Output "::warning title=writertest::timed out" }
+          Get-Process msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force
+          $log = if (Test-Path "$out/writertest.log") { Get-Content "$out/writertest.log" } else { @('no log') }
+          Write-Output "::notice title=writertest::$($log -join '%0A')"
+          Remove-Item Env:ATLAS_TEST, Env:DOGFILE_TEST_LOG, Env:ATLAS_STEPS
       - name: Auto-update end to end (check, download, install, restart)
         shell: pwsh
         continue-on-error: true

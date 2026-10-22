@@ -32,7 +32,7 @@ export function openTool(kind, files = [], opts = {}) {
   // Dogfile Notepad: every document is its own tab, like a browser
   if (kind === 'editor') {
     if (opts.compare) { const t = newAppTab('editor', { files, compare: true }); t.appTitle = files.map((f) => f.split(/[\\/]/).pop()).join(' ↔ '); return t; }
-    if (!files.length) return newAppTab('editor', {});
+    if (!files.length) return newAppTab('editor', opts.text != null ? { text: String(opts.text) } : {});
     let last = null;
     for (const f of files) {
       const ex = state.tabs.find((x) => x.app === 'editor' && samePath(x.appPath, f));
@@ -123,6 +123,7 @@ window.addEventListener('message', (e) => {
   else if (m.type === 'close') closeTab(t, { force: true });
   else if (m.type === 'focus') { const i = state.panes.slice(0, paneCount()).indexOf(t.id); if (i >= 0 && i !== state.activePane) { state.activePane = i; bus.emit('activePane'); document.querySelectorAll('.pane').forEach((p, k) => p.classList.toggle('active', k === i)); syncFrames(); bus.emit('appState', t); } }
   else if (m.type === 'toast') toast(m.text, { error: m.error });
+  else if (m.type === 'askAnswer') { const r = askWaits.get(m.token); askWaits.delete(m.token); r?.(m.result); }
   else if (m.type === 'menuSpec') { const r = menuWaits.get(m.token); menuWaits.delete(m.token); r?.(m.items || []); }
   else if (m.type === 'leaveAsking') leaveWaits.get(m.token + ':asking')?.();
   else if (m.type === 'leaveAnswer') { const r = leaveWaits.get(m.token); leaveWaits.delete(m.token); leaveWaits.delete(m.token + ':asking'); r?.(!!m.ok); }
@@ -131,6 +132,17 @@ window.addEventListener('message', (e) => {
 // file watching for Dogfile Notepad tabs is delivered to the main frame: pass it on
 onMain('file:changed', (p) => { for (const id of frames.keys()) { const t = tabById(id); if (t?.app === 'editor') post(t, { type: 'fileChanged', path: p }); } });
 
+// the assistant asking an app tab to do something; resolves with the app's { ok, msg }
+const askWaits = new Map();
+export function appAsk(op, arg, t = activeAppTab(), ms = 120000) {
+  if (!t || !frames.has(t.id)) return Promise.resolve({ ok: false, msg: 'The app isn’t open' });
+  const token = Math.random().toString(36).slice(2);
+  return new Promise((resolve) => {
+    const giveUp = setTimeout(() => { askWaits.delete(token); resolve({ ok: false, msg: 'The app didn’t answer' }); }, ms);
+    askWaits.set(token, (r) => { clearTimeout(giveUp); resolve(r || { ok: true }); });
+    post(t, { type: 'ask', op, arg, token });
+  });
+}
 // an app's own menu (File, Edit…), shown from the ribbon in the main window
 const menuWaits = new Map();
 export function appMenu(name) {

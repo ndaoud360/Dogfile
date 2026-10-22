@@ -11,7 +11,7 @@ function applyMediaTheme() {
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyMediaTheme());
 import { readExif } from './exif.js';
-import { EMBED, pendingFiles, onHost, tellHost, showInFiles, setTitle, onLeave, onWindowClose } from './embed.js';
+import { EMBED, pendingFiles, onHost, tellHost, showInFiles, setTitle, onLeave, onWindowClose, onAsk } from './embed.js';
 
 const $ = (id) => document.getElementById(id);
 const NATIVE = new Set(['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'bmp', 'ico', 'svg', 'avif', 'apng']);
@@ -251,7 +251,7 @@ function enterEdit(tool = 'adjust') {
   g.translate(work.width / 2, work.height / 2); g.rotate((V.rot * Math.PI) / 180); g.scale(V.flipH ? -1 : 1, V.flipV ? -1 : 1);
   g.drawImage(img, -V.nat.w / 2, -V.nat.h / 2);
   g.setTransform(1, 0, 0, 1, 0, 0); // later drawing (pen, text) works in plain picture pixels
-  E = { work, adj: defaultAdj(), tool, undo: [], redo: [], dirty: V.rot !== 0 || V.flipH, draw: { color: '#ff3b30', size: 8, opacity: 100, mode: 'pen' }, crop: null, aspect: 'free' };
+  E = { work, photo: cloneCanvas(work), original: cloneCanvas(work), adj: defaultAdj(), tool, undo: [], redo: [], dirty: V.rot !== 0 || V.flipH, draw: { color: '#ff3b30', size: 8, opacity: 100, mode: 'pen' }, crop: null, aspect: 'free' };
   try { work.getContext('2d').getImageData(0, 0, 1, 1); } catch { toast('This image can’t be edited (protected source)', { error: true }); E = null; return; }
   document.body.classList.add('editing');
   renderTools(); renderBar(); drawCanvas();
@@ -264,21 +264,32 @@ function exitEdit(silent) {
   renderBar(); layout();
   if (!silent) tellHost({ type: 'state', kind: 'photo', editing: false });
 }
-function pushHistory() { E.undo.push(cloneCanvas(E.work)); if (E.undo.length > (E.work.width * E.work.height > 16e6 ? 6 : 15)) E.undo.shift(); E.redo = []; E.dirty = true; }
-function undo() { if (!E || !E.undo.length) return; if (!isDefaultAdj(E.adj)) { E.adj = defaultAdj(); renderTools(); drawCanvas(); return; } E.redo.push(E.work); E.work = E.undo.pop(); drawCanvas(); renderBar(); }
-function redo() { if (!E || !E.redo.length) return; E.undo.push(E.work); E.work = E.redo.pop(); drawCanvas(); renderBar(); }
+// E.work is what you see (photo + drawing); E.photo is the same picture without pen / text, so the eraser can
+// bring the photo back. Both go through crop / rotate / resize / filters together.
+function pushHistory() { E.undo.push({ work: cloneCanvas(E.work), photo: E.photo }); if (E.undo.length > (E.work.width * E.work.height > 16e6 ? 6 : 15)) E.undo.shift(); E.redo = []; E.dirty = true; }
+function undo() { if (!E) return; if (!isDefaultAdj(E.adj)) { E.adj = defaultAdj(); renderTools(); drawCanvas(); return; } if (!E.undo.length) return; E.redo.push({ work: E.work, photo: E.photo }); ({ work: E.work, photo: E.photo } = E.undo.pop()); drawCanvas(); renderBar(); renderTools(); }
+function redo() { if (!E || !E.redo.length) return; E.undo.push({ work: E.work, photo: E.photo }); ({ work: E.work, photo: E.photo } = E.redo.pop()); drawCanvas(); renderBar(); renderTools(); }
+// apply the same picture change to what you see and to the photo under the drawing
+function both(fn) { E.zoom = 1; E.panX = E.panY = 0; const same = E.photo.width === E.work.width && E.photo.height === E.work.height; E.work = fn(E.work); E.photo = same ? fn(E.photo) : cloneCanvas(E.work); }
+// remove pen / highlighter / text, keep everything else
+function clearDrawing() { if (!E) return; bakeAdjust(); pushHistory(); E.work = cloneCanvas(E.photo); drawCanvas(); osd('Drawing removed'); }
+// back to the picture as it was when editing started
+function resetAll() { if (!E) return; pushHistory(); E.work = cloneCanvas(E.original); E.photo = cloneCanvas(E.original); E.adj = defaultAdj(); E.crop = null; document.body.classList.remove('cropping'); renderTools(); drawCanvas(); osd('All edits removed'); }
 
 // Bake pending adjustments into the working image
 function bakeAdjust() {
   if (!E || isDefaultAdj(E.adj)) return;
   pushHistory();
-  const out = document.createElement('canvas'); out.width = E.work.width; out.height = E.work.height;
-  const g = out.getContext('2d');
-  g.filter = filterStr(E.adj);
-  g.drawImage(E.work, 0, 0);
-  g.filter = 'none';
-  if (E.adj.vignette > 0) vignette(g, out.width, out.height, E.adj.vignette / 100);
-  E.work = out;
+  const a = E.adj;
+  both((src) => {
+    const out = document.createElement('canvas'); out.width = src.width; out.height = src.height;
+    const g = out.getContext('2d');
+    g.filter = filterStr(a);
+    g.drawImage(src, 0, 0);
+    g.filter = 'none';
+    if (a.vignette > 0) vignette(g, out.width, out.height, a.vignette / 100);
+    return out;
+  });
   E.adj = defaultAdj();
   renderTools();
 }
@@ -293,9 +304,26 @@ function vignette(g, w, hh, k) {
 function geom() {
   const c = $('vw-canvas');
   const W = c.clientWidth, H = c.clientHeight;
-  const s = Math.min((W - 40) / E.work.width, (H - 40) / E.work.height, 1);
+  const s = Math.min((W - 40) / E.work.width, (H - 40) / E.work.height, 1) * (E.zoom || 1);
   const dw = E.work.width * s, dh = E.work.height * s;
-  return { s, x: (W - dw) / 2, y: (H - dh) / 2, dw, dh, W, H };
+  return { s, x: (W - dw) / 2 + (E.panX || 0), y: (H - dh) / 2 + (E.panY || 0), dw, dh, W, H };
+}
+// zoom while editing (pinch, Ctrl+wheel, wheel): 1 = fit; keeps the point under the pointer still
+function geomSafe() { try { return geom().s; } catch { return 1; } }
+function setEditZoom(z, cx, cy) {
+  if (!E) return;
+  const c = $('vw-canvas'); const r = c.getBoundingClientRect();
+  const G0 = geom();
+  z = Math.max(0.25, Math.min(32, z));
+  const px = cx == null ? G0.W / 2 : cx - r.left, py = cy == null ? G0.H / 2 : cy - r.top;
+  const ix = (px - G0.x) / G0.s, iy = (py - G0.y) / G0.s;
+  const crop = E.crop && { x: (E.crop.x - G0.x) / G0.s, y: (E.crop.y - G0.y) / G0.s, w: E.crop.w / G0.s, h: E.crop.h / G0.s };
+  E.zoom = z; E.panX = 0; E.panY = 0;
+  if (z > 1) { const G1 = geom(); E.panX = px - ix * G1.s - G1.x; E.panY = py - iy * G1.s - G1.y; }
+  const G = geom();
+  if (crop) E.crop = { x: G.x + crop.x * G.s, y: G.y + crop.y * G.s, w: crop.w * G.s, h: crop.h * G.s };
+  drawCanvas();
+  osd(Math.round(G.s * 100) + '%');
 }
 function drawCanvas() {
   if (!E) return;
@@ -378,9 +406,7 @@ function applyCrop() {
   const sw = Math.round(E.crop.w / G.s), sh = Math.round(E.crop.h / G.s);
   if (sw < 2 || sh < 2) return;
   pushHistory();
-  const out = document.createElement('canvas'); out.width = sw; out.height = sh;
-  out.getContext('2d').drawImage(E.work, sx, sy, sw, sh, 0, 0, sw, sh);
-  E.work = out;
+  both((src) => { const out = document.createElement('canvas'); out.width = sw; out.height = sh; out.getContext('2d').drawImage(src, sx, sy, sw, sh, 0, 0, sw, sh); return out; });
   E.crop = null; document.body.classList.remove('cropping');
   E.tool = 'adjust'; renderTools(); drawCanvas();
   osd(`Cropped to ${sw} × ${sh}`);
@@ -389,29 +415,35 @@ function applyCrop() {
 // ---- rotate / flip / resize ----
 function transformWork(kind) {
   bakeAdjust(); pushHistory();
-  const src = E.work;
-  const out = document.createElement('canvas');
-  const quarter = kind === 'left' || kind === 'right';
-  out.width = quarter ? src.height : src.width; out.height = quarter ? src.width : src.height;
-  const g = out.getContext('2d');
-  g.translate(out.width / 2, out.height / 2);
-  if (kind === 'left') g.rotate(-Math.PI / 2); else if (kind === 'right') g.rotate(Math.PI / 2); else if (kind === '180') g.rotate(Math.PI);
-  else if (kind === 'flipH') g.scale(-1, 1); else if (kind === 'flipV') g.scale(1, -1);
-  g.drawImage(src, -src.width / 2, -src.height / 2);
-  g.setTransform(1, 0, 0, 1, 0, 0);
-  E.work = out; drawCanvas();
+  both((src) => {
+    const out = document.createElement('canvas');
+    const quarter = kind === 'left' || kind === 'right';
+    out.width = quarter ? src.height : src.width; out.height = quarter ? src.width : src.height;
+    const g = out.getContext('2d');
+    g.translate(out.width / 2, out.height / 2);
+    if (kind === 'left') g.rotate(-Math.PI / 2); else if (kind === 'right') g.rotate(Math.PI / 2); else if (kind === '180') g.rotate(Math.PI);
+    else if (kind === 'flipH') g.scale(-1, 1); else if (kind === 'flipV') g.scale(1, -1);
+    g.drawImage(src, -src.width / 2, -src.height / 2);
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    return out;
+  });
+  drawCanvas();
 }
 function resizeWork(w, hh) {
   bakeAdjust(); pushHistory();
-  let src = E.work;
-  // step down in halves for a smooth result
-  while (src.width / 2 > w && src.height / 2 > hh) { const half = document.createElement('canvas'); half.width = Math.round(src.width / 2); half.height = Math.round(src.height / 2); const hg = half.getContext('2d'); hg.imageSmoothingQuality = 'high'; hg.drawImage(src, 0, 0, half.width, half.height); src = half; }
-  const out = document.createElement('canvas'); out.width = w; out.height = hh;
-  const g = out.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(src, 0, 0, w, hh);
-  E.work = out; drawCanvas(); renderTools(); osd(`Resized to ${w} × ${hh}`);
+  both((src0) => {
+    let src = src0;
+    // step down in halves for a smooth result
+    while (src.width / 2 > w && src.height / 2 > hh) { const half = document.createElement('canvas'); half.width = Math.round(src.width / 2); half.height = Math.round(src.height / 2); const hg = half.getContext('2d'); hg.imageSmoothingQuality = 'high'; hg.drawImage(src, 0, 0, half.width, half.height); src = half; }
+    const out = document.createElement('canvas'); out.width = w; out.height = hh;
+    const g = out.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(src, 0, 0, w, hh);
+    return out;
+  });
+  drawCanvas(); renderTools(); osd(`Resized to ${w} × ${hh}`);
 }
 
 // ---- draw & text ----
+let endStroke = null; // a second finger cancels the stroke the first one started
 (() => {
   const c = $('vw-canvas');
   let drawing = false, last = null, base = null;
@@ -423,8 +455,9 @@ function resizeWork(w, hh) {
     const P = { x: ((e.clientX - r.left) / kx - G.x) / G.s, y: ((e.clientY - r.top) / ky - G.y) / G.s }; return P;
   };
   new ResizeObserver(() => { if (E && (c.clientWidth !== E.lastG?.cw || c.clientHeight !== E.lastG?.ch)) drawCanvas(); }).observe(c);
+  endStroke = () => { if (drawing) { drawing = false; undo(); } };
   c.addEventListener('pointerdown', async (e) => {
-    if (!E || E.tool !== 'draw') return;
+    if (!E || E.tool !== 'draw' || e.button !== 0 || V.pinching) return;
     const p = toImg(e);
     if (E.draw.mode === 'text') {
       const t = await prompt('Add text', '', { label: 'Text' });
@@ -439,11 +472,11 @@ function resizeWork(w, hh) {
       drawCanvas(); return;
     }
     bakeAdjust(); pushHistory();
-    base = E.undo[E.undo.length - 1];
+    base = E.photo;
     drawing = true; last = p; c.setPointerCapture(e.pointerId);
     stroke(p, p);
   });
-  c.addEventListener('pointermove', (e) => { if (!drawing) return; const p = toImg(e); stroke(last, p); last = p; });
+  c.addEventListener('pointermove', (e) => { if (!drawing || V.pinching) return; const p = toImg(e); stroke(last, p); last = p; });
   c.addEventListener('pointerup', () => { drawing = false; });
   function stroke(a, b) {
     const g = E.work.getContext('2d');
@@ -551,7 +584,7 @@ function renderTools() {
     const sw = h('div', { class: 'chips' }, ...['#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#0a84ff', '#af52de', '#ffffff', '#000000'].map((c) => h('button', { class: 'pv-sw2', style: { background: c }, onclick: () => { E.draw.color = c; col.value = c; } })));
     const size = h('input', { type: 'range', min: '1', max: '60', value: String(E.draw.size) }); size.oninput = () => (E.draw.size = +size.value);
     const op = h('input', { type: 'range', min: '10', max: '100', value: String(E.draw.opacity) }); op.oninput = () => (E.draw.opacity = +op.value);
-    panel.append(modes, h('div', { class: 'field-label' }, 'Color'), h('div', { class: 'row-inline' }, col, sw), h('div', { class: 'field-label' }, 'Size'), size, h('div', { class: 'field-label' }, 'Opacity'), op, h('div', { class: 'hint' }, E.draw.mode === 'text' ? 'Click on the photo where the text should go.' : E.draw.mode === 'eraser' ? 'Erases your drawing back to the photo.' : 'Draw directly on the photo.'));
+    panel.append(modes, h('div', { class: 'field-label' }, 'Color'), h('div', { class: 'row-inline' }, col, sw), h('div', { class: 'field-label' }, 'Size'), size, h('div', { class: 'field-label' }, 'Opacity'), op, h('div', { class: 'hint' }, E.draw.mode === 'text' ? 'Click on the photo where the text should go.' : E.draw.mode === 'eraser' ? 'Erases your drawing back to the photo.' : 'Draw directly on the photo.'), h('div', { class: 'row-inline', style: { marginTop: '10px' } }, h('button', { class: 'btn small', onclick: clearDrawing }, 'Clear drawing')));
   } else if (E.tool === 'resize') {
     const w = h('input', { class: 'input small', type: 'number', value: String(E.work.width) });
     const hh = h('input', { class: 'input small', type: 'number', value: String(E.work.height) });
@@ -576,9 +609,12 @@ function renderBar() {
   const B = (ic, title, fn, cls = '') => { const b = h('button', { class: 'pb ' + cls, title, html: icon(ic) }); b.onclick = fn; return b; };
   if (E) {
     bar.append(B('undo', 'Undo (Ctrl+Z)', undo, E.undo.length || !isDefaultAdj(E.adj) ? '' : 'dim'), B('redo', 'Redo (Ctrl+Y)', redo, E.redo.length ? '' : 'dim'),
-      h('span', { class: 'vw-dims' }, `${E.work.width} × ${E.work.height}`), h('span', { class: 'ctl-spacer' }),
+      h('span', { class: 'vw-dims hide-sm' }, `${E.work.width} × ${E.work.height}`),
+      innerWidth < 720 ? '' : B('zoomOut', 'Zoom out (Ctrl+-)', () => setEditZoom((E.zoom || 1) / 1.25)), h('button', { class: 'pb txt', title: 'Fit (Ctrl+0)', onclick: () => setEditZoom(1) }, Math.round(geomSafe() * 100) + '%'), innerWidth < 720 ? '' : B('zoomIn', 'Zoom in (Ctrl+=)', () => setEditZoom((E.zoom || 1) * 1.25)),
+      h('span', { class: 'ctl-spacer' }),
+      innerWidth < 640 ? '' : h('button', { class: 'btn small', title: 'Back to the picture as it was before editing', onclick: resetAll }, 'Reset all'),
       h('button', { class: 'btn small', onclick: async () => { if (E.dirty && !(await confirm('Discard edits?', 'Leave the editor without saving?', { ok: 'Discard', danger: true }))) return; exitEdit(); } }, 'Cancel'),
-      h('button', { class: 'btn small', onclick: () => save('overwrite') }, 'Overwrite original'),
+      h('button', { class: 'btn small', title: 'Overwrite original', onclick: () => save('overwrite') }, innerWidth < 760 ? 'Overwrite' : 'Overwrite original'),
       h('button', { class: 'btn small primary', onclick: () => save('copy') }, 'Save as copy'));
     return;
   }
@@ -628,7 +664,43 @@ function wire() {
   $('q-add').onclick = async () => { const f = await api('dialog:openFiles', { title: 'Add photos' }); if (f.length) setQueue(f, { append: true }); };
   $('vw-open').onclick = async () => { const f = await api('dialog:openFiles', { title: 'Open photos' }); if (f.length) setQueue(f, { autoPlaylist: f.length === 1 }); };
   const st = $('vw-stage');
-  st.addEventListener('wheel', (e) => { if (E) return; e.preventDefault(); if (e.ctrlKey || V.zoom !== 'fit' || true) setZoom(V.scale * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY); }, { passive: false });
+  st.addEventListener('wheel', (e) => { if (E) { if (!e.target.closest('#vw-tools')) { e.preventDefault(); setEditZoom((E.zoom || 1) * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY); } return; } e.preventDefault(); if (e.ctrlKey || V.zoom !== 'fit' || true) setZoom(V.scale * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY); }, { passive: false });
+  // two fingers: pinch to zoom (viewing and editing)
+  const touches = new Map();
+  let pinch = null;
+  st.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'touch') return;
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.size === 2) {
+      const [a, b] = [...touches.values()];
+      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, z: E ? E.zoom || 1 : V.scale };
+      V.pinching = true;
+      if (E) endStroke?.();
+    }
+  }, true);
+  st.addEventListener('pointermove', (e) => {
+    if (!touches.has(e.pointerId)) return;
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (!pinch || touches.size < 2) return;
+    e.preventDefault(); e.stopPropagation();
+    const [a, b] = [...touches.values()];
+    const k = Math.hypot(a.x - b.x, a.y - b.y) / pinch.d;
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    if (E) setEditZoom(pinch.z * k, mx, my); else setZoom(pinch.z * k, mx, my);
+  }, true);
+  const lift = (e) => { touches.delete(e.pointerId); if (touches.size < 2) { pinch = null; setTimeout(() => { if (!pinch) V.pinching = false; }, 50); } };
+  st.addEventListener('pointerup', lift, true); st.addEventListener('pointercancel', lift, true);
+  st.style.touchAction = 'none';
+  // while editing a zoomed-in picture: drag to move it (middle button always; left button outside Draw / Crop)
+  $('vw-canvas').addEventListener('pointerdown', (e) => {
+    if (!E || V.pinching || e.pointerType === 'touch' && touches.size > 1) return;
+    if (!(e.button === 1 || (e.button === 0 && E.tool !== 'draw' && !E.crop && (E.zoom || 1) > 1))) return;
+    e.preventDefault();
+    const sx = e.clientX, sy = e.clientY, px = E.panX || 0, py = E.panY || 0;
+    const move = (ev) => { E.panX = px + ev.clientX - sx; E.panY = py + ev.clientY - sy; drawCanvas(); };
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+  });
   st.addEventListener('dblclick', (e) => { if (E || e.target.closest('.vw-nav')) return; if (V.zoom === 'fit') setZoom(1, e.clientX, e.clientY); else { V.zoom = 'fit'; V.panX = V.panY = 0; layout(); } });
   st.addEventListener('pointerdown', (e) => {
     if (E || e.button !== 0 || e.target.closest('.vw-nav, #vw-info, #vw-empty, #vw-ocr, #vw-ocr-panel')) return;
@@ -669,6 +741,9 @@ function wire() {
       else if (c && (k.toLowerCase() === 'y' || (e.shiftKey && k.toLowerCase() === 'z'))) redo();
       else if (c && k.toLowerCase() === 's') save(e.shiftKey ? 'overwrite' : 'copy');
       else if (k === 'Enter' && E.tool === 'crop') applyCrop();
+      else if (k === '+' || k === '=') setEditZoom((E.zoom || 1) * 1.25);
+      else if (k === '-') setEditZoom((E.zoom || 1) / 1.25);
+      else if (k === '0') setEditZoom(1);
       else if (k === 'Escape') { if (E.tool === 'crop') { E.crop = null; document.body.classList.remove('cropping'); E.tool = 'adjust'; renderTools(); drawCanvas(); } else $('vw-bar').querySelector('.btn')?.click(); }
       else hd = false;
     } else if (k === 'ArrowRight' || k === 'PageDown' || k === 'ArrowDown') show(V.idx + 1);
@@ -702,16 +777,39 @@ function wire() {
 }
 
 // commands from the host tab's contextual ribbon
-function cmd(id) {
+// commands from the ribbon and from the assistant ("apply sepia", "resize to 1920 wide", "erase everything"…)
+function ensureEdit(tool) { if (!E) enterEdit(tool || 'adjust'); return !!E; }
+function cmd(id, arg) {
   const map = {
+    clearDrawing: () => ensureEdit() && clearDrawing(),
+    resetAll: () => ensureEdit() && resetAll(),
+    adjust: () => { if (!ensureEdit()) return; for (const [k, v] of Object.entries(arg || {})) if (k in E.adj) E.adj[k] = Math.max(k === 'hue' ? -180 : 0, Math.min(k === 'hue' ? 180 : k === 'saturate' ? 300 : k === 'blur' ? 20 : ['grayscale', 'sepia', 'invert', 'vignette'].includes(k) ? 100 : 200, +v)); E.dirty = true; if (E.tool !== 'adjust') { E.tool = 'adjust'; } renderTools(); drawCanvas(); },
+    filter: () => { if (!ensureEdit('filters')) return; const name = Object.keys(PRESET_FX).find((n) => n.toLowerCase() === String(arg || '').toLowerCase()); if (!name) return; E.adj = { ...defaultAdj(), ...PRESET_FX[name] }; E.dirty = true; renderTools(); drawCanvas(); },
+    apply: () => { if (E) { bakeAdjust(); drawCanvas(); } },
+    resize: () => {
+      if (!ensureEdit('resize')) return;
+      const a = arg || {}; const W0 = E.work.width, H0 = E.work.height; const r = W0 / H0;
+      let w = a.w | 0, hh = a.h | 0;
+      if (a.longest && w) { if (H0 > W0) { hh = w; w = 0; } }
+      if (a.percent) { w = Math.round((W0 * a.percent) / 100); hh = Math.round((H0 * a.percent) / 100); }
+      else if (w && !hh) hh = Math.round(w / r); else if (hh && !w) w = Math.round(hh * r);
+      if (w > 0 && hh > 0) resizeWork(Math.min(w, 30000), Math.min(hh, 30000));
+    },
+    rotate180: () => ensureEdit() && transformWork('180'), flipV: () => (E ? transformWork('flipV') : ensureEdit() && transformWork('flipV')),
+    cropAspect: () => { if (!ensureEdit('crop')) return; E.tool = 'crop'; E.aspect = arg || 'free'; renderTools(); startCrop(); },
+    applyCrop: () => applyCrop(),
+    drawMode: () => { if (!ensureEdit()) return; E.tool = 'draw'; E.draw.mode = arg || 'pen'; document.body.classList.add('drawing'); renderTools(); },
+    drawColor: () => { if (!ensureEdit()) return; E.draw.color = arg; renderTools(); },
+    format: () => { if (!ensureEdit()) return; E.format = arg; renderTools(); },
+    exitEdit: () => E && exitEdit(),
     ocr: runOcr,
     prev: () => show(V.idx - 1), next: () => show(V.idx + 1), slideshow: () => toggleSlideshow(), fullscreen: toggleFs, edit: () => (E ? null : enterEdit()),
     rotateL: () => (E ? transformWork('left') : rotate(-90)), rotateR: () => (E ? transformWork('right') : rotate(90)), flip: () => (E ? transformWork('flipH') : flip()),
-    zoomIn: () => setZoom(V.scale * 1.25), zoomOut: () => setZoom(V.scale / 1.25), fit: () => { V.zoom = 'fit'; V.panX = V.panY = 0; layout(); }, info: () => { V.showInfo = !V.showInfo; renderInfo(); renderBar(); },
+    zoomIn: () => (E ? setEditZoom((E.zoom || 1) * 1.25) : setZoom(V.scale * 1.25)), zoomOut: () => (E ? setEditZoom((E.zoom || 1) / 1.25) : setZoom(V.scale / 1.25)), fit: () => { if (E) return setEditZoom(1); V.zoom = 'fit'; V.panX = V.panY = 0; layout(); }, info: () => { V.showInfo = !V.showInfo; renderInfo(); renderBar(); },
     delete: del, saveCopy: () => save('copy'), overwrite: () => save('overwrite'), crop: () => { if (!E) enterEdit('crop'); E.tool = 'crop'; renderTools(); startCrop(); }, draw: () => { if (!E) enterEdit(); E.tool = 'draw'; document.body.classList.add('drawing'); renderTools(); },
     filters: () => { if (!E) enterEdit(); E.tool = 'filters'; renderTools(); }, undo, redo, queue: () => { V.showQueue = !V.showQueue; document.body.classList.toggle('no-queue', !V.showQueue); setTimeout(layout, 20); },
   };
-  map[id]?.();
+  return map[id]?.();
 }
 
 // ---------------- features (user-made photo tools) ----------------
@@ -735,7 +833,7 @@ async function startViewerFeatures() {
         pushHistory();
         const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
         c.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(img.data), img.width, img.height), 0, 0);
-        E.work = c; drawCanvas(); renderBar();
+        E.work = c; E.photo = cloneCanvas(c); drawCanvas(); renderBar();
         return true;
       },
     },
@@ -762,5 +860,18 @@ async function boot() {
 onMain('viewer:open', ({ files, autoPlaylist, slideshow }) => setQueue(files, { autoPlaylist: autoPlaylist || files.length === 1, slideshow }));
 onMain('settings:changed', (s) => { settings = { ...settings, ...s }; applyMediaTheme(); vwFeatures?.reload(); });
 onHost({ open: (m) => setQueue(m.files, { autoPlaylist: m.autoPlaylist || m.files.length === 1, append: !!m.append, slideshow: !!m.slideshow }), cmd, settings: (s) => { settings = { ...settings, ...s }; applyMediaTheme(); vwFeatures?.reload(); } });
-window.__vw = { V, get E() { return E; }, show, enterEdit, save, setQueue, cmd, transformWork, applyCrop, startCrop };
+// the assistant: "erase everything and apply sepia", "resize to 1920 wide", "crop to square", "save a copy as PNG"
+onAsk(async (op, a) => {
+  const it = V.list[V.idx];
+  if (op === 'context') return { ok: true, name: it?.name || '', editing: !!E, w: E ? E.work.width : V.nat.w, h: E ? E.work.height : V.nat.h };
+  if (!it) return { ok: false, msg: 'Open a photo first' };
+  if (op === 'saveCopy' || op === 'overwrite') { if (!E) return { ok: false, msg: 'There are no edits to save' }; const ok = await save(op === 'overwrite' ? 'overwrite' : 'copy'); return { ok: !!ok, msg: ok ? 'Saved' : 'Not saved' }; }
+  if (op === 'delete') { await del(); return { ok: true }; }
+  const known = ['clearDrawing', 'resetAll', 'adjust', 'filter', 'apply', 'resize', 'rotate180', 'flipV', 'cropAspect', 'applyCrop', 'drawMode', 'drawColor', 'format', 'exitEdit', 'ocr', 'prev', 'next', 'slideshow', 'fullscreen', 'edit', 'rotateL', 'rotateR', 'flip', 'zoomIn', 'zoomOut', 'fit', 'info', 'crop', 'draw', 'filters', 'undo', 'redo', 'queue'];
+  if (!known.includes(op)) return { ok: false, msg: `I can’t do “${op}” in Photos` };
+  await cmd(op, a);
+  if (['adjust', 'filter', 'resize', 'rotate180', 'cropAspect', 'clearDrawing', 'resetAll', 'apply'].includes(op) && !E) return { ok: false, msg: 'This picture can’t be edited' };
+  return { ok: true, w: E?.work.width, h: E?.work.height };
+});
+window.__vw = { V, get E() { return E; }, show, enterEdit, save, setQueue, cmd, transformWork, applyCrop, startCrop, setEditZoom, geom };
 boot().then(() => startViewerFeatures()).catch((e) => { console.error(e); document.body.innerHTML = `<pre style="padding:20px;color:#f66">${esc(e.stack || e.message)}</pre>`; });

@@ -46,18 +46,38 @@ export function negatives(kind, subject) {
   return (kind === 'audio' ? NEG_AUDIO : NEG_IMAGE).filter((n) => !n.toLowerCase().split(/[^a-z]+/).some((w) => sw.has(w) || sw.has(w.replace(/s$/, '')) || sw.has(w + 's')));
 }
 
+// ---------------- writing (Notepad assistant) ----------------
+// which build of the writing model suits this PC: the graphics card when WebGPU works, otherwise the processor
+let gpuOk = null;
+export async function writerKind() {
+  if (gpuOk == null) { try { const a = await navigator.gpu?.requestAdapter(); gpuOk = !!a && !(a.isFallbackAdapter || a.info?.isFallbackAdapter); } catch { gpuOk = false; } }
+  return gpuOk ? 'writer-gpu' : 'writer';
+}
+export async function write(messages, { onPartial, maxTokens } = {}) {
+  const kind = await writerKind();
+  if (!(await ensureModels([kind]))) return null;
+  try { return await call({ type: 'generate', messages, opts: { device: kind === 'writer-gpu' ? 'webgpu' : 'wasm', maxTokens } }, null, onPartial); }
+  catch (e) {
+    // a graphics card that can't run it after all: use the processor build
+    if (kind === 'writer-gpu' && !/Stopped/.test(e.message)) { gpuOk = false; if (!(await ensureModels(['writer']))) return null; return call({ type: 'generate', messages, opts: { device: 'wasm', maxTokens } }, null, onPartial); }
+    throw e;
+  }
+}
+
 // ---------------- models ----------------
 let worker = null, seq = 0;
 const waiting = new Map();
-export function call(msg, transfer) {
+// stop whatever the models are doing (the worker restarts on the next request)
+export function stopAI() { if (!worker) return; worker.terminate(); worker = null; for (const w of waiting.values()) w.reject(new Error('Stopped')); waiting.clear(); }
+export function call(msg, transfer, onPartial) {
   if (!worker) {
     worker = new Worker(new URL('./ai-worker.js', import.meta.url), { type: 'module' });
-    worker.onmessage = (e) => { const w = waiting.get(e.data.id); if (!w) return; waiting.delete(e.data.id); e.data.error ? w.reject(new Error(e.data.error)) : w.resolve(e.data.result); };
+    worker.onmessage = (e) => { const w = waiting.get(e.data.id); if (!w) return; if (e.data.partial != null) { w.onPartial?.(e.data.partial); return; } waiting.delete(e.data.id); e.data.error ? w.reject(new Error(e.data.error)) : w.resolve(e.data.result); };
     worker.onerror = (e) => { for (const w of waiting.values()) w.reject(new Error(e.message || 'AI worker failed')); waiting.clear(); worker = null; };
   }
   const id = ++seq;
   clearTimeout(idleTimer);
-  return new Promise((resolve, reject) => { waiting.set(id, { resolve, reject }); worker.postMessage({ ...msg, id }, transfer || []); }).finally(() => {
+  return new Promise((resolve, reject) => { waiting.set(id, { resolve, reject, onPartial }); worker.postMessage({ ...msg, id }, transfer || []); }).finally(() => {
     // the models take a few hundred MB: let them go after two idle minutes (they reload in a second or two)
     clearTimeout(idleTimer);
     idleTimer = setTimeout(() => { if (!waiting.size && worker) { worker.terminate(); worker = null; } }, 120000);
@@ -71,7 +91,7 @@ export async function ensureModels(need) {
   if (!missing.length) return true;
   const names = missing.map((k) => st[k].label).join(' and ');
   if (!st[missing[0]].downloading) {
-    const ok = await confirm('Download free AI models?', `This feature runs privately on this PC with free open models. It needs a one-time download of <b>${esc(names)}</b> (about ${missing.map((k) => ({ clip: 150, clap: 190, whisper: 80, minilm: 25 }[k] || 50)).reduce((a, b) => a + b, 0)} MB) from Hugging Face. Nothing about your files is sent anywhere.`, { ok: 'Download' });
+    const ok = await confirm('Download free AI models?', `This feature runs privately on this PC with free open models. It needs a one-time download of <b>${esc(names)}</b> (about ${missing.map((k) => ({ clip: 150, clap: 190, whisper: 80, minilm: 25, writer: 520, 'writer-gpu': 490 }[k] || 50)).reduce((a, b) => a + b, 0)} MB) from Hugging Face. Nothing about your files is sent anywhere.`, { ok: 'Download' });
     if (!ok) return false;
     for (const k of missing) await api('ai:download', k);
   }

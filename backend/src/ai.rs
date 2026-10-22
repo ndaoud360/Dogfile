@@ -18,10 +18,14 @@ struct Model {
     files: &'static [&'static str],
     optional: &'static [&'static str],
 }
-const MODELS: [(&str, Model); 4] = [
+const MODELS: [(&str, Model); 6] = [
     ("clip", Model { repo: "Xenova/clip-vit-base-patch32", label: "Pictures & video (CLIP)", files: &["config.json", "preprocessor_config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "onnx/text_model_quantized.onnx", "onnx/vision_model_quantized.onnx"], optional: &["special_tokens_map.json"] }),
     ("whisper", Model { repo: "Xenova/whisper-base", label: "Speech to text (Whisper)", files: &["config.json", "generation_config.json", "preprocessor_config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "added_tokens.json", "onnx/encoder_model_quantized.onnx", "onnx/decoder_model_merged_quantized.onnx"], optional: &["special_tokens_map.json", "added_tokens.json"] }),
     ("minilm", Model { repo: "Xenova/all-MiniLM-L6-v2", label: "Text understanding (MiniLM)", files: &["config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "onnx/model_quantized.onnx"], optional: &["special_tokens_map.json"] }),
+    // the writing helper in Notepad (summarize, rewrite, fix grammar, write…): a small instruction model,
+    // int8 for the processor (works everywhere) or 4-bit for the graphics card (much faster where WebGPU works)
+    ("writer", Model { repo: "onnx-community/Qwen2.5-0.5B-Instruct", label: "Writing helper (Qwen2.5 0.5B)", files: &["config.json", "generation_config.json", "tokenizer.json", "tokenizer_config.json", "onnx/model_quantized.onnx"], optional: &["generation_config.json"] }),
+    ("writer-gpu", Model { repo: "onnx-community/Qwen2.5-0.5B-Instruct", label: "Writing helper for the graphics card (Qwen2.5 0.5B)", files: &["config.json", "generation_config.json", "tokenizer.json", "tokenizer_config.json", "onnx/model_q4f16.onnx"], optional: &["generation_config.json"] }),
     ("clap", Model { repo: "Xenova/clap-htsat-unfused", label: "Music & sounds (CLAP)", files: &["config.json", "preprocessor_config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "onnx/text_model_quantized.onnx", "onnx/audio_model_quantized.onnx"], optional: &["special_tokens_map.json"] }),
 ];
 fn model(k: &str) -> Option<&'static Model> {

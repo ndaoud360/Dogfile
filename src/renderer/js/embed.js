@@ -45,6 +45,9 @@ export function onWindowClose(fn) {
 let menuSource = null, menuAfter = null;
 const menuRuns = new Map();
 let menuSeq = 0;
+// the assistant asks the app to do something ("sort the lines", "apply sepia") and gets { ok, msg } back
+let askHandler = null;
+export function onAsk(fn) { askHandler = fn; }
 export function exposeMenus(get, { after } = {}) { menuSource = get; menuAfter = after; }
 async function plainMenu(items) {
   if (typeof items === 'function') items = await items();
@@ -66,6 +69,10 @@ if (EMBED) window.addEventListener('message', async (e) => {
     let items = [];
     try { const all = menuSource ? await menuSource() : {}; if (m.name === '*') items = Object.keys(all); else { menuRuns.clear(); items = await plainMenu(all[m.name]); } } catch (err) { console.error(err); }
     tellHost({ type: 'menuSpec', token: m.token, items });
+  } else if (m.type === 'ask') {
+    let result;
+    try { result = askHandler ? await askHandler(m.op, m.arg) : { ok: false, msg: 'Not available here' }; } catch (err) { result = { ok: false, msg: err.message }; }
+    tellHost({ type: 'askAnswer', token: m.token, result: result ?? { ok: true } });
   } else if (m.type === 'menuRun') {
     const run = menuRuns.get(m.id);
     if (run) { try { await run(); } finally { menuAfter?.(); } }

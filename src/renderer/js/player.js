@@ -11,7 +11,7 @@ function applyMediaTheme() {
   if (!EMBED && sys?.platform === 'win32') api('win:overlay', dark ? { color: '#101012', symbolColor: '#c9cacc' } : { color: getComputedStyle(document.documentElement).getPropertyValue('--tabbar').trim() || '#efeff0', symbolColor: '#3a3a3a' });
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyMediaTheme());
-import { EMBED, pendingFiles, onHost, tellHost, showInFiles, setTitle, onWindowClose } from './embed.js';
+import { EMBED, pendingFiles, onHost, tellHost, showInFiles, setTitle, onWindowClose, onAsk } from './embed.js';
 onWindowClose(async () => true);
 import { analyzeAudio, cachedAnalysis } from './audio-analysis.js';
 
@@ -1055,6 +1055,24 @@ onHost({
     screenshot, info: mediaInfo, eq: () => $('b-eq').click(), list: () => $('b-list').click(), shuffle: () => $('pl-shuffle').click(), loop: cycleRepeat, ab: abLoop,
     extract: () => { openEdit(); ED.format = 'mp3'; renderEdit(); }, speedUp: () => setSpeed((prefs.speed || 1) + 0.1), speedDown: () => setSpeed((prefs.speed || 1) - 0.1),
   }[id]?.()),
+});
+// the assistant: "louder", "play at 1.5x", "skip 30 seconds", "go to 2:15", "mute"
+onAsk(async (op, a = {}) => {
+  if (op === 'context') return { ok: true, name: P.item?.name || '', kind: P.item ? (v.videoWidth ? 'video' : 'audio') : '', playing: !v.paused, pos: pos(), dur: dur() };
+  if (!P.item && !['play', 'open'].includes(op)) return { ok: false, msg: 'Nothing is playing' };
+  switch (op) {
+    case 'volume': setVolume(a.set != null ? a.set / 100 : (prefs.volume ?? 1) + (a.delta || 0) / 100); return { ok: true, msg: `Volume ${Math.round(prefs.volume * 100)}%` };
+    case 'mute': prefs.muted = a.on !== false; applyVolume(); osd(prefs.muted ? 'Muted' : 'Unmuted'); return { ok: true, msg: prefs.muted ? 'Muted' : 'Unmuted' };
+    case 'speed': setSpeed(a.set ?? (prefs.speed || 1) + (a.delta || 0)); return { ok: true, msg: `Speed ${prefs.speed}×` };
+    case 'seek': { const d = dur(); let t = a.to != null ? a.to : pos() + (a.by || 0); if (a.pct != null) t = (d * a.pct) / 100; t = Math.max(0, d ? Math.min(d - 0.5, t) : t); seek(t); const f = (x) => `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, '0')}`; return { ok: true, msg: `At ${f(t)}${d ? ` of ${f(d)}` : ''}` }; }
+    case 'pause': if (!v.paused) togglePlay(); return { ok: true, msg: 'Paused' };
+    case 'resume': if (v.paused) togglePlay(); return { ok: true, msg: 'Playing' };
+    case 'open': openFiles(); return { ok: true, msg: 'Choose what to play' };
+  }
+  const c = { play: togglePlay, stop, next: () => $('b-next').click(), prev: () => $('b-prev').click(), edit: openEdit, analyze: () => showAnalysis(true), fullscreen: toggleFullscreen, screenshot, info: mediaInfo, eq: () => $('b-eq').click(), list: () => $('b-list').click(), shuffle: () => $('pl-shuffle').click(), loop: cycleRepeat, ab: abLoop, transcript: openTranscript, extract: () => { openEdit(); ED.format = 'mp3'; renderEdit(); } }[op];
+  if (!c) return { ok: false, msg: `I can’t do “${op}” in the player` };
+  await c();
+  return { ok: true };
 });
 window.addEventListener('beforeunload', () => saveResume());
 window.__pl = { P, ED, TX, openTranscript, openEdit, runExport, showAnalysis, v, load, seek, setAudio, setSub, pos, dur, get AG() { return AG; }, prefs };

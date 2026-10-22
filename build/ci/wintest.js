@@ -44,5 +44,6 @@
   await T('recent (Windows)', async () => (await api('fs:recentWindows')).length);
   await T('doc text (txt)', async () => api('doc:text', D + '\\a.txt', 100));
   await T('window maximized?', async () => api('win:control', 'isMaximized'));
+  await T('window buttons drawn', async () => document.querySelectorAll('#win-ctl .wc-btn').length === 3 || document.querySelectorAll('#win-ctl .wc-btn').length);
   await log('DONE');
 })()

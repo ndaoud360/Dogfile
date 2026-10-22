@@ -10,6 +10,8 @@ import * as A from './actions.js';
 import { parseRequest, expandTopic, describePlan } from './assistant-parse.js';
 import { onWorkMsgFor } from './tools.js';
 import { planRules, describeAction } from './organize.js';
+import { parseAppRequest, writingRequest, APP_SUGGEST } from './assistant-apps.js';
+import { activeAppTab, appAsk } from './apptabs.js';
 
 export const results = new Map(); // id -> items (shown in a tab as atlas:search?assist=id)
 let panel = null, log = null, input = null, sendBtn = null;
@@ -36,9 +38,15 @@ export function toggleAssistant(force) {
   const open = force ?? !panel.classList.contains('open');
   panel.classList.toggle('open', open);
   document.body.classList.toggle('assistant-open', open);
-  if (open) setTimeout(() => input.focus(), 50);
+  if (open) { placeholder(); setTimeout(() => input.focus(), 50); }
   bus.emit('syncFrames');
 }
+function placeholder() {
+  if (!input) return;
+  const app = activeAppTab()?.app;
+  input.placeholder = app === 'editor' ? 'Tell Notepad what to do or write… (Enter to send)' : app === 'viewer' ? 'Tell Photos what to do… (Enter to send)' : app === 'player' ? 'Tell the Player what to do… (Enter to send)' : 'Ask about your files… (Enter to send)';
+}
+for (const ev of ['tabs', 'activePane', 'layout']) bus.on(ev, () => { if (panel?.classList.contains('open')) placeholder(); });
 function build() {
   log = h('div', { class: 'as-log' });
   input = h('textarea', { class: 'as-input', rows: '1', placeholder: 'Ask about your files… (Enter to send)', spellcheck: 'true' });
@@ -63,7 +71,10 @@ function build() {
   place();
   hello();
 }
+const APP_NAME = { editor: 'Notepad', viewer: 'Photos', player: 'the Player' };
 function hello() {
+  const app = activeAppTab()?.app;
+  if (APP_SUGGEST[app]) { log.append(msg('bot', h('div', {}, h('p', {}, `Tell me what to do in ${APP_NAME[app]} — several things at once is fine (“…and then…”).`), h('div', { class: 'as-sugg' }, ...APP_SUGGEST[app].map((x) => h('button', { class: 'chip', onclick: () => ask(x) }, x)))))); return; }
   log.append(msg('bot', h('div', {}, h('p', {}, 'Tell me what you’re looking for or what to do with your files. I’ll show you the plan and the files before changing anything.'), h('div', { class: 'as-sugg' }, ...SUGGEST.map((s) => h('button', { class: 'chip', onclick: () => ask(s) }, s))))));
 }
 const msg = (who, ...c) => h('div', { class: 'as-msg ' + who }, ...c);
@@ -352,6 +363,9 @@ const hasTarget = (p) => !!(p.kinds.length || p.topic.length || p.exts.length ||
 function ask(text) { return askAssistant(text); }
 export async function askAssistant(text) {
   if (busy) stopNow();
+  // a built-in app in this tab (Notepad, Photos, Player): the request is about it, unless it's clearly about files
+  const appT = activeAppTab();
+  if (appT && APP_NAME[appT.app] && (await askApp(appT, text))) return;
   const t = activeTab();
   const sel = selectedItems(t).filter((i) => !i.virtual);
   // small talk
@@ -391,6 +405,82 @@ export async function askAssistant(text) {
     return;
   }
   return runPlan(plan, startCard(text), { t, sel });
+}
+
+// ---------------- the app in this tab ----------------
+const FILE_TALK = /\b(files?|folders?|downloads|documents folder|desktop|pdfs?|photos (?:from|in|about)|videos (?:from|in)|organi[sz]e my|rename these|zip|move (?:these|them|my)|delete (?:these|them|my files))\b/i;
+async function askApp(t, text) {
+  const app = t.app;
+  const { steps, rest } = parseAppRequest(app, text);
+  if (!steps.length) {
+    if (app === 'editor' && writingRequest(text)) { await writeInNotepad(t, text, writingRequest(text)); return true; }
+    if (FILE_TALK.test(text)) return false;
+    // not understood: in Notepad anything else is a writing request; elsewhere say what works
+    if (app === 'editor' && !HELP_Q.test(text)) { await writeInNotepad(t, text, { mode: 'insert' }); return true; }
+    if (HELP_Q.test(text)) return false;
+    const card = startCard(text);
+    card.append(h('p', {}, `I didn’t catch what to do in ${APP_NAME[app]}. Try one of these:`), h('div', { class: 'as-sugg' }, ...APP_SUGGEST[app].map((x) => h('button', { class: 'chip', onclick: () => ask(x) }, x))));
+    return true;
+  }
+  const card = startCard(text);
+  const list = h('ul', { class: 'as-steps' });
+  card.append(list);
+  setBusy(true);
+  let done = 0;
+  try {
+    for (const st of steps) {
+      if (busy?.stop) break;
+      const arg = st.arg && typeof st.arg === 'object' ? Object.fromEntries(Object.entries(st.arg).filter(([k]) => k !== 'relative')) : st.arg;
+      let r = await appAsk(st.op, arg, t);
+      if (r?.ok !== false && st.apply) r = { ...(await appAsk('apply', null, t)), msg: r?.msg };
+      const ok = r?.ok !== false;
+      if (ok) done++;
+      if (st.quiet && ok) continue;
+      list.append(h('li', { class: ok ? 'ok' : 'bad' }, h('span', { class: 'as-step-ic', html: icon(ok ? 'check' : 'close') }), h('span', {}, r?.msg || st.label + (ok ? '' : ' — couldn’t do that'))));
+      scrollDown();
+      if (!ok) break;
+    }
+    if (rest.length) card.append(h('p', { class: 'hint' }, `I skipped “${rest.join('”, “')}” — I didn’t understand that part.`));
+    const undoable = steps.filter((x) => !NO_UNDO.has(x.op)).length;
+    if (done && undoable && app !== 'player') card.append(h('div', { class: 'as-acts' }, h('button', { class: 'btn small', onclick: async (e) => { e.currentTarget.disabled = true; for (let i = 0; i < undoable; i++) await appAsk('undo', null, t); toast('Undone'); } }, 'Undo')));
+  } finally { setBusy(false); scrollDown(); }
+  return true;
+}
+const NO_UNDO = new Set(['count', 'find', 'goto', 'top', 'bottom', 'copy', 'save', 'saveAs', 'saveCopy', 'overwrite', 'info', 'next', 'prev', 'ocr', 'stats', 'apply', 'applyCrop', 'cropAspect', 'zoomIn', 'zoomOut', 'fit', 'wrap', 'whitespace', 'preview', 'zoom', 'fontSize', 'lang', 'eol', 'encoding', 'readonly', 'hash', 'new', 'open', 'selectAll', 'drawMode', 'drawColor', 'format', 'edit', 'exitEdit', 'slideshow', 'fullscreen', 'extract', 'undo', 'redo', 'bookmark', 'fold', 'lineNumbers', 'tabSize', 'close', 'delete']);
+// writing with the local model: summaries and answers show here; new text goes into the document
+async function writeInNotepad(t, text, { mode }) {
+  const card = startCard(text);
+  const ctx = await appAsk('context', null, t);
+  if (ctx?.ok === false) { card.append(h('p', {}, ctx.msg)); return; }
+  const target = ctx.selection || (mode === 'insert' ? '' : ctx.text);
+  if ((mode === 'replace' || mode === 'answer') && !target.trim()) { card.append(h('p', {}, 'The document is empty — write or paste something first, or ask me to write something new.')); return; }
+  const sys = 'You are a writing assistant inside a text editor. Reply with only the requested text: no preamble, no explanations, no quotes around it, no markdown code fences unless the document is code. Keep the language of the document unless asked to translate.';
+  const fence = (x) => `<<<\n${x}\n>>>`;
+  const user = mode === 'insert' ? (ctx.text.trim() ? `Document so far, for context:\n${fence(ctx.text.slice(-3000))}\n\nTask: ${text}` : text)
+    : mode === 'end' ? `Continue this text naturally:\n${fence(ctx.text.slice(-4000))}\n\n${text}`
+    : `${text}\n\nText:\n${fence(target.slice(0, 8000))}`;
+  const out = h('div', { class: 'as-write' });
+  const status = h('p', { class: 'hint' }, 'Writing… (runs on this PC; the first time takes a moment to load)');
+  card.append(status, out);
+  setBusy(true);
+  const ai = await import('./ai.js');
+  (busy.onStop ||= []).push(() => ai.stopAI());
+  let res = null;
+  try { res = await ai.write([{ role: 'system', content: sys }, { role: 'user', content: user }], { onPartial: (p) => { out.textContent = p; scrollDown(); }, maxTokens: mode === 'answer' ? 300 : 700 }); }
+  catch (e) { status.textContent = /Stopped/.test(e.message) ? 'Stopped.' : `Couldn’t write that: ${e.message}`; setBusy(false); return; }
+  setBusy(false);
+  if (res == null) { status.textContent = 'The writing helper needs its one-time download to work.'; return; }
+  res = res.replace(/^```\w*\n?|\n?```$/g, '').replace(/^<<<\n?|\n?>>>$/g, '').trim();
+  out.textContent = res;
+  status.textContent = mode === 'answer' ? '' : 'Ready:';
+  const put = (m, label, primary) => h('button', { class: 'btn small' + (primary ? ' primary' : ''), onclick: async () => { const r = await appAsk('write', { text: res, mode: m }, t); toast(r?.ok === false ? r.msg : 'Done'); } }, label);
+  const acts = h('div', { class: 'as-acts' });
+  if (mode === 'replace') acts.append(put(ctx.selection ? 'replaceSel' : 'replaceAll', ctx.selection ? 'Replace the selection' : 'Replace the document', true), put('cursor', 'Insert at the cursor'));
+  else if (mode === 'end') acts.append(put('end', 'Add to the end', true));
+  else if (mode === 'answer') acts.append(put('end', 'Add to the document'), put('cursor', 'Insert at the cursor'));
+  else acts.append(put('cursor', 'Insert at the cursor', true), put('end', 'Add to the end'), ctx.selection ? put('replaceSel', 'Replace the selection') : '');
+  acts.append(h('button', { class: 'btn small', onclick: () => api('clip:writeText', res).then(() => toast('Copied')) }, 'Copy'));
+  card.append(acts); scrollDown();
 }
 
 // ---------------- help: answers from Dogfile's own feature list, commands and guide ----------------

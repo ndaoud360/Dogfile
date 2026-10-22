@@ -1525,3 +1525,12 @@ body.item-dragging iframe { pointer-events: none !important; }
 /* a built-in app alone in the window: no preview column */
 body.show-preview.app-only #workspace { grid-template-columns: minmax(0, 1fr) 0 0; }
 body.app-only #preview, body.app-only #preview-resizer { display: none; }
+
+/* assistant: steps done in an app */
+.as-steps { list-style: none; margin: 6px 0 2px; padding: 0; display: grid; gap: 4px; }
+.as-steps li { display: flex; gap: 6px; align-items: flex-start; font-size: 13px; }
+.as-step-ic .ic { width: 14px; height: 14px; margin-top: 2px; }
+.as-steps li.ok .as-step-ic { color: var(--good, #2e9d57); }
+.as-steps li.bad .as-step-ic { color: var(--danger, #d64545); }
+.as-write { white-space: pre-wrap; font-size: 13px; line-height: 1.5; background: var(--bg-hover); border-radius: 8px; padding: 8px 10px; margin: 4px 0 6px; max-height: 320px; overflow: auto; }
+.as-write:empty { display: none; }

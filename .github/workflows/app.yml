@@ -1,3 +1,4 @@
+# (Windows jobs run on the self-hosted PC runner when the repository variable RUNNER is "pc".)
 # Builds Dogfile (Tauri + Rust) for Windows, runs the engine's tests, starts the app once on the runner to
 # check that it draws and to measure its memory, and publishes Dogfile.exe on the app-bin branch.
 # The interface (src/renderer) is minified and packed into the program (build/pack-ui.mjs): nothing else ships.

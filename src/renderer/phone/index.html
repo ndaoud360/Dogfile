@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Dogfile">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#121316">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icon.png">
+  <link rel="icon" href="/icon.png">
+  <link rel="stylesheet" href="/phone.css">
+  <title>Dogfile · {{PC}}</title>
+</head>
+<body>
+  <header>
+    <img src="/icon.png" alt="" class="logo">
+    <div class="who"><div class="t">Dogfile</div><div class="pc" id="pc">{{PC}}</div></div>
+    <span id="dot" class="dot" title="Connection"></span>
+  </header>
+  <main id="main">
+    <section id="pairing" hidden>
+      <div class="card center">
+        <div class="big">Connect this phone</div>
+        <p id="pair-msg">On your PC, open Dogfile, choose <b>Phone transfer</b>, and scan the code it shows with this phone’s camera.</p>
+      </div>
+    </section>
+    <section id="app" hidden>
+      <label class="send">
+        <input type="file" id="pick" multiple>
+        <span class="plus">＋</span>
+        <span><b>Send photos &amp; files</b><small id="inbox-name">to your PC</small></span>
+      </label>
+      <button id="text-btn" class="ghost">Send text or a link</button>
+      <div id="ups"></div>
+      <h2 id="from-h">From your PC</h2>
+      <div id="from" class="list"></div>
+      <div id="shared-wrap" hidden>
+        <h2>Shared folders</h2>
+        <div id="crumbs"></div>
+        <div id="shared" class="list"></div>
+      </div>
+      <p class="tip" id="tip"></p>
+    </section>
+  </main>
+  <dialog id="text-dlg">
+    <form method="dialog">
+      <div class="big">Send to your PC</div>
+      <textarea id="text-in" rows="5" placeholder="Text or a link…"></textarea>
+      <div class="row"><button value="cancel" class="ghost">Cancel</button><button value="send" id="text-send">Send</button></div>
+    </form>
+  </dialog>
+  <div id="toast"></div>
+  <script src="/phone.js"></script>
+</body>
+</html>

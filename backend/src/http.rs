@@ -171,6 +171,16 @@ async fn invoke(req: Req) -> Resp {
 
 /// the bridge (window.atlas) goes first in every page
 const BRIDGE_TAG: &str = "<script src=\"/app/js/bridge.js\"></script>";
+/// an interface file as stored (packed into the program, or from the folder in development), without changes
+pub fn ui_bytes(rel: &str) -> Option<Vec<u8>> {
+    if rel.split(['/', '\\']).any(|seg| seg == "..") {
+        return None;
+    }
+    match st().ui.as_ref() {
+        Some(p) => p.get(rel),
+        None => std::fs::read(st().renderer_dir.join(rel)).ok(),
+    }
+}
 fn app_file(rest: &str) -> Resp {
     let rel = urlencoding::decode(rest).map(|c| c.into_owned()).unwrap_or_else(|_| rest.to_string());
     if rel.split(['/', '\\']).any(|seg| seg == "..") {

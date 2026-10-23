@@ -31,6 +31,7 @@ import './rules.js';
 import * as U from './updates.js';
 import './history.js';
 import './reminders.js';
+import './phonelink.js';
 import './workspaces.js';
 import './cliphistory.js';
 import './a11y.js';
@@ -217,14 +218,14 @@ const R = {
     ['Rename', [['batchRename', 'Rename Studio', true]]],
     ['Compress', [['quickZip', 'Zip', true], ['compress', 'Compress…'], ['extract'], ['extractTo']]],
     ['Find', [['newCollection', 'New collection'], ['dupes', 'Duplicates'], ['similarImages', 'Similar pictures']]],
-    ['Share', [['copyPath', 'Copy path'], ['copyName'], ['createShortcut'], ['symlink'], ['addToShelf', 'Add to Drop Shelf']]],
+    ['Share', [['sendToPhone', 'Send to phone'], ['copyPath', 'Copy path'], ['copyName'], ['createShortcut'], ['symlink'], ['addToShelf', 'Add to Drop Shelf']]],
   ],
   tools: [
     ['Clean up', [['cleanup', 'Cleanup', true], ['analyze', 'Disk space'], ['emptyRecycle'], ['similarMedia', 'Similar media']]],
     ['Compare', [['compare', 'Compare & sync', true]]],
     ['Protect', [['history', 'File history'], ['allVersions', 'Versions'], ['makeChecksums', 'Checksums'], ['verifyChecksums', 'Verify'], ['hashes'], ['whoLocks', 'What’s locking it?']]],
-    ['Connect', [['connections', 'Servers', true], ['addConnection', 'Add server']]],
-    ['Apps', [['notepad', 'Notepad', true], ['player', 'Player', true], ['terminalDrawer', 'Terminal'], ['shelf', 'Drop Shelf'], ['gotoFile', 'Go to file']]],
+    ['Connect', [['phoneTransfer', 'Phone', true], ['connections', 'Servers', true], ['addConnection', 'Add server']]],
+    ['Apps', [['notepad', 'Notepad', true], ['player', 'Player', true], ['viewer3d', '3D viewer'], ['terminalDrawer', 'Terminal'], ['shelf', 'Drop Shelf'], ['gotoFile', 'Go to file']]],
     ['Automate', [['features', 'Features', true], ['startMacro', 'Record macro'], ['macros', 'Macros'], ['featureStore', 'Get features']]],
     ['Windows', [['showInExplorer'], ['winProperties'], ['windowsMenu']]],
   ],
@@ -338,7 +339,7 @@ function fileMenu(btn) {
     full && { label: 'Open terminal', icon: 'terminal', submenu: [C('terminal', 'Default terminal'), C('psHere', 'PowerShell'), C('cmdHere', 'Command Prompt'), C('terminalAdmin', 'As administrator')] },
     full && C('editor'),
     { separator: true },
-    { label: 'Tools', icon: 'wand', submenu: [{ header: 'Tidy & clean' }, C('declutter'), C('cleanup'), C('automations'), C('analyze'), { separator: true }, { header: 'Find' }, C('dupes'), C('similarImages'), C('similarMedia'), C('compare'), C('newCollection'), { separator: true }, { header: 'Safety' }, C('history'), C('allVersions'), C('makeChecksums'), C('verifyChecksums')] },
+    { label: 'Tools', icon: 'wand', submenu: [{ header: 'Tidy & clean' }, C('declutter'), C('cleanup'), C('automations'), C('analyze'), { separator: true }, { header: 'Find' }, C('dupes'), C('similarImages'), C('similarMedia'), C('compare'), C('newCollection'), { separator: true }, { header: 'Safety' }, C('history'), C('allVersions'), C('makeChecksums'), C('verifyChecksums'), { separator: true }, { header: 'Phone' }, C('phoneTransfer')] },
     { label: 'Features', icon: 'puzzle', submenu: () => { const f = featureCmds(); return [...f, f.length && { separator: true }, C('features', 'Manage features…'), C('createFeature'), C('featureStore', 'Browse & share features…')].filter(Boolean); } },
     full && { label: 'Macros', icon: 'record', submenu: [C('startMacro'), C('macros'), ...[...commands.values()].filter((c) => c.id.startsWith('macro:')).map((c) => ({ label: c.title.replace(/^Macro: /, ''), icon: 'record', run: c.run }))] },
     { separator: true },

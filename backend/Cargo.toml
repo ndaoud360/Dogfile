@@ -28,6 +28,7 @@ trash = "5"
 arboard = { version = "3", default-features = false, features = ["image-data"] }
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "tga", "exr", "hdr", "tiff", "bmp", "ico", "pnm", "qoi", "webp", "gif", "ff"] }
 psd = "0.3"
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 image_dds = { version = "0.7", default-features = false, features = ["ddsfile", "image"] }
 portable-pty = "0.9"
 dirs = "6"

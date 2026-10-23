@@ -1,6 +1,6 @@
 // Command registry: every action has an id, title, icon and default shortcut(s).
 // Shortcuts are user-remappable; the Command Palette (Ctrl+Shift+P) searches them all.
-import { api, state, bus, h, esc, isVirtual, saveSettings, toast, IS_WIN, sys, debounce } from './core.js';
+import { api, state, bus, h, esc, isVirtual, saveSettings, toast, IS_WIN, sys, debounce, isModelFile } from './core.js';
 import { openTool } from './apptabs.js';
 import { icon } from './icons.js';
 import {
@@ -175,6 +175,8 @@ def('verifyChecksums', 'Verify checksums…', { icon: 'shieldCheck', cat: 'Tools
 def('assistant', 'Ask the file assistant…', { icon: 'sparkle', keys: ['Ctrl+J'], cat: 'Tools', run: () => import('./assistant.js').then((m) => m.toggleAssistant()) });
 def('connections', 'Server connections (NAS, SFTP, FTP, WebDAV)…', { icon: 'server', cat: 'Tools', run: () => import('./network.js').then((m) => m.connectionsDialog()) });
 def('addConnection', 'Add a server connection…', { icon: 'server', cat: 'Tools', run: () => import('./network.js').then((m) => m.editConnection(null)) });
+def('phoneTransfer', 'Phone transfer…', { icon: 'phone', cat: 'Tools', run: () => import('./phonelink.js').then((m) => m.openPhoneTransfer()) });
+def('sendToPhone', 'Send to phone', { icon: 'phone', cat: 'Tools', run: () => { const t = activeTab(); const p = selectedItems(t).filter((i) => !i.mtp && !i.virtual).map((i) => i.path); return import('./phonelink.js').then((m) => (p.length ? m.sendToPhone(p) : m.openPhoneTransfer())); } });
 def('reminders', 'Document reminders…', { icon: 'bell', cat: 'Tools', run: () => import('./reminders.js').then((m) => m.openReminders()) });
 def('clipHistory', 'Clipboard history…', { icon: 'clipboard', keys: ['Ctrl+Shift+V'], cat: 'Edit', run: () => import('./cliphistory.js').then((m) => m.showHistory()) });
 def('fileTypes', 'File types (what opens each kind of file)…', { icon: 'open', cat: 'App', run: () => import('./assoc.js').then((m) => m.fileTypesDialog()) });
@@ -199,6 +201,7 @@ def('flatten', 'Flatten this folder (all files in subfolders)', { icon: 'flatten
 def('flattenSel', 'Flatten selected folder', { icon: 'flatten', cat: 'View', hidden: true, run: () => { const d = S_().find((i) => i.isDir && !i.virtual); if (d) navigate(T_(), T.searchUrl({ root: d.path, kind: 'file', flatten: 1 })); } });
 def('gotoFile', 'Go to file…', { icon: 'search', keys: ['Ctrl+P'], cat: 'Navigate', run: () => palette('', 'files') });
 def('notepad', 'Open Dogfile Notepad', { icon: 'notepad', cat: 'Tools', run: () => { const s = S_().filter((i) => !i.isDir && !i.virtual); openTool('editor', s.map((i) => i.path)); } });
+def('viewer3d', 'Open Dogfile 3D', { icon: 'cube', cat: 'Tools', run: () => { const s = S_().filter((i) => !i.isDir && !i.virtual && isModelFile(i)); openTool('model', s.map((i) => i.path)); } });
 def('player', 'Open Dogfile Player', { icon: 'film', cat: 'Tools', run: () => { const s = S_().filter((i) => !i.isDir && !i.virtual); openTool('player', s.map((i) => i.path), { play: true }); } });
 def('whoLocks', 'What’s locking this?', { icon: 'lock', cat: 'Tools', run: () => { const s = S_(); if (s.length) bus.emit('whoLocks', s.map((i) => i.path)); } });
 def('terminalAdmin', 'Open terminal as administrator', { icon: 'admin', keys: ['Ctrl+Shift+`'], cat: 'Tools', run: () => A.openTerminal(T_(), null, true) });

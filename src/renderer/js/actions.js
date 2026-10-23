@@ -1107,6 +1107,7 @@ export function buildItemsMenu(t, items) {
     real.length && { label: 'Tags', icon: 'tag', submenu: tagMenu(paths) },
     allDirs && real.length && { label: isPinned(real[0].path) ? 'Unpin from sidebar' : 'Pin to sidebar', icon: isPinned(real[0]?.path) ? 'unpin' : 'pin', run: () => (isPinned(real[0].path) ? unpin(real[0].path) : pin(paths)) },
     real.length && { label: 'More', icon: 'more', submenu: [
+      !real.some((i) => i.mtp) && { label: 'Send to phone', icon: 'phone', run: () => import('./phonelink.js').then((m) => m.sendToPhone(paths)) },
       { label: 'Add to Drop Shelf', icon: 'shelf', run: () => bus.emit('addToShelf', paths) },
       allDirs && { label: 'Flatten (show all files inside)', icon: 'flatten', run: () => bus.cmd('flattenSel') },
       IS_WIN() && { label: 'What’s locking this?', icon: 'lock', run: () => bus.emit('whoLocks', paths) },

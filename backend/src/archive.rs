@@ -207,8 +207,32 @@ fn spawn_tracked(j: &Job, cmd: &Path, args: &[String], cwd: Option<&Path>) -> JR
 fn s(p: &Path) -> String {
     p.to_string_lossy().into_owned()
 }
+/// A keyfile instead of (or as well as) a password: any file (a photo, a song…) whose bytes make the password.
+/// The same keyfile, untouched, opens the archive again; Dogfile asks for it when an archive won't open.
+pub fn keyfile_password(keyfile: &str, typed: &str) -> Result<String, String> {
+    use sha2::{Digest, Sha256};
+    let mut f = std::fs::File::open(keyfile).map_err(|e| format!("Can’t read the keyfile: {e}"))?;
+    let mut h = Sha256::new();
+    h.update(b"dogfile-keyfile-v1\0");
+    h.update(typed.as_bytes());
+    h.update(b"\0");
+    std::io::copy(&mut f, &mut h).map_err(|e| format!("Can’t read the keyfile: {e}"))?;
+    Ok(h.finalize().iter().map(|b| format!("{b:02x}")).collect())
+}
+/// the password for 7-Zip: typed, from a keyfile, or (extracting) an empty one so 7-Zip says it needs one
+/// instead of waiting for someone to type it
 fn password(j: &Job, key: &str) -> Vec<String> {
-    j.opts[key].as_str().filter(|p| !p.is_empty()).map(|p| vec![format!("-p{p}")]).unwrap_or_default()
+    let typed = j.opts[key].as_str().unwrap_or("");
+    if let Some(k) = j.opts["keyfile"].as_str().filter(|k| !k.is_empty()) {
+        return keyfile_password(k, typed).map(|p| vec![format!("-p{p}")]).unwrap_or_default();
+    }
+    if typed.is_empty() { vec![] } else { vec![format!("-p{typed}")] }
+}
+/// extracting: an empty password when none is given, so an encrypted archive fails at once ("wrong password")
+/// instead of 7-Zip waiting for someone to type one
+fn password_or_empty(j: &Job, key: &str) -> Vec<String> {
+    let p = password(j, key);
+    if p.is_empty() { vec!["-p".into()] } else { p }
 }
 fn rel_names(sources: &[String], parent: &Path) -> Vec<String> {
     sources.iter().map(|x| Path::new(x).strip_prefix(parent).map(|r| r.to_string_lossy().into_owned()).unwrap_or_else(|_| basename(x))).collect()
@@ -247,8 +271,20 @@ pub fn extract(j: &Arc<Job>) -> JR {
             Some(z) => {
                 let mut a = vec!["x".into(), "-y".into(), "-bsp1".into(), format!("-o{dest}"), file.clone()];
                 a.extend(member);
-                a.extend(password(j, "password"));
-                spawn_tracked(j, &z, &a, None)?;
+                a.extend(password_or_empty(j, "password"));
+                if let Err(e) = spawn_tracked(j, &z, &a, None) {
+                    // the folder just made for this archive goes again when nothing came out of it: still empty,
+                    // or a wrong password (7-Zip leaves empty placeholders of the files it couldn't decrypt)
+                    let wrong_pw = matches!(&e, Err(m) if m.to_lowercase().contains("password"));
+                    if !same_path(&dest, &jdest) {
+                        if wrong_pw {
+                            let _ = std::fs::remove_dir_all(&dest);
+                        } else if std::fs::read_dir(&dest).map(|mut d| d.next().is_none()).unwrap_or(false) {
+                            let _ = std::fs::remove_dir(&dest);
+                        }
+                    }
+                    return Err(e);
+                }
             }
             None => {
                 let mut a = vec!["-xvf".into(), file.clone(), "-C".into(), dest.clone()];
@@ -264,20 +300,71 @@ pub fn extract(j: &Arc<Job>) -> JR {
 
 pub fn compress(j: &Arc<Job>) -> JR {
     j.d.lock().indeterminate = true;
-    let out = j.opts["output"].as_str().unwrap_or("").to_string();
-    let fmt = j.opts["format"].as_str().map(String::from).unwrap_or_else(|| util::ext(&out)).to_lowercase();
+    let o = &j.opts;
+    let out = o["output"].as_str().unwrap_or("").to_string();
+    let fmt = o["format"].as_str().map(String::from).unwrap_or_else(|| util::ext(&out)).to_lowercase();
     let fmt = if fmt.is_empty() { "zip".into() } else { fmt };
     let parent = PathBuf::from(util::dirname(&j.sources[0]));
     let names = rel_names(&j.sources, &parent);
     let _ = std::fs::remove_file(&out);
+    let tarball = matches!(fmt.as_str(), "tar.gz" | "tgz" | "tar.xz" | "txz" | "tar.bz2" | "tbz2");
+    let str_opt = |k: &str| o[k].as_str().map(str::trim).filter(|v| !v.is_empty()).map(String::from).or_else(|| o[k].as_u64().map(|n| n.to_string()));
+    let mut volumes = false;
     match find_7z() {
-        Some(z) if fmt != "tar.gz" && fmt != "tgz" => {
-            let t = match fmt.as_str() { "7z" => "7z", "tar" => "tar", "gz" => "gzip", "xz" => "xz", "wim" => "wim", _ => "zip" };
+        Some(z) if !tarball => {
+            let t = match fmt.as_str() { "7z" => "7z", "tar" => "tar", "gz" => "gzip", "xz" => "xz", "bz2" => "bzip2", "wim" => "wim", _ => "zip" };
             let mut a = vec!["a".into(), "-bsp1".into(), format!("-t{t}")];
-            if let Some(l) = j.opts["level"].as_u64() { a.push(format!("-mx={l}")) }
-            if let Some(p) = j.opts["password"].as_str().filter(|p| !p.is_empty()) {
-                a.push(format!("-p{p}"));
-                if t == "7z" { a.push("-mhe=on".into()) }
+            if let Some(l) = o["level"].as_u64() {
+                a.push(format!("-mx={}", l.min(9)))
+            }
+            // the method: 7z LZMA2 / LZMA / PPMd / BZip2 / Copy; zip Deflate / Deflate64 / BZip2 / LZMA / PPMd
+            if let Some(m) = str_opt("method") {
+                let ok7 = ["LZMA2", "LZMA", "PPMd", "BZip2", "Copy"];
+                let okz = ["Deflate", "Deflate64", "BZip2", "LZMA", "PPMd", "Copy"];
+                if t == "7z" && ok7.contains(&m.as_str()) {
+                    a.push(format!("-m0={m}"))
+                } else if t == "zip" && okz.contains(&m.as_str()) {
+                    a.push(format!("-mm={m}"))
+                }
+            }
+            // dictionary ("64m"): how far back the compressor looks; bigger finds more but needs more memory
+            if let Some(d) = str_opt("dictionary").filter(|d| regex::Regex::new(r"^\d{1,4}[kmg]?$").unwrap().is_match(&d.to_lowercase())) {
+                if t == "7z" {
+                    let ppmd = o["method"].as_str() == Some("PPMd");
+                    a.push(if ppmd { format!("-m0mem={d}") } else { format!("-md={d}") })
+                } else if t == "zip" && matches!(o["method"].as_str(), Some("LZMA" | "BZip2" | "PPMd")) {
+                    a.push(format!("-md={d}"))
+                }
+            }
+            // solid: files compressed as one stream (smaller, but slower to take one file out)
+            if t == "7z" {
+                if let Some(sv) = str_opt("solid").filter(|v| regex::Regex::new(r"^(on|off|\d{1,5}[kmgf]?|e)$").unwrap().is_match(v)) {
+                    a.push(format!("-ms={sv}"))
+                }
+            }
+            if let Some(n) = o["threads"].as_u64().filter(|n| *n > 0 && *n <= 256) {
+                a.push(format!("-mmt={n}"))
+            }
+            // split into pieces of this size (e.g. "4480m" for a DVD)
+            if let Some(v) = str_opt("volume").filter(|v| regex::Regex::new(r"^\d{1,9}[bkmg]?$").unwrap().is_match(&v.to_lowercase())) {
+                a.push(format!("-v{}", v.to_lowercase()));
+                volumes = true;
+            }
+            let has_pw = o["password"].as_str().map(|p| !p.is_empty()).unwrap_or(false) || o["keyfile"].as_str().map(|k| !k.is_empty()).unwrap_or(false);
+            if has_pw {
+                a.extend(password(j, "password"));
+                if t == "7z" && o["encryptNames"].as_bool() != Some(false) {
+                    a.push("-mhe=on".into())
+                }
+                if t == "zip" {
+                    a.push(if o["zipCrypto"].as_bool() == Some(true) { "-mem=ZipCrypto".into() } else { "-mem=AES256".into() })
+                }
+            }
+            for x in crate::args::strs(&o["exclude"]) {
+                let x = x.trim();
+                if !x.is_empty() && !x.contains('"') {
+                    a.push(format!("-xr!{x}"))
+                }
             }
             a.push(out.clone());
             a.extend(names);
@@ -289,13 +376,25 @@ pub fn compress(j: &Arc<Job>) -> JR {
                 "7z" => vec!["--format".into(), "7zip".into(), "-cvf".into(), out.clone()],
                 "tar" => vec!["-cvf".into(), out.clone()],
                 "tar.gz" | "tgz" => vec!["-czvf".into(), out.clone()],
+                "tar.xz" | "txz" => vec!["-cJvf".into(), out.clone()],
+                "tar.bz2" | "tbz2" => vec!["-cjvf".into(), out.clone()],
                 _ => vec!["-a".into(), "-cvf".into(), out.clone()],
             };
             a.extend(names);
             spawn_tracked(j, &tar_exe(), &a, Some(&parent))?;
         }
     }
-    j.d.lock().undo = json!({ "type": "created", "paths": [out] });
+    // split archives are name.7z.001, .002…
+    let made: Vec<String> = if volumes {
+        let base = basename(&out);
+        let dir = PathBuf::from(util::dirname(&out));
+        let mut v: Vec<String> = std::fs::read_dir(&dir).map(|rd| rd.flatten().map(|e| e.file_name().to_string_lossy().to_string()).filter(|n| n.starts_with(&format!("{base}.")) && n[base.len() + 1..].chars().all(|c| c.is_ascii_digit())).map(|n| dir.join(n).to_string_lossy().to_string()).collect()).unwrap_or_default();
+        v.sort();
+        v
+    } else {
+        vec![out]
+    };
+    j.d.lock().undo = json!({ "type": "created", "paths": made });
     Ok(())
 }
 
@@ -361,7 +460,7 @@ pub fn convert(j: &Arc<Job>) -> JR {
         match if is_tarball(&src) { None } else { seven_for(&src) } {
             Some(z) => {
                 let mut a = vec!["x".into(), "-y".into(), "-bsp1".into(), format!("-o{}", s(&tmp)), src.clone()];
-                a.extend(password(j, "password"));
+                a.extend(password_or_empty(j, "password"));
                 spawn_tracked(j, &z, &a, None)?;
             }
             None => spawn_tracked(j, &tar_exe(), &["-xf".into(), src.clone(), "-C".into(), s(&tmp)], None)?,

@@ -219,15 +219,92 @@ export function patternToTest(pattern) {
 }
 
 // ---------- compress ----------
+// sizes to split an archive into (7-Zip volume sizes)
+const SPLITS = [['', 'Don’t split'], ['10m', '10 MB'], ['25m', '25 MB (email)'], ['100m', '100 MB'], ['650m', '650 MB (CD)'], ['700m', '700 MB (CD)'], ['4092m', '4 GB (FAT32 USB stick)'], ['4480m', '4.7 GB (DVD)'], ['8100m', '8.5 GB (dual-layer DVD)'], ['23800m', '25 GB (Blu-ray)'], ['custom', 'Custom size…']];
+const DICTS = ['', '64k', '1m', '4m', '16m', '32m', '64m', '128m', '256m', '512m', '1024m', '1536m'];
+/** the Compress dialog: format, level; and (More options) method, dictionary, solid, threads, splitting,
+ *  password or keyfile, encryption, excludes, recycling the originals. The last choices are remembered. */
 export function compressDialog(defaultName, has7z) {
+  const last = state.settings.compressLast || {};
+  const sel = (opts, v) => { const x = h('select', { class: 'input' }, ...opts.map(([k, l]) => h('option', { value: k }, l))); x.value = v ?? opts[0][0]; return x; };
   const name = h('input', { class: 'input', value: defaultName });
-  const fmt = h('select', { class: 'input' }, ...['zip', '7z', 'tar', 'tar.gz'].map((f) => h('option', { value: f }, f.toUpperCase())));
-  const level = h('select', { class: 'input' }, ...[['', 'Default'], ['0', 'Store (no compression)'], ['1', 'Fastest'], ['5', 'Normal'], ['9', 'Ultra']].map(([v, l]) => h('option', { value: v }, l)));
-  const pw = h('input', { class: 'input', type: 'password', placeholder: has7z ? 'Password (optional)' : 'Password requires 7-Zip', disabled: !has7z });
+  const fmt = sel([['zip', 'ZIP'], ['7z', '7Z'], ['tar', 'TAR'], ['tar.gz', 'TAR.GZ'], ['tar.xz', 'TAR.XZ'], ['tar.bz2', 'TAR.BZ2'], ['wim', 'WIM']].filter(([k]) => has7z || !['wim'].includes(k)), last.format || 'zip');
+  const level = sel([['', 'Default'], ['0', 'Store (no compression)'], ['1', 'Fastest'], ['3', 'Fast'], ['5', 'Normal'], ['7', 'Maximum'], ['9', 'Ultra']], last.level ?? '');
+  const method = h('select', { class: 'input' });
+  const dict = sel(DICTS.map((d) => [d, d ? d.replace(/(\d+)k$/, '$1 KB').replace(/(\d+)m$/, '$1 MB') : 'Default']), last.dictionary ?? '');
+  const solid = sel([['', 'Default'], ['on', 'Solid (smallest)'], ['off', 'Not solid (each file on its own)'], ['1g', 'Blocks of 1 GB'], ['256m', 'Blocks of 256 MB'], ['e', 'One block per file type']], last.solid ?? '');
+  const threads = sel([['', 'All cores'], ...[1, 2, 4, 8, 16].map((n) => [String(n), `${n} thread${n === 1 ? '' : 's'}`])], last.threads ? String(last.threads) : '');
+  const split = sel(SPLITS, SPLITS.some(([k]) => k === last.volume) ? last.volume : last.volume ? 'custom' : '');
+  const splitCustom = h('input', { class: 'input', placeholder: 'e.g. 2000 (MB)', value: last.volume && !SPLITS.some(([k]) => k === last.volume) ? String(last.volume).replace(/m$/, '') : '' });
+  const pw = h('input', { class: 'input', type: 'password', placeholder: has7z ? 'Password (optional)' : 'Password requires 7-Zip', disabled: !has7z, autocomplete: 'new-password' });
+  const pw2 = h('input', { class: 'input', type: 'password', placeholder: 'Type it again', disabled: !has7z, autocomplete: 'new-password' });
+  let keyfile = '';
+  const keyLabel = h('span', { class: 'hint ellipsis' }, 'No keyfile');
+  const keyBtn = h('button', { class: 'btn small', disabled: !has7z, onclick: async () => { const [f] = (await api('dialog:openFiles', { title: 'Choose a keyfile (any file you won’t change)' })) || []; if (f) { keyfile = f; keyLabel.textContent = basename(f); keyClear.style.display = ''; } } }, 'Use a keyfile…');
+  const keyClear = h('button', { class: 'icon-btn small', title: 'No keyfile', html: icon('close'), style: { display: 'none' }, onclick: () => { keyfile = ''; keyLabel.textContent = 'No keyfile'; keyClear.style.display = 'none'; } });
+  const encNames = h('input', { type: 'checkbox', checked: last.encryptNames !== false });
+  const zipCrypto = h('input', { type: 'checkbox', checked: !!last.zipCrypto });
+  const exclude = h('input', { class: 'input', placeholder: 'e.g. *.tmp, Thumbs.db, node_modules', value: last.exclude || '' });
+  const recycle = h('input', { type: 'checkbox', checked: false });
+  const fill = () => {
+    const f = fmt.value;
+    const m = f === '7z' ? [['', 'LZMA2 (default)'], ['LZMA', 'LZMA'], ['PPMd', 'PPMd (good for text)'], ['BZip2', 'BZip2'], ['Copy', 'Copy (no compression)']]
+      : f === 'zip' ? [['', 'Deflate (default, opens anywhere)'], ['Deflate64', 'Deflate64'], ['BZip2', 'BZip2'], ['LZMA', 'LZMA'], ['PPMd', 'PPMd']] : [['', 'Default']];
+    const keep = method.value || last.method || '';
+    method.innerHTML = ''; for (const [k, l] of m) method.append(h('option', { value: k }, l));
+    method.value = m.some(([k]) => k === keep) ? keep : '';
+    const z7 = has7z && !/^tar\./.test(f);
+    for (const el of [method, dict, threads, split, pw, pw2, keyBtn]) el.disabled = !z7 || (el === method && m.length === 1);
+    solid.disabled = !(z7 && f === '7z');
+    encNames.parentElement.style.display = f === '7z' ? '' : 'none';
+    zipCrypto.parentElement.style.display = f === 'zip' ? '' : 'none';
+    splitCustom.style.display = split.value === 'custom' ? '' : 'none';
+  };
+  fmt.onchange = fill; split.onchange = fill;
+  const more = h('div', { class: 'cz-more' + (last.open ? ' open' : '') },
+    h('div', { class: 'cz-grid' },
+      h('label', {}, 'Method'), method, h('label', {}, 'Dictionary size'), dict,
+      h('label', {}, 'Solid'), solid, h('label', {}, 'Threads'), threads,
+      h('label', {}, 'Split into pieces'), h('div', { class: 'row-inline' }, split, splitCustom)),
+    h('div', { class: 'cz-sec' }, h('b', {}, 'Protection'),
+      h('div', { class: 'row2' }, pw, pw2),
+      h('div', { class: 'row-inline' }, keyBtn, keyLabel, keyClear),
+      h('div', { class: 'hint' }, 'A keyfile works like a second key: any file you keep unchanged (a photo, a song). Without it the archive can’t be opened, so keep a copy somewhere safe.'),
+      h('label', { class: 'check' }, encNames, ' Hide the file names too (7Z)'),
+      h('label', { class: 'check' }, zipCrypto, ' Use old ZipCrypto (weaker; for very old unzip programs). Otherwise AES-256.')),
+    h('div', { class: 'cz-sec' }, h('b', {}, 'Leave out'), exclude),
+    h('label', { class: 'check' }, recycle, ' Move the originals to the Recycle Bin afterwards'));
+  const toggle = h('button', { class: 'link cz-toggle', onclick: () => { more.classList.toggle('open'); toggle.textContent = more.classList.contains('open') ? 'Fewer options' : 'More options…'; } }, last.open ? 'Fewer options' : 'More options…');
+  fill();
   return modal({
-    title: 'Compress', width: 440,
-    body: h('div', { class: 'stack' }, h('label', { class: 'field-label' }, 'Archive name'), name, h('div', { class: 'row2' }, fmt, level), pw, has7z ? null : h('div', { class: 'hint' }, 'Tip: install 7-Zip to unlock passwords, compression levels and more formats.')),
-    buttons: [{ label: 'Cancel', value: null }, { label: 'Create', primary: true, run: (c) => c({ name: name.value.trim(), format: fmt.value, level: level.value === '' ? null : +level.value, password: pw.value || null }) }],
+    title: 'Compress', width: 520,
+    body: h('div', { class: 'stack cz' }, h('label', { class: 'field-label' }, 'Archive name'), name, h('div', { class: 'row2' }, fmt, level), toggle, more,
+      has7z ? null : h('div', { class: 'hint' }, 'Tip: 7-Zip unlocks passwords, compression levels, splitting and more formats.')),
+    buttons: [{ label: 'Cancel', value: null }, { label: 'Create', primary: true, run: (c) => {
+      if (pw.value !== pw2.value) { toast('The two passwords don’t match', { error: true }); return false; }
+      const volume = split.value === 'custom' ? (/^\d+$/.test(splitCustom.value.trim()) ? `${splitCustom.value.trim()}m` : '') : split.value;
+      const r = { name: name.value.trim(), format: fmt.value, level: level.value === '' ? null : +level.value, password: pw.value || null, keyfile: keyfile || null,
+        method: method.value || null, dictionary: dict.value || null, solid: solid.disabled ? null : solid.value || null, threads: threads.value ? +threads.value : null, volume: volume || null,
+        encryptNames: encNames.checked, zipCrypto: zipCrypto.checked, exclude: exclude.value.split(/[,;]/).map((x) => x.trim()).filter(Boolean), recycleAfter: recycle.checked };
+      // remember the choices (never the password or keyfile)
+      state.settings.compressLast = { format: r.format, level: r.level, method: r.method, dictionary: r.dictionary, solid: r.solid, threads: r.threads, volume: r.volume, encryptNames: r.encryptNames, zipCrypto: r.zipCrypto, exclude: exclude.value, open: more.classList.contains('open') };
+      import('./core.js').then((m) => m.saveSettings());
+      c(r);
+    } }],
+  });
+}
+
+/** an archive that needs a password: ask for it (or a keyfile) */
+export function archivePasswordDialog(file) {
+  const pw = h('input', { class: 'input', type: 'password', placeholder: 'Password', autocomplete: 'off' });
+  let keyfile = '';
+  const keyLabel = h('span', { class: 'hint ellipsis' }, '');
+  return modal({
+    title: 'This archive is protected', width: 440,
+    body: h('div', { class: 'stack' }, h('div', {}, `${basename(file)} needs its password.`), pw,
+      h('div', { class: 'row-inline' }, h('button', { class: 'btn small', onclick: async () => { const [f] = (await api('dialog:openFiles', { title: 'Choose the keyfile' })) || []; if (f) { keyfile = f; keyLabel.textContent = basename(f); } } }, 'Use a keyfile…'), keyLabel),
+      h('div', { class: 'hint' }, 'If it was made in Dogfile with a keyfile, choose the same file (and type the password too if one was used).')),
+    buttons: [{ label: 'Cancel', value: null }, { label: 'Extract', primary: true, run: (c) => c({ password: pw.value, keyfile: keyfile || null }) }],
   });
 }
 

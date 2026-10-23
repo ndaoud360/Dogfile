@@ -9,7 +9,7 @@ import {
   renderAll, paneCount, recompute, clearThumbCache, focusPane, invalidateArchive,
 } from './pane.js';
 import { showMenu } from './menu.js';
-import { prompt, confirm, batchRenameDialog, propertiesDialog, compressDialog, alertBox } from './dialogs.js';
+import { prompt, confirm, batchRenameDialog, propertiesDialog, compressDialog, archivePasswordDialog, alertBox } from './dialogs.js';
 import { openTool } from './apptabs.js';
 import { icon } from './icons.js';
 import { featureMenuItems } from './features.js';
@@ -128,6 +128,7 @@ export function runJob(spec) {
   });
 }
 const finishedEarly = new Map();
+const asking = { password: 0 };
 export function onJobFinished(j) {
   const r = jobWaiters.get(j.id);
   if (r) { jobWaiters.delete(j.id); r(j); }
@@ -136,7 +137,8 @@ export function onJobFinished(j) {
   if (j.status === 'done' && j.undo && !undoing) pushUndo(j.undo, j.title);
   if (j.locked?.length && IS_WIN()) bus.emit('jobLocked', j);
   else if (j.errors?.length) toast(`${j.title}: ${j.errors.length} problem${j.errors.length > 1 ? 's' : ''}: ${j.errors[0]}`, { error: true });
-  if (j.status === 'error') toast(`${j.title} failed: ${j.error}`, { error: true });
+  // an archive that needs its password: extract() asks for it instead
+  if (j.status === 'error' && !(asking.password && j.type === 'extract' && /password|encrypted/i.test(String(j.error)))) toast(`${j.title} failed: ${j.error}`, { error: true });
   refreshAffected();
 }
 const refreshAffected = () => { for (let i = 0; i < paneCount(); i++) { const t = paneTab(i); if (t) loadTab(t, { soft: true }); } };
@@ -587,8 +589,16 @@ export async function compress(items) {
   const dir = dirname(items[0].path);
   const ext = r.format;
   const out = await api('fs:uniqueName', dir, `${r.name}.${ext}`, 'number');
-  const j = await runJob({ type: 'compress', sources: items.map((i) => i.path), dest: dir, opts: { output: out, format: r.format, level: r.level, password: r.password } });
-  if (j.status === 'done') { const t = activeTab(); await loadTab(t, { soft: true }); selectOnly(t, normalize(out)); renderTabPanes(t, true); }
+  const { name: _n, recycleAfter, ...opts } = r;
+  const j = await runJob({ type: 'compress', sources: items.map((i) => i.path), dest: dir, opts: { ...opts, output: out } });
+  if (j.status === 'done') {
+    // the originals go to the Recycle Bin (not deleted for good), so they can still come back
+    if (recycleAfter) await runJob({ type: 'trash', sources: items.map((i) => i.path) });
+    const t = activeTab(); await loadTab(t, { soft: true });
+    const made = j.undo?.paths || [out];
+    selectOnly(t, normalize(made[0] || out)); renderTabPanes(t, true);
+    if (made.length > 1) toast(`Split into ${made.length} pieces. To open it, open the first one (.001) with all the pieces in one folder.`, { ms: 7000 });
+  }
 }
 export async function compressTo(paths, dir) {
   const out = await api('fs:uniqueName', dir, `${paths.length === 1 ? stem(basename(paths[0])) || basename(paths[0]) : 'Archive'}.zip`, 'number');
@@ -606,7 +616,17 @@ export async function extract(items, mode = 'smart') {
   let dest = dirname(arcs[0].path);
   if (mode === 'choose') { dest = await api('dialog:pickFolder', 'Extract to…'); if (!dest) return; }
   if (mode === 'other') { const o = otherPaneTab(); if (!o || isVirtual(o.path)) return toast('The other pane must show a folder'); dest = o.path; }
-  await runJob({ type: 'extract', sources: arcs.map((a) => a.path), dest, opts: { smart: state.settings.smartExtract && mode !== 'folder', toFolder: mode === 'folder' } });
+  const opts = { smart: state.settings.smartExtract && mode !== 'folder', toFolder: mode === 'folder' };
+  asking.password++;
+  try { for (const a of arcs) {
+    let j = await runJob({ type: 'extract', sources: [a.path], dest, opts });
+    // a protected archive: ask for its password (or keyfile) and try again, until it works or they cancel
+    while (j.status === 'error' && /password|encrypted/i.test(`${j.error} ${(j.errors || []).join(' ')}`)) {
+      const pw = await archivePasswordDialog(a.path);
+      if (!pw) break;
+      j = await runJob({ type: 'extract', sources: [a.path], dest, opts: { ...opts, ...pw } });
+    }
+  } } finally { asking.password--; }
 }
 // ---------------- archive manager ----------------
 export const ARCHIVE_FORMATS = [['zip', 'ZIP'], ['7z', '7Z (best compression)'], ['tar', 'TAR'], ['tar.gz', 'TAR.GZ'], ['tar.xz', 'TAR.XZ'], ['rar', 'RAR (needs WinRAR)']];

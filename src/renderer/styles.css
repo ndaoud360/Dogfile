@@ -1789,3 +1789,14 @@ body.col-resizing, body.col-resizing * { cursor: col-resize !important; user-sel
 .cb-off { color: var(--text-4); }
 .cb-hex .d { background: color-mix(in srgb, #e5484d 30%, transparent); border-radius: 2px; }
 @media (max-width: 760px) { .cb-hex { grid-template-columns: 1fr; } .cb { grid-template-columns: 1fr; grid-template-rows: 120px 1fr; } }
+
+/* ---- compress dialog ---- */
+.cz-toggle { align-self: flex-start; font-size: 12.5px; }
+.cz-more { display: none; flex-direction: column; gap: 14px; padding: 12px; border-radius: 10px; background: var(--bg-hover); }
+.cz-more.open { display: flex; }
+.cz-grid { display: grid; grid-template-columns: 130px 1fr; gap: 8px 12px; align-items: center; font-size: 12.5px; }
+.cz-grid .row-inline { gap: 8px; }
+.cz-grid .row-inline .input { flex: 1; min-width: 0; }
+.cz-sec { display: flex; flex-direction: column; gap: 8px; }
+.cz-sec .row-inline { gap: 8px; align-items: center; }
+.ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }

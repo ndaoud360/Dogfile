@@ -993,7 +993,9 @@ export function simplifyMenu(menu) {
   const keep = [], more = [];
   for (const it of menu.filter(Boolean)) {
     if (it.label && ADVANCED_LABELS.test(it.label)) more.push(it);
-    else if (it.label === 'More' && it.submenu) more.push(...(typeof it.submenu === 'function' ? [] : it.submenu), ...(typeof it.submenu === 'function' ? [it] : []));
+    // everyday items in More (Send to phone, Remind me…) stay in sight; the rest folds away
+    else if (it.label === 'More' && it.submenu && typeof it.submenu !== 'function') { for (const x of it.submenu.filter(Boolean)) (x.simple ? keep : more).push(x); }
+    else if (it.label === 'More' && it.submenu) more.push(it);
     else keep.push(it);
   }
   if (!more.length) return keep;
@@ -1063,7 +1065,7 @@ export function buildItemsMenu(t, items) {
     allDirs && { label: 'Open in other pane', icon: 'split', run: () => openInOtherPane(items) },
     allDirs && { label: 'Open in new window', icon: 'newWindow', run: () => items.forEach((i) => api('win:new', { path: i.path })) },
     one && !one.isDir && { label: 'Open with', icon: 'apps', submenu: () => openWithMenu(one) },
-    one && !one.isDir && !one.virtual && !one.archive && !one.recycle && !one.mtp && ![...KINDS.image, ...KINDS.video, ...KINDS.audio, ...KINDS.archive].includes(one.ext) && { label: 'Edit with Dogfile Notepad', icon: 'notepad', run: () => openTool('editor', [one.path]) },
+    one && !one.isDir && !one.virtual && !one.archive && !one.recycle && !one.mtp && ![...KINDS.image, ...KINDS.video, ...KINDS.audio, ...KINDS.archive, ...KINDS.model].includes(one.ext) && { label: 'Edit with Dogfile Notepad', icon: 'notepad', run: () => openTool('editor', [one.path]) },
     real.length === 2 && real.every((i) => !i.isDir) && { label: 'Compare these two files', icon: 'compare', run: () => import('./compare.js').then((m) => m.compareFiles(real[0].path, real[1].path)) },
     ...(real.length > 1 || (one && !one.isDir && !isTextFile(one)) ? openAllEntries(real.filter((i) => !i.isDir).map((i) => i.path)).filter((x) => real.length > 1 || !/Notepad/.test(x.label)) : []),
     real.length && real.some((i) => KINDS.audio.includes(i.ext)) && { label: real.filter((i) => KINDS.audio.includes(i.ext)).length > 1 ? 'Edit tags of all…' : 'Edit tags…', icon: 'tag', run: () => import('./tageditor.js').then((m) => m.openTagEditor(real.filter((i) => KINDS.audio.includes(i.ext)).map((i) => i.path))) },
@@ -1107,7 +1109,7 @@ export function buildItemsMenu(t, items) {
     real.length && { label: 'Tags', icon: 'tag', submenu: tagMenu(paths) },
     allDirs && real.length && { label: isPinned(real[0].path) ? 'Unpin from sidebar' : 'Pin to sidebar', icon: isPinned(real[0]?.path) ? 'unpin' : 'pin', run: () => (isPinned(real[0].path) ? unpin(real[0].path) : pin(paths)) },
     real.length && { label: 'More', icon: 'more', submenu: [
-      !real.some((i) => i.mtp) && { label: 'Send to phone', icon: 'phone', run: () => import('./phonelink.js').then((m) => m.sendToPhone(paths)) },
+      !real.some((i) => i.mtp) && { label: 'Send to phone', icon: 'phone', simple: true, run: () => import('./phonelink.js').then((m) => m.sendToPhone(paths)) },
       { label: 'Add to Drop Shelf', icon: 'shelf', run: () => bus.emit('addToShelf', paths) },
       allDirs && { label: 'Flatten (show all files inside)', icon: 'flatten', run: () => bus.cmd('flattenSel') },
       IS_WIN() && { label: 'What’s locking this?', icon: 'lock', run: () => bus.emit('whoLocks', paths) },
@@ -1117,7 +1119,7 @@ export function buildItemsMenu(t, items) {
       { label: 'Open in code editor', icon: 'code', run: () => openInEditor(items) },
       allDirs && { label: 'Open terminal here', icon: 'terminal', run: () => api('shell:terminal', real[0].path, state.settings.terminal) },
       { label: 'Calculate size', icon: 'chart', run: () => C('analyzeSelection') },
-      one && !one.isDir && /^(pdf|jpe?g|png|heic|heif|webp|tiff?|bmp|docx|odt|txt|rtf)$/i.test(one.ext || '') && { label: 'Remind me before this expires…', icon: 'bell', run: () => import('./reminders.js').then((m) => m.remindAbout(one)) },
+      one && !one.isDir && /^(pdf|jpe?g|png|heic|heif|webp|tiff?|bmp|docx|odt|txt|rtf)$/i.test(one.ext || '') && { label: 'Remind me before this expires…', icon: 'bell', simple: true, run: () => import('./reminders.js').then((m) => m.remindAbout(one)) },
       one && { label: 'Versions…', icon: 'history', run: () => import('./history.js').then((m) => m.versionsDialog(one.path)) },
       { label: 'Create checksum file…', icon: 'shieldCheck', run: () => import('./history.js').then((m) => m.createChecksums(real)) },
       one && /\.(sha256|sha1|md5)$/i.test(one.name) && { label: 'Verify checksums', icon: 'shieldCheck', run: () => import('./history.js').then((m) => m.verifyChecksums(one.path)) },

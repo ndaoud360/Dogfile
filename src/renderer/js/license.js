@@ -161,18 +161,20 @@ export function proRequired(feature) {
 
 // ---------- Free vs Pro ----------
 const COMPARE = [
-  ['Tabs, two panes, previews and instant search', 1],
+  ['Tabs, split panes, previews and instant search', 1],
   ['Copy, move, rename, zip and unzip', 1],
-  ['Notepad, Photos and Player', 1],
-  ['Tags, colours, notes and themes', 1],
+  ['Notepad, Photos, Player and the 3D viewer', 1],
+  ['Phone transfer over Wi-Fi, compare two files', 1],
+  ['Tags, colours, notes, themes and demo mode', 1],
   ['AI assistant: ask in plain words', 0],
   ['Three and four panes, folder compare and sync', 0],
   ['Batch rename studio', 0],
   ['Duplicate and similar-photo finders', 0],
   ['Disk space map and cleanup', 0],
-  ['Automations, macros and file versions', 0],
-  ['Cloud, SFTP and FTP connections', 0],
-  ['Convert media, read text in images, custom features', 0],
+  ['Automations, macros, file events and versions', 0],
+  ['Cloud (S3, B2, Google Cloud…), SFTP and FTP', 0],
+  ['Document reminders and photo details', 0],
+  ['Convert media, read text in images, custom features, 3D textures', 0],
 ];
 export function compareDialog() {
   const mode = L.status?.mode;

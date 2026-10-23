@@ -1,6 +1,6 @@
 // Sidebar: quick-access list (exactly like the design), pinned folders, devices with an expandable
 // folder tree, network, recycle bin and color tags. Every entry is a drop target.
-import { api, state, sys, bus, h, esc, debounce, basename, pjoin, samePath, isInside, IS_WIN, saveLibrary, saveSettings, toast, isVirtual } from './core.js';
+import { shownPath, api, state, sys, bus, h, esc, debounce, basename, pjoin, samePath, isInside, IS_WIN, saveLibrary, saveSettings, toast, isVirtual } from './core.js';
 import { icon } from './icons.js';
 import { activeTab, navigate, openTab, attachDropTarget, registerDropTarget, currentDrag, selectedItems, selectNone } from './pane.js';
 import { showMenu } from './menu.js';
@@ -55,7 +55,7 @@ export function initSidebar(el) {
 
 function entry({ label, ic, path, depth = 0, pinned = false, expandable = false, extra = '', title, onclick, cls = '', iconHtml }) {
   const isOpen = expandable && expanded.has(path);
-  const row = h('div', { class: `side-item ${cls}`, 'data-path': path || '', style: { '--pad': 28 + depth * 16 + 'px' }, title: title || path || label, tabindex: '-1', draggable: pinned ? 'true' : null });
+  const row = h('div', { class: `side-item ${cls}`, 'data-path': path || '', style: { '--pad': 28 + depth * 16 + 'px' }, title: title || shownPath(path) || label, tabindex: '-1', draggable: pinned ? 'true' : null });
   row.innerHTML = `${expandable ? `<span class="twisty ${isOpen ? 'open' : ''}">${icon('chevronRight')}</span>` : ''}<span class="si-icon">${iconHtml || icon(ic)}</span><span class="si-label">${esc(label)}</span>${extra}`;
   row.addEventListener('click', (e) => {
     if (e.target.closest('.twisty')) { toggle(path); return; }

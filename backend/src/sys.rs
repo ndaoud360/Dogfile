@@ -9,6 +9,9 @@ fn p(o: Option<PathBuf>) -> Value {
     o.map(|x| json!(x.to_string_lossy())).unwrap_or(Value::Null)
 }
 pub fn known_folders() -> Value {
+    if crate::demo::active() {
+        return crate::demo::known_folders();
+    }
     let onedrive = ["OneDrive", "OneDriveConsumer", "OneDriveCommercial"].iter().find_map(|k| std::env::var(k).ok()).filter(|d| Path::new(d).is_dir());
     json!({
         "home": p(dirs::home_dir()), "desktop": p(dirs::desktop_dir()), "documents": p(dirs::document_dir()), "downloads": p(dirs::download_dir()),
@@ -29,9 +32,9 @@ pub fn info(win: &str) -> R {
         "sep": if IS_WIN { "\\" } else { "/" }, "version": env!("CARGO_PKG_VERSION"), "known": known_folders(),
         "userData": s.data_dir.to_string_lossy(), "exe": std::env::current_exe().map(|e| e.to_string_lossy().into_owned()).unwrap_or_default(),
         "packaged": !s.test_mode, "launch": launch, "pending": Value::Null, "ffmpeg": crate::media::available(),
-        "user": std::env::var(if IS_WIN { "USERNAME" } else { "USER" }).unwrap_or_default(), "hostname": hostname(),
+        "user": std::env::var(if IS_WIN { "USERNAME" } else { "USER" }).unwrap_or_default(), "hostname": if crate::demo::active() { "ALEX-PC".to_string() } else { hostname() },
         "has7z": crate::archive::find_7z().is_some(), "test": s.test_mode, "customControls": true, "engine": "tauri",
-        "streamBase": s.stream_base.read().clone(),
+        "streamBase": s.stream_base.read().clone(), "demo": crate::demo::active(), "demoRoot": if crate::demo::active() { json!(crate::demo::root().to_string_lossy()) } else { Value::Null },
     }))
 }
 pub fn hostname() -> String {
@@ -72,6 +75,9 @@ fn statvfs(path: &str) -> (u64, u64) {
     (s.f_blocks as u64 * s.f_frsize as u64, s.f_bavail as u64 * s.f_frsize as u64)
 }
 pub async fn drives() -> R {
+    if crate::demo::active() {
+        return Ok(json!(crate::demo::drives()));
+    }
     let mut d = list_drives_raw().await;
     #[cfg(windows)]
     {
@@ -257,6 +263,9 @@ fn find_es() -> Option<PathBuf> {
     c.into_iter().find(|p| p.is_file())
 }
 pub async fn everything_search(a: &Args) -> R {
+    if crate::demo::active() {
+        return Ok(Value::Null);
+    }
     let Some(es) = find_es() else { return Ok(Value::Null) };
     let mut args = vec!["-n".to_string(), a.u(1, 2000).to_string(), "-full-path-and-name".into()];
     if let Some(root) = a.os(2).filter(|r| !r.is_empty()) {
@@ -270,7 +279,7 @@ pub async fn everything_search(a: &Args) -> R {
     }
 }
 pub async fn everything_available() -> R {
-    Ok(json!(find_es().is_some()))
+    Ok(json!(find_es().is_some() && !crate::demo::active()))
 }
 pub async fn everything_status() -> R {
     let es = find_es();

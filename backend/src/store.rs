@@ -4,6 +4,8 @@ use serde_json::Value;
 use std::path::Path;
 
 pub fn get_in(dir: &Path, name: &str) -> Option<Value> {
+    // demo mode keeps personal things apart
+    let name = crate::demo::store_key(name);
     let s = std::fs::read(dir.join(format!("{name}.json"))).ok()?;
     serde_json::from_slice(&s).ok()
 }
@@ -11,6 +13,7 @@ pub fn get(name: &str) -> Option<Value> {
     get_in(&st().data_dir, name)
 }
 pub fn set(name: &str, v: &Value) -> Result<(), String> {
+    let name = &crate::demo::store_key(name);
     let dir = &st().data_dir;
     std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     let f = dir.join(format!("{name}.json"));

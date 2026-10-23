@@ -1885,3 +1885,9 @@ body.col-resizing, body.col-resizing * { cursor: col-resize !important; user-sel
 .ph-line .lbl { flex: none; }
 .ph-line .path { flex: 1; min-width: 0; color: var(--text-3); }
 .ph-note.bad { color: var(--danger, #d64545); font-size: 13px; }
+
+/* Demo mode sign at the top of the window */
+#demo-sign { -webkit-app-region: no-drag; align-self: center; flex: none; display: inline-flex; align-items: center; gap: 7px; margin: 0 10px; padding: 4px 11px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .09em; color: #fff; background: linear-gradient(90deg, #e8590c, #d6336c); box-shadow: 0 2px 8px rgba(214, 51, 108, .35); cursor: pointer; }
+#demo-sign:hover { filter: brightness(1.08); }
+#demo-sign .dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: demoPulse 1.8s ease-in-out infinite; }
+@keyframes demoPulse { 50% { opacity: .35; } }

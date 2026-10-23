@@ -40,6 +40,8 @@ export function onWindowClose(fn) {
     api('win:control', ok ? 'closeNow' : 'closeCancel');
   });
 }
+// demo mode switched: a separate app window closes (what it shows belongs to the other side); a tab starts over with its window
+if (!EMBED) window.atlas?.on?.('demo:changed', () => api('win:control', 'close'));
 // The app's menus (File, Edit, Search, View…) shown from the main window's ribbon: the host asks for a menu by
 // name, gets a plain copy of it, and sends back which item was picked.
 let menuSource = null, menuAfter = null;

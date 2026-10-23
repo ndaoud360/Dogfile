@@ -1,6 +1,6 @@
 // Preview pane + Quick Look (Space): images, video, audio, PDF, text/code with line numbers,
 // Markdown, CSV tables, JSON, fonts, archive contents, folder summaries and a hex view for binaries.
-import { api, state, bus, h, esc, fmtSize, fmtDate, typeLabel, kindOf, fileUrl, DECODED_IMG, decodedUrl, KINDS, basename, dirname, isVirtual, tagsOf, toast } from './core.js';
+import { shownPath, api, state, bus, h, esc, fmtSize, fmtDate, typeLabel, kindOf, fileUrl, DECODED_IMG, decodedUrl, KINDS, basename, dirname, isVirtual, tagsOf, toast } from './core.js';
 import { openTool } from './apptabs.js';
 import { icon, fileArt, folderArt } from './icons.js';
 import { markdown } from './md.js';
@@ -31,7 +31,7 @@ export async function renderPreview(box, it, { large = false } = {}) {
     it.mtime && ['Modified', fmtDate(it.mtime, 'locale')],
     it.ctime && ['Created', fmtDate(it.ctime, 'locale')],
     it.recycle && ['Deleted from', it.recycle.from],
-    !isVirtual(it.path) && !it.archive && ['Location', dirname(it.path) || ''],
+    !isVirtual(it.path) && !it.archive && ['Location', shownPath(dirname(it.path) || '')],
   ];
   addMeta(baseRows());
   if (!large) box.append(h('button', { class: 'icon-btn small pv-menu', title: 'Choose what the preview pane shows', html: icon('more'), onclick: (e) => previewMenu(e.clientX, e.clientY) }));

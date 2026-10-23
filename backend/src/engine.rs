@@ -140,6 +140,10 @@ pub async fn configure_index(rescan: bool) -> R {
     request("index.configure", json!({ "roots": roots, "dataDir": data.to_string_lossy(), "rescan": rescan, "mft": setting_bool("indexMft", true), "system": setting_bool("indexSystem", false) })).await
 }
 pub async fn index_status() -> R {
+    // demo mode: the index (your real files) rests; searches walk the demo folders
+    if crate::demo::active() {
+        return Ok(json!({ "available": false, "demo": true }));
+    }
     let s = request("index.status", json!({})).await?;
     Ok(json!({ "available": true, "admin": dogfile_core::is_admin(), "roots": s["roots"] }))
 }
@@ -147,6 +151,9 @@ pub async fn index_refresh(a: &Args) -> R {
     request("index.refresh", json!({ "root": a.s_or(0, ""), "mft": setting_bool("indexMft", true) })).await
 }
 pub async fn index_search(a: &Args) -> R {
+    if crate::demo::active() {
+        return Err("The index is off in demo mode".into());
+    }
     let mut q = a.v(0);
     if !q.is_object() {
         q = json!({});
@@ -155,6 +162,9 @@ pub async fn index_search(a: &Args) -> R {
     request("index.search", q).await
 }
 pub async fn index_sizes(a: &Args) -> R {
+    if crate::demo::active() {
+        return Ok(json!({}));
+    }
     if !setting_bool("indexEnabled", true) {
         return Ok(json!({}));
     }

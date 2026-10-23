@@ -38,6 +38,7 @@ export async function openSettings(section = 'general', opts = {}) {
       _append(el,
         group('Basics'),
         row('Interface', seg('uiMode', [['simple', 'Simple'], ['full', 'Full (everything)']]), 'Simple keeps menus short and tucks power-user tools under “More”. Nothing is removed; switch any time.'),
+        row('Demo mode', (() => { const i = h('input', { type: 'checkbox', class: 'switch' }); i.checked = !!sys.demo; i.addEventListener('change', async () => { const ok = await import('./demo.js').then((m) => m.setDemo(i.checked)); if (!ok) i.checked = !i.checked; }); return i; })(), 'Show a pretend computer instead of yours (demo files with believable sizes, so progress bars run) for videos, screenshots or showing Dogfile to someone. Your files and settings are hidden, never touched.'),
         row('Theme', seg('theme', [['system', 'System', 'monitor'], ['light', 'Light', 'sun'], ['dark', 'Dark', 'moon']])),
         row('Language', (() => {
           const sel = h('select', { class: 'input', translate: 'no' });

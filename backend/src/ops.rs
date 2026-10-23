@@ -374,9 +374,10 @@ fn walk(j: &Job, src: &Path, dst: &Path, out: &mut Vec<Entry>) -> Result<(), Str
         }
     } else {
         let link = md.file_type().is_symlink();
-        out.push(Entry { src: src.into(), dst: dst.into(), dir: false, size: md.len(), link, mtime, atime });
+        let size = crate::demo::size(src, md.len());
+        out.push(Entry { src: src.into(), dst: dst.into(), dir: false, size, link, mtime, atime });
         let mut d = j.d.lock();
-        d.total += md.len();
+        d.total += size;
         d.files_total += 1;
     }
     Ok(())
@@ -411,6 +412,31 @@ fn clear_readonly(p: &Path) {
 /// copy one file with progress, pause, cancel and the speed limit
 fn copy_file(j: &Job, src: &Path, dst: &Path, size: u64) -> JR {
     let throttle = cfg().lock().throttle_mbps;
+    // demo mode: a pretend file takes the time its pretend size would (about 280 MB/s, at most 6 s each)
+    if crate::demo::active() && crate::demo::inside(src) {
+        let real = std::fs::metadata(src).map(|m| m.len()).unwrap_or(0);
+        if size > real {
+            let mut speed = (size as f64 / 6.0).max(280.0 * 1048576.0);
+            if throttle > 0.0 {
+                speed = speed.min(throttle * 1048576.0);
+            }
+            let t0 = Instant::now();
+            let mut done: u64 = 0;
+            while done < size {
+                if j.checkpoint().is_err() {
+                    return Err(cancelled());
+                }
+                let step = (size - done).min((speed * 0.05) as u64).max(1);
+                done += step;
+                j.add_done(step);
+                let ahead = (done as f64 / speed) * 1000.0 - t0.elapsed().as_millis() as f64;
+                if ahead > 1.0 {
+                    std::thread::sleep(Duration::from_millis(ahead as u64));
+                }
+            }
+            return std::fs::copy(src, dst).map(|_| ()).map_err(|e| Err(crate::fsx::friendly(&e)));
+        }
+    }
     #[cfg(windows)]
     if throttle <= 0.0 {
         return crate::win::copy_file_progress(j, src, dst, size);

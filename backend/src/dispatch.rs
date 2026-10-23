@@ -15,7 +15,7 @@ pub const NAMES: &[&str] = &[
     "index:refresh", "index:search", "index:sizes", "index:fastBuild", "core:info", "everything:search", "everything:available", "everything:status", "git:branches", "git:checkout", "git:log", "git:pull",
     "git:status", "recycle:list", "recycle:restore", "recycle:restoreOriginal", "recycle:deleteForever", "recycle:empty", "watch:set", "rules:watch", "remote:list", "remote:signIn", "remote:get", "remote:put",
     "remote:remove", "remote:rename", "remote:copy", "remote:mkdir", "remote:open", "remote:test", "remote:setSecret", "remote:disconnect", "net:connectShare", "net:unc", "net:reachable", "net:status", "cloud:detect",
-    "ext:fetch", "docs:featureGuide", "ext:log", "ext:logs", "ext:clearLogs", "ext:install", "secret:set", "secret:has", "gh:request", "meta:status", "meta:install", "m3d:cadStatus", "m3d:cadInstall", "m3d:dwgStatus", "m3d:dwgToDxf", "phone:status", "phone:start", "phone:stop", "phone:pair", "phone:forget", "phone:rename", "phone:send", "phone:sendText", "phone:unsend", "meta:read", "meta:write", "meta:stripGps", "meta:stripAll", "meta:streams", "meta:streamsMany", "meta:streamRead", "meta:streamWrite", "meta:streamRemove", "doc:read", "doc:text", "doc:titles", "doc:setProps", "media:setMeta",
+    "ext:fetch", "docs:featureGuide", "ext:log", "ext:logs", "ext:clearLogs", "ext:install", "secret:set", "secret:has", "gh:request", "meta:status", "meta:install", "m3d:cadStatus", "m3d:cadInstall", "m3d:dwgStatus", "m3d:dwgToDxf", "demo:status", "demo:set", "demo:reset", "phone:status", "phone:start", "phone:stop", "phone:pair", "phone:forget", "phone:rename", "phone:send", "phone:sendText", "phone:unsend", "meta:read", "meta:write", "meta:stripGps", "meta:stripAll", "meta:streams", "meta:streamsMany", "meta:streamRead", "meta:streamWrite", "meta:streamRemove", "doc:read", "doc:text", "doc:titles", "doc:setProps", "media:setMeta",
     "versions:save", "versions:list", "versions:restore", "versions:remove", "versions:overview", "versions:track", "watched:add", "watched:get", "store:get", "store:set", "store:path", "default:get",
     "default:set", "win:new", "win:control", "win:overlay", "win:zoom", "theme:get", "dialog:pickFolder", "dialog:openFiles", "dialog:saveFile", "dialog:confirm", "tool:open", "tool:pending", "media:probe",
     "media:imgMeta", "media:quickProbe", "media:sheetCancel", "media:contactSheet", "media:encoder", "media:shotDir", "media:export", "ai:status", "ai:download", "ai:remove", "ai:cacheGet", "ai:cacheSet",
@@ -169,7 +169,16 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
         "shell:launch" => shell::launch(&a).await,
         "shell:runCommand" => shell::run_command(&a).await,
         "shell:wallpaper" => shell::wallpaper(&a).await,
-        "recycle:list" => shell::recycle_list().await,
+        "recycle:list" => {
+            let r = shell::recycle_list().await?;
+            // demo mode: only what was deleted from the demo
+            if crate::demo::active() {
+                let root = crate::demo::root().to_string_lossy().to_lowercase();
+                let keep: Vec<Value> = r.as_array().cloned().unwrap_or_default().into_iter().filter(|x| x["from"].as_str().map(|f| f.to_lowercase().starts_with(&root)).unwrap_or(false)).collect();
+                return Ok(json!(keep));
+            }
+            Ok(r)
+        }
         "recycle:restore" => shell::recycle_restore(&a).await,
         "recycle:restoreOriginal" => shell::recycle_restore_original(&a).await,
         "recycle:deleteForever" => shell::recycle_delete_forever(&a).await,
@@ -294,6 +303,9 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
         "m3d:cadInstall" => crate::model3d::cad_install(&a),
         "m3d:dwgStatus" => crate::model3d::dwg_status(&a),
         "m3d:dwgToDxf" => crate::model3d::dwg_to_dxf(&a).await,
+        "demo:status" => crate::demo::status(&a),
+        "demo:set" => crate::demo::set(&a),
+        "demo:reset" => crate::demo::reset(&a),
         "phone:status" => crate::phonelink::status(&a),
         "phone:start" => crate::phonelink::start(&a).await,
         "phone:stop" => crate::phonelink::stop(&a),

@@ -151,7 +151,9 @@ async fn invoke(req: Req) -> Resp {
     // folder listings: written straight to JSON (a folder of 25,000 files is a 6 MB answer)
     if name == "fs:list" {
         if let Some(dir) = args.first().and_then(|d| d.as_str()).map(String::from) {
-            if !dir.starts_with("\\\\") || dir.trim_end_matches('\\').matches('\\').count() > 2 {
+            // (demo folders go the long way: their files report their pretend sizes)
+            let demo = crate::demo::active() && crate::demo::inside(Path::new(&dir));
+            if !demo && (!dir.starts_with("\\\\") || dir.trim_end_matches('\\').matches('\\').count() > 2) {
                 let d2 = dir.clone();
                 if let Ok(Ok(raw)) = tokio::task::spawn_blocking(move || dogfile_core::jobs::list_raw(&d2)).await {
                     let mut b = Vec::with_capacity(raw.len() + 16);

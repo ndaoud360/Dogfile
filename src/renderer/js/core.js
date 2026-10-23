@@ -290,6 +290,24 @@ export function h(tag, attrs = {}, ...children) {
   for (const c of children.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : document.createTextNode(c));
   return el;
 }
+// demo mode: the pretend computer's folders read as C:\…, D:\…, E:\… (never where they really are)
+const DEMO_DRIVES = [['Local Disk (C)', 'C:'], ['Data (D)', 'D:'], ['USB Drive (E)', 'E:']];
+export function shownPath(p) {
+  if (!sys.demo || !sys.demoRoot || typeof p !== 'string') return p;
+  for (const [dir, letter] of DEMO_DRIVES) {
+    const base = sys.demoRoot + sys.sep + dir;
+    if (p === base || p.startsWith(base + sys.sep)) return letter + '\\' + p.slice(base.length + 1).split(sys.sep).join('\\');
+  }
+  return p.startsWith(sys.demoRoot) ? 'C:\\' : p;
+}
+/** a path typed in demo mode (C:\Users\Alex…) back to where the demo file really is */
+export function demoRealPath(p) {
+  if (!sys.demo || !sys.demoRoot || typeof p !== 'string') return p;
+  const m = /^([cde]):[\\/]?(.*)$/i.exec(p.trim());
+  if (!m) return p;
+  const dir = DEMO_DRIVES.find((d) => d[1] === m[1].toUpperCase() + ':')[0];
+  return [sys.demoRoot, dir, ...m[2].split(/[\\/]+/).filter(Boolean)].join(sys.sep);
+}
 export const fileUrl = (p) => `/f/?p=${encodeURIComponent(p)}`;
 // pictures decoded by Dogfile itself (Photoshop, TGA, DDS, EXR, HDR, 16-bit TIFF…) instead of the web view
 export const DECODED_IMG = new Set(['psd', 'psb', 'tga', 'dds', 'exr', 'hdr', 'pic', 'tif', 'tiff', 'qoi', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'pfm', 'ff']);

@@ -64,14 +64,14 @@ pub fn inbox() -> PathBuf {
     let s = crate::setting("phoneInbox");
     match s.as_str().filter(|x| !x.trim().is_empty()) {
         Some(p) => PathBuf::from(p),
-        None => dirs::download_dir().or_else(dirs::home_dir).unwrap_or_else(std::env::temp_dir).join("From phone"),
+        None => crate::sys::known_folders()["downloads"].as_str().map(PathBuf::from).or_else(dirs::home_dir).unwrap_or_else(std::env::temp_dir).join("From phone"),
     }
 }
 fn shared() -> Vec<String> {
     crate::setting("phoneShared").as_array().map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect()).unwrap_or_default()
 }
 fn pc_name() -> String {
-    let n = crate::sys::hostname();
+    let n = if crate::demo::active() { "ALEX-PC".to_string() } else { crate::sys::hostname() };
     if n.is_empty() { "this PC".into() } else { n }
 }
 /// this PC's address on the local network (the one the default route uses)
@@ -91,6 +91,15 @@ fn private(ip: IpAddr) -> bool {
             v.is_loopback() || (v.segments()[0] & 0xfe00) == 0xfc00 || (v.segments()[0] & 0xffc0) == 0xfe80
         }
     }
+}
+
+/// demo mode switched: phones and the outbox are read again from the other side
+pub fn reset() {
+    let mut g = s().lock();
+    g.loaded = false;
+    g.devices.clear();
+    g.outbox.clear();
+    g.seen.clear();
 }
 
 // ---------------------------------------------------------------------------------------------------------------

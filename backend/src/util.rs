@@ -113,7 +113,7 @@ pub fn copy_tree(src: &Path, dst: &Path) -> std::io::Result<()> {
 pub fn dir_size(p: &Path) -> u64 {
     match std::fs::symlink_metadata(p) {
         Ok(m) if m.is_dir() => std::fs::read_dir(p).map(|rd| rd.flatten().map(|e| dir_size(&e.path())).sum()).unwrap_or(0),
-        Ok(m) => m.len(),
+        Ok(m) => crate::demo::size(p, m.len()),
         Err(_) => 0,
     }
 }

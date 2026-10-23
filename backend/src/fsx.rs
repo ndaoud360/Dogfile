@@ -83,7 +83,7 @@ pub fn entry_json(path: &Path, md: &std::fs::Metadata) -> Value {
     let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| path.to_string_lossy().into_owned());
     let is_dir = md.is_dir();
     json!({
-        "name": name, "path": path.to_string_lossy(), "isDir": is_dir, "size": if is_dir { Value::Null } else { json!(md.len()) },
+        "name": name, "path": path.to_string_lossy(), "isDir": is_dir, "size": if is_dir { Value::Null } else { json!(crate::demo::size(path, md.len())) },
         "mtime": ms(md.modified()), "ctime": ctime(md), "atime": ms(md.accessed()), "hidden": is_hidden(md, &name),
         "ext": if is_dir { String::new() } else { util::ext(&name) },
     })
@@ -109,7 +109,17 @@ pub async fn list(a: &Args) -> R {
         return Ok(json!({ "path": dir, "items": items }));
     }
     match crate::engine::list(&dir).await {
-        Ok(r) => Ok(json!({ "path": dir, "items": r["items"] })),
+        Ok(mut r) => {
+            if crate::demo::active() && crate::demo::inside(Path::new(&dir)) {
+                if let Some(items) = r["items"].as_array_mut() {
+                    for it in items.iter_mut().filter(|it| !it["isDir"].as_bool().unwrap_or(false)) {
+                        let p = std::path::PathBuf::from(it["path"].as_str().unwrap_or(""));
+                        it["size"] = json!(crate::demo::size(&p, it["size"].as_u64().unwrap_or(0)));
+                    }
+                }
+            }
+            Ok(json!({ "path": dir, "items": r["items"] }))
+        }
         Err(e) => {
             let (msg, code) = match e.as_str() {
                 "EACCES" => ("Access denied".to_string(), "EACCES".to_string()),
@@ -148,7 +158,7 @@ pub async fn subdirs(a: &Args) -> R {
 pub async fn stat(a: &Args) -> R {
     let p = a.s(0)?;
     Ok(match tokio::fs::metadata(&p).await {
-        Ok(md) => json!({ "isDir": md.is_dir(), "size": md.len(), "mtime": ms(md.modified()), "ctime": ctime(&md), "atime": ms(md.accessed()), "mode": mode_of(&md) }),
+        Ok(md) => json!({ "isDir": md.is_dir(), "size": crate::demo::size(Path::new(&p), md.len()), "mtime": ms(md.modified()), "ctime": ctime(&md), "atime": ms(md.accessed()), "mode": mode_of(&md) }),
         Err(_) => Value::Null,
     })
 }
@@ -160,7 +170,7 @@ pub async fn stat_many(a: &Args) -> R {
                 let d = md.is_dir();
                 let b = basename(&p);
                 let name = if b.is_empty() { p.clone() } else { b };
-                json!({ "name": name, "path": p, "isDir": d, "size": if d { Value::Null } else { json!(md.len()) }, "mtime": ms(md.modified()), "ctime": ctime(&md), "ext": if d { String::new() } else { util::ext(&p) }, "hidden": false })
+                json!({ "name": name, "path": p, "isDir": d, "size": if d { Value::Null } else { json!(crate::demo::size(Path::new(&p), md.len())) }, "mtime": ms(md.modified()), "ctime": ctime(&md), "ext": if d { String::new() } else { util::ext(&p) }, "hidden": false })
             }
             Err(_) => Value::Null,
         });
@@ -532,7 +542,7 @@ pub async fn find_under(a: &Args) -> R {
                 let is_dir = e.file_type().map(|t| t.is_dir()).unwrap_or(false);
                 if name.to_lowercase().contains(&q) {
                     let md = e.metadata().ok();
-                    out.push(json!({ "path": e.path().to_string_lossy(), "name": name, "isDir": is_dir, "size": md.as_ref().map(|m| m.len()).unwrap_or(0), "mtime": md.as_ref().map(|m| ms(m.modified())).unwrap_or(0.0) }));
+                    out.push(json!({ "path": e.path().to_string_lossy(), "name": name, "isDir": is_dir, "size": md.as_ref().map(|m| crate::demo::size(&e.path(), m.len())).unwrap_or(0), "mtime": md.as_ref().map(|m| ms(m.modified())).unwrap_or(0.0) }));
                     if out.len() >= limit { break }
                 }
                 if is_dir && !name.starts_with('.') && !skip.contains(&name.to_lowercase().as_str()) {

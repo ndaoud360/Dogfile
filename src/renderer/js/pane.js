@@ -1,7 +1,7 @@
 // Tabs, panes, navigation, listing, sorting/grouping/filtering, the virtualized views
 // (Grid · Details · List · Columns), selection (click/shift/ctrl/marquee/type-ahead), inline rename and drag & drop.
 import { playFolderAnim, directionOf } from './folderanim.js';
-import {
+import { shownPath, demoRealPath,
   api, state, sys, bus, h, esc, isVirtual, isMtp, isRemote, remoteParts, pjoin, dirname, basename, normalize, samePath, isInside, splitPath, virtualTitle,
   fmtSize, fmtDate, dateBucket, sizeBucket, kindOf, typeLabel, natCmp, debounce, fileUrl, DECODED_IMG, decodedUrl, uid, IS_WIN, addRecent, tagsOf,
   saveLibrary, saveSettings, expandUserPath, toast, extname, KINDS,
@@ -713,6 +713,8 @@ function renderNav(el, t) {
   const anchors = [known.home, known.onedrive].filter(Boolean);
   for (let k = parts.length - 1; k >= 0; k--) { if (anchors.some((a) => samePath(a, parts[k].path))) { startIdx = k + 1 < parts.length ? k + 1 : k; break; } }
   if (state.settings.fullCrumbs) startIdx = 0;
+  // demo mode: the path starts at the pretend drive
+  if (sys.demo && sys.demoRoot) { const d = parts.findIndex((p) => p.path.startsWith(sys.demoRoot) && p.path.length > sys.demoRoot.length + 1); if (d >= 0) { startIdx = Math.max(startIdx, d); parts[d] = { ...parts[d], label: shownPath(parts[d].path).replace(/\\$/, '') }; if (startIdx === d && state.settings.fullCrumbs) startIdx = d; } }
   const shown = parts.slice(startIdx);
   if (startIdx > 0) {
     const more = h('span', { class: 'crumb more', title: parts.slice(0, startIdx).map((p) => p.label).join(' / ') }, '…');
@@ -764,7 +766,7 @@ async function subfolderMenu(t, p, e) {
 export function startPathEdit(el, t) {
   const crumbs = el.nav.querySelector('.crumbs');
   if (!crumbs || el.nav.querySelector('.path-edit')) return;
-  const input = h('input', { class: 'path-edit', value: isVirtual(t.path) ? (t.path.startsWith('atlas:zip|') ? t.path.split('|')[1] : virtualTitle(t.path)) : t.path, spellcheck: 'false' });
+  const input = h('input', { class: 'path-edit', value: isVirtual(t.path) ? (t.path.startsWith('atlas:zip|') ? shownPath(t.path.split('|')[1]) : virtualTitle(t.path)) : shownPath(t.path), spellcheck: 'false' });
   const list = h('div', { class: 'autocomplete' });
   crumbs.replaceWith(input);
   el.nav.append(list);
@@ -777,11 +779,11 @@ export function startPathEdit(el, t) {
       if (/^(cmd|powershell|pwsh|wt)(\.exe)?$/i.test(v) && !isVirtual(t.path)) { api('shell:terminal', t.path, v.toLowerCase().replace('.exe', '')); renderPane(el.idx); return; }
       if (/^https?:\/\//i.test(v)) { api('shell:openExternal', v); renderPane(el.idx); return; }
       if (v.startsWith('?')) { renderPane(el.idx); A.searchHere(t, v.slice(1)); return; }
-      navigate(t, v).then((ok) => { if (ok === false) renderPane(el.idx); });
+      navigate(t, demoRealPath(v)).then((ok) => { if (ok === false) renderPane(el.idx); });
     } else renderPane(el.idx);
   };
   const update = debounce(async () => {
-    const v = expandUserPath(input.value);
+    const v = demoRealPath(expandUserPath(input.value));
     if (!v || isVirtual(v)) { list.innerHTML = ''; return; }
     const sep = sys.sep;
     const i = v.lastIndexOf(sep);
@@ -791,19 +793,19 @@ export function startPathEdit(el, t) {
     const subs = await api('fs:subdirs', base.length > 3 && base.endsWith(sep) ? base.slice(0, -1) : base, true);
     sugg = subs.filter((s) => s.toLowerCase().startsWith(partial)).slice(0, 12).map((s) => pjoin(base.endsWith(sep) ? base.slice(0, -1) || sep : base, s));
     si = -1;
-    list.innerHTML = sugg.map((s, k) => `<div class="ac-item" data-k="${k}">${icon('folder')}<span>${esc(s)}</span></div>`).join('');
+    list.innerHTML = sugg.map((s, k) => `<div class="ac-item" data-k="${k}">${icon('folder')}<span>${esc(shownPath(s))}</span></div>`).join('');
   }, 80);
-  list.addEventListener('mousedown', (e) => { const it = e.target.closest('.ac-item'); if (it) { e.preventDefault(); input.value = sugg[+it.dataset.k]; done(true); } });
+  list.addEventListener('mousedown', (e) => { const it = e.target.closest('.ac-item'); if (it) { e.preventDefault(); input.value = shownPath(sugg[+it.dataset.k]); done(true); } });
   input.addEventListener('input', update);
   input.addEventListener('keydown', (e) => {
     e.stopPropagation();
-    if (e.key === 'Enter') { e.preventDefault(); if (si >= 0) input.value = sugg[si]; done(true); }
+    if (e.key === 'Enter') { e.preventDefault(); if (si >= 0) input.value = shownPath(sugg[si]); done(true); }
     else if (e.key === 'Escape') { e.preventDefault(); done(false); el.body.focus(); }
     else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault(); if (!sugg.length) return;
       si = (si + (e.key === 'ArrowDown' ? 1 : -1) + sugg.length) % sugg.length;
       list.querySelectorAll('.ac-item').forEach((n, k) => n.classList.toggle('on', k === si));
-    } else if (e.key === 'Tab' && sugg.length) { e.preventDefault(); input.value = sugg[Math.max(0, si)] + sys.sep; update(); }
+    } else if (e.key === 'Tab' && sugg.length) { e.preventDefault(); input.value = shownPath(sugg[Math.max(0, si)]) + (sys.demo ? '\\' : sys.sep); update(); }
   });
   input.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== input) done(false); }, 120));
 }
@@ -1170,7 +1172,7 @@ function gridCell(t, it, ix, y, x, L) {
   else if (KINDS.font.includes(it.ext) && it.ext !== 'fon' && !it.archive && !it.mtp) art = `<div class="font-art" data-font="${esc(it.path)}"><b>Aa</b><span>${esc(it.ext.toUpperCase())}</span></div>`;
   else if (state.settings.useWindowsIcons && IS_WIN() && !it.archive) art = `<img class="wicon big" data-icon="${esc(it.path)}" alt="">`;
   else art = fileArt(it.ext);
-  const sub = state.settings.folderSizes && it.isDir && !it.virtual && !it.drive ? `<div class="sub size-badge">${it.size != null ? fmtSize(it.size) : '…'}</div>` : it.drive ? `<div class="sub">${it.drive.type === 'portable' ? esc(it.drive.devType || 'Portable device') : `${fmtSize(it.drive.free)} free of ${fmtSize(it.drive.total)}`}</div>` : it.subtitle ? `<div class="sub">${esc(it.subtitle)}</div>` : '';
+  const sub = state.settings.folderSizes && it.isDir && !it.virtual && !it.drive ? `<div class="sub size-badge">${it.size != null ? fmtSize(it.size) : '…'}</div>` : it.drive ? `<div class="sub">${it.drive.type === 'portable' ? esc(it.drive.devType || 'Portable device') : `${fmtSize(it.drive.free)} free of ${fmtSize(it.drive.total)}`}</div>` : it.subtitle ? `<div class="sub">${esc(shownPath(it.subtitle))}</div>` : '';
   return `<div class="cell grid-cell${itemClasses(t, it)}${labelCls}" data-ix="${ix}" role="option" aria-selected="${t.sel.has(it.path)}" draggable="true" style="transform:translate(${x}px,${y}px);width:${L.cellW}px;height:${L.cellH}px">
     <div class="tile" style="width:${S}px;height:${S}px"><!--T-->${art}<!--/T-->${state.settings.showCheckboxes ? `<span class="cbox">${icon('check')}</span>` : ''}${gitBadge(t, it)}${it.isLink ? `<span class="link-badge">${icon('link')}</span>` : ''}</div>
     <div class="label" title="${esc(it.name)}">${tagDots(it)}<span${nameStyle(it)}>${esc(displayName(it))}</span></div>${sub}</div>`;

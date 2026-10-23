@@ -1,7 +1,7 @@
 // App shell: boot, theme, tab strip, File/Home/Organize/Tools/View ribbon, split-layout picker, status bar,
 // session restore, IPC events and global keyboard handling.
 import { panelClass, animatePanel } from './panelanim.js';
-import {
+import { shownPath,
   api, onMain, sys, state, bus, h, esc, DEFAULT_SETTINGS, DEFAULT_TAGS, saveSettings, saveLibrary, fmtSize, isVirtual, basename, virtualTitle,
   dirname, samePath, toast, IS_WIN, debounce, persist, setNativeDialogs,
 } from './core.js';
@@ -32,6 +32,7 @@ import * as U from './updates.js';
 import './history.js';
 import './reminders.js';
 import './phonelink.js';
+import './demo.js';
 import './workspaces.js';
 import './cliphistory.js';
 import './a11y.js';
@@ -121,7 +122,7 @@ function renderTabs() {
   for (const t of ordered) {
     const paneIdx = state.panes.slice(0, n).indexOf(t.id);
     const active = paneIdx === state.activePane;
-    const el = h('div', { class: `tab${active ? ' active' : ''}${paneIdx >= 0 ? ' shown' : ''}${t.pinned ? ' pinned' : ''}${t.loading ? ' loading' : ''}`, role: 'tab', draggable: 'true', title: (t.path && !isVirtual(t.path) ? t.path : tabTitle(t)) + (t.pinned ? '  (pinned)' : ''), 'data-id': t.id });
+    const el = h('div', { class: `tab${active ? ' active' : ''}${paneIdx >= 0 ? ' shown' : ''}${t.pinned ? ' pinned' : ''}${t.loading ? ' loading' : ''}`, role: 'tab', draggable: 'true', title: (t.path && !isVirtual(t.path) ? shownPath(t.path) : tabTitle(t)) + (t.pinned ? '  (pinned)' : ''), 'data-id': t.id });
     if (t.color) el.style.setProperty('--tabc', t.color);
     el.innerHTML = `${n > 1 && paneIdx >= 0 ? `<span class="pane-badge">${paneIdx + 1}</span>` : ''}<span class="tab-ic">${icon(tabIcon(t))}</span><span class="tab-title">${esc(tabTitle(t))}</span>${t.pinned ? `<span class="tab-lock" title="Pinned: stays at the left and can't be closed by accident">${icon('pin')}</span>` : `<button class="tab-close" title="Close (Ctrl+W)">${icon('close')}</button>`}`;
     el.addEventListener('mousedown', (e) => {
@@ -515,6 +516,7 @@ async function boot() {
   const info = await api('sys:info');
   Object.assign(sys, info); // platform, sep, known folders, version, customControls (Dogfile 2 draws its own window buttons)…
   state.hostname = info.hostname;
+  if (info.demo) import('./demo.js').then((m) => m.showDemoSign());
   const [settings, library, tags, session] = await Promise.all([api('store:get', 'settings'), api('store:get', 'library'), api('store:get', 'tags'), api('store:get', 'session')]);
   state.settings = { ...DEFAULT_SETTINGS, ...(settings || {}) };
   setNativeDialogs(state.settings.nativeDialogs);

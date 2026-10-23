@@ -37,6 +37,7 @@ pub mod s3;
 pub mod meta;
 pub mod model3d;
 pub mod phonelink;
+pub mod demo;
 pub mod git;
 pub mod pty;
 pub mod clip;
@@ -89,6 +90,7 @@ pub struct Config {
 pub fn start(cfg: Config, host: Arc<dyn Host>) {
     let _ = std::fs::create_dir_all(&cfg.data_dir);
     store::migrate_from_atlas(&cfg.data_dir);
+    demo::init(&cfg.data_dir);
     let settings = store::get_in(&cfg.data_dir, "settings").unwrap_or_else(|| Value::Object(Default::default()));
     let s = State {
         host,

@@ -488,6 +488,10 @@ fn scan() -> &'static Mutex<Scan> {
     S.get_or_init(|| Mutex::new(Scan { queue: VecDeque::new(), queued: HashSet::new(), running: false, done: 0, found: 0, current: None }))
 }
 fn enqueue(p: PathBuf) {
+    // demo mode: your documents aren't read or shown
+    if crate::demo::active() {
+        return;
+    }
     if !wanted(&p) {
         return;
     }
@@ -529,6 +533,10 @@ fn walk(dir: &Path, depth: usize, out: &mut Vec<PathBuf>) {
     }
 }
 fn scan_all() {
+    // demo mode: your documents aren't read or shown
+    if crate::demo::active() {
+        return;
+    }
     let mut files = vec![];
     for f in folders() {
         walk(&f, 3, &mut files);
@@ -678,6 +686,10 @@ fn days_left(it: &Value) -> Option<i64> {
 }
 /// send what's due now: each chosen interval once, and once on the day / when it has passed
 pub fn check() {
+    // demo mode: your documents aren't read or shown
+    if crate::demo::active() {
+        return;
+    }
     if !enabled() {
         return;
     }

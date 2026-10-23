@@ -7,7 +7,8 @@
 # Where it runs: set the repository variable RUNNER to "pc" (Settings > Secrets and variables > Actions > Variables)
 # and the Windows builds run on your own PC's self-hosted runner, free; the Linux/Mac/licence jobs and the tests that
 # open windows, kill processes, or install Dogfile are skipped there (they'd disturb your PC). Delete the variable
-# (or set it to "github") to go back to GitHub's machines.
+# (or set it to "github") to go back to GitHub's machines. The Linux, Mac and licence-server jobs only run when the
+# workflow is started by hand (Actions > app > Run workflow) or the variable BUILD_ALL is "yes": Mac minutes cost the most.
 name: app
 on:
   push:
@@ -31,7 +32,7 @@ jobs:
       - name: Rust toolchain
         run: rustup toolchain install stable --profile minimal && rustup default stable
       - uses: actions/cache@v4
-        if: vars.RUNNER != 'pc'
+        if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
         with:
           path: |
             ~/.cargo/registry
@@ -71,7 +72,7 @@ jobs:
           if ($code -ne 0) { Write-Output "::error title=tests::$tail" } else { Write-Output "::notice title=tests::$((Get-Content test.log | Select-String 'test result') -join '%0A')" }
           exit $code
       - name: Start the app, take screenshots, measure memory (and the old Electron version for comparison)
-        if: vars.RUNNER != 'pc'
+        if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
         shell: pwsh
         continue-on-error: true
         run: |
@@ -92,7 +93,7 @@ jobs:
           # ...and after a couple of quiet minutes (the index sleeps when nobody searches)
           ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$files`"" -Label tauri-index-idle -Out $out -Seconds 150 -Shot
       - name: Startup time (first run, then warm starts)
-        if: vars.RUNNER != 'pc'
+        if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
         shell: pwsh
         continue-on-error: true
         run: |
@@ -116,7 +117,7 @@ jobs:
           $log | Set-Content "$out/startup.txt"
           Remove-Item Env:ATLAS_TEST, Env:DOGFILE_TEST_LOG, Env:ATLAS_STEPS, Env:ATLAS_SHOT_DELAY
       - name: Windows checks inside the app (shell, recycle bin, clipboard, thumbnails, 7-Zip, terminal…)
-        if: vars.RUNNER != 'pc'
+        if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
         shell: pwsh
         continue-on-error: true
         run: |
@@ -138,7 +139,7 @@ jobs:
           Write-Output "::notice title=wintest::$($log -join '%0A')"
           Remove-Item Env:ATLAS_TEST, Env:DOGFILE_TEST_LOG, Env:ATLAS_STEPS
       - name: Notepad writing helper (download the model, write on the processor and graphics card)
-        if: vars.RUNNER != 'pc'
+        if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
         shell: pwsh
         continue-on-error: true
         timeout-minutes: 30
@@ -156,7 +157,7 @@ jobs:
           Write-Output "::notice title=writertest::$($log -join '%0A')"
           Remove-Item Env:ATLAS_TEST, Env:DOGFILE_TEST_LOG, Env:ATLAS_STEPS
       - name: Auto-update end to end (check, download, install, restart)
-        if: vars.RUNNER != 'pc'
+        if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
         shell: pwsh
         continue-on-error: true
         run: |
@@ -272,7 +273,7 @@ jobs:
           & $makeappx.FullName pack /o /d $st /p "dist/Dogfile-$ver-x64.msix" | Select-Object -Last 3
           Write-Output "::notice title=store::$(if (Test-Path "dist/Dogfile-$ver-x64.msix") { "Dogfile-$ver-x64.msix $([math]::Round((Get-Item "dist/Dogfile-$ver-x64.msix").Length/1MB,1)) MB (identity $idn, publisher $pub)" } else { 'no msix' })"
       - uses: actions/upload-artifact@v4
-        if: vars.RUNNER != 'pc'
+        if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
         continue-on-error: true
         with:
           name: windows-x64
@@ -311,7 +312,7 @@ jobs:
       - name: Rust toolchain for Windows on ARM
         run: rustup toolchain install stable --profile minimal && rustup default stable && rustup target add aarch64-pc-windows-msvc
       - uses: actions/cache@v4
-        if: vars.RUNNER != 'pc'
+        if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
         with:
           path: |
             ~/.cargo/registry
@@ -334,7 +335,7 @@ jobs:
           else { Write-Output "::notice title=arm64-build::$([math]::Round((Get-Item target/aarch64-pc-windows-msvc/release/dogfile.exe).Length/1MB,1)) MB" }
           exit $code
       - uses: actions/upload-artifact@v4
-        if: vars.RUNNER != 'pc'
+        if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
         with:
           name: windows-arm64
           path: target/aarch64-pc-windows-msvc/release/dogfile.exe
@@ -352,7 +353,7 @@ jobs:
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" app-bin-arm64
   linux:
     runs-on: ubuntu-22.04
-    if: vars.RUNNER != 'pc'
+    if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
     steps:
       - uses: actions/checkout@v4
       - name: Git's bash on the path (self-hosted Windows)
@@ -368,7 +369,7 @@ jobs:
       - name: System libraries
         run: sudo apt-get update -qq && sudo apt-get install -y -qq libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf > /dev/null
       - uses: actions/cache@v4
-        if: vars.RUNNER != 'pc'
+        if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
         with:
           path: |
             ~/.cargo/registry
@@ -401,13 +402,13 @@ jobs:
           tar -C dist -czf dist/Dogfile-$v-linux-x64.tar.gz Dogfile-$v-linux-x64
           echo "::notice title=linux::$(ls -la dist/*.tar.gz | awk '{print $5, $9}')"
       - uses: actions/upload-artifact@v4
-        if: vars.RUNNER != 'pc'
+        if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
         with:
           name: linux-x64
           path: dist/*.tar.gz
   macos:
     runs-on: macos-14
-    if: vars.RUNNER != 'pc'
+    if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
     steps:
       - uses: actions/checkout@v4
       - name: Git's bash on the path (self-hosted Windows)
@@ -416,7 +417,7 @@ jobs:
         run: |
           foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin", "$env:ProgramFiles\LLVM\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
       - uses: actions/cache@v4
-        if: vars.RUNNER != 'pc'
+        if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
         with:
           path: |
             ~/.cargo/registry
@@ -453,14 +454,14 @@ jobs:
           (cd dist && ditto -c -k --keepParent Dogfile.app Dogfile-$v-mac-arm64.zip)
           echo "::notice title=mac::$(ls -la dist/*.zip | awk '{print $5, $9}')"
       - uses: actions/upload-artifact@v4
-        if: vars.RUNNER != 'pc'
+        if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
         with:
           name: mac-arm64
           path: dist/*.zip
   # the licence server (supabase/functions/license) against a real Postgres, with Stripe and email faked
   license-server:
     runs-on: ubuntu-latest
-    if: vars.RUNNER != 'pc'
+    if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
     services:
       postgres:
         image: postgres:16

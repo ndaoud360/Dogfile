@@ -1005,7 +1005,7 @@ export function buildItemsMenu(t, items) {
     allDirs && { label: 'Open in new window', icon: 'newWindow', run: () => items.forEach((i) => api('win:new', { path: i.path })) },
     one && !one.isDir && { label: 'Open with', icon: 'apps', submenu: () => openWithMenu(one) },
     one && !one.isDir && !one.virtual && !one.archive && !one.recycle && !one.mtp && ![...KINDS.image, ...KINDS.video, ...KINDS.audio, ...KINDS.archive].includes(one.ext) && { label: 'Edit with Dogfile Notepad', icon: 'notepad', run: () => openTool('editor', [one.path]) },
-    real.length === 2 && real.every((i) => !i.isDir) && { label: 'Compare these two files', icon: 'compare', run: () => openTool('editor', real.map((i) => i.path), { compare: true }) },
+    real.length === 2 && real.every((i) => !i.isDir) && { label: 'Compare these two files', icon: 'compare', run: () => import('./compare.js').then((m) => m.compareFiles(real[0].path, real[1].path)) },
     ...(real.length > 1 || (one && !one.isDir && !isTextFile(one)) ? openAllEntries(real.filter((i) => !i.isDir).map((i) => i.path)).filter((x) => real.length > 1 || !/Notepad/.test(x.label)) : []),
     real.length && real.some((i) => KINDS.audio.includes(i.ext)) && { label: real.filter((i) => KINDS.audio.includes(i.ext)).length > 1 ? 'Edit tags of all…' : 'Edit tags…', icon: 'tag', run: () => import('./tageditor.js').then((m) => m.openTagEditor(real.filter((i) => KINDS.audio.includes(i.ext)).map((i) => i.path))) },
     real.length && real.some((i) => KINDS.audio.includes(i.ext)) && { label: 'Detect BPM & key', icon: 'music', run: () => bus.emit('analyzeAudio', real.filter((i) => KINDS.audio.includes(i.ext)).map((i) => i.path)) },

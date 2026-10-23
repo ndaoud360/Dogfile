@@ -228,8 +228,14 @@ export async function compareFolders() {
   const table = h('div', { class: 'cmp-table' });
   const draw = () => {
     table.innerHTML = `<div class="cmp-row head"><div>${esc(basename(a.path))}</div><div></div><div>${esc(basename(b.path))}</div></div>` +
-      rows.filter((r) => showSame.checked || r.state !== 'same').map((r) => `<div class="cmp-row s-${r.state}"><div>${r.a ? `${esc(r.a.name)}<span class="hint"> ${r.a.isDir ? '' : fmtSize(r.a.size)} · ${fmtDate(r.a.mtime, 'iso')}</span>` : ''}</div><div class="cmp-state">${labels[r.state]}</div><div>${r.b ? `${esc(r.b.name)}<span class="hint"> ${r.b.isDir ? '' : fmtSize(r.b.size)} · ${fmtDate(r.b.mtime, 'iso')}</span>` : ''}</div></div>`).join('');
+      rows.filter((r) => showSame.checked || r.state !== 'same').map((r) => `<div class="cmp-row s-${r.state}" data-i="${rows.indexOf(r)}"><div>${r.a ? `${esc(r.a.name)}<span class="hint"> ${r.a.isDir ? '' : fmtSize(r.a.size)} · ${fmtDate(r.a.mtime, 'iso')}</span>` : ''}</div><div class="cmp-state">${labels[r.state]}${r.a && r.b && !r.a.isDir && !r.b.isDir && r.state !== 'same' ? ' <button class="btn small cmp-open" title="See what’s different inside">Compare</button>' : ''}</div><div>${r.b ? `${esc(r.b.name)}<span class="hint"> ${r.b.isDir ? '' : fmtSize(r.b.size)} · ${fmtDate(r.b.mtime, 'iso')}</span>` : ''}</div></div>`).join('');
   };
+  // a file that differs: see how, inside
+  table.addEventListener('click', (e) => {
+    const btn = e.target.closest('.cmp-open'); if (!btn) return;
+    const r = rows[+btn.closest('.cmp-row').dataset.i];
+    if (r?.a && r?.b) import('./compare.js').then((m) => m.compareFiles(r.a.path, r.b.path));
+  });
   showSame.addEventListener('change', draw);
   draw();
   const counts = rows.reduce((o, r) => ((o[r.state] = (o[r.state] || 0) + 1), o), {});

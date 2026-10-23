@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 
 pub const NAMES: &[&str] = &[
     "license:status", "llm:status", "llm:warm", "llm:plan", "llm:stop", "reminders:list", "reminders:status", "reminders:apply", "reminders:scanNow", "reminders:analyze", "reminders:add", "reminders:update", "reminders:snooze", "reminders:remove", "reminders:test", "license:startTrial", "license:activate", "license:offlineRequest", "license:offlineApply", "license:deactivate", "license:checkout", "license:claim", "license:refresh",
-    "sys:info", "fs:list", "fs:subdirs", "fs:stat", "fs:exists", "fs:isDir", "fs:mkdir", "fs:newFile", "fs:rename", "fs:uniqueName", "fs:readText", "fs:readBytes", "fs:writeText", "fs:writeImage", "fs:hash",
+    "sys:info", "fs:list", "fs:subdirs", "fs:stat", "fs:exists", "fs:isDir", "fs:mkdir", "fs:newFile", "fs:rename", "fs:uniqueName", "fs:readText", "fs:readBytes", "fs:compareBinary", "fs:writeText", "fs:writeImage", "fs:hash",
     "fs:attributes", "fs:setAttributes", "fs:setTimes", "fs:symlink", "fs:shortcut", "fs:readLink", "fs:drives", "fs:eject", "fs:mapped", "fs:recentWindows", "fs:statMany", "thumb:get", "icon:get",
     "shell:open", "shell:openExternal", "shell:openWith", "shell:runAs", "shell:showInExplorer", "shell:terminal", "shell:properties", "shell:verbs", "shell:invokeVerb", "shell:beep", "shell:launch",
     "shell:runCommand", "fs:findUnder", "sys:findEditor", "clip:writeFiles", "clip:readFiles", "clip:writeText", "clip:readText", "clip:hasImage", "clip:formats", "clip:watch", "ops:start",
@@ -128,6 +128,7 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
         "fs:uniqueName" => fsx::unique_name(&a).await,
         "fs:readText" => fsx::read_text(&a).await,
         "fs:readBytes" => fsx::read_bytes(&a).await,
+        "fs:compareBinary" => fsx::compare_binary(&a).await,
         "fs:writeText" => fsx::write_text(&a).await,
         "fs:writeImage" => fsx::write_image(&a).await,
         "fs:hash" => fsx::hash(&a).await,

@@ -260,6 +260,52 @@ pub async fn read_bytes(a: &Args) -> R {
     buf.truncate(k);
     Ok(json!(buf))
 }
+/// fs:compareBinary a b [maxRanges]: where two files differ, byte by byte (streamed: any size).
+/// Differences closer than 16 bytes are one range. {sizeA, sizeB, identical, diffBytes, ranges: [[start, end]], truncated}
+pub async fn compare_binary(a: &Args) -> R {
+    let (pa, pb) = (a.s(0)?, a.s(1)?);
+    let max = a.u(2, 500).clamp(1, 10_000) as usize;
+    tokio::task::spawn_blocking(move || -> R {
+        let mut fa = std::fs::File::open(&pa).map_err(|e| friendly(&e))?;
+        let mut fb = std::fs::File::open(&pb).map_err(|e| friendly(&e))?;
+        let (la, lb) = (fa.metadata().map_err(err)?.len(), fb.metadata().map_err(err)?.len());
+        let mut ba = vec![0u8; 1 << 20];
+        let mut bb = vec![0u8; 1 << 20];
+        let mut ranges: Vec<(u64, u64)> = vec![];
+        let (mut diff, mut off, mut truncated) = (0u64, 0u64, false);
+        loop {
+            let na = read_full(&mut fa, &mut ba);
+            let nb = read_full(&mut fb, &mut bb);
+            let n = na.min(nb);
+            if ba[..n] != bb[..n] {
+                for i in 0..n {
+                    if ba[i] != bb[i] {
+                        diff += 1;
+                        let at = off + i as u64;
+                        let n_ranges = ranges.len();
+                        match ranges.last_mut() {
+                            Some(r) if at <= r.1 + 16 => r.1 = at + 1,
+                            _ if n_ranges < max => ranges.push((at, at + 1)),
+                            _ => truncated = true,
+                        }
+                    }
+                }
+            }
+            off += n as u64;
+            if na < ba.len() || nb < bb.len() {
+                break;
+            }
+        }
+        // the longer file's tail is a difference too
+        if la != lb {
+            let (s, e) = (la.min(lb), la.max(lb));
+            if ranges.len() < max { ranges.push((s, e)) } else { truncated = true }
+        }
+        Ok(json!({ "sizeA": la, "sizeB": lb, "identical": diff == 0 && la == lb, "diffBytes": diff, "extra": la.abs_diff(lb), "ranges": ranges.iter().map(|r| [r.0, r.1]).collect::<Vec<_>>(), "truncated": truncated }))
+    })
+    .await
+    .map_err(err)?
+}
 pub async fn write_text(a: &Args) -> R {
     tokio::fs::write(a.s(0)?, a.s_or(1, "")).await.map_err(|e| friendly(&e))?;
     Ok(json!(true))

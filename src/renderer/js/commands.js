@@ -141,6 +141,15 @@ for (const [k, l] of [['name', 'Name'], ['mtime', 'Date modified'], ['size', 'Si
 // ---------------- tools ----------------
 def('search', 'Search', { icon: 'search', keys: ['Ctrl+E', 'Ctrl+Shift+F'], cat: 'Tools', run: () => T.openSearchBar() });
 def('advSearch', 'Advanced search…', { icon: 'filter', keys: ['Ctrl+Alt+F'], cat: 'Tools', run: () => T.advancedSearch() });
+def('compareFiles', 'Compare two files…', { icon: 'compare', cat: 'Tools', run: async () => {
+  // two files selected here, or the file selected in each of two panes, or pick them
+  const here = selectedItems(T_()).filter((i) => !i.isDir);
+  const o = otherPaneTab();
+  const there = o ? selectedItems(o).filter((i) => !i.isDir) : [];
+  let pair = here.length === 2 ? [here[0].path, here[1].path] : here.length === 1 && there.length === 1 ? [here[0].path, there[0].path] : null;
+  if (!pair) { const f = await api('dialog:openFiles', { title: 'Choose the two files to compare', multi: true }); if (f?.length === 2) pair = f; else if (f?.length) { const g = await api('dialog:openFiles', { title: 'Compare with…' }); if (g?.[0]) pair = [f[0], g[0]]; } }
+  if (pair) import('./compare.js').then((m) => m.compareFiles(pair[0], pair[1]));
+} });
 def('compare', 'Compare / sync folders', { icon: 'compare', keys: ['Ctrl+Alt+M'], cat: 'Tools', run: T.compareFolders });
 def('dupes', 'Find duplicate files', { icon: 'dupes', cat: 'Tools', run: T.findDuplicates });
 def('analyze', 'Analyze disk space', { icon: 'chart', keys: ['Ctrl+Alt+A'], cat: 'Tools', run: () => T.analyzeSpace() });

@@ -765,10 +765,22 @@ async function openCompare(a, b) {
     try { await api('fs:writeEncoded', f.p, text, f.enc === 'ansi' ? 'cp1252' : f.enc); f.text = text; toast(`Saved ${basename(f.p)}`, { ms: 1400 }); }
     catch (e) { toast(`Save failed: ${e.message}`, { error: true }); }
   };
+  // the arrows beside each change copy it across: left to right, or right to left
+  let dir = 'a-to-b';
+  const dirBtn = h('button', { class: 'btn small', title: 'Which way the arrows beside each change copy it' }, 'Copy: left → right');
+  dirBtn.onclick = () => {
+    dir = dir === 'a-to-b' ? 'b-to-a' : 'a-to-b';
+    dirBtn.textContent = dir === 'a-to-b' ? 'Copy: left → right' : 'Copy: right → left';
+    const ta = compareView.a.state.doc.toString(), tb = compareView.b.state.doc.toString();
+    compareView.destroy();
+    compareView = new CM.MergeView({ a: side({ ...A, text: ta }), b: side({ ...B, text: tb }), parent: host, highlightChanges: true, gutter: true, collapseUnchanged: { margin: 3, minSize: 6 }, revertControls: dir });
+    count();
+  };
   const bar = h('div', { class: 'cmp-bar' },
     h('b', { title: a }, basename(a)), h('span', { class: 'cmp-vs' }, '↔'), h('b', { title: b }, basename(b)), info, h('span', { class: 'ctl-spacer' }),
     h('button', { class: 'btn small', title: 'Previous change (Shift+F7)', onclick: () => CM.goToPreviousChunk(compareView.b) }, '↑ Previous'),
     h('button', { class: 'btn small', title: 'Next change (F7)', onclick: () => CM.goToNextChunk(compareView.b) }, '↓ Next'),
+    dirBtn,
     h('button', { class: 'btn small', onclick: () => saveSide('a') }, 'Save left'),
     h('button', { class: 'btn small', onclick: () => saveSide('b') }, 'Save right'),
     h('button', { class: 'btn small primary', onclick: closeCompare }, 'Close compare'));

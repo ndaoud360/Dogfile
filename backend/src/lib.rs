@@ -32,6 +32,7 @@ pub mod netdiscover;
 pub mod remote;
 pub mod reminders;
 pub mod cloudapi;
+pub mod s3;
 pub mod git;
 pub mod pty;
 pub mod clip;

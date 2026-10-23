@@ -171,6 +171,15 @@ async function remoteTransfer(paths, dest, mode) {
     if (isRemote(dest)) {
       const { id, path } = remoteParts(dest);
       const local = paths.filter((p) => !isRemote(p));
+      // inside the same connection: the service copies or moves it itself (nothing comes down to this PC)
+      if (paths.length && paths.every((p) => isRemote(p) && remoteParts(p).id === id)) {
+        txt.textContent = mode === 'move' ? 'Moving on the server…' : 'Copying on the server…';
+        const rels = paths.map((p) => remoteParts(p).path);
+        if (mode === 'move') for (const r of rels) await api('remote:rename', id, r, (path.endsWith('/') ? path : path + '/') + basename(r));
+        else await api('remote:copy', id, rels, path);
+        toast(`${mode === 'move' ? 'Moved' : 'Copied'} ${rels.length} item${rels.length === 1 ? '' : 's'} on the server`);
+        return { status: 'done' };
+      }
       if (paths.some(isRemote)) throw new Error('Copying between two servers isn’t supported. Copy to this PC first.');
       await api('remote:put', id, local, path, token);
       if (mode === 'move') await runJob({ type: 'trash', sources: local });

@@ -20,6 +20,8 @@ pub struct Ent {
     pub mtime: f64,
 }
 
+pub use crate::s3::S3;
+
 pub enum Api {
     S3(S3),
     Drive(OAuth),
@@ -248,27 +250,30 @@ impl Api {
     }
     pub async fn download(&self, p: &str, local: &Path, prog: &mut (dyn FnMut(u64) + Send)) -> Result<(), String> {
         match self {
-            Api::S3(s) => save_stream(s.send("GET", &s.key(p), "", vec![]).await?, local, prog).await,
+            Api::S3(s) => s.download(p, local, prog).await,
             Api::Dropbox(o) => save_stream(util::http().post(dropbox::content("download")).bearer_auth(o.access().await?).header("Dropbox-API-Arg", json!({ "path": dropbox::dp(p) }).to_string()).send().await.map_err(|e| e.to_string())?, local, prog).await,
             Api::OneDrive(o) => save_stream(util::http().get(format!("{}:/content", onedrive::item(p))).bearer_auth(o.access().await?).send().await.map_err(|e| e.to_string())?, local, prog).await,
             Api::Drive(o) => gdrive::download(o, p, local, prog).await,
         }
     }
-    pub async fn upload(&self, local: &Path, p: &str) -> Result<(), String> {
+    pub async fn upload(&self, local: &Path, p: &str, prog: &mut (dyn FnMut(u64) + Send)) -> Result<(), String> {
         match self {
-            Api::S3(s) => {
-                let (body, len) = file_body(local).await?;
-                let r = s.send_body("PUT", &s.key(p), "", vec![("content-length".into(), len.to_string())], body).await?;
-                S3::check(r).await.map(|_| ())
-            }
+            Api::S3(s) => s.upload(local, p, prog).await,
             Api::Dropbox(o) => dropbox::upload(o, local, p).await,
             Api::OneDrive(o) => onedrive::upload(o, local, p).await,
             Api::Drive(o) => gdrive::upload(o, local, p).await,
         }
     }
+    /// copy inside the service when it can (S3); None: download and upload instead
+    pub async fn copy(&self, from: &str, to: &str) -> Option<Result<(), String>> {
+        match self {
+            Api::S3(s) => Some(s.copy(from, to).await),
+            _ => None,
+        }
+    }
     pub async fn mkdir(&self, p: &str) -> Result<(), String> {
         match self {
-            Api::S3(s) => S3::check(s.send("PUT", &format!("{}/", s.key(p)), "", vec![("content-length".into(), "0".into())]).await?).await.map(|_| ()),
+            Api::S3(s) => s.mkdir(p).await,
             Api::Dropbox(o) => dropbox::rpc(o, "create_folder_v2", json!({ "path": dropbox::dp(p), "autorename": false })).await.map(|_| ()),
             Api::OneDrive(o) => onedrive::mkdir(o, p).await,
             Api::Drive(o) => gdrive::mkdir(o, p).await.map(|_| ()),
@@ -579,191 +584,6 @@ mod gdrive {
         if st >= 300 { return Err(api_err(st, &r.json().await.unwrap_or(Value::Null))) }
         let pre = from.trim_end_matches('/').to_string();
         o.ids.lock().retain(|k, _| k != &pre && !k.starts_with(&format!("{pre}/")));
-        Ok(())
-    }
-}
-
-// ---------------------------------------------------------------- S3 (signature version 4)
-pub struct S3 {
-    endpoint: String,
-    region: String,
-    bucket: String,
-    key_id: String,
-    secret: String,
-    path_style: bool,
-}
-fn hmac(key: &[u8], data: &[u8]) -> Vec<u8> {
-    let mut k = if key.len() > 64 { Sha256::digest(key).to_vec() } else { key.to_vec() };
-    k.resize(64, 0);
-    let ipad: Vec<u8> = k.iter().map(|b| b ^ 0x36).collect();
-    let opad: Vec<u8> = k.iter().map(|b| b ^ 0x5c).collect();
-    let inner = Sha256::new().chain_update(&ipad).chain_update(data).finalize();
-    Sha256::new().chain_update(&opad).chain_update(inner).finalize().to_vec()
-}
-fn hex(b: &[u8]) -> String {
-    b.iter().map(|x| format!("{x:02x}")).collect()
-}
-fn uri_enc(s: &str, slash: bool) -> String {
-    let mut o = String::new();
-    for b in s.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => o.push(b as char),
-            b'/' if !slash => o.push('/'),
-            _ => o.push_str(&format!("%{b:02X}")),
-        }
-    }
-    o
-}
-fn amz_date() -> (String, String) {
-    let ms = util::now_ms() as i64 / 1000;
-    let (days, secs) = (ms.div_euclid(86400), ms.rem_euclid(86400));
-    // civil from days (Howard Hinnant)
-    let z = days + 719468;
-    let era = z.div_euclid(146097);
-    let doe = z - era * 146097;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let y = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = if m <= 2 { y + 1 } else { y };
-    let date = format!("{y:04}{m:02}{d:02}");
-    (format!("{date}T{:02}{:02}{:02}Z", secs / 3600, secs % 3600 / 60, secs % 60), date)
-}
-impl S3 {
-    pub fn from(c: &Value, secret: &str) -> Result<S3, String> {
-        let region = c["region"].as_str().filter(|s| !s.is_empty()).unwrap_or("us-east-1").to_string();
-        let bucket = c["bucket"].as_str().filter(|s| !s.is_empty()).ok_or("Which bucket?")?.to_string();
-        let endpoint = c["host"].as_str().filter(|s| !s.is_empty()).map(|h| if h.starts_with("http") { h.trim_end_matches('/').to_string() } else { format!("https://{}", h.trim_end_matches('/')) }).unwrap_or_else(|| format!("https://s3.{region}.amazonaws.com"));
-        let path_style = c["pathStyle"].as_bool().unwrap_or(!endpoint.contains("amazonaws.com"));
-        Ok(S3 { endpoint, region, bucket, key_id: c["user"].as_str().unwrap_or("").to_string(), secret: secret.to_string(), path_style })
-    }
-    /// "/a/b.txt" → "a/b.txt"
-    pub fn key(&self, p: &str) -> String {
-        p.trim_start_matches('/').trim_end_matches('/').to_string()
-    }
-    fn url_and_host(&self, key: &str) -> (String, String, String) {
-        let u = reqwest::Url::parse(&self.endpoint).unwrap_or_else(|_| reqwest::Url::parse("https://s3.amazonaws.com").unwrap());
-        let host = match u.port() { Some(p) => format!("{}:{p}", u.host_str().unwrap_or("")), None => u.host_str().unwrap_or("").to_string() };
-        if self.path_style {
-            let path = format!("/{}/{}", self.bucket, uri_enc(key, false));
-            (format!("{}://{host}{path}", u.scheme()), host, path)
-        } else {
-            let h = format!("{}.{host}", self.bucket);
-            let path = format!("/{}", uri_enc(key, false));
-            (format!("{}://{h}{path}", u.scheme()), h, path)
-        }
-    }
-    fn signed(&self, method: &str, key: &str, query: &str, mut headers: Vec<(String, String)>) -> (String, Vec<(String, String)>) {
-        let (url, host, path) = self.url_and_host(key);
-        let (amz, date) = amz_date();
-        headers.push(("host".into(), host));
-        headers.push(("x-amz-date".into(), amz.clone()));
-        headers.push(("x-amz-content-sha256".into(), "UNSIGNED-PAYLOAD".into()));
-        headers.sort_by(|a, b| a.0.cmp(&b.0));
-        let mut qs: Vec<(String, String)> = query.split('&').filter(|x| !x.is_empty()).map(|kv| { let (k, v) = kv.split_once('=').unwrap_or((kv, "")); (uri_enc(k, true), uri_enc(v, true)) }).collect();
-        qs.sort();
-        let cq = qs.iter().map(|(k, v)| format!("{k}={v}")).collect::<Vec<_>>().join("&");
-        let ch: String = headers.iter().map(|(k, v)| format!("{}:{}\n", k.to_lowercase(), v.trim())).collect();
-        let sh = headers.iter().map(|(k, _)| k.to_lowercase()).collect::<Vec<_>>().join(";");
-        let creq = format!("{method}\n{path}\n{cq}\n{ch}\n{sh}\nUNSIGNED-PAYLOAD");
-        let scope = format!("{date}/{}/s3/aws4_request", self.region);
-        let sts = format!("AWS4-HMAC-SHA256\n{amz}\n{scope}\n{}", hex(&Sha256::digest(creq.as_bytes())));
-        let k = hmac(&hmac(&hmac(&hmac(format!("AWS4{}", self.secret).as_bytes(), date.as_bytes()), self.region.as_bytes()), b"s3"), b"aws4_request");
-        let sig = hex(&hmac(&k, sts.as_bytes()));
-        headers.push(("authorization".into(), format!("AWS4-HMAC-SHA256 Credential={}/{scope}, SignedHeaders={sh}, Signature={sig}", self.key_id)));
-        headers.retain(|(k, _)| k != "host");
-        (if cq.is_empty() { url } else { format!("{url}?{cq}") }, headers)
-    }
-    pub async fn send(&self, method: &str, key: &str, query: &str, headers: Vec<(String, String)>) -> Result<reqwest::Response, String> {
-        self.send_body(method, key, query, headers, reqwest::Body::from(Vec::new())).await
-    }
-    pub async fn send_body(&self, method: &str, key: &str, query: &str, headers: Vec<(String, String)>, body: reqwest::Body) -> Result<reqwest::Response, String> {
-        let (url, hs) = self.signed(method, key, query, headers);
-        let mut rq = util::http().request(reqwest::Method::from_bytes(method.as_bytes()).map_err(|e| e.to_string())?, url);
-        for (k, v) in hs {
-            rq = rq.header(k, v);
-        }
-        rq.body(body).send().await.map_err(|e| e.to_string())
-    }
-    pub async fn check(r: reqwest::Response) -> Result<String, String> {
-        let st = r.status().as_u16();
-        let t = r.text().await.unwrap_or_default();
-        if st >= 300 {
-            let code = regex::Regex::new(r"<Code>([^<]+)</Code>").unwrap().captures(&t).map(|c| c[1].to_string()).unwrap_or_default();
-            let msg = regex::Regex::new(r"<Message>([^<]+)</Message>").unwrap().captures(&t).map(|c| c[1].to_string()).unwrap_or_default();
-            return Err(match code.as_str() {
-                "InvalidAccessKeyId" | "SignatureDoesNotMatch" => "The access key or secret was not accepted.".into(),
-                "NoSuchBucket" => "That bucket doesn’t exist (check the name and region).".into(),
-                "AccessDenied" => "Access denied for this key.".into(),
-                "NoSuchKey" => "Not found".into(),
-                _ => if msg.is_empty() { format!("The storage service answered {st}") } else { msg },
-            });
-        }
-        Ok(t)
-    }
-    async fn list_all(&self, prefix: &str, delim: bool) -> Result<(Vec<(String, u64, f64)>, Vec<String>), String> {
-        let mut files = vec![];
-        let mut dirs = vec![];
-        let mut token = String::new();
-        let key_re = regex::Regex::new(r"(?s)<Contents>.*?<Key>([^<]*)</Key>.*?<LastModified>([^<]*)</LastModified>.*?<Size>(\d+)</Size>.*?</Contents>").unwrap();
-        let pre_re = regex::Regex::new(r"(?s)<CommonPrefixes>\s*<Prefix>([^<]*)</Prefix>").unwrap();
-        loop {
-            let mut q = format!("list-type=2&max-keys=1000&prefix={}", prefix);
-            if delim { q.push_str("&delimiter=/") }
-            if !token.is_empty() { q.push_str(&format!("&continuation-token={token}")) }
-            // the query is signed with its values already decoded
-            let body = S3::check(self.send("GET", "", &q, vec![]).await?).await?;
-            let un = |s: &str| s.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&apos;", "'");
-            for c in key_re.captures_iter(&body) { files.push((un(&c[1]), c[3].parse().unwrap_or(0), iso_ms(&c[2]))); }
-            for c in pre_re.captures_iter(&body) { dirs.push(un(&c[1])); }
-            match regex::Regex::new(r"<NextContinuationToken>([^<]+)</NextContinuationToken>").unwrap().captures(&body) { Some(c) => token = un(&c[1]), None => break }
-        }
-        Ok((files, dirs))
-    }
-    pub async fn list(&self, dir: &str) -> Result<Vec<Ent>, String> {
-        let k = self.key(dir);
-        let prefix = if k.is_empty() { String::new() } else { format!("{k}/") };
-        let (files, dirs) = self.list_all(&prefix, true).await?;
-        let mut out: Vec<Ent> = dirs.iter().map(|d| Ent { name: d[prefix.len()..].trim_end_matches('/').to_string(), is_dir: true, size: 0, mtime: 0.0 }).filter(|e| !e.name.is_empty()).collect();
-        out.extend(files.into_iter().filter(|(f, _, _)| f.len() > prefix.len()).map(|(f, s, m)| Ent { name: f[prefix.len()..].to_string(), is_dir: false, size: s, mtime: m }));
-        Ok(out)
-    }
-    pub async fn stat(&self, p: &str) -> Option<(bool, u64)> {
-        let k = self.key(p);
-        if let Ok(r) = self.send("HEAD", &k, "", vec![]).await {
-            if r.status().is_success() {
-                return Some((false, r.headers().get("content-length").and_then(|v| v.to_str().ok()).and_then(|s| s.parse().ok()).unwrap_or(0)));
-            }
-        }
-        let (f, d) = self.list_all(&format!("{k}/"), true).await.ok()?;
-        if !f.is_empty() || !d.is_empty() { Some((true, 0)) } else { None }
-    }
-    pub async fn remove(&self, p: &str) -> Result<(), String> {
-        let k = self.key(p);
-        let (files, _) = self.list_all(&format!("{k}/"), false).await?;
-        for (f, _, _) in files {
-            S3::check(self.send("DELETE", &f, "", vec![]).await?).await?;
-        }
-        let _ = self.send("DELETE", &format!("{k}/"), "", vec![]).await;
-        let r = self.send("DELETE", &k, "", vec![]).await?;
-        if r.status().is_success() || r.status().as_u16() == 404 { Ok(()) } else { S3::check(r).await.map(|_| ()) }
-    }
-    pub async fn rename(&self, from: &str, to: &str) -> Result<(), String> {
-        let (fk, tk) = (self.key(from), self.key(to));
-        let mut moves = vec![];
-        if self.send("HEAD", &fk, "", vec![]).await.map(|r| r.status().is_success()).unwrap_or(false) {
-            moves.push((fk.clone(), tk.clone()));
-        } else {
-            let (files, _) = self.list_all(&format!("{fk}/"), false).await?;
-            for (f, _, _) in files { moves.push((f.clone(), format!("{tk}{}", &f[fk.len()..]))); }
-        }
-        for (a, b) in moves {
-            let src = format!("/{}/{}", self.bucket, uri_enc(&a, false));
-            S3::check(self.send("PUT", &b, "", vec![("x-amz-copy-source".into(), src)]).await?).await?;
-            S3::check(self.send("DELETE", &a, "", vec![]).await?).await?;
-        }
         Ok(())
     }
 }

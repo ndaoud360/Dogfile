@@ -9,7 +9,7 @@ import { requirePro } from './license.js';
 
 export const conns = () => (state.settings.connections ||= []);
 const TYPES = [['smb', 'Windows share (SMB)'], ['sftp', 'SFTP (SSH)'], ['ftp', 'FTP'], ['ftps', 'FTPS (FTP over TLS)'], ['webdav', 'WebDAV (https)'],
-  ['gdrive', 'Google Drive (sign in)'], ['dropbox', 'Dropbox (sign in)'], ['onedrive', 'OneDrive (sign in)'], ['s3', 'Amazon S3 or compatible (R2, B2, MinIO, Wasabi)']];
+  ['gdrive', 'Google Drive (sign in)'], ['dropbox', 'Dropbox (sign in)'], ['onedrive', 'OneDrive (sign in)'], ['s3', 'Object storage (Amazon S3, Backblaze B2, Google Cloud, R2, Wasabi…)']];
 const OAUTH = { gdrive: 'Google Drive', dropbox: 'Dropbox', onedrive: 'OneDrive' };
 const BROWSED = new Set(['sftp', 'ftp', 'ftps', 's3', 'gdrive', 'dropbox', 'onedrive']);
 // where to register Dogfile once so it can sign in to each cloud (until the official app IDs are built in)
@@ -18,6 +18,17 @@ const APP_HELP = {
   dropbox: ['Dropbox App Console → Create app → Scoped access, Full Dropbox. Under Permissions tick files.content.read/write; under Settings add the redirect URI http://127.0.0.1:53682/ and copy the App key.', 'https://www.dropbox.com/developers/apps'],
   onedrive: ['Azure portal → App registrations → New registration → “Personal Microsoft accounts and work/school”. Add platform “Mobile and desktop” with redirect http://localhost, allow public client flows, then copy the Application (client) ID.', 'https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade'],
 };
+const S3_PROVIDERS = [['aws', 'Amazon S3'], ['b2', 'Backblaze B2'], ['gcs', 'Google Cloud Storage'], ['r2', 'Cloudflare R2'], ['wasabi', 'Wasabi'], ['spaces', 'DigitalOcean Spaces'], ['other', 'Other S3-compatible (MinIO…)']];
+const S3_HELP = {
+  aws: { region: 'us-east-1', regionHint: 'Buckets in other regions are found automatically', help: 'AWS console › IAM › Users › Security credentials › Create access key.' },
+  b2: { region: 'us-west-004', regionHint: 'The part of the bucket’s S3 endpoint after “s3.”', keyLabel: 'keyID', keyPh: '004…', secretLabel: 'applicationKey', help: 'Backblaze › Application Keys › Add a New Application Key. The bucket’s page shows its S3 endpoint (s3.<region>.backblazeb2.com).' },
+  gcs: { keyLabel: 'Access key (HMAC)', keyPh: 'GOOG…', secretLabel: 'Secret (HMAC)', help: 'Google Cloud console › Cloud Storage › Settings › Interoperability › Create a key for a service account.' },
+  r2: { keyLabel: 'Access key ID', keyPh: '', help: 'Cloudflare dashboard › R2 › Manage R2 API tokens › Create API token (Object Read & Write).' },
+  wasabi: { region: 'us-east-1', help: 'Wasabi console › Access Keys › Create new access key.' },
+  spaces: { region: 'nyc3', regionHint: 'e.g. nyc3, ams3, sgp1', help: 'DigitalOcean › API › Spaces Keys › Generate new key.' },
+  other: { region: 'us-east-1', help: 'Any service that speaks the S3 API: MinIO, Ceph, Garage, Scaleway, IDrive e2…' },
+};
+const s3Label = (c) => (S3_PROVIDERS.find((x) => x[0] === (c.provider || 'aws')) || S3_PROVIDERS[0])[1];
 export const status = new Map(); // id -> true/false/undefined
 
 export async function openConnection(c) {
@@ -52,7 +63,7 @@ export async function editConnection(c0) {
     const inp = (k, ph, type = 'text') => { const x = h('input', { class: 'input', type, placeholder: ph, spellcheck: 'false' }); x.value = c[k] ?? ''; x.oninput = () => { c[k] = x.value; }; x.addEventListener('keydown', (e) => e.stopPropagation()); f[k] = x; return x; };
     const type = h('select', { class: 'input' }, ...TYPES.map(([v, l]) => h('option', { value: v }, l))); type.value = c.type; type.onchange = () => { c.type = type.value; draw(); };
     const pass = h('input', { class: 'input', type: 'password', placeholder: isNew ? '' : '(unchanged)', autocomplete: 'off' }); pass.oninput = () => { pw = pass.value; }; pass.addEventListener('keydown', (e) => e.stopPropagation());
-    body.append(row('Type', type), row('Name', inp('name', OAUTH[c.type] ? `e.g. My ${OAUTH[c.type]}` : 'e.g. Home NAS')));
+    body.append(row('Type', type), row('Name', inp('name', OAUTH[c.type] ? `e.g. My ${OAUTH[c.type]}` : c.type === 's3' ? 'e.g. Photo backups' : 'e.g. Home NAS')));
     if (OAUTH[c.type]) {
       const who = h('div', { class: 'hint' }, c.who ? `Signed in as ${c.who}` : 'Not signed in yet');
       body.append(row('Account', h('div', { class: 'stack' }, h('button', { class: 'btn small primary', onclick: () => signIn(c, who) }, c.who ? 'Sign in again…' : `Sign in to ${OAUTH[c.type]}…`), who), 'Your browser opens to sign in. Dogfile keeps a sign-in token encrypted on this PC — never your password.'));
@@ -60,8 +71,18 @@ export async function editConnection(c0) {
       return;
     }
     if (c.type === 's3') {
-      body.append(row('Bucket', inp('bucket', 'my-bucket')), row('Region', inp('region', 'us-east-1')), row('Endpoint (optional)', inp('host', 'blank for Amazon; e.g. https://<account>.r2.cloudflarestorage.com'), 'For Cloudflare R2, Backblaze B2, MinIO, Wasabi and other S3-compatible storage'),
-        row('Access key ID', inp('user', 'AKIA…')), row('Secret access key', pass, 'Stored encrypted on this PC'), h('div', { class: 'hint cn-res' }));
+      const prov = h('select', { class: 'input' }, ...S3_PROVIDERS.map(([v, l]) => h('option', { value: v }, l)));
+      prov.value = c.provider || 'aws'; prov.onchange = () => { c.provider = prov.value; draw(); };
+      const P = S3_HELP[prov.value] || S3_HELP.other;
+      body.append(row('Service', prov));
+      if (prov.value === 'r2') body.append(row('Account ID', inp('account', 'from the Cloudflare dashboard (R2 › Overview)')));
+      if (prov.value === 'other') body.append(row('Endpoint', inp('host', 'https://minio.example.com:9000'), 'The address of the S3-compatible service'));
+      if (P.region) body.append(row('Region', inp('region', P.region), P.regionHint));
+      body.append(row('Bucket', inp('bucket', 'blank: all your buckets'), 'Leave blank to see every bucket as a folder'),
+        row(P.keyLabel || 'Access key ID', inp('user', P.keyPh || 'AKIA…')), row(P.secretLabel || 'Secret access key', pass, 'Stored encrypted on this PC'),
+        row('Upload speed limit', inp('maxSpeed', 'MB/s, blank for no limit'), 'Big files go up in parts, several at once; a limit keeps your connection free for other things.'));
+      if (prov.value === 'other') { const cb = h('input', { type: 'checkbox' }); cb.checked = c.pathStyle !== false; cb.onchange = () => { c.pathStyle = cb.checked; }; body.append(h('label', { class: 'check' }, cb, ' Path-style addresses (needed by MinIO and most self-hosted services)')); }
+      body.append(h('div', { class: 'hint cn-help' }, P.help), h('div', { class: 'hint cn-res' }));
       return;
     }
     if (c.type === 'smb') body.append(row('Server', inp('host', 'e.g. nas or 192.168.1.20'), 'The computer or NAS name, or its IP address'), row('Shared folder', inp('share', 'e.g. Media')));
@@ -77,7 +98,7 @@ export async function editConnection(c0) {
   const ok = await modal({ title: isNew ? 'Add a server connection' : `Edit “${c.name || c.host}”`, width: 560, body, buttons: [
     { label: 'Test', left: true, run: async () => {
       if (OAUTH[c.type]) { if (!c.who) { res().textContent = 'Sign in first'; return false; } }
-      else if (c.type === 's3') { if (!c.bucket) { res().textContent = 'Enter the bucket first'; return false; } }
+      else if (c.type === 's3') { if (!c.user) { res().textContent = 'Enter the access key first'; return false; } }
       else if (!c.host) { res().textContent = 'Enter the server first'; return false; }
       res().textContent = 'Testing…';
 
@@ -87,9 +108,10 @@ export async function editConnection(c0) {
     { label: 'Cancel', value: null }, { label: isNew ? 'Add' : 'Save', primary: true, value: true }] });
   if (!ok) return null;
   if (OAUTH[c.type] && !c.who) return toast(`Sign in to ${OAUTH[c.type]} first`, { error: true });
-  if (c.type === 's3' && !c.bucket) return toast('A bucket name is needed', { error: true });
+  if (c.type === 's3' && !c.user) return toast('An access key is needed', { error: true });
+  if (c.type === 's3' && c.provider === 'other' && !c.host) return toast('The endpoint address is needed', { error: true });
   if (!c.host && !OAUTH[c.type] && c.type !== 's3') return toast('A server address is needed', { error: true });
-  if (!c.name) c.name = OAUTH[c.type] ? `${OAUTH[c.type]}${c.who ? ` (${c.who})` : ''}` : c.type === 's3' ? `S3 – ${c.bucket}` : c.type === 'smb' ? `${c.host}${c.share ? ' – ' + c.share : ''}` : c.host;
+  if (!c.name) c.name = OAUTH[c.type] ? `${OAUTH[c.type]}${c.who ? ` (${c.who})` : ''}` : c.type === 's3' ? `${s3Label(c)}${c.bucket ? ` – ${c.bucket}` : ''}` : c.type === 'smb' ? `${c.host}${c.share ? ' – ' + c.share : ''}` : c.host;
   const list = conns().filter((x) => x.id !== c.id); list.push(c);
   state.settings.connections = list; saveSettings();
   if (!OAUTH[c.type] && (pw || isNew)) await api('remote:setSecret', c.id, pw);
@@ -132,7 +154,7 @@ export async function connectionsDialog() {
     for (const c of conns()) {
       const st = status.get(c.id);
       list.append(h('div', { class: 'ws-row' }, h('span', { class: 'cn-dot ' + (st === true ? 'up' : st === false ? 'down' : ''), title: st === true ? 'Answering' : st === false ? 'Not answering' : 'Checking…' }),
-        h('div', { class: 'hi-main' }, h('b', {}, c.name || c.host), h('span', { class: 'hint' }, OAUTH[c.type] ? `${OAUTH[c.type]}${c.who ? ` · ${c.who}` : ''}` : c.type === 's3' ? `S3 · ${c.bucket}${c.host ? ` · ${c.host}` : ''}` : `${TYPES.find((x) => x[0] === c.type)?.[1]} · ${c.host}${c.share ? '\\' + c.share : ''}${c.user ? ` · ${c.user}` : ''}`)),
+        h('div', { class: 'hi-main' }, h('b', {}, c.name || c.host), h('span', { class: 'hint' }, OAUTH[c.type] ? `${OAUTH[c.type]}${c.who ? ` · ${c.who}` : ''}` : c.type === 's3' ? `${s3Label(c)} · ${c.bucket || 'all buckets'}` : `${TYPES.find((x) => x[0] === c.type)?.[1]} · ${c.host}${c.share ? '\\' + c.share : ''}${c.user ? ` · ${c.user}` : ''}`)),
         h('div', { class: 'hi-acts' }, h('button', { class: 'btn small primary', onclick: () => { closeIt(); openConnection(c); } }, 'Open'), h('button', { class: 'btn small', onclick: async () => { await editConnection(c); draw(); } }, 'Edit'),
           h('button', { class: 'icon-btn small', title: 'Remove', html: icon('trash'), onclick: async () => { if (await confirm('Remove connection?', `“${esc(c.name || c.host)}” and its saved password will be removed.`, { ok: 'Remove', danger: true })) { state.settings.connections = conns().filter((x) => x.id !== c.id); saveSettings(); api('remote:setSecret', c.id, ''); api('remote:disconnect', c.id); bus.emit('connections'); draw(); } } }))));
     }

@@ -428,7 +428,10 @@ pub async fn put(win: &str, a: &Args) -> R {
                     .await
                     .map_err(|e| e.to_string())??;
                 }
-                Kind::Cloud(api) => api.upload(&l, &r).await?,
+                Kind::Cloud(api) => {
+                    let api = api.clone();
+                    api.upload(&l, &r, &mut |n| prog.tick(&name, n, false)).await?
+                }
             }
             prog.done += md.len();
         }
@@ -500,6 +503,24 @@ pub async fn rename(a: &Args) -> R {
             tokio::task::spawn_blocking(move || ftp_do!(&mut *f.lock(), s => s.rename(from.as_str(), to.as_str()).map_err(|e| e.to_string()))).await.map_err(|e| e.to_string())??
         }
         Kind::Cloud(api) => api.rename(&from, &to).await?,
+    }
+    Ok(json!(true))
+}
+/// remote:copy id [paths] destDir: copy inside the service (S3 and compatible): nothing comes down to this PC
+pub async fn copy(a: &Args) -> R {
+    let id = a.s(0)?;
+    let paths = a.strs(1);
+    let dest = rp(&a.s(2)?);
+    let s = open(&id).await?;
+    let g = s.lock().await;
+    let Kind::Cloud(api) = &g.kind else { return Err("Copying inside this kind of server isn’t supported. Copy to this PC first.".into()) };
+    for p in &paths {
+        let from = rp(p);
+        let to = rjoin(&dest, &basename(&from));
+        if from == to {
+            continue;
+        }
+        api.copy(&from, &to).await.unwrap_or(Err("Copying inside this kind of server isn’t supported. Copy to this PC first.".into()))?;
     }
     Ok(json!(true))
 }

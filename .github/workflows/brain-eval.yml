@@ -10,7 +10,10 @@ permissions:
   contents: write
 jobs:
   eval:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.RUNNER == 'pc' && fromJSON('["self-hosted","Windows","X64"]') || 'ubuntu-latest' }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
@@ -24,6 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
+        if: vars.RUNNER != 'pc'
         with:
           path: |
             ~/.cargo/registry
@@ -32,26 +36,29 @@ jobs:
           key: brain-${{ hashFiles('Cargo.lock') }}
           restore-keys: brain-
       - uses: actions/cache@v4
+        if: vars.RUNNER != 'pc'
         with:
           path: models
           key: model-${{ matrix.file }}
       - name: Get the model
         run: |
-          mkdir -p models
-          if [ ! -s "models/${{ matrix.file }}" ]; then
-            curl -fsSL -o "models/${{ matrix.file }}" "https://huggingface.co/${{ matrix.repo }}/resolve/main/${{ matrix.file }}" || {
+          M=models; [ "${{ vars.RUNNER }}" = pc ] && M="$HOME/dogfile-models"   # on your PC the models are kept between runs
+          mkdir -p "$M"
+          if [ ! -s "$M/${{ matrix.file }}" ]; then
+            curl -fsSL -o "$M/${{ matrix.file }}" "https://huggingface.co/${{ matrix.repo }}/resolve/main/${{ matrix.file }}" || {
               echo "::error title=model::${{ matrix.file }} not found; files in ${{ matrix.repo }}: $(curl -fsSL https://huggingface.co/api/models/${{ matrix.repo }} | jq -r '[.siblings[].rfilename] | join(", ")' | head -c 1500)"; exit 1; }
           fi
-          ls -la models
+          ls -la "$M"
       - name: Build
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq libclang-dev cmake > /dev/null
+          if [ "$RUNNER_OS" = Linux ]; then sudo apt-get update -qq && sudo apt-get install -y -qq libclang-dev cmake > /dev/null; fi
           cargo build --release -p dogfile-backend --example brain_eval 2>&1 | tail -3
       - name: Run
         run: |
+          M=models; [ "${{ vars.RUNNER }}" = pc ] && M="$HOME/dogfile-models"
           set -o pipefail
-          nproc
-          ./target/release/examples/brain_eval "models/${{ matrix.file }}" build/brain-cases.json results-${{ matrix.name }}.json 2>&1 | tee log-${{ matrix.name }}.txt
+          nproc 2>/dev/null || echo "$NUMBER_OF_PROCESSORS"
+          ./target/release/examples/brain_eval "$M/${{ matrix.file }}" build/brain-cases.json results-${{ matrix.name }}.json 2>&1 | tee log-${{ matrix.name }}.txt
           echo "::notice title=brain-${{ matrix.name }}::$(tail -1 log-${{ matrix.name }}.txt)"
       - name: Save the results
         if: always()

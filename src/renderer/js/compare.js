@@ -225,7 +225,7 @@ export async function compareImages(a, b, sa, sb) {
       const d = makeDiff();
       d.canvas.className = 'ci-diff';
       stage.append(d.canvas);
-      ctl.append(h('span', { class: 'hint' }, 'Pink: pixels that differ (shown over a faded copy of the first picture)'));
+      ctl.append(h('span', { class: 'hint' }, 'Pink shows what’s different'));
     }
     const d = mode === 'diff' ? diffInfo : null;
     info.className = 'cf-sum' + (mode === 'diff' && diffInfo?.pct === 0 && sameSize ? ' same' : mode === 'diff' || !sameSize ? '' : ' neutral');

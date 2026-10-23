@@ -32,7 +32,7 @@ export async function openPhoneTransfer() {
       body.append(h('div', { class: 'ph-pair' }, qr,
         h('div', { class: 'ph-pair-txt' },
           h('b', {}, st.devices.length ? 'Add another phone' : 'Connect your phone'),
-          h('ol', {}, h('li', {}, 'Make sure the phone is on the same Wi-Fi as this PC.'), h('li', {}, 'Point the phone’s camera at the code and open the link.'), h('li', {}, 'On iPhone, tap Share › “Add to Home Screen” to reconnect with one tap from now on.')),
+          h('ol', {}, h('li', {}, 'Make sure the phone is on the same Wi-Fi as this PC.'), h('li', {}, 'Point the phone’s camera at the code and open the link.'), h('li', {}, 'On iPhone, tap Share, then Add to Home Screen, to reconnect with one tap.')),
           pairing.error ? h('div', { class: 'ph-note bad' }, pairing.error) : h('div', { class: 'sub' }, 'The code works once, for 10 minutes. ', h('a', { href: '#', onclick: async (e) => { e.preventDefault(); pairing = await api('phone:pair', true).catch((er) => ({ error: er.message })); render(); } }, 'New code')))));
     }
     // paired phones
@@ -47,7 +47,7 @@ export async function openPhoneTransfer() {
     body.append(h('h4', {}, 'Your phones'), devs);
     // waiting for the phone
     const out = h('div', { class: 'ph-list' });
-    if (!st.outbox.length) out.append(h('div', { class: 'ph-empty' }, 'Right-click files in Dogfile and choose “Send to phone”: they wait here until the phone takes them.'));
+    if (!st.outbox.length) out.append(h('div', { class: 'ph-empty' }, 'Right-click files and choose Send to phone. They wait here until your phone picks them up.'));
     for (const x of st.outbox.slice().reverse().slice(0, 200)) {
       out.append(h('div', { class: 'ph-row' }, h('span', { class: 'ph-ic', html: icon(x.kind === 'text' ? 'note' : 'page') }),
         h('div', { class: 'ph-main' }, h('div', { class: 'ell' }, x.kind === 'text' ? x.text : x.name), h('div', { class: 'sub' }, x.kind === 'text' ? 'Text' : fmtSize(x.size || 0))),
@@ -61,14 +61,14 @@ export async function openPhoneTransfer() {
     always.onchange = () => { state.settings.phoneAlwaysOn = always.checked; saveSettings(); };
     const shared = h('div', { class: 'ph-list' });
     for (const p of state.settings.phoneShared || []) shared.append(h('div', { class: 'ph-row' }, h('span', { class: 'ph-ic', html: icon('folder') }), h('div', { class: 'ph-main ell', title: p }, p), h('button', { class: 'icon-btn small', title: 'Stop sharing', html: icon('close'), onclick: () => { state.settings.phoneShared = state.settings.phoneShared.filter((x) => x !== p); saveSettings(); render(); } })));
-    if (!(state.settings.phoneShared || []).length) shared.append(h('div', { class: 'ph-empty' }, 'None. Shared folders can be browsed and saved from on the phone (it can’t change or delete anything).'));
+    if (!(state.settings.phoneShared || []).length) shared.append(h('div', { class: 'ph-empty' }, 'None yet. Your phone can look through these and save files, but can’t change anything.'));
     body.append(h('h4', {}, 'Settings'), h('div', { class: 'ph-set' },
-      h('label', { class: 'ph-check' }, always, h('span', {}, 'Keep it on whenever Dogfile is running, so paired phones connect by themselves')),
+      h('label', { class: 'ph-check' }, always, h('span', {}, 'Keep it on so paired phones connect by themselves')),
       h('div', { class: 'ph-line' }, h('span', { class: 'lbl' }, 'Files from phones go to'), h('span', { class: 'ell path', title: st.inbox }, st.inbox),
         h('button', { class: 'btn small', onclick: () => { dlg?.close(); navigate(activeTab(), st.inbox); } }, 'Open'),
         h('button', { class: 'btn small', onclick: async () => { const f = await api('dialog:pickFolder', 'Where should files from phones go?'); if (f) { state.settings.phoneInbox = f; saveSettings(); setTimeout(render, 200); } } }, 'Change…')),
       h('div', { class: 'ph-h' }, h('span', { class: 'lbl' }, 'Folders the phone can browse'), h('button', { class: 'btn small', onclick: async () => { const f = await api('dialog:pickFolder', 'Choose a folder the phone can browse'); if (f) { state.settings.phoneShared = [...new Set([...(state.settings.phoneShared || []), f])]; saveSettings(); setTimeout(render, 200); } } }, 'Add folder…')), shared,
-      h('div', { class: 'sub' }, 'Only phones you paired can connect, and only from your own network. The first time, Windows may ask whether Dogfile can use private networks: allow it.')));
+      h('div', { class: 'sub' }, 'Only your paired phones can connect, and only on your own Wi-Fi. If Windows asks about private networks, choose Allow.')));
   };
   // opening it means connecting a phone: it turns on
   await api('phone:start').catch((e) => toast(e.message, { error: true }));
@@ -115,7 +115,7 @@ onMain('phone:text', (r) => {
 });
 onMain('phone:changed', (r) => {
   if (r?.paired) {
-    toast(`${r.paired} is connected. Files you send it go to “Waiting for the phone”.`);
+    toast(`${r.paired} is connected`);
     // from now on paired phones connect by themselves (unless that was switched off)
     if (state.settings.phoneAlwaysOn == null) { state.settings.phoneAlwaysOn = true; saveSettings(); }
   }

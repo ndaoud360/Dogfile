@@ -27,33 +27,29 @@ export async function openSettings(section = 'general', opts = {}) {
     general: ['General', 'settings', async (el) => {
       const isDef = IS_WIN() ? await api('default:get').catch(() => false) : false;
       const defBtn = h('button', { class: 'btn' + (isDef ? '' : ' primary') }, isDef ? 'Restore Windows File Explorer' : 'Make Dogfile the default');
-      const defState = h('div', { class: 'hint' + (isDef ? ' ok' : '') }, isDef ? '✓ Dogfile opens for folders, Win+E, “Show in folder” and the desktop This PC icon.' : 'Windows File Explorer is currently the default.');
+      const defState = h('div', { class: 'hint' + (isDef ? ' ok' : '') }, isDef ? '✓ Folders open in Dogfile, including Win+E.' : 'File Explorer is the default right now.');
       defBtn.addEventListener('click', async () => {
         const want = !isDef;
-        if (want && !(await confirm('Make Dogfile the default?', 'Dogfile will open whenever Windows opens a folder, including <b>Win+E</b>, double-clicking folders on the desktop and “Open folder” buttons in other apps.<br><br>This only changes settings for your user account and can be undone here at any time.', { ok: 'Make default' }))) return;
+        if (want && !(await confirm('Make Dogfile the default?', 'Folders will open in Dogfile everywhere, including Win+E and the desktop. You can switch back here any time.', { ok: 'Make default' }))) return;
         const r = await api('default:set', want);
         toast(r ? 'Dogfile is now the default file manager' : 'Windows File Explorer restored');
         openSettingsSection('general');
       });
       _append(el,
         group('Basics'),
-        row('Interface', seg('uiMode', [['simple', 'Simple'], ['full', 'Full (everything)']]), 'Simple keeps menus short and tucks power-user tools under “More”. Nothing is removed; switch any time.'),
-        row('Demo mode', (() => { const i = h('input', { type: 'checkbox', class: 'switch' }); i.checked = !!sys.demo; i.addEventListener('change', async () => { const ok = await import('./demo.js').then((m) => m.setDemo(i.checked)); if (!ok) i.checked = !i.checked; }); return i; })(), 'Show a pretend computer instead of yours (demo files with believable sizes, so progress bars run) for videos, screenshots or showing Dogfile to someone. Your files and settings are hidden, never touched.'),
-        row('Theme', seg('theme', [['system', 'System', 'monitor'], ['light', 'Light', 'sun'], ['dark', 'Dark', 'moon']])),
+        row('Interface', seg('uiMode', [['simple', 'Simple'], ['full', 'Full (everything)']]), 'Simple keeps menus short. Nothing is removed, and you can switch any time.'),
         row('Language', (() => {
           const sel = h('select', { class: 'input', translate: 'no' });
           import('./i18n.js').then((m) => { for (const [v, l] of m.LANGS) sel.append(h('option', { value: v, 'data-raw': '1' }, l)); sel.value = S.language || 'auto'; });
           sel.onchange = () => { S.language = sel.value; changed(); toast('Restarting the window in the new language…'); setTimeout(() => location.reload(), 700); };
           return sel;
-        })(), 'Dates and numbers follow your Windows region format.'),
+        })(), 'Dates and numbers follow your Windows region.'),
         group('Windows & tabs'),
         row('On startup', select('startupPath', [['restore', 'Restore previous tabs'], ['home', 'Open Home'], [sys.known.desktop, 'Open Desktop'], [sys.known.downloads, 'Open Downloads'], [sys.known.documents, 'Open Documents']])),
         row('New tab opens', select('newTabPath', [['home', 'Home'], ['current', 'Current folder']])),
-        row('Open folders from other apps in a new window', toggle('openInNewWindow'), 'Otherwise they open as a new tab.'),
-        row('Closing the last tab closes the window', toggle('closeLastTabClosesWindow')),
-        row('Keep running in the background', toggle('keepRunning'), 'Lives in the tray so folders open instantly.'),
-        row('Updates', h('div', { class: 'row-inline' }, toggle('autoUpdates'), h('button', { class: 'btn small', onclick: () => import('./updates.js').then((m) => m.openUpdates()) }, 'Check now…')), 'Dogfile checks for a new version a few seconds after it starts and every few hours, and asks before installing.'),
-        IS_WIN() && row('Open and Save dialogs', h('div', { class: 'stack' }, h('label', { class: 'check' }, toggle('dialogJump'), ' Ctrl+G in any program’s Open or Save dialog jumps to a folder open in Dogfile'), h('label', { class: 'check' }, toggle('dialogJumpAuto'), ' Go to the folder I’m in automatically when a dialog opens')), 'Works in the standard Windows dialogs of every program. Restart Dogfile after turning it on or off.'),
+        row('Keep running in the background', toggle('keepRunning'), 'Stays in the tray so folders open instantly.'),
+        row('Updates', h('div', { class: 'row-inline' }, toggle('autoUpdates'), h('button', { class: 'btn small', onclick: () => import('./updates.js').then((m) => m.openUpdates()) }, 'Check now…')), 'Checks for new versions now and then, and asks before installing.'),
+        IS_WIN() && row('Open and Save dialogs', h('div', { class: 'stack' }, h('label', { class: 'check' }, toggle('dialogJump'), ' Ctrl+G jumps to the folder open in Dogfile'), h('label', { class: 'check' }, toggle('dialogJumpAuto'), ' Jump there by itself when the window opens')), 'Works in the Open and Save windows of any program. Restart Dogfile after changing this.'),
         row('Your settings on other PCs', (() => {
           const box = h('div', { class: 'row-inline', style: { flexWrap: 'wrap', gap: '6px' } });
           const st = h('div', { class: 'hint', style: { width: '100%' } });
@@ -66,7 +62,7 @@ export async function openSettings(section = 'general', opts = {}) {
           };
           draw();
           return box;
-        })(), 'Keep them in a folder that syncs (OneDrive, Dropbox, Google Drive) and every PC using it shares your settings, pins, tags and workspaces.'),
+        })(), 'Keep them in a synced folder like OneDrive or Dropbox and every PC shares your settings, pins and tags.'),
         row('Sidebar sections', (() => {
           const box = h('div', { class: 'row-inline', style: { flexWrap: 'wrap', gap: '6px 14px' } });
           for (const [k, l] of [['tags', 'Tags'], ['collections', 'Collections'], ['drives', 'Drives'], ['cloud', 'Cloud folders'], ['network', 'Network']]) {
@@ -76,21 +72,20 @@ export async function openSettings(section = 'general', opts = {}) {
             box.append(h('label', { class: 'check' }, c, ' ' + l));
           }
           return box;
-        })(), 'Collections (smart lists like “Large files” or “Recently downloaded”) are off by default.'),
-        row('Sidebar shows actions for selected items', toggle('sidebarActions', () => bus.emit('sidebarMode')), 'Select files and the sidebar turns into a menu with everything from the right-click menu. Right-click still works.'),
+        })(), null),
+        row('Sidebar shows actions for selected items', toggle('sidebarActions', () => bus.emit('sidebarMode')), 'Selecting files turns the sidebar into a menu of actions. Right-click still works.'),
         group('Built-in apps'),
-        row('Open text files in Dogfile Notepad', toggle('useAtlasEditor'), 'Code, configs, logs, Markdown, CSV… open in the built-in Notepad++-style editor.'),
-        row('Play audio & video in Dogfile Player', toggle('useAtlasPlayer'), 'The built-in VLC-style player (plays MKV, 4K, HEVC, AC3/DTS, FLAC, WMA…).'),
-        row('Add the folder to the playlist', toggle('playerAutoPlaylist'), 'Opening one file queues the other media in the same folder.'),
-        row('Detect BPM & key for songs', toggle('playerAnalyze'), 'Dogfile Player shows the tempo and musical key (with Camelot code) of each song it plays.'),
-        row('Open photos in Dogfile Photos', toggle('useAtlasViewer'), 'Built-in viewer with a queue, slideshow, fullscreen and a basic editor (filters, crop, draw, rotate).'),
-        row('Open 3D models in Dogfile 3D', toggle('useAtlas3D'), 'FBX, OBJ, glTF, STL, 3MF, STEP, IGES, DXF and more: rotate, look at each texture, play animations.'),
-        row('Seconds per photo in slideshows', select('slideshowSeconds', [[2, '2 seconds'], [3, '3 seconds'], [4, '4 seconds'], [5, '5 seconds'], [8, '8 seconds'], [10, '10 seconds'], [15, '15 seconds'], [30, '30 seconds']])),
-        row('Dogfile Player & Photos theme', select('mediaTheme', [['app', 'Same as Dogfile (light or dark)'], ['dark', 'Always dark'], ['light', 'Always light']])),
-        row('Open built-in apps as tabs', toggle('toolsInTabs'), 'Dogfile Notepad, Player, Photos and 3D open as tabs in this window instead of their own windows.'),
+        row('Open text files in Dogfile Notepad', toggle('useAtlasEditor'), 'Code, notes and logs open in the built-in editor.'),
+        row('Play audio & video in Dogfile Player', toggle('useAtlasPlayer'), 'Plays almost anything, including MKV, 4K and FLAC.'),
+        row('Open photos in Dogfile Photos', toggle('useAtlasViewer'), 'A viewer with slideshows, full screen and simple editing.'),
+        row('Open 3D models in Dogfile 3D', toggle('useAtlas3D'), 'FBX, OBJ, STL, STEP and more. Turn them around, check textures, play animations.'),
+        row('Player and Photos look', select('mediaTheme', [['app', 'Same as Dogfile'], ['dark', 'Always dark'], ['light', 'Always light']])),
+        row('Open built-in apps as tabs', toggle('toolsInTabs'), 'Notepad, Player, Photos and 3D open as tabs here instead of separate windows.'),
         IS_WIN() ? group('Windows') : null,
-        IS_WIN() ? row('Default file manager', h('div', { class: 'stack' }, defBtn, defState), 'Replace File Explorer system-wide (per user, reversible).') : null,
-        IS_WIN() ? row('Windows right-click menu', h('div', { class: 'row-inline' }, h('button', { class: 'btn small', onclick: async () => { await api('shellverbs:set', true); toast('Added “Edit with Dogfile Notepad”, “Play with Dogfile Player” and “View with Dogfile Photos”'); } }, 'Add'), h('button', { class: 'btn small', onclick: async () => { await api('shellverbs:set', false); toast('Removed'); } }, 'Remove')), 'Adds “Edit with Dogfile Notepad”, “Play with Dogfile Player” and “View with Dogfile Photos” to File Explorer and the desktop.') : null,
+        IS_WIN() ? row('Default file manager', h('div', { class: 'stack' }, defBtn, defState), 'Use Dogfile instead of File Explorer. You can switch back any time.') : null,
+        IS_WIN() ? row('Windows right-click menu', h('div', { class: 'row-inline' }, h('button', { class: 'btn small', onclick: async () => { await api('shellverbs:set', true); toast('Added to the File Explorer right-click menu'); } }, 'Add'), h('button', { class: 'btn small', onclick: async () => { await api('shellverbs:set', false); toast('Removed'); } }, 'Remove')), 'Adds Dogfile options to the right-click menu in File Explorer.') : null,
+        group('Demo'),
+        row('Demo mode', (() => { const i = h('input', { type: 'checkbox', class: 'switch' }); i.checked = !!sys.demo; i.addEventListener('change', async () => { const ok = await import('./demo.js').then((m) => m.setDemo(i.checked)); if (!ok) i.checked = !i.checked; }); return i; })(), 'Shows a pretend PC so you can record or present without showing your own files.'),
       );
     }],
     appearance: ['Appearance', 'sun', (el) => {
@@ -98,12 +93,12 @@ export async function openSettings(section = 'general', opts = {}) {
       scale.addEventListener('change', () => { S.fontScale = +scale.value; changed(); bus.emit('theme'); });
       _append(el,
         row('Theme', seg('theme', [['system', 'System', 'monitor'], ['light', 'Light', 'sun'], ['dark', 'Dark', 'moon']])),
-        row('Density', seg('density', [['compact', 'Compact'], ['comfortable', 'Comfortable'], ['touch', 'Touch'], ['auto', 'Automatic']]), 'Touch makes rows and buttons bigger for fingers; Automatic uses it on a touch screen without a mouse. Press and hold for the right-click menu.'),
+        row('Density', seg('density', [['compact', 'Compact'], ['comfortable', 'Comfortable'], ['touch', 'Touch'], ['auto', 'Automatic']]), 'Touch makes everything bigger for fingers. Automatic picks it on touch screens.'),
         row('Text size', scale),
-        row('Grid labels', select('gridLabels', [['smart', 'Smart (hide on photos, show on hover)'], ['always', 'Always show'], ['hover', 'Only on hover']]), 'Smart reproduces the clean gallery look of the design.'),
-        row('Use Windows file icons', toggle('useWindowsIcons'), 'Show the real icons from your installed apps instead of minimal art.'),
+        row('Names under thumbnails', select('gridLabels', [['smart', 'Hide on photos until you point at them'], ['always', 'Always show'], ['hover', 'Only when you point at them']])),
+        row('Use Windows file icons', toggle('useWindowsIcons'), 'Uses the icons from your installed apps.'),
         row('Show thumbnails', toggle('showThumbnails')),
-        row('Full breadcrumb path', toggle('fullCrumbs'), 'Show the drive and every folder instead of starting at your user folder.'),
+        row('Full breadcrumb path', toggle('fullCrumbs'), 'Shows every folder in the path, starting from the drive.'),
         row('Show status bar', toggle('showStatusBar')),
         row('Panel animations', (() => {
           // each panel that comes out of an edge: fold (turned to its edge), slide, or none
@@ -124,7 +119,7 @@ export async function openSettings(section = 'general', opts = {}) {
           };
           draw();
           return grid;
-        })(), 'How panels open and close: Fold (like paper, turned to the edge each panel comes from), Slide, or no animation.'),
+        })(), 'Fold, slide or no animation, for each panel.'),
         row('Folder animation', h('div', { class: 'row-inline' }, select('folderAnimation', FOLDER_ANIMS.map(([v, l]) => [v, l])), h('button', { class: 'btn small', title: 'Play it on the folder that’s open', onclick: async () => {
           const { playFolderAnim } = await import('./folderanim.js');
           const { paneEls } = await import('./pane.js');
@@ -133,9 +128,9 @@ export async function openSettings(section = 'general', opts = {}) {
           await playFolderAnim(el, 'open', state.settings.folderAnimation || 'fade');
           await new Promise((r) => setTimeout(r, 250));
           playFolderAnim(el, 'close', state.settings.folderAnimation || 'fade');
-        } }, 'Preview')), 'How a folder’s contents appear when you open it, and when you go back. Unfold opens out from the middle like a foldable phone.'),
-        row('Glass sidebar', toggle('sidebarGlass'), 'Aero / liquid-glass look: the sidebar turns see-through and Windows blurs whatever is behind the window.'),
-        row('Colors', h('button', { class: 'btn small', onclick: () => show('colors') }, 'Customize colors…'), 'Accent color, presets and every part of the interface.'),
+        } }, 'Preview')), 'How a folder appears when you open it or go back.'),
+        row('Glass sidebar', toggle('sidebarGlass'), 'A see-through sidebar that blurs what is behind the window.'),
+        row('Colors', h('button', { class: 'btn small', onclick: () => show('colors') }, 'Customize colors…'), 'Accent color, presets and more.'),
       );
       // ---- rounded corners ----
       S.corners = { ...DEFAULT_SETTINGS.corners, ...(S.corners || {}) };
@@ -152,7 +147,7 @@ export async function openSettings(section = 'general', opts = {}) {
       }
       el.append(h('h3', { class: 'set-h3' }, 'Rounded corners'));
       _append(el,
-        row('Roundness', h('div', { class: 'row-inline' }, rad, radTxt), '0 = square. Applies to everything ticked below.'),
+        row('Roundness', h('div', { class: 'row-inline' }, rad, radTxt), '0 is square.'),
         row('Round these', targets),
         row('', h('button', { class: 'btn small', onclick: () => { S.corners = { ...DEFAULT_SETTINGS.corners }; applyC(); show('appearance'); } }, 'Reset corners')));
     }],
@@ -183,7 +178,7 @@ export async function openSettings(section = 'general', opts = {}) {
         toast(`Exported to ${file}`, { ms: 6000, action: { label: 'Show', run: () => api('win:new', { path: dir, select: file }) } });
       };
       _append(el,
-        h('p', { class: 'hint' }, 'Pick a preset or change any part of the interface. Light and dark themes have their own colors. Changes apply instantly; “Default” puts everything back.'),
+        h('p', { class: 'hint' }, 'Pick a preset or change any color. Light and dark each have their own.'),
         presets,
         h('div', { class: 'row-inline', style: { margin: '10px 0 4px' } },
           h('button', { class: 'btn small', onclick: () => { S.colors = { light: {}, dark: {} }; S.accent = '#3b82f6'; S.shadowStrength = 1; apply(); show('colors'); } }, 'Reset all to default'),
@@ -199,7 +194,7 @@ export async function openSettings(section = 'general', opts = {}) {
               S.colorPresets[name] = { light: c.light || {}, dark: c.dark || {}, accent: c.accent, shadowStrength: c.shadowStrength };
               S.colors = { light: { ...(c.light || {}) }, dark: { ...(c.dark || {}) } }; if (c.accent) S.accent = c.accent; if (c.shadowStrength != null) S.shadowStrength = c.shadowStrength;
               apply(); show('colors'); toast(`Imported “${name}” and added it to your presets`);
-            } catch { toast('That file is not an Dogfile colors file', { error: true }); }
+            } catch { toast('That isn’t a Dogfile colors file', { error: true }); }
           } }, 'Import from file…')));
       const grid = h('div', { class: 'color-grid' }, h('div', { class: 'cg-head' }, ''), h('div', { class: 'cg-head' }, 'Light'), h('div', { class: 'cg-head' }, 'Dark'), h('div', { class: 'cg-head' }, ''));
       for (const g of COLOR_PARTS) {
@@ -219,9 +214,9 @@ export async function openSettings(section = 'general', opts = {}) {
       }
       const shadow = h('input', { type: 'range', min: '0', max: '2.5', step: '0.1', value: String(S.shadowStrength ?? 1) });
       shadow.addEventListener('input', () => { S.shadowStrength = +shadow.value; apply(); });
-      _append(el, grid, row('Sidebar shadow strength', shadow, 'How much depth the sidebar casts onto the files.'));
+      _append(el, grid, row('Sidebar shadow strength', shadow, 'How much shadow the sidebar casts.'));
       // color-coding rules
-      el.append(h('h3', { class: 'set-h3' }, 'Color-coding rules'), h('p', { class: 'hint' }, 'Tint file names automatically, like recently changed files or programs. First matching rule wins.'));
+      el.append(h('h3', { class: 'set-h3' }, 'Color-coding rules'), h('p', { class: 'hint' }, 'Tint file names that match a rule. The first match wins.'));
       const rules = h('div', { class: 'stack' });
       const drawRules = () => {
         rules.innerHTML = '';
@@ -245,24 +240,18 @@ export async function openSettings(section = 'general', opts = {}) {
     }],
     behavior: ['Behavior', 'keyboard', (el) => {
       _append(el,
-        row('Show copy and move progress in a window', toggle('opsPopup'), 'A progress window with speed and time left opens for copies and moves. Minimize it to keep going in the background (the progress button at the bottom right brings it back).'),
+        row('Progress window for copies and moves', toggle('opsPopup'), 'Shows speed and time left. Minimize it to keep working.'),
         row('Single-click to open', toggle('singleClick')),
         row('Double-click empty space goes up', toggle('doubleClickUp')),
-        row('Click empty space to clear the selection', toggle('clickEmptyDeselects'), 'A single click on empty space (including the gaps between thumbnails) unselects / unchecks everything.'),
-        row('Use Windows dialogs for Open / Save / Choose folder', toggle('nativeDialogs', (v) => setNativeDialogs(v)), 'Off: Dogfile uses its own pickers everywhere (Move to, Copy to, Extract to, Open, Save as, Import).'),
+        row('Use Windows dialogs for Open / Save / Choose folder', toggle('nativeDialogs', (v) => setNativeDialogs(v)), 'When off, Dogfile uses its own pickers.'),
         row('Typing in a folder', select('typeAhead', [['select', 'Jumps to matching item'], ['filter', 'Filters the folder']])),
         row('Delete moves to Recycle Bin', toggle('deleteToRecycle')),
         row('Confirm before deleting', toggle('confirmDelete')),
-        row('Warn when changing extensions', toggle('warnExtChange')),
-        row('Ask what to do on drag & drop', toggle('askOnDrop'), 'Otherwise: same drive = move, other drive = copy. Hold Ctrl to copy, Shift to move, Alt for shortcut.'),
+        row('Ask what to do on drag & drop', toggle('askOnDrop'), 'Otherwise the same drive moves and another drive copies. Hold Ctrl to copy or Shift to move.'),
         row('Open archives like folders', toggle('browseArchives')),
-        row('Smart extract', toggle('smartExtract'), 'Avoids double folders when an archive already contains one.'),
-        row('Run file operations one at a time', toggle('sequentialOps'), 'Queue copies instead of running them in parallel (better for HDDs).'),
-        row('Smart drop', select('smartDrop', [['smart', 'Suggest when it helps (extract, sort, matching folders)'], ['ask', 'Always ask what to do'], ['off', 'Off: just move or copy']]), 'When you drop files, Dogfile can offer to extract archives, sort them with the folder’s rules, or put them into matching subfolders.'),
-        row('Review name clashes together', toggle('batchConflicts'), 'When several files already exist where you copy or move, show them in one list with Replace / Skip / Keep both for each.'),
-        row('Network copies in their own queue', toggle('networkQueue'), 'Copies to and from shares, NAS and servers run one at a time without holding up local copies.'),
-        row('Middle-click folder opens a new tab', toggle('middleClickOpensTab')),
-        row('Transfer speed limit', (() => { const i = h('input', { class: 'input small', type: 'number', min: '0', step: '1', value: String(S.throttleMBps || 0) }); i.addEventListener('change', () => { S.throttleMBps = Math.max(0, +i.value || 0); changed(); }); return h('div', { class: 'row-inline' }, i, h('span', { class: 'hint' }, 'MB/s  (0 = unlimited)')); })(), 'Keeps big copies from saturating a slow drive or network share.'),
+        row('Run file operations one at a time', toggle('sequentialOps'), 'Better for older hard drives.'),
+        row('Smart drop', select('smartDrop', [['smart', 'When it helps'], ['ask', 'Always ask'], ['off', 'Off']]), 'Offers to extract, sort or file things into matching folders when you drop them.'),
+        row('Transfer speed limit', (() => { const i = h('input', { class: 'input small', type: 'number', min: '0', step: '1', value: String(S.throttleMBps || 0) }); i.addEventListener('change', () => { S.throttleMBps = Math.max(0, +i.value || 0); changed(); }); return h('div', { class: 'row-inline' }, i, h('span', { class: 'hint' }, 'MB/s (0 means no limit)')); })(), 'Keeps big copies from slowing everything else down.'),
       );
     }],
     views: ['Files & views', 'viewGrid', (el) => {
@@ -274,12 +263,8 @@ export async function openSettings(section = 'general', opts = {}) {
         row('Show protected system files', toggle('showSystem')),
         row('Show file extensions', toggle('showExtensions')),
         row('Item check boxes', toggle('showCheckboxes')),
-        row('Calculate folder sizes', toggle('folderSizes'), 'Sizes appear in Details, as badges under folders in Grid and List, and sort correctly. Uses some disk I/O.'),
-        row('Show folder size on hover', toggle('hoverFolderSize'), 'Rest the mouse on a folder to see its size and how many files it holds.'),
-        row('Media columns in music, video and photo folders', toggle('mediaColumns'), 'Adds Length / BPM / Key, Dimensions or Date taken columns automatically in folders that are mostly media.'),
+        row('Calculate folder sizes', toggle('folderSizes'), 'Shows how big each folder is. Uses a little more disk activity.'),
         row('Names under pictures in Gallery view', toggle('galleryNames')),
-        row('Git status badges', toggle('gitBadges'), 'Shows M / A / U badges and the branch in repositories.'),
-        row('Size bars in Details view', toggle('sizeBars'), 'Draws a bar behind each size so space hogs stand out (works best with folder sizes on).'),
         row('Date format', select('dateFormat', [['locale', 'System format'], ['relative', 'Relative (5 min ago)'], ['iso', 'ISO 2026-10-16 14:30']])),
         row('Size units', select('sizeUnits', [['binary', 'Binary (KB = 1024)'], ['decimal', 'Decimal (kB = 1000)']])),
       );
@@ -297,7 +282,7 @@ export async function openSettings(section = 'general', opts = {}) {
       const drawIndex = async () => {
         const st = await api('index:status').catch(() => null);
         indexBox.innerHTML = '';
-        if (!st?.available) { indexBox.append(h('div', { class: 'hint' }, 'The native engine isn’t available, so Dogfile searches by reading folders.')); return; }
+        if (!st?.available) { indexBox.append(h('div', { class: 'hint' }, 'The fast search engine isn’t available, so Dogfile searches folder by folder.')); return; }
         if (S.indexEnabled === false) return;
         const drives = (state.drives || []).filter((d) => d.type !== 'network' && d.type !== 'optical' && d.type !== 'portable');
         const chosen = Array.isArray(S.indexRoots) && S.indexRoots.length ? S.indexRoots : null;
@@ -316,7 +301,7 @@ export async function openSettings(section = 'general', opts = {}) {
         indexBox.append(h('div', { class: 'row-inline' },
           h('button', { class: 'btn small', onclick: async () => { await api('index:refresh'); drawIndex(); } }, 'Rebuild now'),
           IS_WIN() && !st.admin ? h('button', { class: 'btn small', title: 'Windows asks for administrator permission once', onclick: async (e) => { e.target.disabled = true; e.target.textContent = 'Building…'; const r = await api('index:fastBuild'); toast(r.ok ? 'Index rebuilt from the file table' : r.error, { error: !r.ok }); drawIndex(); } }, 'Faster build (administrator)…') : null));
-        if (IS_WIN() && !st.admin) indexBox.append(h('div', { class: 'hint' }, 'Without administrator rights Dogfile reads every folder once (a minute or two for a big drive); with them it reads the drive’s file table in seconds.'));
+        if (IS_WIN() && !st.admin) indexBox.append(h('div', { class: 'hint' }, 'With administrator rights the first build takes seconds instead of a few minutes.'));
       };
       drawIndex();
       const offIdx = onMain('index:status', () => { if (document.body.contains(indexBox)) drawIndexSoon(); else offIdx?.(); });
@@ -331,13 +316,13 @@ export async function openSettings(section = 'general', opts = {}) {
       _append(el,
         group('Programs'),
         row('Terminal', select('terminal', [['auto', 'Windows Terminal (if installed)'], ['powershell', 'Windows PowerShell'], ['pwsh', 'PowerShell 7'], ['cmd', 'Command Prompt']])),
-        row('Code editor command', text('editor', 'Automatic'), 'Used by “Open in code editor” (Ctrl+Shift+O), e.g. code, cursor, notepad++, subl. Empty finds VS Code, Cursor, Sublime or Notepad++, else opens files in Dogfile Notepad.'),
-        row('File types', h('button', { class: 'btn small', onclick: () => import('./assoc.js').then((m) => m.fileTypesDialog()) }, 'Choose what opens each file type…'), 'Pick Dogfile Notepad, Player, Photos, the Windows default or any program for each extension.'),
+        row('Code editor command', text('editor', 'Automatic'), 'For Open in code editor. Leave it empty and Dogfile finds one.'),
+        row('File types', h('button', { class: 'btn small', onclick: () => import('./assoc.js').then((m) => m.fileTypesDialog()) }, 'Choose what opens each file type…'), 'Choose what opens each kind of file.'),
         row('“Open with” apps', apps),
         row('Custom commands', cmds),
         group('Search'),
-        row('Instant search index', h('div', { class: 'stack' }, toggle('indexEnabled'), indexBox), 'Dogfile keeps a list of every file on your drives, so searches, Go to file (Ctrl+P) and folder sizes are instant. It stays up to date while Dogfile runs.'),
-        row('Index Windows and program folders', toggle('indexSystem'), 'Off by default: Windows, Program Files, ProgramData and AppData hold most of a system drive\'s files and take memory, but are rarely searched. Searching inside them still works, just without the index.'),
+        row('Instant search index', h('div', { class: 'stack' }, toggle('indexEnabled'), indexBox), 'Keeps a list of your files so search and folder sizes are instant.'),
+        row('Index Windows and program folders', toggle('indexSystem'), 'Also lists system and program folders. Uses more memory and is rarely needed.'),
         row('Assistant’s language model', (() => {
           const box = h('div', { class: 'stack' });
           const draw = async () => {
@@ -352,21 +337,21 @@ export async function openSettings(section = 'general', opts = {}) {
           };
           draw();
           return box;
-        })(), 'Qwen3.5 by Alibaba (Apache 2.0), run by llama.cpp inside Dogfile. Private: it runs on this PC, also offline. It turns what you type into steps; Dogfile checks the files and shows you the plan before changing anything.'),
-        row('AI search', h('div', { class: 'row-inline' }, toggle('aiSearch'), h('button', { class: 'btn small', onclick: () => import('./ai.js').then((m) => m.modelsDialog()) }, 'Models…')), 'Search photos, videos and songs by describing them (“photos of a dog running on grass”). Runs privately on this PC with free models downloaded once.'),
+        })(), 'Runs privately on this PC, even offline. You always see the plan before anything changes.'),
+        row('AI search', h('div', { class: 'row-inline' }, toggle('aiSearch'), h('button', { class: 'btn small', onclick: () => import('./ai.js').then((m) => m.modelsDialog()) }, 'Models…')), 'Find photos, videos and songs by describing them. Runs privately on this PC.'),
         (() => {
-          const st = h('div', { class: 'hint' }, 'Searches ask voidtools Everything for instant whole-disk results. Needs Everything running and its command-line tool es.exe.');
+          const st = h('div', { class: 'hint' }, 'Uses Everything for instant results across your PC. Needs Everything and its es.exe tool.');
           if (IS_WIN()) api('everything:status').then((r) => {
-            st.textContent = r?.es ? `Ready: found ${r.es}.` : r?.running ? `Everything is running, but es.exe is missing. Download “ES” (command-line interface) from voidtools.com and put es.exe next to ${r.exe ? r.exe.split(/[\\/]/).pop() : 'Everything.exe'}.` : 'Everything isn’t running. Start Everything, and put its command-line tool es.exe (a separate download from voidtools.com) next to it. Dogfile’s own instant index (Search, above) works without it.';
+            st.textContent = r?.es ? 'Ready.' : r?.running ? 'Everything is running but es.exe is missing. You can get it from voidtools.com.' : 'Everything isn’t running. Dogfile’s own index works fine without it.';
           }).catch(() => {});
           return row('Use Everything for search', toggle('useEverything'), st);
         })(),
         group('Connections & automation'),
-        row('Server connections', h('button', { class: 'btn small', onclick: () => import('./network.js').then((m) => m.connectionsDialog()) }, 'Manage…'), 'NAS, Windows shares, SFTP, FTP and WebDAV. Passwords are stored encrypted on this PC.'),
-        row('Folder automations', h('button', { class: 'btn small', onclick: () => import('./rules.js').then((m) => m.automationsManager()) }, 'Manage…'), 'Rules that sort new files in a folder automatically.'),
-        row('Document reminders', h('button', { class: 'btn small', onclick: () => import('./reminders.js').then((m) => m.openReminders()) }, 'Open…'), 'Dogfile reads new scans, photos and PDFs on this PC, finds expiry and due dates (passports, licences, insurance, warranties, bills) and reminds you before them.'),
+        row('Server connections', h('button', { class: 'btn small', onclick: () => import('./network.js').then((m) => m.connectionsDialog()) }, 'Manage…'), 'NAS, shared folders, SFTP, FTP and WebDAV. Passwords stay encrypted on this PC.'),
+        row('Folder automations', h('button', { class: 'btn small', onclick: () => import('./rules.js').then((m) => m.automationsManager()) }, 'Manage…'), 'Rules that tidy new files in a folder.'),
+        row('Document reminders', h('button', { class: 'btn small', onclick: () => import('./reminders.js').then((m) => m.openReminders()) }, 'Open…'), 'Finds expiry and due dates in your documents and reminds you in time.'),
         group('Music'),
-        row('AcoustID key (song identification)', text('acoustidKey', 'paste your free key'), h('span', { html: 'Lets “Identify by sound” in the tag editor recognize songs from their audio. Free: sign in at acoustid.org, choose “Register an application”, and paste the API key here.' })),
+        row('AcoustID key (song identification)', text('acoustidKey', 'paste your free key'), 'Lets the tag editor recognize songs by sound. Get a free key at acoustid.org.'),
       );
     }],
     features: ['Features', 'puzzle', async (el) => {
@@ -381,37 +366,36 @@ export async function openSettings(section = 'general', opts = {}) {
       drawAcct();
       const n = (S.extensions || []).length;
       _append(el,
-        row('Your features', h('div', { class: 'row-inline' }, h('button', { class: 'btn small', onclick: () => bus.emit('featuresManager') }, 'Manage…'), h('button', { class: 'btn small', onclick: () => import('./features.js').then((m) => m.createFeature()) }, 'Add a feature…')), n ? `${n} installed. Turn them on and off, edit, export or remove them.` : 'Small tools you add to the file browser, Notepad, Photos and Player.'),
-        row('Feature browser', h('button', { class: 'btn small', onclick: () => FS.featureBrowser() }, 'Browse features…'), 'Find and install features others shared. Browsing needs no account.'),
-        row('Account for sharing', acct, 'Needed only to upload. Uses a GitHub token, stored encrypted on this PC.'),
-        row('Making features', h('div', { class: 'row-inline' }, h('button', { class: 'btn small', onclick: async () => { const p = await api('docs:featureGuide'); (await import('./apptabs.js')).openTool('editor', [p]); } }, 'Read the guide')), 'In Dogfile Notepad, press F1 for the API reference, examples, a check of your feature and the feature log.'),
+        row('Your features', h('div', { class: 'row-inline' }, h('button', { class: 'btn small', onclick: () => bus.emit('featuresManager') }, 'Manage…'), h('button', { class: 'btn small', onclick: () => import('./features.js').then((m) => m.createFeature()) }, 'Add a feature…')), n ? `${n} installed.` : 'Small add-ons for Dogfile, Notepad, Photos and Player.'),
+        row('Feature browser', h('button', { class: 'btn small', onclick: () => FS.featureBrowser() }, 'Browse features…'), 'Find features other people shared. No account needed.'),
+        row('Account for sharing', acct, 'Only needed to share your own. Kept encrypted on this PC.'),
+        row('Making features', h('div', { class: 'row-inline' }, h('button', { class: 'btn small', onclick: async () => { const p = await api('docs:featureGuide'); (await import('./apptabs.js')).openTool('editor', [p]); } }, 'Read the guide')), 'In Notepad, press F1 for the reference and examples.'),
       );
     }],
     safety: ['History & safety', 'history', (el) => {
       _append(el,
-        row('Keep a file history', h('div', { class: 'row-inline' }, select('historyLimit', [[200, 'Last 200 actions'], [1000, 'Last 1,000 actions'], [5000, 'Last 5,000 actions']]), h('button', { class: 'btn small', onclick: () => import('./history.js').then((m) => m.historyDialog()) }, 'Open history…')), 'Copies, moves, renames and deletes, with Undo where it’s still possible. The list is capped so Dogfile stays fast.'),
-        row('Versions kept per file', select('versionsKeep', [[5, '5'], [10, '10'], [20, '20'], [50, '50']]), 'For files you save versions of (right-click > More > Versions…).'),
-        row('Space for versions', select('versionsMaxMB', [[1000, '1 GB'], [5000, '5 GB'], [20000, '20 GB']]), 'The oldest versions are removed first when this fills up.'),
+        row('Keep a file history', h('div', { class: 'row-inline' }, select('historyLimit', [[200, 'Last 200 actions'], [1000, 'Last 1,000 actions'], [5000, 'Last 5,000 actions']]), h('button', { class: 'btn small', onclick: () => import('./history.js').then((m) => m.historyDialog()) }, 'Open history…')), 'Copies, moves, renames and deletes, with Undo when possible.'),
+        row('Versions kept per file', select('versionsKeep', [[5, '5'], [10, '10'], [20, '20'], [50, '50']]), 'For files you keep versions of.'),
+        row('Space for versions', select('versionsMaxMB', [[1000, '1 GB'], [5000, '5 GB'], [20000, '20 GB']]), 'The oldest go first when it fills up.'),
         row('Saved versions', h('button', { class: 'btn small', onclick: () => import('./history.js').then((m) => m.versionsOverview()) }, 'Show all…')),
       );
     }],
     privacy: ['Privacy', 'lock', (el) => {
       _append(el,
-        row('Clipboard history', select('clipHistory', [['paths', 'Files and paths only'], ['all', 'Files, paths and text'], ['off', 'Off']]), 'Ctrl+Shift+V shows what you copied recently. Anything a password manager marks as private is never kept.'),
-        row('Remember clipboard history after closing', toggle('clipRemember'), 'Off: the list is forgotten when Dogfile closes.'),
+        row('Clipboard history', select('clipHistory', [['paths', 'Files and paths only'], ['all', 'Files, paths and text'], ['off', 'Off']]), 'Ctrl+Shift+V shows what you copied recently. Passwords are never kept.'),
+        row('Keep clipboard history after closing', toggle('clipRemember')),
         row('Clear clipboard history', h('button', { class: 'btn small', onclick: () => { api('store:set', 'cliphistory', []); toast('Cleared'); } }, 'Clear')),
         row('Recently opened', h('button', { class: 'btn small', onclick: async () => { state.recent = []; state.recentFiles = []; (await import('./core.js')).saveLibrary(); toast('Recent lists cleared'); } }, 'Clear recent folders & files')),
       );
     }],
     access: ['Accessibility', 'eye', (el) => {
       _append(el,
-        row('Focus rings', select('focusRings', [['auto', 'When using the keyboard'], ['always', 'Always']]), 'Shows clearly which item, button or area has the keyboard focus.'),
-        row('Screen reader announcements', toggle('a11yAnnounce'), 'Announces the folder, the focused item (name, type, size, position) and finished operations.'),
+        row('Focus rings', select('focusRings', [['auto', 'When using the keyboard'], ['always', 'Always']]), 'Shows which item has the keyboard focus.'),
+        row('Screen reader announcements', toggle('a11yAnnounce'), 'Reads out folders, items and finished tasks.'),
         row('High contrast', toggle('highContrast'), 'Darker text and stronger lines.'),
         row('Reduce motion', select('reduceMotion', [['', 'Follow Windows'], [true, 'On'], [false, 'Off']]), 'Turns off animations.'),
         row('Bigger click targets', toggle('bigTargets')),
-        row('Text size', select('fontScale', [[0.9, 'Small'], [1, 'Normal'], [1.1, 'Large'], [1.25, 'Larger'], [1.4, 'Largest']])),
-        row('Keyboard', h('div', { class: 'hint' }, 'Ctrl+F6 / Shift+F6 move between the sidebar, address bar, files, preview and assistant (F6 too with one pane). Arrow keys move in the sidebar and tabs; Enter opens; Shift+F10 or the Menu key opens the right-click menu. Every command is in the palette (Ctrl+Shift+P).')),
+        row('Keyboard', h('div', { class: 'hint' }, 'Ctrl+F6 moves between areas. Shift+F10 opens the right-click menu. Ctrl+Shift+P lists every command.')),
       );
     }],
     keys: ['Keyboard shortcuts', 'keyboard', (el) => {
@@ -465,25 +449,24 @@ export async function openSettings(section = 'general', opts = {}) {
         list.append(h('button', { class: 'btn small', onclick: () => { state.tags.defs.push({ id: 't' + Date.now().toString(36), name: 'New tag', color: '#12a594' }); saveTags(); bus.emit('tags'); draw(); } }, 'Add tag'));
       };
       draw();
-      el.append(h('p', { class: 'hint' }, 'Tags are stored by Dogfile and follow files when you rename or move them inside Dogfile. Drag files onto a tag dot in the sidebar to tag them.'), list,
-        row('Also write tags into the files', toggle('tagsInFiles'), 'Saved as the file’s own “Tags” (keywords), so they show in Explorer and Windows Search and travel with the file to other PCs and backups. Works for photos, music, videos, Office files and PDFs.'));
+      el.append(h('p', { class: 'hint' }, 'Tags follow files when you move or rename them in Dogfile. Drag files onto a tag in the sidebar to tag them.'), list,
+        row('Also write tags into the files', toggle('tagsInFiles'), 'Saves tags inside photos, music, Office files and PDFs, so Windows and other PCs see them too.'));
     }],
     data: ['Data & reset', 'workspace', async (el) => {
       const dir = await api('store:path');
       _append(el,
-        row('Settings folder', h('div', { class: 'stack' }, h('code', {}, dir), h('button', { class: 'btn small', onclick: () => api('shell:open', dir) }, 'Open folder')), 'Copy this folder to back up or move your setup. Put a file named portable.txt next to Dogfile.exe to run portable.'),
-        row('Export settings', h('button', { class: 'btn small', onclick: () => import('./settingsync.js').then((m) => m.exportSettings()) }, 'Export…'), 'Saves a file with every setting, color, preset, tag, pin and workspace — import it on another PC. To keep PCs in step automatically, use “Your settings on other PCs” in General.'),
+        row('Settings folder', h('div', { class: 'stack' }, h('code', {}, dir), h('button', { class: 'btn small', onclick: () => api('shell:open', dir) }, 'Open folder')), 'Copy this folder to back up your setup. Add portable.txt next to Dogfile.exe to run it portable.'),
+        row('Export settings', h('button', { class: 'btn small', onclick: () => import('./settingsync.js').then((m) => m.exportSettings()) }, 'Export…'), 'Saves your settings, colors, tags and pins to a file.'),
         row('Import settings', h('button', { class: 'btn small', onclick: () => import('./settingsync.js').then((m) => m.importSettings()) }, 'Import from file…')),
-        row('Clear recent history', h('button', { class: 'btn small', onclick: async () => { state.recent = []; state.recentFiles = []; (await import('./core.js')).saveLibrary(); toast('History cleared'); } }, 'Clear')),
         row('Forget per-folder views', h('button', { class: 'btn small', onclick: async () => { state.folderViews = {}; (await import('./core.js')).saveLibrary(); toast('Folder views reset'); } }, 'Reset')),
-        row('Reset all settings', h('button', { class: 'btn small danger', onclick: async () => { if (await confirm('Reset settings?', 'Restore every setting to its default?', { danger: true, ok: 'Reset' })) { Object.assign(S, DEFAULT_SETTINGS); saveSettings(); bus.emit('theme'); renderAll(); toast('Settings reset'); openSettingsSection('data'); } } }, 'Reset')),
+        row('Reset all settings', h('button', { class: 'btn small danger', onclick: async () => { if (await confirm('Reset settings?', 'Put every setting back to how it started?', { danger: true, ok: 'Reset' })) { Object.assign(S, DEFAULT_SETTINGS); saveSettings(); bus.emit('theme'); renderAll(); toast('Settings reset'); openSettingsSection('data'); } } }, 'Reset')),
       );
     }],
     license: ['Licence', 'star', async (el) => (await import('./license.js')).licenseSettings(el, row)],
     about: ['About', 'info', async (el) => {
       const info = await api('sys:info');
       el.append(h('div', { class: 'about' }, h('div', { class: 'about-name' }, 'Dogfile'), h('div', { class: 'hint' }, `Version ${info.version} · ${info.platform} · ${info.has7z ? '7-Zip detected' : 'Using Windows tar for archives'}${state.startupMs ? ` · started in ${state.startupMs} ms` : ''}`),
-        h('p', {}, 'A fast, keyboard-driven file manager with tabs, up to four panes, previews, tags, Rename Studio, folder compare, duplicate finder and more.')));
+        h('p', {}, 'A fast file manager with tabs, split panes, previews, tags and a lot more.')));
     }],
   };
 
@@ -519,6 +502,7 @@ export async function openSettings(section = 'general', opts = {}) {
     content.append(h('h2', {}, `Results for “${search.value.trim()}”`));
     if (!out.children.length) content.append(h('div', { class: 'hint' }, 'No settings match. Try another word, like “theme”, “delete” or “thumbnails”.'));
     content.append(...out.children);
+    tidyRows(content);
   });
   search.addEventListener('keydown', (e) => e.stopPropagation());
   nav.prepend(search);
@@ -529,11 +513,23 @@ export async function openSettings(section = 'general', opts = {}) {
     content.innerHTML = '';
     content.append(h('h2', {}, sections[id][0]));
     await sections[id][2](content);
+    tidyRows(content);
   };
   openSettingsSection = (id) => show(id);
   show(sections[section] ? section : 'general');
   if (opts.search) setTimeout(() => { search.value = opts.search; search.dispatchEvent(new Event('input')); }, 50);
   await modal({ title: 'Settings', body: h('div', { class: 'settings' }, nav, content), width: 860, className: 'settings-modal', noPadding: true });
+}
+// rows whose control is a block of several lines (the panel animations list, a group of check boxes) put it
+// under the title at full width, instead of leaving empty space beside a tall column
+function tidyRows(content) {
+  const run = () => content.querySelectorAll('.set-row').forEach((r) => {
+    const c = r.querySelector('.set-ctl');
+    if (!c || r.classList.contains('stacked')) return;
+    if (c.offsetHeight > 64) r.classList.add('stacked');
+  });
+  // some controls fill in a moment later (lists read from other modules)
+  for (const ms of [0, 120, 400]) setTimeout(run, ms);
 }
 let settingsIdx = null;
 export async function settingsIndex() { if (!settingsIdx) settingsIdx = await openSettings('general', { index: true }); return settingsIdx; }

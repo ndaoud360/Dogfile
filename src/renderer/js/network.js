@@ -66,7 +66,7 @@ export async function editConnection(c0) {
     body.append(row('Type', type), row('Name', inp('name', OAUTH[c.type] ? `e.g. My ${OAUTH[c.type]}` : c.type === 's3' ? 'e.g. Photo backups' : 'e.g. Home NAS')));
     if (OAUTH[c.type]) {
       const who = h('div', { class: 'hint' }, c.who ? `Signed in as ${c.who}` : 'Not signed in yet');
-      body.append(row('Account', h('div', { class: 'stack' }, h('button', { class: 'btn small primary', onclick: () => signIn(c, who) }, c.who ? 'Sign in again…' : `Sign in to ${OAUTH[c.type]}…`), who), 'Your browser opens to sign in. Dogfile keeps a sign-in token encrypted on this PC — never your password.'));
+      body.append(row('Account', h('div', { class: 'stack' }, h('button', { class: 'btn small primary', onclick: () => signIn(c, who) }, c.who ? 'Sign in again…' : `Sign in to ${OAUTH[c.type]}…`), who), 'Your browser opens to sign in. Dogfile keeps a sign-in token encrypted on this PC. Never your password.'));
       body.append(h('div', { class: 'hint cn-res' }));
       return;
     }
@@ -150,7 +150,7 @@ export async function connectionsDialog() {
   const list = h('div', { class: 'ws-list' });
   const draw = () => {
     list.innerHTML = '';
-    if (!conns().length) list.append(h('div', { class: 'hint pad' }, 'No saved connections. Add your NAS, a Windows share, an SFTP or FTP server, a WebDAV folder, or a cloud account (Google Drive, Dropbox, OneDrive, S3) — no sync app needed.'));
+    if (!conns().length) list.append(h('div', { class: 'hint pad' }, 'No connections yet. Add a NAS, a shared folder, a server or a cloud account.'));
     for (const c of conns()) {
       const st = status.get(c.id);
       list.append(h('div', { class: 'ws-row' }, h('span', { class: 'cn-dot ' + (st === true ? 'up' : st === false ? 'down' : ''), title: st === true ? 'Answering' : st === false ? 'Not answering' : 'Checking…' }),
@@ -162,7 +162,7 @@ export async function connectionsDialog() {
   draw();
   const off = bus.on('connections', draw);
   let closeIt = () => {};
-  const p = modal({ title: 'Server connections', width: 640, className: 'cn-modal', onClose: off, body: h('div', { class: 'stack' }, h('div', { class: 'hint' }, 'Copy, move, rename and delete work on servers too. Copies to and from network places run one at a time in the Operations list so a slow connection doesn’t hold up local copies.'), list), buttons: [{ label: 'Add connection…', left: true, run: async () => { await editConnection(null); draw(); return false; } }, { label: 'Check status', left: true, run: () => { refreshStatus(); return false; } }, { label: 'Close', primary: true, value: true }] });
+  const p = modal({ title: 'Server connections', width: 640, className: 'cn-modal', onClose: off, body: h('div', { class: 'stack' }, h('div', { class: 'hint' }, 'Copy, move, rename and delete work on servers too.'), list), buttons: [{ label: 'Add connection…', left: true, run: async () => { await editConnection(null); draw(); return false; } }, { label: 'Check status', left: true, run: () => { refreshStatus(); return false; } }, { label: 'Close', primary: true, value: true }] });
   setTimeout(() => { closeIt = () => document.querySelector('.cn-modal')?._close?.(null); }, 0);
   return p;
 }

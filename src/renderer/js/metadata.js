@@ -16,7 +16,7 @@ async function ensureTool() {
   let s = await api('meta:status').catch(() => null);
   if (s?.ready) return true;
   if (!s?.windows) { toast('Install ExifTool (exiftool) to edit photo details', { error: true }); return false; }
-  const ok = await confirm('Get ExifTool?', 'Editing photo details uses ExifTool, the free standard tool for it (about 10 MB, from exiftool.org). Dogfile fetches it once.', { ok: 'Get it' });
+  const ok = await confirm('Get ExifTool?', 'Editing photo details needs a free tool called ExifTool (about 10 MB). Dogfile downloads it once.', { ok: 'Get it' });
   if (!ok) return false;
   await api('meta:install');
   const bar = h('div', { class: 'tp-fill' });
@@ -83,7 +83,7 @@ export async function editPhotoDetails(items) {
       const draw = (n) => { el.innerHTML = ''; for (let i = 1; i <= 5; i++) el.append(h('button', { class: 'md-star' + (i <= n ? ' on' : ''), title: `${i} star${i > 1 ? 's' : ''}`, onclick: () => { const nn = n === i ? 0 : i; touch(nn); draw(nn); } }, '★')); if (mixed && !(label in changes)) el.append(h('span', { class: 'hint' }, ' (different in each)')); };
       draw(cur);
     } else if (kind === 'orient') {
-      el = h('select', { class: 'input' }, h('option', { value: '' }, mixed ? '(different in each photo)' : '—'), ...ORIENT.map((o) => h('option', { value: o }, o)));
+      el = h('select', { class: 'input' }, h('option', { value: '' }, mixed ? '(different in each photo)' : ''), ...ORIENT.map((o) => h('option', { value: o }, o)));
       el.value = mixed ? '' : v || ''; el.onchange = () => touch(el.value || null);
     } else if (kind === 'date') {
       el = h('input', { class: 'input', type: 'datetime-local', step: 1 });
@@ -139,7 +139,7 @@ export async function editPhotoDetails(items) {
   go(tab);
   const raw = items.some((i) => /^(cr2|cr3|crw|nef|nrw|arw|srf|sr2|dng|orf|raf|rw2|pef|srw|x3f|3fr|erf|kdc|mef|mos|mrw|rwl|iiq)$/i.test(i.ext || ''));
   const body = h('div', { class: 'md' },
-    h('div', { class: 'md-head' }, h('span', { class: 'md-ic', html: icon('camera') }), h('div', {}, h('b', {}, many ? `${items.length} photos` : items[0].name), h('div', { class: 'hint' }, many ? 'Only the fields you change are written; the rest stay as each photo has them.' : `${(items[0].ext || '').toUpperCase()} · ${fmtSize(items[0].size || 0)}`)), h('span', { style: { flex: '1' } }), seg),
+    h('div', { class: 'md-head' }, h('span', { class: 'md-ic', html: icon('camera') }), h('div', {}, h('b', {}, many ? `${items.length} photos` : items[0].name), h('div', { class: 'hint' }, many ? 'Only what you change gets saved. Everything else stays the same.' : `${(items[0].ext || '').toUpperCase()} · ${fmtSize(items[0].size || 0)}`)), h('span', { style: { flex: '1' } }), seg),
     main);
   const write = async (map) => {
     // what each photo had before, so Undo can put it back
@@ -204,7 +204,7 @@ export async function streamsDialog(items) {
     const zones = files.filter((p) => map[p].some((s) => s.name === 'Zone.Identifier'));
     body.append(h('div', { class: 'as2-head' }, h('b', {}, total ? `${total} hidden stream${total === 1 ? '' : 's'} in ${files.length} of ${items.length} file${items.length === 1 ? '' : 's'}` : `No hidden streams in ${items.length === 1 ? items[0].name : `these ${items.length} files`}`), h('span', { style: { flex: '1' } }),
       zones.length ? h('button', { class: 'btn small', title: 'Remove the “downloaded from the internet” mark', onclick: async () => { const r = await api('meta:streamRemove', zones, 'Zone.Identifier'); toast(`Unblocked ${r.removed} file${r.removed === 1 ? '' : 's'}`); await load(); draw(); } }, `Unblock ${zones.length}`) : null,
-      total ? h('button', { class: 'btn small danger', onclick: async () => { if (!(await confirm('Remove every hidden stream?', 'The extra streams come off these files. Their main contents aren’t touched.', { ok: 'Remove', danger: true }))) return; const r = await api('meta:streamRemove', files, '*'); toast(`Removed ${r.removed} stream${r.removed === 1 ? '' : 's'}`); await load(); draw(); } }, 'Remove all') : null));
+      total ? h('button', { class: 'btn small danger', onclick: async () => { if (!(await confirm('Remove every hidden stream?', 'This removes the hidden extras. The files themselves stay the same.', { ok: 'Remove', danger: true }))) return; const r = await api('meta:streamRemove', files, '*'); toast(`Removed ${r.removed} stream${r.removed === 1 ? '' : 's'}`); await load(); draw(); } }, 'Remove all') : null));
     const list = h('div', { class: 'as2-list' });
     for (const p of files) {
       list.append(h('div', { class: 'as2-file' }, h('span', { html: icon('page') }), h('b', { title: p }, basename(p))));

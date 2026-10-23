@@ -88,8 +88,8 @@ export async function openReminders(focusId) {
     if (!items.length) {
       main.append(h('div', { class: 'rem-empty' },
         h('div', { class: 'hint' }, remCfg().enabled
-          ? (data?.scan?.running ? 'Nothing found yet. Still reading…' : 'Nothing with an expiry or due date found yet. When a passport scan, insurance card, warranty or bill lands in a watched folder, it shows up here.')
-          : 'Turn reminders on and Dogfile looks through your Downloads and Documents for documents that expire, then reminds you before they do.')));
+          ? (data?.scan?.running ? 'Nothing found yet. Still reading…' : 'Nothing found yet. When something like a passport scan or a bill shows up in a watched folder, it lands here.')
+          : 'Turn this on and Dogfile finds documents that expire and reminds you before they do.')));
       return;
     }
     const list = h('div', { class: 'rem-list' });
@@ -110,7 +110,7 @@ export async function openReminders(focusId) {
         h('span', { class: 'rem-ic', html: icon(kindIcon(it.kind)) }),
         h('div', { class: 'rem-body' },
           h('div', { class: 'rem-title' }, h('b', {}, it.note || it.kindLabel || 'Document'), it.sure === false ? h('span', { class: 'rem-check', title: 'Dogfile isn’t sure this is the right date: check it' }, 'check the date') : null),
-          h('div', { class: 'hint rem-sub' }, `${it.date ? fmtDay(it.date) : 'no date'} · `, h('a', { href: '#', class: 'rem-file' + (it.exists === false ? ' gone' : ''), title: it.path || '', onclick: (e) => { e.preventDefault(); if (!it.path) return; close(); navigate(activeTab(), dirname(it.path), { select: it.path }); } }, it.name || basename(it.path || '') || '—'))),
+          h('div', { class: 'hint rem-sub' }, `${it.date ? fmtDay(it.date) : 'no date'} · `, h('a', { href: '#', class: 'rem-file' + (it.exists === false ? ' gone' : ''), title: it.path || '', onclick: (e) => { e.preventDefault(); if (!it.path) return; close(); navigate(activeTab(), dirname(it.path), { select: it.path }); } }, it.name || basename(it.path || '') || 'Unknown file'))),
         h('div', { class: 'rem-left' }, leftText(n, it.what)),
         h('div', { class: 'rem-acts' },
           h('button', { class: 'icon-btn small', title: 'Change the date, type or note', html: icon('rename'), onclick: () => more.classList.toggle('open') }),
@@ -149,13 +149,13 @@ export async function openReminders(focusId) {
       chips.append(b);
     }
     main.append(h('div', { class: 'rem-set' },
-      h('label', { class: 'check rem-on' }, on, h('span', {}, h('b', {}, 'Remind me before documents expire'), h('span', { class: 'hint' }, ' Dogfile watches the folders below for new photos, scans and PDFs, reads them on this PC (nothing is uploaded), and finds expiry and due dates.'))),
+      h('label', { class: 'check rem-on' }, on, h('span', {}, h('b', {}, 'Remind me before documents expire'), h('span', { class: 'hint' }, ' Dogfile checks these folders for documents with expiry or due dates. Everything stays on this PC.'))),
       h('div', { class: 'rem-sec' }, h('b', {}, 'Folders to watch'), h('div', { class: 'hint' }, 'Subfolders too, a few levels deep.'), fl),
-      h('div', { class: 'rem-sec' }, h('b', {}, 'Remind me'), h('div', { class: 'hint' }, 'How long before the date. Each one comes once, as a Windows notification.'), chips),
+      h('div', { class: 'rem-sec' }, h('b', {}, 'Remind me'), h('div', { class: 'hint' }, 'How early to remind you.'), chips),
       h('div', { class: 'rem-sec row-inline wrap' },
         h('button', { class: 'btn small', onclick: () => api('reminders:test').then(() => toast(IS_WIN() ? 'Sent a sample notification' : 'Sent a sample reminder')) }, 'Send a sample notification'),
         h('button', { class: 'btn small', disabled: !cfg.enabled, onclick: async () => { await api('reminders:scanNow', true).catch((e) => toast(e.message, { error: true })); toast('Looking through everything again'); await load(); draw(); } }, 'Look through everything again')),
-      h('div', { class: 'hint rem-note-foot' }, `Dates like 03/04/2027 are read ${cfg.dateOrder === 'dmy' ? 'day first (3 April)' : 'month first (March 4)'}, the way this PC writes them. Reminders come while Dogfile is running; turn on “Keep running in the background” (Settings › General) so they come even with no window open. The list is stored encrypted for your Windows account.`)));
+      h('div', { class: 'hint rem-note-foot' }, `Dates like 03/04/2027 are read ${cfg.dateOrder === 'dmy' ? 'day first (3 April)' : 'month first (March 4)'}, like this PC writes them. Reminders show up while Dogfile is running, so keep it running in the background to never miss one.`)));
   };
   const draw = () => { drawHead(); drawTabs(); main.innerHTML = ''; if (tab === 'list') drawList(); else drawSettings(); };
   await load();
@@ -199,7 +199,7 @@ export async function remindAbout(item) {
 }
 
 // from the back end: a reminder is due (also shown by Windows), the list changed, a notification was clicked
-onMain('reminders:due', (r) => toast(`${r.title} — ${r.body}`, { action: { label: 'Open', run: () => openReminders(r.id) }, ms: 12000 }));
+onMain('reminders:due', (r) => toast(`${r.title}: ${r.body}`, { action: { label: 'Open', run: () => openReminders(r.id) }, ms: 12000 }));
 onMain('reminders:changed', () => bus.emit('remindersChanged'));
 onMain('reminders:scan', () => bus.emit('remindersChanged'));
 onMain('reminders:open', (r) => openReminders(r?.id));

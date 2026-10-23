@@ -15,7 +15,7 @@ const CATS = [
   ['overview', 'Overview', 'chart'],
   ['dupes', 'Exact duplicates', 'dupes', 'Files whose contents are exactly the same, byte for byte (checked with a hash), even when their names differ. One copy of each is kept.'],
   ['photos', 'Similar photos', 'photos', 'The same picture saved more than once at different sizes or qualities. The largest copy is kept.'],
-  ['docs', 'Document versions', 'page', 'Files whose names suggest versions of one document (“report (1).docx”, “report final v2.docx”). Their contents can differ, so nothing is selected for you: tick the ones you don’t need.'],
+  ['docs', 'Document versions', 'page', 'Files that look like copies of one document, like “report (1)” and “report final v2”. They might differ, so tick only the ones you don’t need.'],
   ['installers', 'Old installers', 'exe', 'Setup files in Downloads that are older than two weeks. Programs stay installed if you remove these.'],
   ['temp', 'Temporary files', 'clock', 'Files in the temporary folder and leftovers like .tmp, unfinished downloads and Office lock files.'],
   ['empty', 'Empty folders', 'folder', 'Folders with nothing inside (or only other empty folders).'],
@@ -73,7 +73,7 @@ export async function openCleanup(initialRoot) {
     return el;
   }));
   const drawOverview = () => {
-    if (!S.data) { main.append(h('div', { class: 'cl-empty' }, h('div', { html: icon('broom') }), h('b', {}, 'Find out what’s using your space'), h('p', { class: 'hint' }, 'Scan to see your storage by folder, type and age, and to find duplicates, old installers, temporary files and more. Nothing is deleted until you review and confirm.'))); return; }
+    if (!S.data) { main.append(h('div', { class: 'cl-empty' }, h('div', { html: icon('broom') }), h('b', {}, 'Find out what’s using your space'), h('p', { class: 'hint' }, 'Scan to see what takes up space and find duplicates, old installers and leftovers. Nothing is deleted until you say so.'))); return; }
     const d = S.data;
     const cards = h('div', { class: 'cl-sum' });
     for (const [c, l, ic] of CATS.slice(1)) {

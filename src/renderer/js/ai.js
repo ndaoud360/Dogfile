@@ -92,7 +92,7 @@ export async function ensureModels(need) {
   if (!missing.length) return true;
   const names = missing.map((k) => st[k].label).join(' and ');
   if (!st[missing[0]].downloading) {
-    const ok = await confirm('Download free AI models?', `This feature runs privately on this PC with free open models. It needs a one-time download of <b>${esc(names)}</b> (about ${missing.map((k) => ({ clip: 150, clap: 190, whisper: 80, minilm: 25, writer: 520, 'writer-gpu': 490, brain: 2740, 'brain-small': 1300 }[k] || 50)).reduce((a, b) => a + b, 0)} MB) from Hugging Face. Nothing about your files is sent anywhere.`, { ok: 'Download' });
+    const ok = await confirm('Download free AI models?', `This runs privately on this PC. It needs a one-time download of <b>${esc(names)}</b> (about ${missing.map((k) => ({ clip: 150, clap: 190, whisper: 80, minilm: 25, writer: 520, 'writer-gpu': 490, brain: 2740, 'brain-small': 1300 }[k] || 50)).reduce((a, b) => a + b, 0)} MB) Your files never leave your PC.`, { ok: 'Download' });
     if (!ok) return false;
     for (const k of missing) await api('ai:download', k);
   }

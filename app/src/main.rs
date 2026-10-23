@@ -143,7 +143,7 @@ impl AppHost {
 
     fn open_path_anywhere(&self, launch: Value) {
         let wins: Vec<String> = self.windows().into_iter().filter(|w| w.starts_with("main")).collect();
-        let want_new = launch["newWindow"].as_bool().unwrap_or(false) || dogfile_backend::setting_bool("openInNewWindow", false);
+        let want_new = launch["newWindow"].as_bool().unwrap_or(false);
         if let Some(target) = wins.first().and_then(|l| self.win(l)) {
             if !want_new {
                 #[cfg(windows)]

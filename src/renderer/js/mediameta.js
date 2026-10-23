@@ -1,7 +1,7 @@
 // Media details for gallery mode and media filters: picture size / date taken / camera (from file headers),
 // video & song length, dominant colour and a tiny perceptual hash (from thumbnails), BPM / key (from audio
 // analysis). Cached on disk so a library is only read once.
-import { api, state, bus, KINDS, debounce, IS_WIN } from './core.js';
+import { api, state, bus, KINDS, debounce, IS_WIN, sys } from './core.js';
 
 const meta = new Map(); // key -> {...}
 let loaded = false;
@@ -39,6 +39,16 @@ export async function ensureMeta(items, { onUpdate, audio = true, need = [] } = 
     else if ((isVid(it) || (audio && isAud(it))) && !(m && 'dur' in m && need.every((k) => k !== 'vcodec' || 'vcodec' in m))) av.push(it);
   }
   let changed = false;
+  // demo mode: the demo songs and videos are empty, so they get believable details instead of being read
+  if (sys.demo && sys.demoRoot) {
+    const fake = av.filter((it) => it.path.startsWith(sys.demoRoot));
+    for (const it of fake) {
+      let hsh = 0; for (const ch of it.name) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
+      if (isAud(it)) { const keys = [['8A', 'A minor'], ['8B', 'C major'], ['9A', 'E minor'], ['5A', 'C minor'], ['11B', 'A major'], ['4A', 'F minor']]; const k = keys[hsh % keys.length]; setMeta(it, { dur: 150 + (hsh % 180), bpm: 82 + (hsh % 70), camelot: k[0], key: k[1], w: 0, h: 0, vcodec: '', acodec: 'mp3' }); }
+      else setMeta(it, { dur: 20 + (hsh % 1500), w: hsh % 3 ? 1920 : 3840, h: hsh % 3 ? 1080 : 2160, vcodec: 'h264', acodec: 'aac' });
+    }
+    if (fake.length) { av.splice(0, av.length, ...av.filter((it) => !fake.includes(it))); changed = true; }
+  }
   for (let i = 0; i < pics.length; i += 200) {
     const part = pics.slice(i, i + 200);
     part.forEach((it) => inflight.add(keyOf(it)));

@@ -305,10 +305,10 @@ function renderRibbon() {
   const wasOpen = r.classList.contains('open');
   if (!which || which === 'file') { if (wasOpen) animatePanel('ribbon', r, false, () => { r.innerHTML = ''; r.classList.remove('open'); setTimeout(syncFrames, 0); }); else { r.innerHTML = ''; r.classList.remove('open'); } return; }
   r.classList.add('open');
-  // a ribbon that wasn't showing folds down once its buttons are in
-  if (!wasOpen) setTimeout(() => animatePanel('ribbon', r, true, () => {}, { applied: true }), 0);
+  // a ribbon that wasn't showing folds down once its buttons are in (measured before anything is painted)
+  const unfold = () => { if (!wasOpen) animatePanel('ribbon', r, true, () => {}, { applied: true }); };
   r.innerHTML = '';
-  if (which === 'ctx') { r.classList.add('ctx'); renderCtxRibbon(r); fitRibbon(r); setTimeout(syncFrames, 0); return; }
+  if (which === 'ctx') { r.classList.add('ctx'); renderCtxRibbon(r); fitRibbon(r); setTimeout(syncFrames, 0); unfold(); return; }
   r.classList.remove('ctx');
   setTimeout(syncFrames, 0);
   const simple = state.settings.uiMode === 'simple';
@@ -325,6 +325,7 @@ function renderRibbon() {
     if (entries.length) r.append(ribbonGroup(gname, entries));
   }
   fitRibbon(r);
+  unfold();
 }
 function fileMenu(btn) {
   const r = btn.getBoundingClientRect();

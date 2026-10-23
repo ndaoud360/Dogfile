@@ -10,8 +10,8 @@ import { state } from './core.js';
 
 export const PANELS = {
   sidebar: ['Sidebar', 'left'], preview: ['Details pane', 'right'], assistant: ['Assistant', 'right'],
-  ribbon: ['Ribbon (top bar)', 'top'], status: ['Status bar', 'bottom'], terminal: ['Terminal', 'bottom'],
-  shelf: ['Drop Shelf', 'bottom'], ops: ['Activity (copies, moves…)', 'bottom'],
+  ribbon: ['Ribbon', 'top'], status: ['Status bar', 'bottom'], terminal: ['Terminal', 'bottom'],
+  shelf: ['Drop Shelf', 'bottom'], ops: ['Activity', 'bottom'],
 };
 export const MODES = [['fold', 'Fold'], ['slide', 'Slide'], ['none', 'No animation']];
 const reduced = () => document.body.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -131,8 +131,29 @@ function play(render, from, to, dur) {
 }
 
 /**
+ * The real space a panel takes, set by hand while it animates, so whatever sits beside it slides along smoothly
+ * instead of jumping when the panel appears or goes. null gives the space back to the stylesheet.
+ */
+function sizer(name, el, edge) {
+  if (name === 'preview') {
+    const ws = document.getElementById('workspace');
+    return (px) => { ws.style.gridTemplateColumns = px == null ? '' : `1fr ${px > 0.5 ? 1 : 0}px ${px}px`; };
+  }
+  // overlays (assistant, activity) float over everything: nothing beside them moves
+  const pos = getComputedStyle(el).position;
+  if (pos === 'absolute' || pos === 'fixed') return () => {};
+  const prop = edge === 'left' || edge === 'right' ? 'width' : 'height';
+  const minProp = prop === 'width' ? 'minWidth' : 'minHeight';
+  return (px) => {
+    if (px == null) { el.style[prop] = ''; el.style[minProp] = ''; el.style.overflow = ''; el.style.flexBasis = ''; return; }
+    el.style[prop] = px + 'px'; el.style[minProp] = '0px'; el.style.flexBasis = 'auto'; el.style.overflow = 'hidden';
+  };
+}
+
+/**
  * Show or hide a panel with its animation. `apply()` makes the real change (classes, layout); `el` is the panel.
- * Showing: the panel takes its place first and folds open there. Hiding: it folds shut where it was.
+ * Showing: the panel is measured where it will sit, then its space grows from nothing while it folds open.
+ * Hiding: it folds shut while its space shrinks away, and only then is it really hidden.
  */
 export async function animatePanel(name, el, show, apply, { edge = PANELS[name]?.[1] || 'left', dur, applied = false } = {}) {
   const mode = panelMode(name);
@@ -140,16 +161,37 @@ export async function animatePanel(name, el, show, apply, { edge = PANELS[name]?
   const visible = () => { const r = el.getBoundingClientRect(); return r.width > 2 && r.height > 2 && getComputedStyle(el).display !== 'none' ? r : null; };
   const was = applied ? null : visible();
   if (!applied && show === !!was) { apply(); return; }
+  const size = sizer(name, el, edge);
+  const horiz = edge === 'left' || edge === 'right';
   busy.set(el, true);
   try {
     let rect;
-    if (show) { apply(); await frame(); rect = visible(); if (!rect) return; }
-    else rect = was;
+    // everything up to the first frame happens before anything is painted: no flash of the panel
+    if (show) {
+      if (!applied) apply();
+      size(null);
+      rect = visible();
+      if (!rect) return;
+      size(0);
+      el.style.visibility = 'hidden';
+    } else rect = was;
+    const D = horiz ? rect.width : rect.height;
     const L = (mode === 'slide' ? slideLayer : foldLayer)(el, rect, edge);
-    const time = dur || (mode === 'slide' ? 260 : Math.round(Math.min(560, 380 + (edge === 'left' || edge === 'right' ? rect.width : rect.height) * 0.4)));
-    if (show) { el.style.visibility = 'hidden'; L.render(0); await play(L.render, 0, 1, time); el.style.visibility = ''; }
-    else { apply(); L.render(1); await play(L.render, 1, 0, time); }
+    const time = dur || (mode === 'slide' ? 260 : Math.round(Math.min(560, 380 + D * 0.4)));
+    const step = (p) => { L.render(p); size(D * clamp(p)); };
+    if (show) {
+      await play(step, 0, 1, time);
+    } else {
+      el.style.visibility = 'hidden';
+      await play(step, 1, 0, time);
+      apply();
+    }
+    size(null);
+    el.style.visibility = '';
+    // the layer goes on the next frame, once the real panel is painted underneath: no blink at the end
+    await frame();
     L.layer.remove();
+    window.dispatchEvent(new Event('resize'));
   } finally { busy.delete(el); }
 }
 

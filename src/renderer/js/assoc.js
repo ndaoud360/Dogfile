@@ -71,7 +71,7 @@ export async function fileTypesDialog() {
     list.innerHTML = '';
     const m = map();
     const keys = Object.keys(m).sort();
-    if (!keys.length) list.append(h('div', { class: 'hint pad' }, 'No custom choices yet: Dogfile opens text in Dogfile Notepad, music and video in Dogfile Player, pictures in Dogfile Photos (if those are on in Settings) and everything else with the Windows default.'));
+    if (!keys.length) list.append(h('div', { class: 'hint pad' }, 'Nothing changed yet. Files open in Dogfile’s own apps where it has one, and in your usual Windows apps otherwise.'));
     for (const ext of keys) {
       const sel = h('select', { class: 'input sm' }, ...HANDLERS.map(([v, l]) => h('option', { value: v }, l)), ...(state.settings.openWithApps || []).map((x) => h('option', { value: 'app:' + x.command }, x.name)));
       sel.value = m[ext].open || '';

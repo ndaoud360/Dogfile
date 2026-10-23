@@ -93,7 +93,7 @@ export async function declutter(t = activeTab()) {
       box.append(det);
     }
     const moving = files.filter((f) => S.dest.get(f) !== LEAVE).length;
-    summary.textContent = `${moving} of ${files.length} files into ${names.length} folder${names.length === 1 ? '' : 's'}. Open a folder to see why each file goes there and send any file somewhere else. Folder names are editable.`;
+    summary.textContent = `${moving} of ${files.length} files into ${names.length} folder${names.length === 1 ? '' : 's'}. Open a folder to see why each file goes there, or move it somewhere else. You can rename the folders too.`;
   };
   const seg = h('div', { class: 'seg' }, ...[['smart', 'By topic in the name'], ['kind', 'By type'], ['date', 'By month']].map(([k, l]) => { const b = h('button', { class: 'seg-btn' + (k === mode ? ' on' : '') }, l); b.onclick = () => { mode = k; seg.querySelectorAll('.seg-btn').forEach((x) => x.classList.toggle('on', x === b)); draw(); }; return b; }));
   const restSel = h('select', { class: 'input sm' }, h('option', { value: 'kind' }, 'sort by type'), h('option', { value: 'leave' }, 'leave them alone'));

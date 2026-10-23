@@ -119,7 +119,7 @@ export async function featuresManager() {
   draw();
   const off = bus.on('featuresChanged', draw);
   let closeIt = () => {};
-  const p = modal({ title: 'Features', width: 720, className: 'ext-modal', onClose: off, body: h('div', { class: 'stack' }, h('div', { class: 'hint' }, 'Features add your own tools to the file browser, Dogfile Notepad, Dogfile Photos and Dogfile Player. They run in a sandbox and only get the access you allowed.'), box), buttons: [
+  const p = modal({ title: 'Features', width: 720, className: 'ext-modal', onClose: off, body: h('div', { class: 'stack' }, h('div', { class: 'hint' }, 'Features add your own tools to Dogfile, Notepad, Photos and Player. They only get the access you allow.'), box), buttons: [
     { label: 'Create…', left: true, run: () => { closeIt(); createFeature(); } },
     { label: 'Import…', left: true, run: async () => { await importFeature(); draw(); return false; } },
     { label: 'Browse features…', left: true, run: () => { closeIt(); import('./featurestore.js').then((m) => m.featureBrowser()); } },

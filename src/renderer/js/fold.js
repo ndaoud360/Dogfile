@@ -64,7 +64,6 @@ export function toggle(open = !!state.settings.sidebarCollapsed) {
 function run(open) {
   animating = true;
   const side = document.getElementById('sidebar');
-  const main = document.getElementById('main');
   const app = document.getElementById('app');
   const tabbar = document.getElementById('tabbar');
   const W = side.getBoundingClientRect().width || state.settings.sidebarWidth || 300;
@@ -85,9 +84,9 @@ function run(open) {
   const fold = layer.querySelector('.fold');
   app.append(layer);
 
-  // During the animation the content uses the collapsed layout and slides by W·p (like the reference).
+  // During the animation the content's real width follows the fold, so files re-flow smoothly the whole way
+  // (sliding it and fixing its width at the end made everything jump once the fold finished).
   document.body.classList.add('folding', 'no-sidebar');
-  main.style.willChange = 'transform';
 
   const render = (p) => {
     p = clamp(p);
@@ -97,7 +96,7 @@ function run(open) {
     sl.style.opacity = sr.style.opacity = String((1 - p) * 0.9);
     fold.style.visibility = p < 0.004 ? 'hidden' : 'visible';
     back.style.width = W * p + 'px';
-    main.style.transform = `translateX(${W * p}px)`;
+    app.style.gridTemplateColumns = `${(W * p).toFixed(1)}px minmax(0, 1fr)`;
     // the tab strip makes room for the menu button in step with the fold (58px closed, 18px open)
     tabbar.style.paddingLeft = (58 - 40 * p).toFixed(1) + 'px';
   };
@@ -110,7 +109,7 @@ function run(open) {
     if (k < 1) { requestAnimationFrame(step); return; }
     // settle into the real layout
     state.settings.sidebarCollapsed = !open;
-    main.style.transform = ''; main.style.willChange = ''; tabbar.style.paddingLeft = '';
+    app.style.gridTemplateColumns = ''; tabbar.style.paddingLeft = '';
     document.body.classList.toggle('no-sidebar', !open);
     document.body.classList.remove('folding');
     layer.remove();

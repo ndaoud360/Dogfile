@@ -248,9 +248,9 @@ export async function reviewInstall(code, { source = 'Dogfile Notepad', meta: m0
   const body = h('div', { class: 'stack' },
     h('div', { class: 'ext-head' }, h('span', { class: 'ext-ic', html: icon('puzzle') }), h('div', {}, h('b', {}, meta.name || 'Untitled feature'), h('div', { class: 'hint' }, `${meta.description || ''}${meta.author ? ` · by ${meta.author}` : ''}${meta.version ? ` · version ${meta.version}` : ''}`))),
     h('div', {}, h('b', {}, 'Adds to: '), TARGETS[meta.target] || meta.target),
-    h('div', {}, h('b', {}, 'It will be allowed to:'), perms.length ? h('ul', { class: 'ext-perms' }, ...perms.map((p) => h('li', {}, h('b', {}, PERMS[p][0]), ' — ', PERMS[p][1]))) : h('div', { class: 'hint' }, 'Nothing beyond its own app: no file, internet or command access.')),
+    h('div', {}, h('b', {}, 'It will be allowed to:'), perms.length ? h('ul', { class: 'ext-perms' }, ...perms.map((p) => h('li', {}, h('b', {}, PERMS[p][0]), ': ', PERMS[p][1]))) : h('div', { class: 'hint' }, 'Nothing beyond its own app: no file, internet or command access.')),
     ...(() => { const c = checkCode(code, meta); const w = [...c.missing.map((x) => `${x.fn}() needs the “${PERMS[x.perm][0]}” permission, which the header doesn’t ask for, so that part will be refused.`), ...c.problems.map((x) => x.text + (/[?.]$/.test(x.text) ? '' : '.'))]; return w.length ? [h('div', { class: 'ext-warn' }, h('b', {}, 'Heads up'), h('ul', {}, ...w.map((x) => h('li', {}, x))))] : []; })(),
-    h('div', { class: 'hint' }, `From: ${source}. Features run in a sandbox and can only do what is listed above. Only install features from people you trust; read the code below if you can.`),
+    h('div', { class: 'hint' }, `From: ${source}. It can only do what’s listed above. Only install features from people you trust.`),
     h('details', {}, h('summary', {}, 'Show the code'), h('pre', { class: 'ext-pre' }, code)));
   const ok = await modal({ title: 'Install this feature?', width: 640, body, buttons: [{ label: 'Cancel', value: null }, { label: 'Install', primary: true, value: true }] });
   return ok ? { ...meta, code, permissions: perms } : null;
@@ -287,7 +287,7 @@ export async function pickStarter(prefer) {
     }
   };
   draw();
-  const body = h('div', { class: 'stack' }, h('div', { class: 'hint' }, 'Pick a starting point. “Open in Notepad” lets you read and change it first; “Install” adds it right away. Features are small JavaScript files that run in a sandbox and only get the access listed on them.'), chips, grid);
+  const body = h('div', { class: 'stack' }, h('div', { class: 'hint' }, 'Pick a starting point. Open it in Notepad to change it first, or install it right away.'), chips, grid);
   const res = await modal({ title: 'Add a feature', width: 760, className: 'fp-modal', body, buttons: [
     { label: 'Cancel', value: null },
     { label: 'Install', run: (close) => (chosen ? close('install') : (toast('Pick one first'), false)) },

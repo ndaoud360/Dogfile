@@ -82,7 +82,7 @@ export const SECTIONS = [
   { id: 'events', title: 'File events (hooks)', intro: 'React to what happens to files, or change it before it happens. Needs the hooks permission (// @permissions hooks). Before-events can answer with changes; after-events are only told. Each listener gets 3 seconds: a slow or failing one is skipped, never blocking the operation.', items: [
     { name: 'dogfile.on', sig: 'dogfile.on(event, async (e) => answer?)', returns: 'nothing', perm: 'hooks', where: ['files'],
       desc: 'Listens for a file event. e has the event name and what it’s about: { sources, dest, type } for copy / move / delete / compress / extract, { path, name, newName } for a rename, { sources, dest, mode } for a drop, { from, to } after a rename, { path } after a folder opens. A before-event listener can answer { cancel: true, reason } to stop it, { dest } to send the files elsewhere, { sources } to take only some, { newName } to change a rename, { mode: "copy" | "move" } for a drop. Events: beforeCopy, beforeMove, beforeDelete, beforeRename, beforeDrop, beforeCompress, beforeExtract, afterCopy, afterMove, afterDelete, afterRename, afterCompress, afterExtract, navigate.',
-      params: [['event', 'The event name, e.g. "beforeMove"'], ['listener', 'async function (e) { … } — return nothing to let it go ahead unchanged']],
+      params: [['event', 'The event name, e.g. "beforeMove"'], ['listener', 'async function (e) { … }. Return nothing to let it go ahead unchanged']],
       example: `// photos dropped anywhere go to Pictures\\Inbox instead
 dogfile.on('beforeDrop', async (e) => {
   if (e.sources.every((p) => /\\.(jpe?g|png|heic)$/i.test(p))) return { dest: 'C:\\\\Users\\\\Ana\\\\Pictures\\\\Inbox' };
@@ -151,7 +151,7 @@ export function problems(code, target) {
     const n = 'dogfile.' + m[1];
     if (seen.has(n)) continue; seen.add(n);
     const it = BY_NAME.get(n);
-    if (!it) out.push({ name: n, text: `${n} doesn’t exist${suggest(n) ? ` — did you mean ${suggest(n)}?` : ''}` });
+    if (!it) out.push({ name: n, text: `${n} doesn’t exist${suggest(n) ? `. Did you mean ${suggest(n)}?` : ''}` });
     else if (it.where !== 'all' && target && !it.where.includes(target)) out.push({ name: n, text: `${n} only works in ${it.where.map((w) => ({ files: 'the file browser', notepad: 'Notepad', photos: 'Photos', player: 'Player' }[w])).join(', ')}, but this feature’s @target is ${target}` });
   }
   return out;

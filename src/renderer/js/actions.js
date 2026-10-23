@@ -66,7 +66,7 @@ export async function openItems(items, { pane = state.activePane, newTab = false
   if (models.length) { openTool('model', models.map((f) => f.path), { autoPlaylist: models.length === 1 }); models.forEach((f) => addRecentFile(f.path)); }
   if (photos.length) { openTool('viewer', photos.map((f) => f.path), { autoPlaylist: photos.length === 1 }); photos.forEach((f) => addRecentFile(f.path)); }
   if (texts.length) { openTool('editor', texts.map((f) => f.path)); texts.forEach((f) => addRecentFile(f.path)); }
-  if (medias.length) { openTool('player', medias.map((f) => f.path), { play: true, autoPlaylist: medias.length === 1 && state.settings.playerAutoPlaylist !== false }); medias.forEach((f) => addRecentFile(f.path)); }
+  if (medias.length) { openTool('player', medias.map((f) => f.path), { play: true, autoPlaylist: medias.length === 1 }); medias.forEach((f) => addRecentFile(f.path)); }
   files = files.filter((f) => !texts.includes(f) && !medias.includes(f) && !photos.includes(f) && !models.includes(f));
   if (files.length > 15 && !(await confirm('Open many files?', `You're about to open <b>${files.length}</b> files.`))) return;
   for (const f of files) {
@@ -263,7 +263,7 @@ export async function transfer(paths, dest, mode, opts = {}) {
   if (!paths.length || !dest || isVirtual(dest)) return;
   bus.emit('transferStarted', { paths, dest, mode });
   // several name clashes: review them all at once and pick a rule, instead of one question per file
-  if (!opts.conflict && !opts.conflictMap && paths.length > 1 && state.settings.batchConflicts !== false) {
+  if (!opts.conflict && !opts.conflictMap && paths.length > 1) {
     const r = await reviewConflicts(paths, dest, mode);
     if (r === null) return;
     if (r) opts = { ...opts, conflictMap: r };
@@ -403,7 +403,7 @@ export async function renameOne(it, newName) {
   }
   const to = pjoin(dirname(it.path), newName);
   const oldExt = extname(it.name), newExt = extname(newName);
-  if (!it.isDir && oldExt !== newExt && state.settings.warnExtChange !== false) {
+  if (!it.isDir && oldExt !== newExt) {
     if (!(await confirm('Change extension?', `If you change a file name extension, the file might become unusable.<br><br>Change <b>.${oldExt || '(none)'}</b> to <b>.${newExt || '(none)'}</b>?`))) return;
   }
   try {
@@ -652,7 +652,7 @@ export async function extract(items, mode = 'smart') {
   let dest = dirname(arcs[0].path);
   if (mode === 'choose') { dest = await api('dialog:pickFolder', 'Extract to…'); if (!dest) return; }
   if (mode === 'other') { const o = otherPaneTab(); if (!o || isVirtual(o.path)) return toast('The other pane must show a folder'); dest = o.path; }
-  const opts = { smart: state.settings.smartExtract && mode !== 'folder', toFolder: mode === 'folder' };
+  const opts = { smart: mode !== 'folder', toFolder: mode === 'folder' };
   asking.password++;
   try { for (const a of arcs) {
     let j = await runJob({ type: 'extract', sources: [a.path], dest, opts });
@@ -709,7 +709,7 @@ export async function convertArchive(items, format) {
   const t = activeTab();
   if (!arcs.length && arcOf(t.path)) arcs = [arcOf(t.path).arc];
   if (!arcs.length) return toast('Select an archive to convert');
-  if (format === 'rar' && !(await api('archive:caps')).rar) return alertBox('RAR needs WinRAR', 'RAR is a closed format, so creating .rar files needs WinRAR installed (Dogfile uses its Rar.exe). Dogfile can still <b>open and extract</b> RAR files. For sharing, 7z or zip are good open alternatives.');
+  if (format === 'rar' && !(await api('archive:caps')).rar) return alertBox('RAR needs WinRAR', 'Making .rar files needs WinRAR installed. Dogfile can still open and extract them, and 7z or zip work great for sharing.');
   for (const a of arcs) {
     const base = basename(a).replace(/\.(tar\.(gz|bz2|xz|zst)|tgz|txz|tbz2?|[^.]+)$/i, '');
     const out = await api('fs:uniqueName', dirname(a), `${base}.${format}`, 'number');

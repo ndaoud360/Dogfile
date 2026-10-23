@@ -79,7 +79,7 @@ export async function historyDialog() {
   const fillDetail = (box, e) => {
     for (const p of (e.paths || []).slice(0, 200)) box.append(h('div', { class: 'hi-p' }, p.length > 1 ? `${p[0]}  →  ${basename(p[1]) === basename(p[0]) ? dirname(p[1]) : p[1]}` : p[0]));
     for (const x of (e.detail || []).slice(0, 200)) box.append(h('div', { class: 'hi-p' }, x));
-    for (const x of e.errors || []) box.append(h('div', { class: 'hi-p bad' }, `${x} — ${explainError(x)}`));
+    for (const x of e.errors || []) box.append(h('div', { class: 'hi-p bad' }, `${x}: ${explainError(x)}`));
   };
   const showPath = (e) => (e.rec?.pairs?.[0]?.[e.undone ? 0 : 1]) || (e.rec?.paths?.[0]) || e.dest || null;
   q.oninput = draw;
@@ -152,7 +152,7 @@ export async function versionsOverview() {
   if (!requirePro('versions')) return;
   const all = await api('versions:overview');
   const list = h('div', { class: 'vs-list' }, ...(all.length ? all.map((x) => h('div', { class: 'vs-row' }, h('span', { class: 'hi-ic', html: icon('history') }), h('div', { class: 'hi-main' }, h('b', {}, basename(x.path)), h('span', { class: 'hint' }, `${x.path} · ${x.count} version${x.count === 1 ? '' : 's'} · ${fmtSize(x.size)} · last ${fmtDate(x.last)}${(state.settings.trackedFiles || []).includes(x.path) ? ' · automatic' : ''}`)), h('div', { class: 'hi-acts' }, h('button', { class: 'btn small', onclick: () => versionsDialog(x.path) }, 'Open')))) : [h('div', { class: 'hint pad' }, 'No versions saved yet. Right-click a file > More > Versions… to start.')]));
-  await modal({ title: 'All saved versions', width: 720, body: h('div', { class: 'stack' }, h('div', { class: 'hint' }, `Dogfile keeps up to ${state.settings.versionsKeep || 20} versions per file and ${fmtSize((state.settings.versionsMaxMB || 5000) * 1048576)} in total (change this in Settings > Files).`), list), buttons: [{ label: 'Close', primary: true, value: true }] });
+  await modal({ title: 'All saved versions', width: 720, body: h('div', { class: 'stack' }, h('div', { class: 'hint' }, `Dogfile keeps up to ${state.settings.versionsKeep || 20} versions per file and ${fmtSize((state.settings.versionsMaxMB || 5000) * 1048576)} in total (you can change this in Settings).`), list), buttons: [{ label: 'Close', primary: true, value: true }] });
 }
 setTimeout(() => { if (state.settings.trackedFiles?.length) api('versions:track', state.settings.trackedFiles); }, 3000);
 

@@ -125,7 +125,7 @@ export function trialEnded(fromPill = false) {
   return modal({
     title: '', width: 520, className: 'lic-modal', closeOnBackdrop: fromPill,
     body: h('div', { class: 'lic' },
-      hero(fromPill ? 'Get Dogfile Pro' : 'Your Pro trial has ended', fromPill ? 'Buy Pro once and keep every feature.' : 'Thanks for trying Dogfile Pro! Buy it once to keep every Pro feature, or carry on with the free version. Your files, tags and settings stay as they are.'),
+      hero(fromPill ? 'Get Dogfile Pro' : 'Your Pro trial has ended', fromPill ? 'Buy Pro once and keep every feature.' : 'Thanks for trying Dogfile Pro! Buy it once to keep every Pro feature, or keep using the free version. Nothing of yours changes.'),
       h('div', { class: 'lic-price' }, h('b', {}, PRICE()), h('span', { class: 'hint' }, 'one-time payment · use it on 2 PCs · secure checkout by Stripe')),
       h('div', { class: 'lic-links' }, link('See what’s different in Free', () => compareDialog()), link('Enter serial number', () => enterSerial()))),
     buttons: [

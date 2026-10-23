@@ -99,7 +99,7 @@ async function load(i, { startAt = null, autoplay = true } = {}) {
   $('edit-panel').classList.remove('open');
   if (TX.path !== item.path) $('tx-panel')?.classList.remove('open');
   tellHost({ type: 'state', kind: P.vStream ? 'video' : 'audio', path: item.path });
-  if (!P.vStream) { $('av-tags').innerHTML = ''; if (settings.playerAnalyze !== false) showAnalysis(); }
+  if (!P.vStream) { $('av-tags').innerHTML = ''; showAnalysis(); }
   P.mode = chooseMode();
   // resume position
   let t = startAt ?? 0;
@@ -653,7 +653,7 @@ function shortcutsHelp() {
   const keys = [['Space', 'Play / pause'], ['F / double-click', 'Fullscreen'], ['Esc', 'Exit fullscreen'], ['← / →', 'Back / forward 10 s'], ['Shift + ← / →', '3 s'], ['Ctrl + ← / →', '1 minute'], ['↑ / ↓ / wheel', 'Volume (up to 200 %)'], ['M', 'Mute'], ['N / P', 'Next / previous'], ['S', 'Stop'], ['[ / ] / =', 'Slower / faster / normal speed'], ['E / Shift+E', 'Next / previous frame'], ['B', 'Cycle audio track'], ['V', 'Cycle subtitles'], ['G / H', 'Subtitle delay − / +'], ['A', 'Cycle aspect ratio'], ['\\', 'A-B repeat'], ['L', 'Repeat mode'], ['Ctrl+T', 'Jump to time'], ['Shift+S', 'Screenshot'], ['I', 'Media information'], ['Ctrl+L', 'Playlist'], ['Ctrl+E', 'Equalizer'], ['Ctrl+O', 'Open files'], ['1 – 9', 'Jump to 10 % – 90 %']];
   modal({ title: 'Keyboard shortcuts', width: 460, body: h('div', { class: 'kv' }, ...keys.flatMap(([k, d]) => [h('div', { class: 'k' }, h('kbd', {}, k)), h('div', { class: 'v' }, d)])), buttons: [{ label: 'Close', primary: true, value: true }] });
 }
-async function openFiles() { const f = await api('dialog:openFiles', { title: 'Open media' }); if (f.length) setPlaylist(f, { play: true, autoPlaylist: f.length === 1 && settings.playerAutoPlaylist !== false }); }
+async function openFiles() { const f = await api('dialog:openFiles', { title: 'Open media' }); if (f.length) setPlaylist(f, { play: true, autoPlaylist: f.length === 1 }); }
 async function openFolder() {
   const d = await api('dialog:pickFolder', 'Open folder'); if (!d) return;
   const r = await api('fs:list', d);
@@ -1084,7 +1084,7 @@ onAsk(async (op, a = {}) => {
       ED.mode = a.mode === 'precise' ? 'precise' : 'fast';
       renderEdit();
       if (a.save) { runExport(false, document.querySelector('#edit-panel .ed-prog')); return { ok: true, msg: `Saving ${fmt(ED.a)} → ${fmt(ED.b)} as a new file (${ED.mode === 'fast' ? 'fast, no re-encode' : 'precise'})` }; }
-      return { ok: true, msg: `Trim ${fmt(ED.a)} → ${fmt(ED.b)} is ready in Edit — press Save copy` };
+      return { ok: true, msg: `Trim ${fmt(ED.a)} → ${fmt(ED.b)} is ready in Edit. Press Save copy` };
     }
   }
   const c = { play: togglePlay, stop, next: () => $('b-next').click(), prev: () => $('b-prev').click(), edit: openEdit, analyze: () => showAnalysis(true), fullscreen: toggleFullscreen, screenshot, info: mediaInfo, eq: () => $('b-eq').click(), list: () => $('b-list').click(), shuffle: () => $('pl-shuffle').click(), loop: cycleRepeat, ab: abLoop, transcript: openTranscript, extract: () => { openEdit(); ED.format = 'mp3'; renderEdit(); } }[op];

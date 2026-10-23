@@ -58,7 +58,7 @@ export async function workspacesDialog() {
   };
   draw();
   let closeIt = () => {};
-  const p = modal({ title: 'Workspaces', width: 680, className: 'ws-modal', body: h('div', { class: 'stack' }, h('div', { class: 'hint' }, 'A workspace remembers your tabs, split view, each tab’s view and filters, open Notepad documents, the terminal, the sidebar and preview pane, and files you pin to it.'), list), buttons: [
+  const p = modal({ title: 'Workspaces', width: 680, className: 'ws-modal', body: h('div', { class: 'stack' }, h('div', { class: 'hint' }, 'A workspace remembers your tabs, layout and open documents, so you can jump back in later.'), list), buttons: [
     { label: 'Save current…', left: true, run: async () => { const n = await prompt('Save workspace', '', { label: 'Name', placeholder: 'e.g. Wedding video edit' }); if (!n) return false; state.workspaces[n] = await captureWorkspace({ files: state.projectFiles || [] }); saveLibrary(); toast(`Workspace “${n}” saved`); draw(); return false; } },
     { label: 'Profiles…', left: true, run: () => { closeIt(); profilesDialog(); } },
     { label: 'Close', primary: true, value: true }] });

@@ -76,7 +76,7 @@ export const HANDLERS = {
     const apps = /\b(apps?|notepad|photos|player|everything|all)\b/i.test(text);
     if (apps && state.settings.mediaTheme && state.settings.mediaTheme !== 'app') state.settings.mediaTheme = 'app';
     saveSettings(); bus.emit('settings');
-    say(`${{ dark: 'Dark', light: 'Light', system: 'System' }[x.theme]} mode is on${apps ? ' — Notepad, Photos and the Player follow it too' : ''}.`);
+    say(`${{ dark: 'Dark', light: 'Light', system: 'System' }[x.theme]} mode is on${apps ? '. Notepad, Photos and the Player follow it too' : ''}.`);
   },
   async density(x, { say }) { state.settings.density = x.density; saveSettings(); bus.emit('settings'); say(`Density: ${{ touch: 'Touch (bigger rows and buttons)', compact: 'Compact', comfortable: 'Comfortable', auto: 'Automatic (Touch on a touch screen without a mouse)' }[x.density]}.`); },
   async uiMode(x, { say }) { state.settings.uiMode = x.mode; saveSettings(); bus.emit('settings'); say(x.mode === 'simple' ? 'Simple mode is on: the ribbon shows the everyday buttons; the rest are in the command palette (Ctrl+Shift+P) and right-click > More.' : 'Full mode is on: every button is back on the ribbon.'); },
@@ -126,7 +126,7 @@ export const HANDLERS = {
     const N = await import('./network.js');
     if (['gdrive', 'onedrive', 'dropbox', 's3'].includes(x.type)) {
       N.editConnection({ type: x.type });
-      say(`Adding ${{ gdrive: 'Google Drive', onedrive: 'OneDrive', dropbox: 'Dropbox', s3: 'an S3 bucket' }[x.type]} — no sync app needed: Dogfile signs in in your browser${x.type === 's3' ? ' (S3 uses an access key instead)' : ''} and the account shows in the sidebar under Network.` + (x.cloudOnlyNote ? ' Files from synced folders that are only in the cloud (OneDrive “online-only”) are left alone by searches and duplicate checks — they’re never downloaded just to be looked at.' : ''));
+      say(`Adding ${{ gdrive: 'Google Drive', onedrive: 'OneDrive', dropbox: 'Dropbox', s3: 'an S3 bucket' }[x.type]}. No sync app needed: Dogfile signs in in your browser${x.type === 's3' ? ' (S3 uses an access key instead)' : ''} and the account shows in the sidebar under Network.` + (x.cloudOnlyNote ? ' Files from synced folders that are only in the cloud (OneDrive “online-only”) are left alone by searches and duplicate checks. They’re never downloaded just to be looked at.' : ''));
       acts(...['gdrive', 'onedrive', 'dropbox', 's3'].filter((k) => k !== x.type).map((k) => btn(`Add ${{ gdrive: 'Google Drive', onedrive: 'OneDrive', dropbox: 'Dropbox', s3: 'S3' }[k]}`, () => N.editConnection({ type: k }))));
       return;
     }
@@ -161,7 +161,7 @@ export const HANDLERS = {
     if (!folder) { const t = activeTab(); folder = t?.path && !isVirtual(t.path) ? t.path : null; }
     if (!folder) return say('Open the folder you want to automate (or name it: “for my Downloads folder”), then ask again.');
     const { describeRule } = await import('./organize.js');
-    if (!x.rules.length) { const R = await import('./rules.js'); R.automationDialog(folder); return say(`Opening the automation for “${basename(folder)}” — I couldn’t tell the rules from the request, so add them there.`); }
+    if (!x.rules.length) { const R = await import('./rules.js'); R.automationDialog(folder); return say(`Opening the automation for “${basename(folder)}”, I couldn’t tell the rules from the request, so add them there.`); }
     say(`For “${basename(folder)}”, whenever new files arrive:`);
     ctx.card.append(h('ul', { class: 'as-steps' }, ...x.rules.map((r) => h('li', { class: 'ok' }, h('span', { class: 'as-step-ic', html: icon('automation') }), h('span', {}, describeRule(r))))));
     const R = await import('./rules.js');
@@ -219,7 +219,7 @@ export const HANDLERS = {
     const p = pjoin(t.path, '.folder.md');
     const cur = await api('fs:readText', p, 256 * 1024).then((r) => r.text).catch(() => null);
     const add = x.items.length ? x.items.map((i) => `- [ ] ${i}`).join('\n') : x.text;
-    if (!add && cur != null) { bus.emit('addFolderNote', t); return say('Here’s the folder note — edit it at the top of the folder.'); }
+    if (!add && cur != null) { bus.emit('addFolderNote', t); return say('Here’s the folder note. Edit it at the top of the folder.'); }
     const body = cur != null ? `${cur.replace(/\s+$/, '')}\n\n${add}\n` : `# ${basename(t.path) || 'Notes'}\n\n${add || 'Notes about this folder.'}\n`;
     await api('fs:writeText', p, body);
     bus.emit('refreshPanes');
@@ -229,7 +229,7 @@ export const HANDLERS = {
     const items = (await filesFor(x, { wantFolderFiles: false })).filter((i) => /^(docx|xlsx|pptx|pdf|docm|xlsm|pptm|odt|ods|odp)$/i.test(i.ext || ''));
     if (!items.length) return say('Select the Word, Excel, PowerPoint or PDF files first, then ask again.');
     const D = await import('./docpreview.js');
-    say(`Opening the properties of ${items.length === 1 ? items[0].name : `${items.length} documents, one after another`}. Change ${x.fields.join(' and ')} and press Save — it’s written inside the file, so Office and Windows see it too.`);
+    say(`Opening the properties of ${items.length === 1 ? items[0].name : `${items.length} documents, one after another`}. Change ${x.fields.join(' and ')} and press Save. It’s written inside the file, so Office and Windows see it too.`);
     (async () => { for (const it of items.slice(0, 20)) await D.editDocProps(it); })();
   },
   async songDetails(x, { say }) {
@@ -237,7 +237,7 @@ export const HANDLERS = {
     if (!items.length) return say('Select the songs (or open their folder), then ask again.');
     const T = await import('./tageditor.js');
     T.openTagEditor(items.map((i) => i.path));
-    say(x.identify ? `Opened the tag editor for ${plural(items.length, 'song')}. “Identify by sound” listens to the audio and asks AcoustID (a free key in Settings > Tools & apps) — it works even when the file has no name or tags.` : `Opened the tag editor for ${plural(items.length, 'song')}. “Look up online” finds artist, album, year and cover art on MusicBrainz and iTunes; pick the right match and save.`);
+    say(x.identify ? `Opened the tag editor for ${plural(items.length, 'song')}. “Identify by sound” listens to the audio and asks AcoustID (a free key in Settings > Tools & apps). It works even when the file has no name or tags.` : `Opened the tag editor for ${plural(items.length, 'song')}. “Look up online” finds artist, album, year and cover art on MusicBrainz and iTunes; pick the right match and save.`);
   },
   async analyzeAudio(x, { say }) {
     const sel = selectedItems(activeTab()).filter((i) => kindOf(i) === 'audio');
@@ -267,7 +267,7 @@ export const HANDLERS = {
   async convertArchive(x, { say }) {
     const items = selectedItems(activeTab()).filter((i) => kindOf(i) === 'archive');
     if (!items.length && !A.arcOf(activeTab()?.path)) return say('Select the archive to convert, then ask again.');
-    say(`Converting ${items.length ? items.map((i) => i.name).join(', ') : 'this archive'} to ${x.format.toUpperCase()} — the new file is saved next to it and the original stays.`);
+    say(`Converting ${items.length ? items.map((i) => i.name).join(', ') : 'this archive'} to ${x.format.toUpperCase()}. The new file is saved next to it and the original stays.`);
     A.convertArchive(items, x.format);
   },
   async testArchive(x, { say }) {
@@ -317,7 +317,7 @@ export const HANDLERS = {
     if (!items.length && t?.path && !isVirtual(t.path)) items = (t.items || []).filter((i) => !i.isDir && !/\.(sha256|sha1|md5)$/i.test(i.name));
     if (!items.length) return say('Open the folder (or select the files), then ask again.');
     const H = await import('./history.js');
-    say(`Making a checksum file for ${plural(items.length, 'item')} — keep it with the files; “verify this checksum file” later tells you if anything changed or got corrupted.`);
+    say(`Making a checksum file for ${plural(items.length, 'item')}. Keep it with the files; “verify this checksum file” later tells you if anything changed or got corrupted.`);
     H.createChecksums(items);
   },
   async verifyChecksums(x, { say }) {
@@ -338,7 +338,7 @@ export const HANDLERS = {
     if (target) list.sort((a, b) => Math.abs(a.at - target) - Math.abs(b.at - target));
     const e = list[0];
     H.historyDialog();
-    if (!e) return say('I couldn’t find anything like that which can still be undone — the history window is open so you can look.');
+    if (!e) return say('I couldn’t find anything like that which can still be undone. The history window is open so you can look.');
     const mins = Math.round((Date.now() - e.at) / 60e3);
     say(`Found it: “${e.title}” ${mins < 1 ? 'just now' : mins < 120 ? `${mins} min ago` : `at ${new Date(e.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`}${e.rec.pairs?.length === 1 ? ` (${basename(e.rec.pairs[0][0])} → ${basename(e.rec.pairs[0][1])})` : ''}.`);
     acts(btn('Undo it', async (ev) => { ev.target.disabled = true; try { await H.undoEntry(e); say('Undone.'); } catch (err) { say(`Couldn’t undo: ${err.message}`); } }, 'primary'));
@@ -398,7 +398,7 @@ export const HANDLERS = {
     const exts = plan.exts.filter((e) => e !== x.format && !(x.format === 'jpg' && e === 'jpeg'));
     items = items.filter((i) => kindOf(i) === 'image' && (exts.length ? exts.includes((i.ext || '').toLowerCase()) : (i.ext || '').toLowerCase() !== x.format));
     if (!items.length) return say(`There are no ${exts.length ? exts.map((e) => '.' + e).join(' / ') : ''} pictures here to convert.`);
-    say(`${plural(items.length, 'picture')} to save as ${x.format.toUpperCase()}${x.maxSide ? ` (at most ${x.maxSide} px)` : ''} — copies next to the originals, which stay.`);
+    say(`${plural(items.length, 'picture')} to save as ${x.format.toUpperCase()}${x.maxSide ? ` (at most ${x.maxSide} px)` : ''}. Copies next to the originals, which stay.`);
     const M = await import('./mediatools.js');
     acts(btn(`Convert ${items.length}`, async (e) => { e.target.disabled = true; await M.convertImages(items.map((i) => i.path), x.format, { maxSide: x.maxSide }); say('Done.'); }, 'primary'));
   },
@@ -408,7 +408,7 @@ export const HANDLERS = {
     const exts = plan.exts.filter((e) => e !== x.format);
     items = items.filter((i) => ['audio', 'video'].includes(kindOf(i)) && (exts.length ? exts.includes((i.ext || '').toLowerCase()) : (i.ext || '').toLowerCase() !== x.format));
     if (!items.length) return say('There are no matching songs or videos here to convert.');
-    say(`${plural(items.length, 'file')} to convert to ${x.format.toUpperCase()}${x.bitrate ? ` at ${x.bitrate} kbps` : ''} — new files next to the originals.`);
+    say(`${plural(items.length, 'file')} to convert to ${x.format.toUpperCase()}${x.bitrate ? ` at ${x.bitrate} kbps` : ''}. New files next to the originals.`);
     const M = await import('./mediatools.js');
     acts(btn(`Convert ${items.length}`, async (e) => { e.target.disabled = true; const made = await M.convertMedia(items.map((i) => i.path), x.format, { bitrate: x.bitrate }); say(`Done: ${plural(made?.length || 0, 'file')}.`); }, 'primary'));
   },
@@ -476,7 +476,7 @@ export const HANDLERS = {
     if (!items.length) return say('Select the files to copy first.');
     const how = { newer: 'skipping identical files and replacing only older ones', skipIdentical: 'skipping identical files and replacing the rest', keepBoth: 'keeping both when a name is taken', skip: 'skipping files already there', replace: 'replacing what’s there' }[x.conflict] || '';
     say(`${x.mode === 'move' ? 'Moving' : 'Copying'} ${plural(items.length, 'item')} to “${basename(o.path) || o.path}”${how ? `, ${how}` : ''}.`);
-    A.transfer(items.map((i) => i.path), o.path, x.mode, x.conflict ? { conflict: x.conflict } : {}).then((j) => { if (j?.status) say(j.status === 'done' ? `Done${j.skipped ? ` (${j.skipped} skipped)` : ''}. Ctrl+Z undoes it.` : `Finished: ${j.status}${j.errors?.[0] ? ` — ${j.errors[0]}` : ''}`); });
+    A.transfer(items.map((i) => i.path), o.path, x.mode, x.conflict ? { conflict: x.conflict } : {}).then((j) => { if (j?.status) say(j.status === 'done' ? `Done${j.skipped ? ` (${j.skipped} skipped)` : ''}. Ctrl+Z undoes it.` : `Finished: ${j.status}${j.errors?.[0] ? `, ${j.errors[0]}` : ''}`); });
   },
   async symlink(x, { say }) {
     const t = activeTab();
@@ -492,7 +492,7 @@ export const HANDLERS = {
       say(`Made a ${it.isDir ? 'folder link (junction)' : 'symbolic link'} to “${it.name}” on your ${x.where === 'other' ? 'other pane' : x.where}: ${lp}. Opening it opens the real ${it.isDir ? 'folder' : 'file'}; deleting the link leaves the original alone.`);
     } catch (e) { say(`Couldn’t make the link: ${e.message}${it.isDir ? '' : ' (file links need Developer Mode or administrator rights on Windows)'}`); }
   },
-  async declutter(x, { say }) { const D = await import('./declutter.js'); D.declutter(activeTab()); say('Here’s the plan for this folder: where each file would go and why. Change any destination, untick what should stay, then apply — Ctrl+Z puts everything back.'); },
+  async declutter(x, { say }) { const D = await import('./declutter.js'); D.declutter(activeTab()); say('Here’s the plan for this folder: where each file would go and why. Change any destination, untick what should stay, then apply, Ctrl+Z puts everything back.'); },
   async viewGroup(x, { say }) {
     const id = x.by === 'none' ? 'groupNone' : 'group_' + x.by;
     runCmd(id);
@@ -500,14 +500,14 @@ export const HANDLERS = {
   },
   async flatten(x, { say }) { runCmd('flatten'); say('Showing every file from all the subfolders in one list. Going back (Alt+←) returns to the normal folder.'); },
   // ---------------- terminal, scripts, git, editors ----------------
-  async adminShell(x, { say }) { const t = activeTab(); await A.openTerminal(t, x.kind, true); say(`Opening ${x.kind === 'cmd' ? 'Command Prompt' : 'PowerShell'} as administrator in “${basename(t?.path || '') || 'this folder'}” — Windows asks for permission first.`); },
+  async adminShell(x, { say }) { const t = activeTab(); await A.openTerminal(t, x.kind, true); say(`Opening ${x.kind === 'cmd' ? 'Command Prompt' : 'PowerShell'} as administrator in “${basename(t?.path || '') || 'this folder'}”, Windows asks for permission first.`); },
   async runScript(x, { say }) {
     const t = activeTab();
     const scripts = selectedItems(t).filter((i) => /\.(ps1|py|bat|cmd|sh|js|mjs|rb|pl)$/i.test(i.name));
     if (!scripts.length) return say('Select the script (.ps1, .py, .bat, .cmd, .sh, .js), then ask again.');
     const E = await import('./extras.js');
     for (const s of scripts) await E.runInTerminal({ command: E.scriptCommand(s.path), cwd: dirname(s.path) });
-    say(`Running ${scripts.map((s) => s.name).join(', ')} in the terminal below — you see everything it prints, and Ctrl+C stops it.`);
+    say(`Running ${scripts.map((s) => s.name).join(', ')} in the terminal below. You see everything it prints, and Ctrl+C stops it.`);
   },
   async terminal(x, { say }) {
     const t = activeTab();
@@ -530,7 +530,7 @@ export const HANDLERS = {
     const r = await api('git:status', t.path).catch((e) => ({ error: e.message }));
     if (!r || r.error || !r.branch && !r.files) return say(`This folder isn’t in a Git repository${r?.error ? ` (${r.error})` : ''}.`);
     const files = Object.entries(r.files || {});
-    if (!files.length) return say(`Branch ${r.branch}: nothing uncommitted — the working tree is clean.`);
+    if (!files.length) return say(`Branch ${r.branch}: nothing uncommitted. The working tree is clean.`);
     const label = { M: 'changed', A: 'added', D: 'deleted', '?': 'new, not tracked', R: 'renamed', U: 'conflict' };
     say(`Branch ${r.branch}: ${plural(files.length, 'file')} with uncommitted changes:`);
     ctx.card.append(h('div', { class: 'as-files' }, ...files.slice(0, 60).map(([p, st]) => h('div', { class: 'as-file', title: p, onclick: () => navigate(activeTab(), dirname(p), { select: p }) }, h('span', { class: 'as-chip' }, st), h('div', { class: 'as-fn' }, h('b', {}, basename(p)), h('span', { class: 'hint' }, `${label[st[0]] || st} · ${basename(dirname(p))}`))))));
@@ -542,7 +542,7 @@ export const HANDLERS = {
     const items = sel.length ? sel : t?.path && !isVirtual(t.path) ? [{ path: t.path, name: basename(t.path), isDir: true }] : [];
     if (!items.length) return say('Open the folder first.');
     await A.openInEditor(items, t);
-    say(`Opening ${items.length === 1 ? `“${items[0].name}”` : plural(items.length, 'item')} in your code editor (VS Code, Cursor, Sublime or Notepad++ — whichever is installed, or the one set in Settings > Tools).`);
+    say(`Opening ${items.length === 1 ? `“${items[0].name}”` : plural(items.length, 'item')} in your code editor (VS Code, Cursor, Sublime or Notepad++. Whichever is installed, or the one set in Settings > Tools).`);
   },
   async hex(x, { say, ctx }) {
     const it = selectedItems(activeTab()).find((i) => !i.isDir);
@@ -558,7 +558,7 @@ export const HANDLERS = {
   async compare(x, { say }) {
     const T = await import('./tools.js');
     T.compareFolders();
-    say(`Opening Compare / sync. Put your build folder on the left and the backup on the right (or pick them there), compare, then ${x.mirror ? `choose “Mirror ${x.rightToLeft ? 'right → left' : 'left → right'}”: the backup becomes an exact copy (extra files there are removed — you’ll see the list first)` : 'copy the differences either way'}.`);
+    say(`Opening Compare / sync. Put your build folder on the left and the backup on the right (or pick them there), compare, then ${x.mirror ? `choose “Mirror ${x.rightToLeft ? 'right → left' : 'left → right'}”: the backup becomes an exact copy (extra files there are removed. You’ll see the list first)` : 'copy the differences either way'}.`);
   },
   async renamePreset(x, { say }) {
     const t = activeTab();
@@ -567,7 +567,7 @@ export const HANDLERS = {
     if (!items.length) return say('Select some files, open Rename Studio (F2), set up the pattern, then use Presets… > Save.');
     const { renameStudio } = await import('./renamestudio.js');
     renameStudio(items, {});
-    say('Rename Studio is open. Set up the pattern, then choose Presets… > “Save current as preset” and give it a name — it’s in that list (and in the assistant: “rename these with my <name> preset”) from then on.');
+    say('Rename Studio is open. Set up the pattern, then choose Presets… > “Save current as preset” and give it a name. It’s in that list (and in the assistant: “rename these with my <name> preset”) from then on.');
   },
   // ---------------- your own features ----------------
   async checkFeature(x, { say, ctx }) {
@@ -580,7 +580,7 @@ export const HANDLERS = {
     if (!code) { const list = (state.settings.extensions || []); const bad = list.map((f) => ({ f, c: X.checkCode(f.code, f) })).filter((r) => r.c.missing.length); say(bad.length ? `${plural(bad.length, 'installed feature')} use things their header doesn’t ask for:` : `${list.length ? `All ${plural(list.length, 'installed feature')} ask for every permission they use.` : 'No features are installed.'} Open a .dogmod.js file in Notepad (or select it) to check that one.`); for (const r of bad) say(`• ${r.f.name}: ${r.c.missing.map((m) => `${m.fn}() needs “${m.perm}”`).join(', ')}`); say(explain); return; }
     const meta = X.parseFeature(code);
     const c = X.checkCode(code, meta);
-    say(c.missing.length ? `${name}: these calls need a permission the header doesn’t ask for — Dogfile would refuse them:` : `${name}: the header asks for every permission the code uses (${(meta.permissions || []).join(', ') || 'none needed'}).`);
+    say(c.missing.length ? `${name}: these calls need a permission the header doesn’t ask for, Dogfile would refuse them:` : `${name}: the header asks for every permission the code uses (${(meta.permissions || []).join(', ') || 'none needed'}).`);
     if (c.missing.length) { ctx.card.append(h('ul', { class: 'as-steps' }, ...c.missing.map((m) => h('li', { class: 'bad' }, h('span', { class: 'as-step-ic', html: icon('close') }), h('span', {}, `${m.fn}() → add “${m.perm}” to // @permissions`))))); say(`Fixed header line: // @permissions ${[...new Set([...(meta.permissions || []), ...c.missing.map((m) => m.perm)])].join(' ')}`); }
     if (x.api) say(/net\.fetch/i.test(x.api) ? `${x.api.replace(/^atlas\./, 'dogfile.')}(url, options) needs “network” in // @permissions, an https address, and the site named in // @description (people see it before installing). It returns { status, ok, headers, text }; call .json() yourself with JSON.parse(text).` : explain);
     else say(explain);
@@ -593,6 +593,6 @@ export const HANDLERS = {
     const file = await api('fs:uniqueName', base, `${f.name.replace(/[\\/:*?"<>|]/g, '_')}.dogmod.js`, 'number');
     await api('fs:writeText', file, f.code);
     openTool('editor', [file], { inTab: true });
-    say(`${f.known ? 'Wrote' : 'Started'} the feature “${f.name}” and opened it in Notepad. ${f.known ? 'It adds' : 'It has the outline for'} ${f.summary}. Press Features > Install in Notepad to try it (F1 there lists the whole dogfile.* API — atlas.* works too).${f.known ? '' : ' Fill in the part marked TODO, or describe it in more detail and I’ll try again.'}`);
+    say(`${f.known ? 'Wrote' : 'Started'} the feature “${f.name}” and opened it in Notepad. ${f.known ? 'It adds' : 'It has the outline for'} ${f.summary}. Press Features > Install in Notepad to try it (F1 there lists the whole dogfile.* API. Atlas.* works too).${f.known ? '' : ' Fill in the part marked TODO, or describe it in more detail and I’ll try again.'}`);
   },
 };

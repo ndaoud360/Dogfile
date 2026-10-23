@@ -23,7 +23,7 @@ export async function showWelcome() {
     () => h('div', { class: 'wl-step' }, h('h3', {}, 'Five things worth knowing'),
       card('plus', 'Tabs and split view', 'Ctrl+T opens a tab. Drag a tab to the side of the window to see two folders at once (up to four).'),
       card('eye', 'Quick Look', 'Select a file and press Space to preview it: photos, videos, music, PDFs, text and more.'),
-      card('search', 'Search, or just ask', 'Ctrl+E searches, even by what’s in a photo. Or press ✨ (Ctrl+J) and ask: “PDFs about taxes from last year”, “group these by type”, “rename these using their contents”.'),
+      card('search', 'Search, or just ask', 'Ctrl+E searches, even by what’s in a photo. Or press ✨ (Ctrl+J) and just ask, like “PDFs about taxes from last year”.'),
       card('more', 'Right-click for everything', 'Zip, convert, edit tags, compare, open with the built-in Notepad, Player or Photos.'),
       card('command', 'Can’t find something?', 'Press Ctrl+Shift+P and type what you want to do. Every action is in there.')),
     () => h('div', { class: 'wl-step' }, h('h3', {}, 'Make it yours'),

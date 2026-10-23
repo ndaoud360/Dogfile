@@ -7,7 +7,7 @@ import { showMenu } from './menu.js';
 /** turn demo mode on or off, after saying what it does */
 export async function setDemo(on) {
   if (on) {
-    const ok = await confirm('Turn on demo mode?', 'Dogfile will show a pretend computer instead of yours: demo drives, folders and files (empty, but with believable sizes, so copies show progress). Your own files, recent items, pins, tags, notes, phones and settings are hidden, not touched, and come back when you turn it off.<br><br>Good for videos, screenshots and showing Dogfile to someone.', { ok: 'Turn on demo mode' });
+    const ok = await confirm('Turn on demo mode?', 'Dogfile will show a pretend PC with made-up files, so you can record or present without showing yours.<br><br>Your own files and settings are only hidden. Everything comes back when you turn it off.', { ok: 'Turn on demo mode' });
     if (!ok) return false;
   }
   await api('demo:set', !!on);

@@ -257,7 +257,7 @@ async function show(i) {
   $('md-empty').style.display = 'none';
   setErr(null);
   busy(`Opening ${nameOf(path)}…`);
-  setTitle(`${nameOf(path)} — Dogfile 3D`);
+  setTitle(`${nameOf(path)} · Dogfile 3D`);
   $('md-name').textContent = nameOf(path);
   $('md-count').textContent = M.list.length > 1 ? `${i + 1} / ${M.list.length}` : '';
   let r;
@@ -584,7 +584,7 @@ function renderSide() {
   }
   side.append(sec('perf', 'Performance',
     seg([['auto', 'Automatic'], ['low', 'Light'], ['high', 'Best']], P.quality, (v) => { P.quality = v; savePrefs(); makeRenderer(); applyBackground(); renderSide(); }),
-    h('div', { class: 'md-hint' }, lowEnd ? 'Light mode: sharp edges and the room lighting are off, big pictures are made smaller, and CAD parts use fewer triangles.' : 'Full quality. If moving the model stutters, choose Light.'),
+    h('div', { class: 'md-hint' }, lowEnd ? 'Light mode uses less detail so things stay smooth on slower PCs.' : 'Full quality. If it feels slow, choose Light.'),
     gpuName && h('div', { class: 'md-hint dim' }, gpuName)));
 }
 async function pickBackground() {
@@ -662,7 +662,7 @@ function failed(path, e) {
   disposeModel(M.cur); M.cur = null; setupAnim([]); renderSide(); renderBar(); need();
   if (e.code === 'NO_CAD') {
     return setErr(h('div', { class: 'md-errbox' }, h('div', { class: 'err-title' }, 'One more step for CAD files'),
-      h('div', { class: 'err-msg' }, 'STEP, IGES and BREP files are read with OpenCascade. Dogfile downloads it once (about 8 MB) and keeps it.'),
+      h('div', { class: 'err-msg' }, 'CAD files need a small add-on (about 8 MB). Dogfile downloads it once.'),
       h('button', { class: 'btn primary', onclick: async () => {
         setErr(null);
         try { await installCad((got, total) => busy('Downloading the CAD reader…', total ? got / total : null)); busy(null); show(M.idx); }
@@ -671,7 +671,7 @@ function failed(path, e) {
   }
   if (e.code === 'NO_ODA') {
     return setErr(h('div', { class: 'md-errbox' }, h('div', { class: 'err-title' }, 'DWG needs a free converter'),
-      h('div', { class: 'err-msg' }, 'AutoCAD’s DWG format is closed. Install the free ODA File Converter and Dogfile will use it to open DWG drawings. You can also save the drawing as DXF from your CAD program.'),
+      h('div', { class: 'err-msg' }, 'Install the free ODA File Converter and Dogfile will use it to open DWG drawings. Saving the drawing as DXF works too.'),
       h('div', { class: 'md-btns' },
         h('button', { class: 'btn primary', onclick: () => api('shell:openExternal', 'https://www.opendesign.com/guestfiles/oda_file_converter') }, 'Get ODA File Converter'),
         h('button', { class: 'btn', onclick: async () => { const f = await api('dialog:openFiles', { title: 'Where is ODAFileConverter?', filters: sys.platform === 'win32' ? [{ name: 'Program', extensions: ['exe'] }] : [] }); if (f?.length) { settings.odaConverter = f[0]; await api('store:set', 'settings', settings); show(M.idx); } } }, 'It’s installed…'),

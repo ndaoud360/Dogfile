@@ -171,7 +171,7 @@
   }
   var standalone = window.navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
   var ios = /iPhone|iPad/.test(navigator.userAgent);
-  $('tip').textContent = standalone ? '' : ios ? 'Tip: tap Share, then “Add to Home Screen”, to connect with one tap next time.' : 'Tip: add this page to your home screen to connect with one tap next time.';
+  $('tip').textContent = standalone ? '' : ios ? 'Tip: tap Share, then Add to Home Screen, to connect with one tap next time.' : 'Tip: add this page to your home screen to connect with one tap next time.';
 
   $('pick').addEventListener('change', function (e) { if (e.target.files.length) addFiles(e.target.files); e.target.value = ''; });
   $('text-btn').addEventListener('click', function () { $('text-in').value = ''; $('text-dlg').showModal(); setTimeout(function () { $('text-in').focus(); }, 50); });

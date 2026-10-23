@@ -1021,7 +1021,7 @@ async function assistantOp(op, a = {}) {
       if (!name || !(await api('fs:stat', other).catch(() => null))) { const [f] = await api('dialog:openFiles', { title: `Compare with${name ? ` (couldn’t find ${name})` : ''}…`, defaultPath: dirname(active.path) }) || []; if (!f) return { ok: false, msg: name ? `I couldn’t find “${name}” next to this file` : 'Pick a file to compare with' }; other = f; }
       await openCompare(active.path, other);
       if (a.jump !== false && compareView) setTimeout(() => { try { CM.goToNextChunk(compareView.b); } catch {} }, 150);
-      return { ok: true, msg: `Comparing with ${basename(other)} — F7 jumps to the next difference` };
+      return { ok: true, msg: `Comparing with ${basename(other)}. F7 jumps to the next difference.` };
     }
     case 'case': { if (a.scope === 'headings') { let n = 0; opLines(v, { ...a, scope: 'all' }, (l) => l.map((x) => (/^\s{0,3}#{1,6}\s/.test(x) || /^[A-Z0-9][^.!?]{0,60}$/.test(x.trim()) && x.trim().split(/\s+/).length <= 10 && x === x.trim() && !/[.,;:]$/.test(x) ? (n++, x.replace(/^(\s*#*\s*)(.*)$/, (m, p, t) => p + CASES[a.to](t))) : x))); return { ok: true, msg: `Changed ${plural(n, 'heading')} to ${{ title: 'Title Case', upper: 'UPPERCASE', lower: 'lowercase', sentence: 'Sentence case' }[a.to] || a.to}` }; }
       const f = CASES[a.to]; if (!f) return { ok: false }; const r = opText(v, a, f); return { ok: true, msg: `Changed ${where(r.whole)} to ${{ upper: 'UPPERCASE', lower: 'lowercase', title: 'Title Case', sentence: 'Sentence case', invert: 'iNVERTED cASE', camel: 'camelCase', snake: 'snake_case', kebab: 'kebab-case' }[a.to]}` }; }

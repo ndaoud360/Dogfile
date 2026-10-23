@@ -99,7 +99,7 @@ function build() {
 const APP_NAME = { editor: 'Notepad', viewer: 'Photos', player: 'the Player' };
 function hello() {
   const app = activeAppTab()?.app;
-  if (APP_SUGGEST[app]) { log.append(msg('bot', h('div', {}, h('p', {}, `Tell me what to do in ${APP_NAME[app]} — several things at once is fine (“…and then…”).`), h('div', { class: 'as-sugg' }, ...APP_SUGGEST[app].map((x) => h('button', { class: 'chip', onclick: () => ask(x) }, x)))))); return; }
+  if (APP_SUGGEST[app]) { log.append(msg('bot', h('div', {}, h('p', {}, `Tell me what to do in ${APP_NAME[app]}. Several things at once is fine (“…and then…”).`), h('div', { class: 'as-sugg' }, ...APP_SUGGEST[app].map((x) => h('button', { class: 'chip', onclick: () => ask(x) }, x)))))); return; }
   log.append(msg('bot', h('div', {}, h('p', {}, 'Tell me what you’re looking for or what to do with your files. I’ll show you the plan and the files before changing anything.'), h('div', { class: 'as-sugg' }, ...SUGGEST.map((s) => h('button', { class: 'chip', onclick: () => ask(s) }, s))))));
 }
 const msg = (who, ...c) => h('div', { class: 'as-msg ' + who }, ...c);
@@ -462,7 +462,7 @@ async function execute(plan, card, { t, sel }) {
   }
   // colour, kind and tempo filters live in the gallery: show the results there with the filter on
   if (plan.color) {
-    card.append(h('p', {}, `${items.length.toLocaleString()} picture${items.length === 1 ? '' : 's'} to check. Opening them in the gallery with the “mostly ${plan.color}” filter — the colours are read as the thumbnails appear.`));
+    card.append(h('p', {}, `${items.length.toLocaleString()} picture${items.length === 1 ? '' : 's'} to check. Opening them in the gallery with the “mostly ${plan.color}” filter. The colours are read as the thumbnails appear.`));
     showInTab(items, plan.raw, { view: 'gallery', mf: { color: plan.color } });
     return;
   }
@@ -871,11 +871,11 @@ async function askApp(t, text) {
       const ok = r?.ok !== false;
       if (ok) done++;
       if (st.quiet && ok) continue;
-      list.append(h('li', { class: ok ? 'ok' : 'bad' }, h('span', { class: 'as-step-ic', html: icon(ok ? 'check' : 'close') }), h('span', {}, r?.msg || st.label + (ok ? '' : ' — couldn’t do that'))));
+      list.append(h('li', { class: ok ? 'ok' : 'bad' }, h('span', { class: 'as-step-ic', html: icon(ok ? 'check' : 'close') }), h('span', {}, r?.msg || st.label + (ok ? '' : ': couldn’t do that'))));
       scrollDown();
       if (!ok) break;
     }
-    if (rest.length) card.append(h('p', { class: 'hint' }, `I skipped “${rest.join('”, “')}” — I didn’t understand that part.`));
+    if (rest.length) card.append(h('p', { class: 'hint' }, `I skipped “${rest.join('”, “')}”, I didn’t understand that part.`));
     const undoable = steps.filter((x) => !NO_UNDO.has(x.op)).length;
     if (done && undoable && app !== 'player') card.append(h('div', { class: 'as-acts' }, h('button', { class: 'btn small', onclick: async (e) => { e.currentTarget.disabled = true; for (let i = 0; i < undoable; i++) await appAsk('undo', null, t); toast('Undone'); } }, 'Undo')));
   } finally { setBusy(false); scrollDown(); }
@@ -895,7 +895,7 @@ async function writeInNotepad(t, text, { mode, autoInsert = false }) {
   const ctx = await appAsk('context', null, t);
   if (ctx?.ok === false) { card.append(h('p', {}, ctx.msg)); return; }
   const target = ctx.selection || (mode === 'insert' ? '' : ctx.text);
-  if ((mode === 'replace' || mode === 'answer') && !target.trim()) { card.append(h('p', {}, 'The document is empty — write or paste something first, or ask me to write something new.')); return; }
+  if ((mode === 'replace' || mode === 'answer') && !target.trim()) { card.append(h('p', {}, 'The document is empty. Write or paste something first, or ask me to write something new.')); return; }
   const sys = 'You are a writing assistant inside a text editor. Reply with only the requested text: no preamble, no explanations, no quotes around it, no markdown code fences unless the document is code. Keep the language of the document unless asked to translate.';
   const fence = (x) => `<<<\n${x}\n>>>`;
   const user = mode === 'insert' ? (ctx.text.trim() ? `Document so far, for context:\n${fence(ctx.text.slice(-3000))}\n\nTask: ${text}` : text)

@@ -308,7 +308,7 @@ export async function showLocks(paths, job) {
     const list = await api('locks:who', paths).catch(() => []);
     body.innerHTML = '';
     body.append(h('div', { class: 'hint' }, paths.length === 1 ? paths[0] : `${paths.length} items`));
-    if (!list.length) body.append(h('p', {}, 'No running program is holding these files open. They may be read-only, need administrator rights, or be briefly in use by antivirus or indexing, try again in a moment.'));
+    if (!list.length) body.append(h('p', {}, 'Nothing seems to be using these files. They might be read-only or need administrator rights. Try again in a moment.'));
     for (const p of list) body.append(h('div', { class: 'lock-row' }, h('div', { class: 'grow' }, h('b', {}, p.name || 'Unknown program'), h('div', { class: 'hint' }, `PID ${p.pid}${p.exe ? ' · ' + p.exe : ''}`)),
       h('button', { class: 'btn small danger', onclick: async () => { await api('locks:kill', p.pid); toast(`Ended ${p.name}`); draw(); } }, 'End task')));
   };

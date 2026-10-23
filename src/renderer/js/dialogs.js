@@ -269,9 +269,9 @@ export function compressDialog(defaultName, has7z) {
     h('div', { class: 'cz-sec' }, h('b', {}, 'Protection'),
       h('div', { class: 'row2' }, pw, pw2),
       h('div', { class: 'row-inline' }, keyBtn, keyLabel, keyClear),
-      h('div', { class: 'hint' }, 'A keyfile works like a second key: any file you keep unchanged (a photo, a song). Without it the archive can’t be opened, so keep a copy somewhere safe.'),
+      h('div', { class: 'hint' }, 'Any file you never change, like a photo, can be a second key. Without it the archive won’t open, so keep a copy safe.'),
       h('label', { class: 'check' }, encNames, ' Hide the file names too (7Z)'),
-      h('label', { class: 'check' }, zipCrypto, ' Use old ZipCrypto (weaker; for very old unzip programs). Otherwise AES-256.')),
+      h('label', { class: 'check' }, zipCrypto, ' Use old ZipCrypto (weaker, only for very old programs)')),
     h('div', { class: 'cz-sec' }, h('b', {}, 'Leave out'), exclude),
     h('label', { class: 'check' }, recycle, ' Move the originals to the Recycle Bin afterwards'));
   const toggle = h('button', { class: 'link cz-toggle', onclick: () => { more.classList.toggle('open'); toggle.textContent = more.classList.contains('open') ? 'Fewer options' : 'More options…'; } }, last.open ? 'Fewer options' : 'More options…');
@@ -303,7 +303,7 @@ export function archivePasswordDialog(file) {
     title: 'This archive is protected', width: 440,
     body: h('div', { class: 'stack' }, h('div', {}, `${basename(file)} needs its password.`), pw,
       h('div', { class: 'row-inline' }, h('button', { class: 'btn small', onclick: async () => { const [f] = (await api('dialog:openFiles', { title: 'Choose the keyfile' })) || []; if (f) { keyfile = f; keyLabel.textContent = basename(f); } } }, 'Use a keyfile…'), keyLabel),
-      h('div', { class: 'hint' }, 'If it was made in Dogfile with a keyfile, choose the same file (and type the password too if one was used).')),
+      h('div', { class: 'hint' }, 'If it was made with a keyfile, choose that file here too.')),
     buttons: [{ label: 'Cancel', value: null }, { label: 'Extract', primary: true, run: (c) => c({ password: pw.value, keyfile: keyfile || null }) }],
   });
 }

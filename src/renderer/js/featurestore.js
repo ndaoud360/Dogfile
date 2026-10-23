@@ -93,7 +93,7 @@ export async function featureBrowser() {
   drawAccount();
   load();
   await modal({ title: 'Feature browser', width: 900, className: 'fs-modal', body: h('div', { class: 'stack' }, h('div', { class: 'fs-bar' }, q, h('button', { class: 'btn small', onclick: load }, 'Search')), tchips, account, status, grid,
-    h('div', { class: 'hint' }, 'Features are shared by people like you through GitHub and are not checked by Dogfile. Before installing you see what each one may do and its full code; features run in a sandbox with only the access you allow.')),
+    h('div', { class: 'hint' }, 'Features are shared by other people and aren’t checked by Dogfile. You’ll see what each one can do before you install it.')),
     buttons: [{ label: 'Close', primary: true, value: true }] });
 }
 
@@ -104,7 +104,7 @@ export async function uploadDialog() {
   const sel = h('select', { class: 'input' }, ...mine.map((f) => h('option', { value: f.id }, `${f.name} (${X.TARGETS[f.target] || f.target})`)));
   const rulesOk = h('input', { type: 'checkbox' });
   const ok = await modal({ title: 'Upload a feature', width: 560, body: h('div', { class: 'stack' }, h('label', { class: 'pp-row' }, h('span', {}, 'Feature'), sel),
-    h('p', { class: 'hint' }, `It will be published publicly as github.com/${state.settings.githubUser}/dogmod-<name>, so anyone can find and install it from the feature browser. Uploading again updates it (raise @version so people see the update).`),
+    h('p', { class: 'hint' }, `It will be published publicly as github.com/${state.settings.githubUser}/dogmod-<name>, so anyone can find and install it. Upload again to update it.`),
     h('div', { class: 'ext-rules' }, h('b', {}, 'Before you share, check that your feature:'), h('ul', {},
       h('li', {}, 'does what its name and description say'),
       h('li', {}, 'asks only for the permissions it needs'),

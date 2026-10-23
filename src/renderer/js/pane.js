@@ -163,7 +163,6 @@ export async function closeTab(t, { force = false } = {}) {
   state.closedTabs = state.closedTabs.slice(0, 30);
   state.tabs.splice(i, 1);
   if (!state.tabs.length) {
-    if (state.settings.closeLastTabClosesWindow) { api('win:control', 'close'); return; }
     openTab('atlas:home');
     return;
   }
@@ -376,8 +375,7 @@ export async function loadTab(t, { soft = false } = {}) {
     state.panes.forEach((pid, i) => { if (pid === t.id && i < paneCount() && paneEls[i]) playFolderAnim(paneEls[i], a.dir); });
   }
   if (!isVirtual(p)) {
-    if (state.settings.gitBadges) api('git:status', p).then((g) => { if (t.path === p) { t.git = g ? indexGit(g) : null; renderTabPanes(t, true); bus.emit('status'); } });
-    else t.git = null;
+    api('git:status', p).then((g) => { if (t.path === p) { t.git = g ? indexGit(g) : null; renderTabPanes(t, true); bus.emit('status'); } });
     if (state.settings.folderSizes) computeFolderSizes(t);
   } else t.git = null;
   bus.emit('status');
@@ -923,9 +921,9 @@ export function columnsFor(t) {
   const base = state.settings.visibleColumns || ['name', 'mtime', 'type', 'size', 'tags'];
   let cols = [...base];
   if ((t.path?.startsWith('atlas:search') || t.path?.startsWith('atlas:tag') || t.path === 'atlas:recent') && !cols.includes('location')) cols.splice(1, 0, 'location');
-  if (t.git && state.settings.gitBadges && !cols.includes('git')) cols.push('git');
+  if (t.git && !cols.includes('git')) cols.push('git');
   // media folders get their own columns automatically (Settings > View > "Media columns in music, video and photo folders")
-  if (state.settings.mediaColumns !== false && t.items?.length) {
+  if (t.items?.length) {
     // what kind of folder this is, worked out once per listing (this runs for every row that is drawn)
     let mk = t._mediaKind;
     if (!mk || mk.items !== t.items || mk.n !== t.items.length) {
@@ -1132,7 +1130,7 @@ function tagDots(it) {
 }
 
 function gitBadge(t, it) {
-  if (!t.git || !state.settings.gitBadges) return '';
+  if (!t.git) return '';
   const code = t.git.files?.[it.path] || (it.isDir ? t.git.dirs?.get(it.path) : null);
   if (!code) return '';
   const c = code.includes('?') ? 'U' : code.includes('A') ? 'A' : code.includes('D') ? 'D' : code.includes('R') ? 'R' : 'M';
@@ -1153,6 +1151,8 @@ function wantsThumb(it) {
   if (!state.settings.showThumbnails || it.isDir || it.archive || it.recycle) return false;
   const k = kindOf(it);
   if (k === 'image') return true;
+  // demo files are empty: asking Windows for their thumbnails only costs time
+  if (sys.demo && sys.demoRoot && it.path?.startsWith(sys.demoRoot)) return false;
   if (IS_WIN() && (k === 'video' || it.ext === 'pdf' || ['docx', 'xlsx', 'pptx', 'psd', 'ai', 'mp3', 'flac', 'm4a', 'exe', 'lnk', 'ico', 'svg', 'heic', 'stl', '3mf', 'blend'].includes(it.ext))) return true;
   return false;
 }
@@ -1222,7 +1222,7 @@ function detailsRow(t, it, ix, y) {
     else if (c === 'from') v = it.recycle?.from || '';
     else if (MEDIA_COLS.includes(c)) { const m = MM.metaOf(it) || {}; v = c === 'duration' ? MM.fmtDur(m.dur) : c === 'dims' ? (m.w ? `${m.w} × ${m.h}` : '') : c === 'taken' ? (m.taken ? fmtDate(m.taken) : '') : c === 'camera' ? m.camera || '' : c === 'bpm' ? (m.bpm ? String(Math.round(m.bpm)) : '') : m.camelot ? `${m.camelot} · ${m.key || ''}` : ''; }
     else if (c === 'attrs') v = (it.readonly ? 'R' : '') + (it.hidden ? 'H' : '') + (it.system ? 'S' : '') + (it.isLink ? 'L' : '');
-    if (c === 'size' && state.settings.sizeBars && t._maxSize > 0 && it.size > 0 && !it.drive) {
+    if (c === 'size' && t._maxSize > 0 && it.size > 0 && !it.drive) {
       const pct = Math.max(1.5, (it.size / t._maxSize) * 100);
       return `<div class="dc c-size right has-bar" style="width:${colWidth(c)}px" title="${esc(v)}"><i class="szbar" style="width:${pct.toFixed(1)}%"></i><span>${esc(v)}</span></div>`;
     }
@@ -1530,7 +1530,7 @@ function itemFromEvent(el, e) {
   const cell = e.target.closest('.cell');
   if (!cell || !el.inner.contains(cell)) return null;
   // the gaps around a thumbnail count as empty space, so clicking them clears the selection
-  if (state.settings.clickEmptyDeselects !== false) {
+  if (true) {
     if (cell.classList.contains('grid-cell') && !e.target.closest('.tile, .label, .sub, .cbox, .rename-box')) return null;
     // list view: the blank part of a cell after the name; details: the blank area right of the last column
     if (e.target === cell && (cell.classList.contains('list-cell') || cell.classList.contains('drow') || cell.classList.contains('details-row'))) return null;
@@ -1545,7 +1545,7 @@ function wirePane(el) {
   body.addEventListener('mousedown', () => { if (state.activePane !== el.idx) focusPane(el.idx); }, true);
   // clicking the pane background outside the item area also clears the selection
   body.addEventListener('mousedown', (e) => {
-    if (e.button !== 0 || e.ctrlKey || e.shiftKey || state.settings.clickEmptyDeselects === false) return;
+    if (e.button !== 0 || e.ctrlKey || e.shiftKey) return;
     if (e.target === body || e.target === el.scroller || e.target === el.overlay) { const t = paneTab(el.idx); if (t?.sel?.size) selectNone(t); }
   });
   el.nav.addEventListener('mousedown', () => { if (state.activePane !== el.idx) focusPane(el.idx); }, true);
@@ -1578,7 +1578,7 @@ function wirePane(el) {
   inner.addEventListener('mouseover', (e) => {
     const cell = e.target.closest('.cell');
     clearTimeout(hoverT);
-    if (!cell || state.settings.hoverFolderSize === false) return;
+    if (!cell) return;
     const t = paneTab(el.idx);
     const it = t?.shown[+cell.dataset.ix];
     if (it && !it.isDir && !it.virtual) {
@@ -1632,7 +1632,7 @@ function wirePane(el) {
     if (!hit) {
       el._lastDown = null;
       if (e.button === 0 && t.view !== 'columns') startMarquee(el, t, e);
-      else if (e.button === 0 && !e.ctrlKey && !e.shiftKey && state.settings.clickEmptyDeselects !== false && !e.target.closest('.mitem') && t.sel.size) selectNone(t);
+      else if (e.button === 0 && !e.ctrlKey && !e.shiftKey && true && !e.target.closest('.mitem') && t.sel.size) selectNone(t);
       else if (e.button === 2 && !e.ctrlKey) { selectNone(t); }
       return;
     }

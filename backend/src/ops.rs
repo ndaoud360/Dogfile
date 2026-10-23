@@ -98,14 +98,13 @@ pub fn configure_from_settings() {
     let mut c = cfg().lock();
     c.sequential = setting_bool("sequentialOps", false);
     c.throttle_mbps = setting("throttleMBps").as_f64().unwrap_or(0.0);
-    c.network_queue = setting_bool("networkQueue", true);
+    c.network_queue = true;
 }
 pub fn configure(a: &Args) -> R {
     let s = a.v(0);
     let mut c = cfg().lock();
     if let Some(v) = s["sequential"].as_bool() { c.sequential = v }
     if let Some(v) = s["throttle"].as_f64() { c.throttle_mbps = v }
-    if let Some(v) = s["networkQueue"].as_bool() { c.network_queue = v }
     if let Some(v) = s["parallel"].as_u64() { c.parallel = v.max(1) as usize }
     Ok(json!(true))
 }

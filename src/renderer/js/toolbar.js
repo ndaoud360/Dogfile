@@ -49,7 +49,7 @@ export async function customizeToolbar() {
   const all = [...commands.values()].filter((c) => c.title && c.run && !c.hidden).sort((a, b) => (a.cat || '').localeCompare(b.cat || '') || a.title.localeCompare(b.title));
   const drawCur = () => {
     cur.innerHTML = '';
-    if (!list.length) cur.append(h('div', { class: 'hint' }, 'No buttons yet — add some from the list below.'));
+    if (!list.length) cur.append(h('div', { class: 'hint' }, 'No buttons yet. Add some from the list below.'));
     list.forEach((id, i) => {
       const c = commands.get(id); if (!c) return;
       cur.append(h('div', { class: 'qt-row' }, h('span', { class: 'qt-ic', html: icon(c.icon || 'command') }), h('span', { class: 'qt-name' }, c.title),

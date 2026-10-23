@@ -4,6 +4,7 @@
 // provide (windows, dialogs, events).
 pub mod args;
 pub mod license;
+pub mod llm;
 pub mod uipak;
 pub mod dispatch;
 pub mod engine;

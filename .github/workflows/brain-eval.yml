@@ -1,0 +1,67 @@
+# Runs the assistant's language model over build/brain-cases.json (real model, real llama.cpp, the same prompt and
+# grammar as Dogfile) and saves every answer to the brain-eval branch: results-<model>.json and summary.md.
+name: brain-eval
+on:
+  push:
+    branches: [main]
+    paths: ['backend/brain.json', 'backend/src/llm.rs', 'backend/examples/brain_eval.rs', 'build/brain-cases.json', '.github/workflows/brain-eval.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: 4b
+            repo: unsloth/Qwen3.5-4B-GGUF
+            file: Qwen3.5-4B-Q4_K_M.gguf
+          - name: 2b
+            repo: unsloth/Qwen3.5-2B-GGUF
+            file: Qwen3.5-2B-Q4_K_M.gguf
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: brain-${{ hashFiles('Cargo.lock') }}
+          restore-keys: brain-
+      - uses: actions/cache@v4
+        with:
+          path: models
+          key: model-${{ matrix.file }}
+      - name: Get the model
+        run: |
+          mkdir -p models
+          if [ ! -s "models/${{ matrix.file }}" ]; then
+            curl -fsSL -o "models/${{ matrix.file }}" "https://huggingface.co/${{ matrix.repo }}/resolve/main/${{ matrix.file }}" || {
+              echo "::error title=model::${{ matrix.file }} not found; files in ${{ matrix.repo }}: $(curl -fsSL https://huggingface.co/api/models/${{ matrix.repo }} | jq -r '[.siblings[].rfilename] | join(", ")' | head -c 1500)"; exit 1; }
+          fi
+          ls -la models
+      - name: Build
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq libclang-dev cmake > /dev/null
+          cargo build --release -p dogfile-backend --example brain_eval 2>&1 | tail -3
+      - name: Run
+        run: |
+          set -o pipefail
+          nproc
+          ./target/release/examples/brain_eval "models/${{ matrix.file }}" build/brain-cases.json results-${{ matrix.name }}.json 2>&1 | tee log-${{ matrix.name }}.txt
+          echo "::notice title=brain-${{ matrix.name }}::$(tail -1 log-${{ matrix.name }}.txt)"
+      - name: Save the results
+        if: always()
+        run: |
+          d="$RUNNER_TEMP/out"; mkdir -p "$d"
+          git fetch -q origin brain-eval 2>/dev/null && git --work-tree="$d" checkout origin/brain-eval -- . 2>/dev/null || true
+          cp results-${{ matrix.name }}.json log-${{ matrix.name }}.txt "$d/" 2>/dev/null || true
+          echo "${{ github.sha }} ${{ matrix.name }}: $(tail -1 log-${{ matrix.name }}.txt)" >> "$d/summary.md"
+          cd "$d"
+          git init -q -b brain-eval
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          git add -A && git commit -qm "brain eval ${{ matrix.name }} ${{ github.sha }}"
+          for i in 1 2 3 4 5; do git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" brain-eval && break; sleep $((RANDOM % 10 + 5)); git fetch -q "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" brain-eval && git rebase -q FETCH_HEAD || true; done

@@ -26,7 +26,9 @@ md-5 = "0.10"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream", "http2"] }
 trash = "5"
 arboard = { version = "3", default-features = false, features = ["image-data"] }
-image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "tga", "exr", "hdr", "tiff", "bmp", "ico", "pnm", "qoi", "webp", "gif", "ff"] }
+psd = "0.3"
+image_dds = { version = "0.7", default-features = false, features = ["ddsfile", "image"] }
 portable-pty = "0.9"
 dirs = "6"
 rand = "0.9"

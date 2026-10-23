@@ -245,7 +245,7 @@ export function sizeBucket(n, isDir) {
 }
 
 export const KINDS = {
-  image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'ico', 'svg', 'avif', 'tif', 'tiff', 'heic', 'jfif', 'apng', 'raw', 'cr2', 'nef', 'dng', 'psd'],
+  image: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'ico', 'svg', 'avif', 'tif', 'tiff', 'heic', 'jfif', 'apng', 'raw', 'cr2', 'nef', 'dng', 'psd', 'psb', 'tga', 'dds', 'exr', 'hdr', 'qoi'],
   video: ['mp4', 'mkv', 'mov', 'avi', 'webm', 'wmv', 'm4v', 'flv', 'mpg', 'mpeg', 'ogv', '3gp', 'ts'],
   audio: ['mp3', 'wav', 'flac', 'm4a', 'aac', 'ogg', 'oga', 'opus', 'wma', 'aiff', 'mid', 'midi'],
   archive: ['zip', '7z', 'rar', 'tar', 'gz', 'tgz', 'bz2', 'xz', 'cab', 'iso', 'zst', 'lz', 'lzma', 'wim'],
@@ -289,6 +289,9 @@ export function h(tag, attrs = {}, ...children) {
   return el;
 }
 export const fileUrl = (p) => `/f/?p=${encodeURIComponent(p)}`;
+// pictures decoded by Dogfile itself (Photoshop, TGA, DDS, EXR, HDR, 16-bit TIFF…) instead of the web view
+export const DECODED_IMG = new Set(['psd', 'psb', 'tga', 'dds', 'exr', 'hdr', 'pic', 'tif', 'tiff', 'qoi', 'pbm', 'pgm', 'ppm', 'pnm', 'pam', 'pfm', 'ff']);
+export const decodedUrl = (p, w = 0) => `/img?p=${encodeURIComponent(p)}${w ? `&w=${Math.round(w)}` : ''}`;
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
 // ---------------- settings & state ----------------

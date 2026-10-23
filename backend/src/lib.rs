@@ -28,6 +28,7 @@ pub mod keywords;
 pub mod versions;
 pub mod ai;
 pub mod imgmeta;
+pub mod imgdec;
 pub mod netdiscover;
 pub mod remote;
 pub mod reminders;

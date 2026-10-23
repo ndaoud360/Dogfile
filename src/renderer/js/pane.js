@@ -3,7 +3,7 @@
 import { playFolderAnim, directionOf } from './folderanim.js';
 import {
   api, state, sys, bus, h, esc, isVirtual, isMtp, isRemote, remoteParts, pjoin, dirname, basename, normalize, samePath, isInside, splitPath, virtualTitle,
-  fmtSize, fmtDate, dateBucket, sizeBucket, kindOf, typeLabel, natCmp, debounce, fileUrl, uid, IS_WIN, addRecent, tagsOf,
+  fmtSize, fmtDate, dateBucket, sizeBucket, kindOf, typeLabel, natCmp, debounce, fileUrl, DECODED_IMG, decodedUrl, uid, IS_WIN, addRecent, tagsOf,
   saveLibrary, saveSettings, expandUserPath, toast, extname, KINDS,
 } from './core.js';
 import { icon, folderArt, fileArt } from './icons.js';
@@ -1303,7 +1303,8 @@ function hydrateGal(el, t, img) {
   (async () => {
     let url = null;
     const tw = +img.dataset.tw || 400;
-    if (IS_WIN()) url = await api('thumb:get', p, Math.min(1024, tw)).catch(() => null);
+    if (it && DECODED_IMG.has(it.ext)) url = decodedUrl(p, Math.min(1024, tw));
+    else if (IS_WIN()) url = await api('thumb:get', p, Math.min(1024, tw)).catch(() => null);
     if (!url) url = it && MM.isPic(it) && !['heic', 'psd', 'raw', 'cr2', 'nef', 'dng', 'tif', 'tiff', 'arw', 'cr3'].includes(it.ext) ? fileUrl(p) : `/media/thumb?p=${encodeURIComponent(p)}&w=${Math.min(1024, tw)}`;
     thumbCache.set(key, url);
     if (img.isConnected) show(url);
@@ -1325,7 +1326,8 @@ function hydrateImages(el, t, nodes) {
     if (url) return show(url);
     if (url === null) { img.remove(); return; }
     const it = t.shown[t.indexOf.get(p)];
-    if (IS_WIN()) {
+    if (it && DECODED_IMG.has(it.ext)) url = decodedUrl(p, Math.min(512, Math.round((t.gridSize || state.settings.gridSize) * (window.devicePixelRatio || 1))));
+    else if (IS_WIN()) {
       url = await api('thumb:get', p, Math.min(512, Math.round((t.gridSize || state.settings.gridSize) * (window.devicePixelRatio || 1))));
       if (!url && it && kindOf(it) === 'image' && !['heic', 'psd', 'raw', 'cr2', 'nef', 'dng', 'tif', 'tiff'].includes(it.ext)) url = fileUrl(p);
     } else url = it && kindOf(it) === 'image' && !['heic', 'psd', 'raw', 'cr2', 'nef', 'dng', 'tif', 'tiff'].includes(it.ext) ? fileUrl(p) : null;

@@ -110,6 +110,16 @@ pub async fn handle(req: Req) -> Resp {
     if let Some(route) = path.strip_prefix("/media/") {
         return crate::media::handle(route, &req).await;
     }
+    // pictures the web view can't show (PSD, TGA, DDS, EXR, HDR, 16-bit TIFF…), as PNG; w = longest side
+    if path == "/img" {
+        let p = req.query.get("p").cloned().unwrap_or_default();
+        let w: u32 = req.query.get("w").and_then(|s| s.parse().ok()).unwrap_or(0).min(16384);
+        return match tokio::task::spawn_blocking(move || crate::imgdec::png(&p, w)).await {
+            Ok(Ok(b)) => { let mut r = Resp::bytes(200, "image/png", b); r.headers.push(("cache-control".into(), "max-age=600".into())); r }
+            Ok(Err(e)) => Resp::text(415, &e),
+            Err(_) => Resp::text(500, "error"),
+        };
+    }
     if path == "/thumb" {
         #[cfg(windows)]
         {

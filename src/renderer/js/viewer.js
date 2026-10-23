@@ -1,6 +1,6 @@
 // Dogfile Photos: fast photo viewer with a queue, slideshow and fullscreen, plus a basic editor
 // (adjustments, filter presets, crop, rotate/flip, draw & text, resize) that saves as a copy or overwrites.
-import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce, KINDS, natCmp, fileUrl, fmtSize, fmtDate } from './core.js';
+import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce, KINDS, natCmp, fileUrl, DECODED_IMG, decodedUrl, fmtSize, fmtDate } from './core.js';
 import { icon } from './icons.js';
 import { showMenu } from './menu.js';
 import { modal, confirm, prompt } from './dialogs.js';
@@ -16,7 +16,7 @@ import { EMBED, pendingFiles, onHost, tellHost, showInFiles, setTitle, onLeave, 
 
 const $ = (id) => document.getElementById(id);
 const NATIVE = new Set(['jpg', 'jpeg', 'jfif', 'png', 'gif', 'webp', 'bmp', 'ico', 'svg', 'avif', 'apng']);
-const IMAGE_EXT = new Set([...KINDS.image, 'heif', 'jxl', 'tga', 'dds', 'exr', 'hdr', 'arw', 'orf', 'rw2', 'raf', 'srw', 'pef']);
+const IMAGE_EXT = new Set([...KINDS.image, ...DECODED_IMG, 'heif', 'jxl', 'arw', 'orf', 'rw2', 'raf', 'srw', 'pef']);
 const isImage = (p) => IMAGE_EXT.has((p.split('.').pop() || '').toLowerCase());
 let sys = {}, settings = { ...DEFAULT_SETTINGS };
 const V = { list: [], idx: -1, zoom: 'fit', scale: 1, rot: 0, flipH: false, flipV: false, panX: 0, panY: 0, nat: { w: 0, h: 0 }, layer: 'a', slideshow: false, timer: null, shuffle: false, showQueue: true, showInfo: false, seq: 0 };
@@ -28,6 +28,7 @@ async function srcFor(p) {
   const ext = (p.split('.').pop() || '').toLowerCase();
   const b = bust.has(p) ? `&b=${bust.get(p)}` : '';
   if (NATIVE.has(ext)) return fileUrl(p) + b;
+  if (DECODED_IMG.has(ext)) return decodedUrl(p, 8192) + b;
   if (sys.platform === 'win32') { const t = await api('thumb:get', p, 2560).catch(() => null); if (t) return t; }
   return `/media/still?p=${encodeURIComponent(p)}${b}`;
 }
@@ -191,6 +192,8 @@ function renderQueue() {
   box.querySelectorAll('img[data-p]').forEach(async (im) => {
     const p = im.dataset.p;
     let u = thumbs.get(p);
+    const ex = (p.split('.').pop() || '').toLowerCase();
+    if (!u && DECODED_IMG.has(ex)) { u = decodedUrl(p, 200); thumbs.set(p, u); }
     if (!u) { u = sys.platform === 'win32' ? await api('thumb:get', p, 200).catch(() => null) : null; if (!u) u = NATIVE.has((p.split('.').pop() || '').toLowerCase()) ? fileUrl(p) : `/media/thumb?p=${encodeURIComponent(p)}&w=200`; thumbs.set(p, u); }
     im.src = u;
   });

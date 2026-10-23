@@ -1,6 +1,6 @@
 // Preview pane + Quick Look (Space): images, video, audio, PDF, text/code with line numbers,
 // Markdown, CSV tables, JSON, fonts, archive contents, folder summaries and a hex view for binaries.
-import { api, state, bus, h, esc, fmtSize, fmtDate, typeLabel, kindOf, fileUrl, KINDS, basename, dirname, isVirtual, tagsOf, toast } from './core.js';
+import { api, state, bus, h, esc, fmtSize, fmtDate, typeLabel, kindOf, fileUrl, DECODED_IMG, decodedUrl, KINDS, basename, dirname, isVirtual, tagsOf, toast } from './core.js';
 import { openTool } from './apptabs.js';
 import { icon, fileArt, folderArt } from './icons.js';
 import { markdown } from './md.js';
@@ -142,7 +142,7 @@ export async function renderPreview(box, it, { large = false } = {}) {
 }
 
 async function thumbOrArt(stage, it) {
-  const t = await api('thumb:get', it.path, 512);
+  const t = DECODED_IMG.has(it.ext) ? decodedUrl(it.path, 800) : await api('thumb:get', it.path, 512);
   stage.innerHTML = '';
   if (t) stage.append(h('img', { class: 'pv-img', src: t }));
   else if (it.size > 0 && it.size < 64 * 1024 * 1024) return hexView(stage, it);

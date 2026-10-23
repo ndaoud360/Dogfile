@@ -1,0 +1,62 @@
+# Speed check on the runner: the PC's processor, memory and power plan, then llama.cpp's own build (llama-bench, built
+# with clang) on the assistant's model, to compare with Dogfile's build. Results go to annotations and the brain-eval branch.
+name: brain-bench
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/brain-bench.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  bench:
+    runs-on: ${{ vars.RUNNER == 'pc' && fromJSON('["self-hosted","Windows","X64"]') || 'windows-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Git's bash on the path (self-hosted Windows)
+        shell: powershell
+        run: |
+          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
+      - name: Bench
+        shell: powershell
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          $o = @()
+          $cpu = Get-CimInstance Win32_Processor
+          $o += "CPU: $($cpu.Name) | cores $($cpu.NumberOfCores) | threads $($cpu.NumberOfLogicalProcessors) | max $($cpu.MaxClockSpeed) MHz | now $($cpu.CurrentClockSpeed) MHz"
+          $os = Get-CimInstance Win32_OperatingSystem
+          $o += "RAM: $([math]::Round($os.TotalVisibleMemorySize/1MB,1)) GB total, $([math]::Round($os.FreePhysicalMemory/1MB,1)) GB free"
+          $mem = Get-CimInstance Win32_PhysicalMemory | ForEach-Object { "$([math]::Round($_.Capacity/1GB))GB@$($_.ConfiguredClockSpeed)MHz" }
+          $o += "Memory sticks: $($mem -join ', ')"
+          $o += "Power plan: $((powercfg /getactivescheme) -join ' ')"
+          $bat = Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue
+          if ($bat) { $o += "Battery: $($bat.EstimatedChargeRemaining)% status $($bat.BatteryStatus) (2 = plugged in)" } else { $o += "Battery: none (desktop)" }
+          $top = Get-Process | Sort-Object CPU -Descending | Select-Object -First 6 | ForEach-Object { "$($_.ProcessName) $([math]::Round($_.CPU))s" }
+          $o += "Busiest programs (CPU seconds so far): $($top -join ', ')"
+          $o += "CPU load now: $((Get-CimInstance Win32_Processor | Measure-Object LoadPercentage -Average).Average)%"
+          # llama.cpp's own Windows build (clang, AVX2)
+          $rel = Invoke-RestMethod https://api.github.com/repos/ggml-org/llama.cpp/releases/latest
+          $asset = $rel.assets | Where-Object { $_.name -match 'bin-win-cpu-x64\.zip$' } | Select-Object -First 1
+          $d = "$env:RUNNER_TEMP\llamacpp"; Remove-Item -Recurse -Force $d -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Force $d | Out-Null
+          Invoke-WebRequest $asset.browser_download_url -OutFile "$d\l.zip"; Expand-Archive "$d\l.zip" -DestinationPath $d -Force
+          $bench = Get-ChildItem $d -Recurse -Filter llama-bench.exe | Select-Object -First 1
+          $o += "llama.cpp $($rel.tag_name) ($($asset.name))"
+          foreach ($m in @('Qwen3.5-4B-Q4_K_M.gguf', 'Qwen3-4B-Instruct-2507-Q4_K_M.gguf')) {
+            $mp = "$env:USERPROFILE\dogfile-models\$m"
+            if (-not (Test-Path $mp)) { $o += "$m not downloaded"; continue }
+            $r = & $bench.FullName -m $mp -p 64 -n 32 -t 4,8 -r 2 -o md 2>&1 | Out-String
+            $o += "== $m"; $o += $r
+          }
+          $text = $o -join "`n"
+          Write-Output $text
+          Write-Output "::notice title=bench::$($text -replace "`r?`n",'%0A')"
+          Set-Content "$env:RUNNER_TEMP\bench.txt" $text
+      - name: Save
+        if: always()
+        shell: bash
+        run: |
+          d="$RUNNER_TEMP/out"; rm -rf "$d"; mkdir -p "$d"
+          git fetch -q origin brain-eval && git --work-tree="$d" checkout origin/brain-eval -- . || true
+          cp "$RUNNER_TEMP/bench.txt" "$d/bench.txt" 2>/dev/null || true
+          cd "$d"; git init -q -b brain-eval; git config user.name "github-actions"; git config user.email "actions@github.com"
+          git add -A && git commit -qm "bench ${{ github.sha }}" && git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" brain-eval

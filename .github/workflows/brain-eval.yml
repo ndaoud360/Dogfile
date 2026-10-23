@@ -1,3 +1,4 @@
+# (Runs on the self-hosted PC runner when the repository variable RUNNER is "pc".)
 # Runs the assistant's language model over build/brain-cases.json (real model, real llama.cpp, the same prompt and
 # grammar as Dogfile) and saves every answer to the brain-eval branch: results-<model>.json and summary.md.
 name: brain-eval

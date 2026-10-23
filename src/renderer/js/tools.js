@@ -1,5 +1,6 @@
 // Power tools: search (name/regex/wildcards/content/size/date + Everything integration), compare folders,
 // duplicate finder, storage analyzer, workspaces, and the operations "status center".
+import { animatePanel } from './panelanim.js';
 import { api, state, sys, bus, h, esc, fmtSize, fmtDate, basename, dirname, isVirtual, samePath, toast, IS_WIN, natCmp, saveLibrary, extname } from './core.js';
 import { icon } from './icons.js';
 import { activeTab, navigate, openTab, paneTab, paneCount, recompute, renderTabPanes, setLayout, showTabInPane, newTabState, focusPane, otherPaneTab, selectedItems } from './pane.js';
@@ -501,8 +502,9 @@ const jobs = new Map();
 export function initOps() {
   const btn = document.getElementById('ops-btn');
   const panel = document.getElementById('ops-panel');
-  btn.addEventListener('click', () => panel.classList.toggle('open'));
-  document.addEventListener('mousedown', (e) => { if (!panel.contains(e.target) && !btn.contains(e.target)) panel.classList.remove('open'); });
+  const set = (on) => animatePanel('ops', panel, on, () => panel.classList.toggle('open', on));
+  btn.addEventListener('click', () => set(!panel.classList.contains('open')));
+  document.addEventListener('mousedown', (e) => { if (panel.classList.contains('open') && !panel.contains(e.target) && !btn.contains(e.target)) set(false); });
 }
 export function onOpsUpdate(j) {
   jobs.set(j.id, j);

@@ -1,5 +1,6 @@
 // App shell: boot, theme, tab strip, File/Home/Organize/Tools/View ribbon, split-layout picker, status bar,
 // session restore, IPC events and global keyboard handling.
+import { panelClass, animatePanel } from './panelanim.js';
 import {
   api, onMain, sys, state, bus, h, esc, DEFAULT_SETTINGS, DEFAULT_TAGS, saveSettings, saveLibrary, fmtSize, isVirtual, basename, virtualTitle,
   dirname, samePath, toast, IS_WIN, debounce, persist, setNativeDialogs,
@@ -59,9 +60,9 @@ function applyTheme() {
   root.style.setProperty('--side-w', (s.sidebarWidth || 300) + 'px');
   root.style.setProperty('--pv-w', (s.previewWidth || 340) + 'px');
   if (!document.body.classList.contains('folding')) { document.body.classList.toggle('no-sidebar', !!s.sidebarCollapsed); document.body.classList.toggle('side-collapsed', !!s.sidebarCollapsed); }
-  document.body.classList.toggle('show-preview', !!s.showPreview);
+  panelClass('preview', document.getElementById('preview'), 'show-preview', !!s.showPreview);
   document.body.classList.toggle('ribbon-pinned', !!s.ribbonPinned);
-  document.body.classList.toggle('no-status', s.showStatusBar === false);
+  panelClass('status', document.getElementById('statusbar'), 'no-status', s.showStatusBar === false);
   applyGlass(!!s.sidebarGlass);
   // built-in apps in tabs follow at once (light/dark, colours, roundness)
   const sig = JSON.stringify([s.theme, s.mediaTheme, s.accent, s.colors, s.corners, s.fontScale, dark]);
@@ -299,8 +300,11 @@ function renderRibbon() {
   let which = ribbonOpen || (state.settings.ribbonPinned ? state.settings.ribbonTab || 'home' : null);
   if (which === 'ctx' && !ctxCache) which = state.settings.ribbonPinned && !ribbonOpen ? 'home' : null;
   document.querySelectorAll('.menu-tab').forEach((b) => b.classList.toggle('on', b.dataset.menu === which));
-  if (!which || which === 'file') { r.innerHTML = ''; r.classList.remove('open'); return; }
+  const wasOpen = r.classList.contains('open');
+  if (!which || which === 'file') { if (wasOpen) animatePanel('ribbon', r, false, () => { r.innerHTML = ''; r.classList.remove('open'); setTimeout(syncFrames, 0); }); else { r.innerHTML = ''; r.classList.remove('open'); } return; }
   r.classList.add('open');
+  // a ribbon that wasn't showing folds down once its buttons are in
+  if (!wasOpen) setTimeout(() => animatePanel('ribbon', r, true, () => {}, { applied: true }), 0);
   r.innerHTML = '';
   if (which === 'ctx') { r.classList.add('ctx'); renderCtxRibbon(r); fitRibbon(r); setTimeout(syncFrames, 0); return; }
   r.classList.remove('ctx');

@@ -103,7 +103,26 @@ export async function openSettings(section = 'general', opts = {}) {
         row('Show thumbnails', toggle('showThumbnails')),
         row('Full breadcrumb path', toggle('fullCrumbs'), 'Show the drive and every folder instead of starting at your user folder.'),
         row('Show status bar', toggle('showStatusBar')),
-        row('Folding sidebar animation', toggle('foldAnimation'), 'The paper-fold effect when the sidebar opens or closes.'),
+        row('Panel animations', (() => {
+          // each panel that comes out of an edge: fold (turned to its edge), slide, or none
+          const grid = h('div', { class: 'pa-set' });
+          const draw = async () => {
+            const P = await import('./panelanim.js');
+            grid.innerHTML = '';
+            const cur = state.settings.panelAnims || {};
+            const all = h('select', { class: 'input small' }, h('option', { value: '' }, 'Set all…'), ...P.MODES.map(([v, l]) => h('option', { value: v }, l)));
+            all.onchange = () => { if (!all.value) return; state.settings.panelAnims = Object.fromEntries(Object.keys(P.PANELS).map((k) => [k, all.value])); changed(); draw(); };
+            for (const [k, [label]] of Object.entries(P.PANELS)) {
+              const sel = h('select', { class: 'input small' }, ...P.MODES.map(([v, l]) => h('option', { value: v }, l)));
+              sel.value = cur[k] || (k === 'sidebar' && state.settings.foldAnimation === false ? 'slide' : 'fold');
+              sel.onchange = () => { state.settings.panelAnims = { ...(state.settings.panelAnims || {}), [k]: sel.value }; changed(); };
+              grid.append(h('span', {}, label), sel);
+            }
+            grid.append(h('span', { class: 'hint' }, 'All panels'), all);
+          };
+          draw();
+          return grid;
+        })(), 'How panels open and close: Fold (like paper, turned to the edge each panel comes from), Slide, or no animation.'),
         row('Folder animation', h('div', { class: 'row-inline' }, select('folderAnimation', FOLDER_ANIMS.map(([v, l]) => [v, l])), h('button', { class: 'btn small', title: 'Play it on the folder that’s open', onclick: async () => {
           const { playFolderAnim } = await import('./folderanim.js');
           const { paneEls } = await import('./pane.js');

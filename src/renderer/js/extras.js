@@ -1,5 +1,6 @@
 // Extras: Drop Shelf (temporary file basket), embedded terminal drawer (ConPTY + xterm.js, synced with the active
 // pane in both directions), and the "who is locking this file?" helper.
+import { animatePanel } from './panelanim.js';
 import { api, onMain, state, sys, bus, h, esc, isVirtual, isMtp, basename, dirname, samePath, toast, saveSettings, IS_WIN, debounce } from './core.js';
 import { icon } from './icons.js';
 import { activeTab, navigate, paneEls, attachDropTarget, currentDrag, selectedItems } from './pane.js';
@@ -42,7 +43,8 @@ export function initExtras() {
 let shelfOpen = false;
 function toggleShelf(force) {
   shelfOpen = force ?? !shelfOpen;
-  document.body.classList.toggle('shelf-open', shelfOpen);
+  const open = shelfOpen;
+  animatePanel('shelf', $('shelf'), open, () => document.body.classList.toggle('shelf-open', open));
   $('shelf-btn')?.classList.toggle('on', shelfOpen);
 }
 function addToShelf(paths) {
@@ -154,7 +156,8 @@ async function dump(mode) {
 let term = null, fit = null, ptyId = null, termCwd = null, lastPrompt = 0, lastInput = 0, termOpen = false, termShell = null;
 async function toggleTerminal(force) {
   termOpen = force ?? !termOpen;
-  document.body.classList.toggle('term-open', termOpen);
+  const open = termOpen;
+  animatePanel('terminal', $('term-drawer'), open, () => document.body.classList.toggle('term-open', open));
   $('term-btn')?.classList.toggle('on', termOpen);
   if (termOpen) { await ensureTerminal(); setTimeout(() => { fitTerm(); term?.focus(); }, 30); }
   else paneEls[state.activePane]?.body.focus();

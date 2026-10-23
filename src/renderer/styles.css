@@ -1842,3 +1842,13 @@ body.col-resizing, body.col-resizing * { cursor: col-resize !important; user-sel
 .as2-add { gap: 8px; }
 .as2-add .input { flex: 1; }
 @media (max-width: 640px) { .md-form { grid-template-columns: 1fr; } .md-row { grid-template-columns: 1fr; } }
+
+/* ---- panel fold / slide (panelanim.js) ---- */
+.pa-layer { position: fixed; z-index: 9000; pointer-events: none; }
+.pa-stage { position: absolute; inset: 0; transform-style: preserve-3d; }
+.pa-back { position: absolute; }
+.pa-panel { position: absolute; transform-style: preserve-3d; backface-visibility: hidden; will-change: transform; }
+.pa-clip { position: absolute; inset: 0; overflow: hidden; }
+.pa-shade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+.pa-snap { pointer-events: none; }
+.pa-set { display: grid; grid-template-columns: auto 150px; gap: 6px 12px; align-items: center; font-size: 12.5px; }

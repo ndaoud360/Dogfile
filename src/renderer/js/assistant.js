@@ -2,6 +2,7 @@
 // "rename these using their contents", "files I haven't opened in six months"). It shows how it understood the
 // request and what it found, previews any change, and asks before doing anything big or destructive.
 // Everything runs on this PC: a request grammar, name & content matching, and (optionally) the local AI models.
+import { animatePanel } from './panelanim.js';
 import { api, state, sys, bus, h, esc, toast, fmtSize, fmtDate, basename, dirname, pjoin, IS_WIN, KINDS, TEXT_EXTS, uid, setTags, isVirtual } from './core.js';
 import { icon, fileArt } from './icons.js';
 import { modal, confirm } from './dialogs.js';
@@ -41,8 +42,7 @@ export function toggleAssistant(force) {
   if (wantOpen && !requirePro('assistant')) return;
   if (!panel) build();
   const open = wantOpen;
-  panel.classList.toggle('open', open);
-  document.body.classList.toggle('assistant-open', open);
+  animatePanel('assistant', panel, open, () => { panel.classList.toggle('open', open); document.body.classList.toggle('assistant-open', open); });
   if (open) { placeholder(); setTimeout(() => input.focus(), 50); brainOnOpen(); }
   bus.emit('syncFrames');
 }

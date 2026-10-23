@@ -3,6 +3,7 @@
 // to it, θ = acos(p)) so the outer edge lands exactly at x = W·p, while the content slides with it, a backing strip
 // fills the gap, the hamburger ripples, and the active item's highlight grows in after the drawer opens.
 import { state, bus, saveSettings } from './core.js';
+import { panelMode, animatePanel } from './panelanim.js';
 
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2); // cubic in-out
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
@@ -53,9 +54,10 @@ function ripple() {
 export function toggle(open = !!state.settings.sidebarCollapsed) {
   if (animating) return;
   ripple();
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches || state.settings.foldAnimation === false) {
-    state.settings.sidebarCollapsed = !open; saveSettings(); document.body.classList.toggle('no-sidebar', !open); syncBurger(); bus.emit('sidebarToggled', open); if (open) setTimeout(growHighlight, 30); return;
-  }
+  const mode = panelMode('sidebar');
+  const instant = () => { state.settings.sidebarCollapsed = !open; saveSettings(); document.body.classList.toggle('no-sidebar', !open); syncBurger(); bus.emit('sidebarToggled', open); if (open) setTimeout(growHighlight, 30); };
+  if (mode === 'none') return instant();
+  if (mode === 'slide') { animating = true; animatePanel('sidebar', document.getElementById('sidebar'), open, instant, { edge: 'left' }).finally(() => { animating = false; }); return; }
   run(open); // starts immediately, together with the ripple
 }
 

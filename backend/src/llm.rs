@@ -113,6 +113,10 @@ fn backend() -> Result<&'static LlamaBackend, String> {
     .as_ref()
     .map_err(|e| e.clone())
 }
+/// what llama.cpp was built with and found (AVX2 = 1 …)
+pub fn system_info() -> String {
+    unsafe { std::ffi::CStr::from_ptr(llama_cpp_sys_2::llama_print_system_info()) }.to_string_lossy().trim().to_string()
+}
 /// threads for generating (one token at a time: physical cores are best) and for reading (batches: all of them)
 fn threads() -> (i32, i32) {
     let n = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4);
@@ -128,6 +132,7 @@ fn hash(s: &str) -> String {
 pub fn serve(model_path: &Path, state_dir: &Path, rx: Receiver<Job>, status: &dyn Fn(&str)) -> Result<(), String> {
     status("loading");
     let backend = backend()?;
+    status(&format!("cpu: {} | threads {:?}", system_info(), threads()));
     let mparams = LlamaModelParams::default();
     let model = LlamaModel::load_from_file(backend, model_path, &mparams).map_err(|e| format!("The assistant's model couldn't be loaded: {e}"))?;
     let (n_gen, n_read) = threads();

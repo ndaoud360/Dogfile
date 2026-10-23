@@ -51,6 +51,7 @@ fn main() {
         let (rtx, rrx) = channel();
         tx.send(dogfile_backend::llm::Job { context: c["ctx"].as_str().unwrap().to_string(), reply: rtx }).unwrap();
         let r = rrx.recv().unwrap();
+        let r_meta: Result<(u64, u64), ()> = r.as_ref().map(|v| (v["tokensIn"].as_u64().unwrap_or(0), v["tokensOut"].as_u64().unwrap_or(0))).map_err(|_| ());
         let (ok, plan, ms, err) = match r {
             Ok(v) => {
                 let steps = v["plan"]["steps"].as_array().cloned().unwrap_or_default();
@@ -76,6 +77,7 @@ fn main() {
         ms_total += ms;
         let req = c["ctx"].as_str().unwrap().lines().last().unwrap_or("").to_string();
         eprintln!("{} {:>3} {:>6}ms  {}  =>  {}", if ok { "PASS" } else { "FAIL" }, i + 1, ms, req, plan);
+        if let Ok(v) = &r_meta { eprintln!("          tokens in {} out {}", v.0, v.1); }
         results.push(json!({ "ok": ok, "request": req, "ctx": c["ctx"], "plan": plan, "expect": c["expect"], "ms": ms, "error": err }));
     }
     let summary = json!({ "pass": pass, "total": cases.len(), "avgMs": if cases.is_empty() { 0 } else { ms_total / cases.len() as u64 }, "model": model, "results": results });

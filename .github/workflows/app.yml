@@ -27,7 +27,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
+          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin", "$env:ProgramFiles\LLVM\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
       - name: Rust toolchain
         run: rustup toolchain install stable --profile minimal && rustup default stable
       - uses: actions/cache@v4
@@ -47,6 +47,9 @@ jobs:
       - name: Build
         shell: pwsh
         run: |
+          # rebuild llama.cpp when its build flags (.cargo/config.toml) change: cargo doesn't notice by itself
+          $h = (Get-FileHash .cargo/config.toml).Hash.Substring(0,16)
+          if ((Get-Content target/.ggml-flags -ErrorAction SilentlyContinue) -ne $h) { cargo clean --release -p llama-cpp-sys-2; New-Item -ItemType Directory -Force target | Out-Null; Set-Content target/.ggml-flags $h }
           cargo build --release -p dogfile --message-format=short 2>&1 | Tee-Object -FilePath build.log
           $code = $LASTEXITCODE
           if ($code -ne 0) {
@@ -304,7 +307,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
+          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin", "$env:ProgramFiles\LLVM\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
       - name: Rust toolchain for Windows on ARM
         run: rustup toolchain install stable --profile minimal && rustup default stable && rustup target add aarch64-pc-windows-msvc
       - uses: actions/cache@v4
@@ -358,7 +361,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
+          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin", "$env:ProgramFiles\LLVM\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
       - name: Interface checks (names that don't exist, the assistant's grammar)
         run: |
           npx -y eslint@8.57.0 --no-eslintrc -c build/eslint-undef.json src/renderer/js/*.js
@@ -413,7 +416,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
+          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin", "$env:ProgramFiles\LLVM\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
       - uses: actions/cache@v4
         if: vars.RUNNER != 'pc'
         with:
@@ -474,7 +477,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
+          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin", "$env:ProgramFiles\LLVM\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
       - name: Licence server tests
         env:
           PGPASSWORD: pg

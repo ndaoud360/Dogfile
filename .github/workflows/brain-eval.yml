@@ -31,7 +31,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
+          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin", "$env:ProgramFiles\LLVM\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
       - uses: actions/cache@v4
         if: vars.RUNNER != 'pc'
         with:
@@ -58,6 +58,8 @@ jobs:
       - name: Build
         run: |
           if [ "$RUNNER_OS" = Linux ]; then sudo apt-get update -qq && sudo apt-get install -y -qq libclang-dev cmake > /dev/null; fi
+          # rebuild llama.cpp when its build flags (.cargo/config.toml) change: cargo doesn't notice by itself
+          h=$(sha256sum .cargo/config.toml | cut -c1-16); if [ "$(cat target/.ggml-flags 2>/dev/null)" != "$h" ]; then cargo clean --release -p llama-cpp-sys-2 || true; mkdir -p target; echo "$h" > target/.ggml-flags; fi
           cargo build --release -p dogfile-backend --example brain_eval 2>&1 | tail -3
       - name: Run
         run: |

@@ -66,7 +66,7 @@ impl AppHost {
         if kind == "player" {
             return tauri::window::Color(0, 0, 0, 255);
         }
-        if kind == "viewer" {
+        if kind == "viewer" || kind == "model" {
             return tauri::window::Color(11, 11, 13, 255);
         }
         let theme = dogfile_backend::setting("theme");
@@ -344,11 +344,12 @@ impl Host for AppHost {
         }
         self.pending.lock().insert(label.clone(), o);
         let saved = dogfile_backend::store::get(&format!("{kind}-window")).unwrap_or(json!({}));
-        let big = kind == "player" || kind == "viewer";
+        let big = kind == "player" || kind == "viewer" || kind == "model";
         let title = match kind {
             "editor" => "Dogfile Notepad",
             "player" => "Dogfile Player",
             "viewer" => "Dogfile Photos",
+            "model" => "Dogfile 3D",
             _ => "Dogfile",
         };
         let b = WebviewWindowBuilder::new(self.app(), &label, page_url(&format!("{kind}.html"), &format!("w={label}")))

@@ -35,6 +35,7 @@ pub mod reminders;
 pub mod cloudapi;
 pub mod s3;
 pub mod meta;
+pub mod model3d;
 pub mod git;
 pub mod pty;
 pub mod clip;

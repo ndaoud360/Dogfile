@@ -15,7 +15,7 @@ pub const NAMES: &[&str] = &[
     "index:refresh", "index:search", "index:sizes", "index:fastBuild", "core:info", "everything:search", "everything:available", "everything:status", "git:branches", "git:checkout", "git:log", "git:pull",
     "git:status", "recycle:list", "recycle:restore", "recycle:restoreOriginal", "recycle:deleteForever", "recycle:empty", "watch:set", "rules:watch", "remote:list", "remote:signIn", "remote:get", "remote:put",
     "remote:remove", "remote:rename", "remote:copy", "remote:mkdir", "remote:open", "remote:test", "remote:setSecret", "remote:disconnect", "net:connectShare", "net:unc", "net:reachable", "net:status", "cloud:detect",
-    "ext:fetch", "docs:featureGuide", "ext:log", "ext:logs", "ext:clearLogs", "ext:install", "secret:set", "secret:has", "gh:request", "meta:status", "meta:install", "meta:read", "meta:write", "meta:stripGps", "meta:stripAll", "meta:streams", "meta:streamsMany", "meta:streamRead", "meta:streamWrite", "meta:streamRemove", "doc:read", "doc:text", "doc:titles", "doc:setProps", "media:setMeta",
+    "ext:fetch", "docs:featureGuide", "ext:log", "ext:logs", "ext:clearLogs", "ext:install", "secret:set", "secret:has", "gh:request", "meta:status", "meta:install", "m3d:cadStatus", "m3d:cadInstall", "m3d:dwgStatus", "m3d:dwgToDxf", "meta:read", "meta:write", "meta:stripGps", "meta:stripAll", "meta:streams", "meta:streamsMany", "meta:streamRead", "meta:streamWrite", "meta:streamRemove", "doc:read", "doc:text", "doc:titles", "doc:setProps", "media:setMeta",
     "versions:save", "versions:list", "versions:restore", "versions:remove", "versions:overview", "versions:track", "watched:add", "watched:get", "store:get", "store:set", "store:path", "default:get",
     "default:set", "win:new", "win:control", "win:overlay", "win:zoom", "theme:get", "dialog:pickFolder", "dialog:openFiles", "dialog:saveFile", "dialog:confirm", "tool:open", "tool:pending", "media:probe",
     "media:imgMeta", "media:quickProbe", "media:sheetCancel", "media:contactSheet", "media:encoder", "media:shotDir", "media:export", "ai:status", "ai:download", "ai:remove", "ai:cacheGet", "ai:cacheSet",
@@ -290,6 +290,10 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
 
         // ---------- documents, media, tags, AI ----------
         "meta:status" => meta::status(&a),
+        "m3d:cadStatus" => crate::model3d::cad_status(&a),
+        "m3d:cadInstall" => crate::model3d::cad_install(&a),
+        "m3d:dwgStatus" => crate::model3d::dwg_status(&a),
+        "m3d:dwgToDxf" => crate::model3d::dwg_to_dxf(&a).await,
         "meta:install" => meta::install(&a),
         "meta:read" => meta::read(&a).await,
         "meta:write" => meta::write(&a).await,

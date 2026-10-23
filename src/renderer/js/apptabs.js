@@ -8,6 +8,7 @@ export const APPS = {
   editor: { title: 'Dogfile Notepad', icon: 'notepad' },
   player: { title: 'Dogfile Player', icon: 'film' },
   viewer: { title: 'Dogfile Photos', icon: 'image' },
+  model: { title: 'Dogfile 3D', icon: 'cube' },
 };
 const frames = new Map(); // tabId -> iframe
 let host = null;

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:*; img-src 'self' http://127.0.0.1:* data: blob:; connect-src 'self' http://127.0.0.1:* data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' http://127.0.0.1:* data:; script-src 'self' http://127.0.0.1:* 'wasm-unsafe-eval'; worker-src 'self' http://127.0.0.1:* blob:">
+  <title>Dogfile 3D</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="model.css">
+</head>
+<body class="tool model-app">
+  <header id="md-title">
+    <span class="md-logo"></span>
+    <span id="md-name">Dogfile 3D</span>
+    <span id="md-count"></span>
+    <div class="tab-drag"></div>
+    <div id="win-ctl"></div>
+  </header>
+  <div id="md-main">
+    <div id="md-stage">
+      <div id="md-bg"></div>
+      <div id="md-view"></div>
+      <div id="md-osd"></div>
+      <div id="md-busy"><div class="spin"></div><div class="msg"></div><div class="bar"><i></i></div></div>
+      <div id="md-err"></div>
+      <div id="md-empty"><div class="em-cube"></div><div class="em-title">Dogfile 3D</div><div class="em-sub">FBX, OBJ, glTF/GLB, STL, 3MF, PLY, Collada, 3DS, USDZ, STEP, IGES, DXF, DWG…</div><button class="btn" id="md-open">Open a 3D file…</button></div>
+      <div id="md-anim"></div>
+    </div>
+    <aside id="md-side"></aside>
+  </div>
+  <footer id="md-bar"></footer>
+  <div id="toasts"></div>
+  <script type="module" src="js/model.js"></script>
+</body>
+</html>

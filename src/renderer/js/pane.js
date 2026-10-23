@@ -544,7 +544,7 @@ export function recompute(t) {
     const label = (it) => {
       if (g === 'section') return it.section || '';
       if (g === 'type') return typeLabel(it);
-      if (g === 'kind') return { folder: 'Folders', image: 'Pictures', video: 'Videos', audio: 'Music', archive: 'Archives', document: 'Documents', code: 'Code', executable: 'Programs', font: 'Fonts', other: 'Other' }[kindOf(it)];
+      if (g === 'kind') return { folder: 'Folders', image: 'Pictures', video: 'Videos', audio: 'Music', archive: 'Archives', document: 'Documents', code: 'Code', executable: 'Programs', font: 'Fonts', model: '3D models', other: 'Other' }[kindOf(it)];
       if (g === 'date') return dateBucket(it.mtime);
       if (g === 'size') return sizeBucket(it.size, it.isDir);
       if (g === 'name') { const c = (it.name[0] || '#').toUpperCase(); return /[A-Z]/.test(c) ? c : /\d/.test(c) ? '0–9' : '#'; }
@@ -1143,7 +1143,7 @@ function smallIcon(it) {
   if (it.isDir) return `<span class="fico folder">${icon('folder')}</span>`;
   if (state.settings.useWindowsIcons && IS_WIN()) return `<img class="wicon" data-icon="${esc(it.path)}" alt="">`;
   const k = kindOf(it);
-  const map = { image: 'photos', video: 'videos', audio: 'music', archive: 'zip', code: 'code', executable: 'terminal', document: 'page', font: 'page' };
+  const map = { image: 'photos', video: 'videos', audio: 'music', archive: 'zip', code: 'code', executable: 'terminal', document: 'page', font: 'page', model: 'cube' };
   return `<span class="fico k-${k}">${icon(map[k] || 'page')}</span>`;
 }
 

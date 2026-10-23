@@ -14,9 +14,10 @@ export const FEATURES = {
   ocr: 'Reading text in images (OCR)',
   reminders: 'Document reminders',
   metadata: 'Editing photo details',
+  model3d: 'Your own textures and backgrounds in Dogfile 3D',
   features: 'Custom features',
 };
-export const PLURAL = new Set(['panes', 'dupes', 'space', 'automation', 'versions', 'remote', 'features', 'reminders']);
+export const PLURAL = new Set(['panes', 'dupes', 'space', 'automation', 'versions', 'remote', 'features', 'reminders', 'model3d']);
 export const PRO_COMMANDS = {
   assistant: 'assistant', aiModels: 'assistant',
   layout3: 'panes', layout4: 'panes',

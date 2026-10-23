@@ -375,7 +375,7 @@ body.show-preview #workspace { grid-template-columns: 1fr 1px var(--pv-w); }
 .fico .ic { width: 17px; height: 17px; }
 .fico.folder { color: color-mix(in srgb, var(--folder) 70%, var(--text-3)); }
 .fico.folder .ic { fill: color-mix(in srgb, var(--folder) 55%, transparent); }
-.fico.k-image { color: #2f9e8f; } .fico.k-video { color: #7b5bd6; } .fico.k-audio { color: #c2185b; } .fico.k-archive { color: #b38600; } .fico.k-code { color: #3a7bd5; } .fico.k-executable { color: #5a6b80; }
+.fico.k-image { color: #2f9e8f; } .fico.k-video { color: #7b5bd6; } .fico.k-audio { color: #c2185b; } .fico.k-archive { color: #b38600; } .fico.k-code { color: #3a7bd5; } .fico.k-executable { color: #5a6b80; } .fico.k-model { color: #d9822b; }
 img.wicon { width: 18px; height: 18px; flex: none; }
 .c-git { display: flex; align-items: center; }
 

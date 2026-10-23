@@ -2,7 +2,7 @@
 // virtual locations (Home, This PC, Recent, Recycle Bin, Network, Tags), and context menus.
 import {
   api, state, sys, bus, h, isVirtual, isRemote, remoteParts, onMain, pjoin, dirname, basename, normalize, samePath, isInside, extname, stem,
-  fmtSize, toast, onWorkMsgFor, IS_WIN, isMtp, isTextFile, isMediaFile, isImageFile, addRecentFile, tagsOf, setTags, moveTags, saveLibrary, saveSettings, kindOf, KINDS, virtualTitle, setDriveNames, uid,
+  fmtSize, toast, onWorkMsgFor, IS_WIN, isMtp, isTextFile, isMediaFile, isImageFile, isModelFile, addRecentFile, tagsOf, setTags, moveTags, saveLibrary, saveSettings, kindOf, KINDS, virtualTitle, setDriveNames, uid,
 } from './core.js';
 import {
   activeTab, paneTab, navigate, openTab, loadTab, renderTabPanes, selectedItems, startRename, selectOnly, otherPaneTab,
@@ -59,13 +59,15 @@ export async function openItems(items, { pane = state.activePane, newTab = false
   }
   // Built-in apps: Dogfile Notepad for text, Dogfile Player for audio/video
   const local = files.filter((f) => !f.archive && !f.recycle && !f.mtp);
-  const texts = state.settings.useAtlasEditor !== false ? local.filter((f) => isTextFile(f) && !(state.settings.useAtlasViewer !== false && isImageFile(f))) : [];
+  const texts = state.settings.useAtlasEditor !== false ? local.filter((f) => isTextFile(f) && !(state.settings.useAtlasViewer !== false && isImageFile(f)) && !(state.settings.useAtlas3D !== false && isModelFile(f))) : [];
   const medias = state.settings.useAtlasPlayer !== false ? local.filter(isMediaFile) : [];
   const photos = state.settings.useAtlasViewer !== false ? local.filter(isImageFile) : [];
+  const models = state.settings.useAtlas3D !== false ? local.filter(isModelFile) : [];
+  if (models.length) { openTool('model', models.map((f) => f.path), { autoPlaylist: models.length === 1 }); models.forEach((f) => addRecentFile(f.path)); }
   if (photos.length) { openTool('viewer', photos.map((f) => f.path), { autoPlaylist: photos.length === 1 }); photos.forEach((f) => addRecentFile(f.path)); }
   if (texts.length) { openTool('editor', texts.map((f) => f.path)); texts.forEach((f) => addRecentFile(f.path)); }
   if (medias.length) { openTool('player', medias.map((f) => f.path), { play: true, autoPlaylist: medias.length === 1 && state.settings.playerAutoPlaylist !== false }); medias.forEach((f) => addRecentFile(f.path)); }
-  files = files.filter((f) => !texts.includes(f) && !medias.includes(f) && !photos.includes(f));
+  files = files.filter((f) => !texts.includes(f) && !medias.includes(f) && !photos.includes(f) && !models.includes(f));
   if (files.length > 15 && !(await confirm('Open many files?', `You're about to open <b>${files.length}</b> files.`))) return;
   for (const f of files) {
     if (f.mtp) {
@@ -966,7 +968,7 @@ export async function autoTagDialog(paths) {
 }
 
 async function openWithMenu(it) {
-  const builtin = [{ label: 'Dogfile Notepad', icon: 'notepad', run: () => openTool('editor', [it.path]) }, isMediaFile(it) && { label: 'Dogfile Player', icon: 'film', run: () => openTool('player', [it.path], { play: true }) }, isImageFile(it) && { label: 'Dogfile Photos', icon: 'image', run: () => openTool('viewer', [it.path]) }, { label: 'Windows default app', icon: 'monitor', run: () => api('shell:open', it.path) }, { separator: true }];
+  const builtin = [{ label: 'Dogfile Notepad', icon: 'notepad', run: () => openTool('editor', [it.path]) }, isMediaFile(it) && { label: 'Dogfile Player', icon: 'film', run: () => openTool('player', [it.path], { play: true }) }, isImageFile(it) && { label: 'Dogfile Photos', icon: 'image', run: () => openTool('viewer', [it.path]) }, isModelFile(it) && { label: 'Dogfile 3D', icon: 'cube', run: () => openTool('model', [it.path]) }, { label: 'Windows default app', icon: 'monitor', run: () => api('shell:open', it.path) }, { separator: true }];
   const apps = (state.settings.openWithApps || []).map((a) => ({ label: a.name, icon: 'open', run: () => api('shell:launch', a.command, [it.path]) }));
   const { openWithEntries } = await import('./assoc.js');
   return [...builtin, ...apps, apps.length && { separator: true }, { label: 'Code editor', icon: 'code', run: () => openInEditor([it]) }, IS_WIN() && { label: 'Choose another app…', run: () => api('shell:openWith', it.path) }, { separator: true }, ...openWithEntries(it).filter((x) => !/^Set the Windows default/.test(x.label || ''))];
@@ -1006,6 +1008,7 @@ export function openAllIn(kind, paths, opts = {}) {
   if (!paths.length) return;
   if (kind === 'editor') openTool('editor', paths);
   else if (kind === 'player') openTool('player', paths, { play: true, ...opts });
+  else if (kind === 'model') openTool('model', paths, opts);
   else openTool('viewer', paths, opts);
   paths.forEach(addRecentFile);
 }
@@ -1016,6 +1019,8 @@ export function openAllEntries(paths) {
   if (txt.length) out.push({ label: txt.length > 1 ? `Open all ${txt.length} in Dogfile Notepad` : 'Open in Dogfile Notepad', icon: 'notepad', run: () => openAllIn('editor', txt.map((i) => i.path)) });
   if (med.length) out.push({ label: med.length > 1 ? `Play all ${med.length} in Dogfile Player` : 'Play in Dogfile Player', icon: 'film', run: () => openAllIn('player', med.map((i) => i.path)) });
   if (img.length) out.push({ label: img.length > 1 ? `View all ${img.length} in Dogfile Photos` : 'View in Dogfile Photos', icon: 'image', run: () => openAllIn('viewer', img.map((i) => i.path)) });
+  const mdl = its.filter(isModelFile);
+  if (mdl.length) out.push({ label: mdl.length > 1 ? `View all ${mdl.length} in Dogfile 3D` : 'View in Dogfile 3D', icon: 'cube', run: () => openAllIn('model', mdl.map((i) => i.path)) });
   return out;
 }
 export function buildItemsMenu(t, items) {

@@ -105,10 +105,11 @@ export async function renderPreview(box, it, { large = false } = {}) {
     } else if (OFFICE.has(it.ext)) {
       const d = await renderOffice(stage, it, { large, alive: () => my === seq, addRows: (rows) => { if (my === seq) addMeta([...baseRows(), ...rows.filter(Boolean)]); } });
       if (my === seq && !large && d) meta.append(h('div', { class: 'pv-actions' }, h('button', { class: 'btn small', onclick: () => A.openItems([it]) }, 'Open'), !['rtf', 'odt', 'ods', 'odp', 'ott'].includes(it.ext) && h('button', { class: 'btn small', onclick: () => editDocProps(it) }, 'Edit properties…'), h('button', { class: 'btn small', onclick: () => A.copyPaths([it]) }, 'Copy path')));
-    } else if (['glb', 'gltf', 'obj', 'stl', 'ply'].includes(it.ext)) {
+    } else if (KINDS.model.includes(it.ext) && it.ext !== 'dwg' && !(it.size > 300 * 1048576)) {
       const box = h('div', { class: 'pv-3d' }, h('div', { class: 'pv-3d-hint' }, 'Loading 3D model…'));
       stage.append(box);
-      render3D(box, url, it.ext, () => my === seq, dirname(it.path)).catch((e) => { box.innerHTML = `<div class="pv-3d-hint">Can't show this model: ${esc(e.message)}</div>`; });
+      render3D(box, it.path, () => my === seq).catch((e) => { box.innerHTML = `<div class="pv-3d-hint">${e.code === 'NO_CAD' ? 'Open it in Dogfile 3D to see CAD parts' : `Can't show this model: ${esc(e.message)}`}</div>`; });
+      if (!large) meta.append(h('div', { class: 'pv-actions' }, h('button', { class: 'btn small', onclick: () => A.openAllIn('model', [it.path]) }, 'Open in Dogfile 3D')));
     } else if (KINDS.font.includes(it.ext) && it.ext !== 'fon') {
       const fam = 'pv' + Math.random().toString(36).slice(2);
       const ff = new FontFace(fam, `url("${url}")`);
@@ -319,40 +320,45 @@ export function closeQuickLook() {
 }
 export const quickLookOpen = () => !!ql;
 
-// ---------- 3D models (glTF/GLB, OBJ, STL, PLY): drag to rotate, wheel to zoom ----------
-async function render3D(box, url, ext, alive, dir) {
-  const T = await import('../vendor/three3d.js');
+// ---------- 3D models: everything Dogfile 3D opens (CAD once its reader is installed); drag to rotate, wheel to zoom ----------
+async function render3D(box, path, alive) {
+  const { three, loadModel } = await import('./model-load.js');
+  const T = await three();
+  if (!alive()) return;
+  const r = await loadModel(path, { maxTex: 1024, quality: 'low' });
   if (!alive()) return;
   const W = Math.max(200, box.clientWidth || 300), H = Math.max(180, box.clientHeight || 260);
-  const renderer = new T.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(devicePixelRatio || 1); renderer.setSize(W, H);
+  const renderer = new T.WebGLRenderer({ antialias: (devicePixelRatio || 1) < 1.5, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5)); renderer.setSize(W, H);
+  renderer.toneMapping = T.NeutralToneMapping;
   const scene = new T.Scene();
-  const cam = new T.PerspectiveCamera(45, W / H, 0.01, 10000);
+  const cam = new T.PerspectiveCamera(40, W / H, 0.01, 10000);
   scene.add(new T.HemisphereLight(0xffffff, 0x666677, 2.2));
   const dl = new T.DirectionalLight(0xffffff, 1.6); dl.position.set(3, 5, 4); scene.add(dl);
-  let obj;
-  // textures / buffers next to a .gltf are referenced relatively: map them to real files
-  const mgr = new T.LoadingManager();
-  mgr.setURLModifier((u) => { const m = u.match(/^atlas:\/\/f\/(?!\?)(.+)$/); return m ? fileUrl(dir + (dir.includes('\\') ? '\\' : '/') + decodeURIComponent(m[1]).replace(/\//g, dir.includes('\\') ? '\\' : '/')) : u; });
-  if (ext === 'glb' || ext === 'gltf') obj = (await new T.GLTFLoader(mgr).loadAsync(url)).scene;
-  else if (ext === 'obj') obj = await new T.OBJLoader().loadAsync(url);
-  else {
-    const geo = await (ext === 'stl' ? new T.STLLoader() : new T.PLYLoader()).loadAsync(url);
-    geo.computeVertexNormals();
-    obj = new T.Mesh(geo, new T.MeshStandardMaterial({ color: 0xb8bcc6, metalness: 0.1, roughness: 0.6, vertexColors: !!geo.attributes.color }));
-  }
-  if (!alive()) { renderer.dispose(); return; }
-  obj.traverse?.((m) => { if (m.isMesh && !m.material) m.material = new T.MeshStandardMaterial({ color: 0xb8bcc6 }); });
+  const obj = new T.Group(); obj.add(r.object);
+  if (r.zUp && !r.flat) r.object.rotation.x = -Math.PI / 2;
+  obj.traverse((m) => { if (m.isSkinnedMesh) m.frustumCulled = false; if (m.isMesh && !m.material) m.material = new T.MeshStandardMaterial({ color: 0xb8bcc6 }); });
   scene.add(obj);
   const bb = new T.Box3().setFromObject(obj), size = bb.getSize(new T.Vector3()), center = bb.getCenter(new T.Vector3());
   obj.position.sub(center);
-  const r = Math.max(size.x, size.y, size.z) || 1;
-  cam.position.set(r * 1.2, r * 0.8, r * 1.6); cam.near = r / 100; cam.far = r * 100; cam.updateProjectionMatrix();
-  const ctl = new T.OrbitControls(cam, renderer.domElement); ctl.enableDamping = true; ctl.autoRotate = true; ctl.autoRotateSpeed = 1.2;
+  const rad = Math.max(size.length() / 2, 1e-6);
+  const dist = rad / Math.sin((cam.fov * Math.PI) / 360);
+  if (r.flat) cam.position.set(0, 0, dist); else cam.position.copy(new T.Vector3(1, 0.75, 1.3).normalize().multiplyScalar(dist));
+  cam.near = dist / 1000; cam.far = dist * 50; cam.updateProjectionMatrix();
+  const ctl = new T.OrbitControls(cam, renderer.domElement); ctl.enableDamping = true; ctl.autoRotate = !r.flat; ctl.autoRotateSpeed = 1.2;
   renderer.domElement.addEventListener('pointerdown', () => (ctl.autoRotate = false));
+  // the first animation plays
+  const mixer = r.animations.length ? new T.AnimationMixer(r.object) : null;
+  if (mixer) mixer.clipAction(r.animations[0]).play();
   box.innerHTML = ''; box.append(renderer.domElement);
   const ro = new ResizeObserver(() => { const w = box.clientWidth, hh = box.clientHeight; if (w && hh) { renderer.setSize(w, hh); cam.aspect = w / hh; cam.updateProjectionMatrix(); } });
   ro.observe(box);
-  const loop = () => { if (!box.isConnected || !alive()) { ro.disconnect(); renderer.dispose(); return; } ctl.update(); renderer.render(scene, cam); requestAnimationFrame(loop); };
+  let last = performance.now();
+  const loop = (now) => {
+    if (!box.isConnected || !alive()) { ro.disconnect(); mixer?.stopAllAction(); renderer.dispose(); obj.traverse((o) => o.geometry?.dispose?.()); return; }
+    const dt = Math.min(0.1, ((now || last) - last) / 1000); last = now || last;
+    mixer?.update(dt);
+    ctl.update(); renderer.render(scene, cam); requestAnimationFrame(loop);
+  };
   loop();
 }

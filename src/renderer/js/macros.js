@@ -225,7 +225,7 @@ export async function editMacro(m0, isNew = false) {
   const trigBox = h('div', { class: 'row-inline wrap' });
   const drawTrig = () => {
     trigBox.innerHTML = '';
-    const tsel = h('select', { class: 'input sm' }, ...[['manual', 'Only when I run it'], ['key', 'With a keyboard shortcut'], ['startup', 'When Dogfile starts'], ['schedule', 'On a schedule'], ['folder', 'When new files arrive in a folder']].map(([v, l]) => h('option', { value: v }, l)));
+    const tsel = h('select', { class: 'input sm' }, ...[['manual', 'Only when I run it'], ['key', 'With a keyboard shortcut'], ['startup', 'When Dogfile starts'], ['schedule', 'On a schedule'], ['folder', 'When new files arrive in a folder'], ['event', 'After files are copied, moved, renamed or deleted']].map(([v, l]) => h('option', { value: v }, l)));
     tsel.value = trig.type; tsel.onchange = () => { trig.type = tsel.value; drawTrig(); };
     trigBox.append(tsel);
     const inp = (k, ph, w) => { const x = h('input', { class: 'input sm', placeholder: ph, style: { width: w } }); x.value = trig[k] ?? ''; x.oninput = () => { trig[k] = x.value; }; x.addEventListener('keydown', (e) => e.stopPropagation()); return x; };
@@ -233,6 +233,11 @@ export async function editMacro(m0, isNew = false) {
     if (trig.type === 'schedule') { const mode = h('select', { class: 'input sm' }, h('option', { value: 'every' }, 'Every'), h('option', { value: 'daily' }, 'Every day at'), h('option', { value: 'weekly' }, 'Every week on')); mode.value = trig.mode || 'every'; trig.mode = mode.value; mode.onchange = () => { trig.mode = mode.value; drawTrig(); };
       const daySel = h('select', { class: 'input sm' }, ...DAYS.map((d, i) => h('option', { value: String(i) }, d))); daySel.value = String(trig.day ?? 5); trig.day = +daySel.value; daySel.onchange = () => { trig.day = +daySel.value; };
       trigBox.append(mode, trig.mode === 'weekly' ? daySel : null, trig.mode === 'weekly' ? h('span', { class: 'hint' }, 'at') : null, trig.mode !== 'every' ? inp('at', '08:00', '80px') : inp('minutes', '60', '70px'), trig.mode !== 'every' ? null : h('span', { class: 'hint' }, 'minutes'), h('span', { class: 'hint' }, '(while Dogfile is open)')); }
+    if (trig.type === 'event') {
+      const ev = h('select', { class: 'input sm' }, ...[['afterMove', 'moved'], ['afterCopy', 'copied'], ['afterRename', 'renamed'], ['afterDelete', 'deleted'], ['afterExtract', 'extracted'], ['afterCompress', 'compressed']].map(([v, l]) => h('option', { value: v }, `After files are ${l}`)));
+      ev.value = trig.event || 'afterMove'; trig.event = ev.value; ev.onchange = () => { trig.event = ev.value; };
+      trigBox.append(ev, h('span', { class: 'hint' }, 'in'), inp('folder', 'any folder', '220px'), h('button', { class: 'btn small', onclick: async () => { const d = await api('dialog:pickFolder', 'Only for files going to (or in) which folder?'); if (d) { trig.folder = d; drawTrig(); } } }, 'Browse…'), h('span', { class: 'hint' }, 'Tip: start with “Select files: Files that just arrived”'));
+    }
     if (trig.type === 'folder') trigBox.append(inp('folder', 'Folder', '260px'), h('button', { class: 'btn small', onclick: async () => { const d = await api('dialog:pickFolder', 'Watch which folder?'); if (d) { trig.folder = d; drawTrig(); } } }, 'Browse…'), h('span', { class: 'hint' }, 'Tip: start with “Select files: Files that just arrived”'));
   };
   drawTrig();
@@ -254,7 +259,7 @@ export async function macrosManager() {
     for (const m of macros()) {
       const on = h('input', { type: 'checkbox', class: 'switch' }); on.checked = m.enabled !== false; on.onchange = () => { m.enabled = on.checked; saveSettings(); syncMacros(); };
       const tr = m.trigger || {};
-      list.append(h('div', { class: 'ws-row ext-row' }, on, h('div', { class: 'hi-main' }, h('b', {}, m.name), h('span', { class: 'hint' }, `${m.steps.length} step${m.steps.length === 1 ? '' : 's'} · ${{ manual: 'run by hand', key: `shortcut ${tr.keys || ''}`, startup: 'at startup', schedule: tr.mode === 'weekly' ? `${DAYS[tr.day ?? 5]}s at ${tr.at}` : tr.mode === 'daily' ? `daily at ${tr.at}` : `every ${tr.minutes} min`, folder: `when files arrive in ${basename(tr.folder || '')}` }[tr.type] || ''}`)),
+      list.append(h('div', { class: 'ws-row ext-row' }, on, h('div', { class: 'hi-main' }, h('b', {}, m.name), h('span', { class: 'hint' }, `${m.steps.length} step${m.steps.length === 1 ? '' : 's'} · ${{ manual: 'run by hand', key: `shortcut ${tr.keys || ''}`, startup: 'at startup', event: `after files are ${({ afterMove: 'moved', afterCopy: 'copied', afterRename: 'renamed', afterDelete: 'deleted', afterExtract: 'extracted', afterCompress: 'compressed' })[tr.event] || 'changed'}${tr.folder ? ` in ${basename(tr.folder)}` : ''}`, schedule: tr.mode === 'weekly' ? `${DAYS[tr.day ?? 5]}s at ${tr.at}` : tr.mode === 'daily' ? `daily at ${tr.at}` : `every ${tr.minutes} min`, folder: `when files arrive in ${basename(tr.folder || '')}` }[tr.type] || ''}`)),
         h('div', { class: 'hi-acts' }, h('button', { class: 'btn small primary', onclick: () => { closeIt(); runMacro(m); } }, 'Run'), h('button', { class: 'btn small', onclick: async () => { await editMacro(m); draw(); } }, 'Edit'))));
     }
   };
@@ -289,6 +294,18 @@ export async function syncMacros() {
 bus.on('folderNewFiles', ({ dir, files }) => {
   for (const m of macros().filter((x) => x.enabled !== false && x.trigger?.type === 'folder' && x.trigger.folder && x.trigger.folder.toLowerCase() === dir.toLowerCase())) {
     (async () => { await navigate(activeTab(), dir); await runMacro(m, { newFiles: files }); })();
+  }
+});
+// file events (hooks.js): macros set to run after a copy, move, rename…; the files involved count as "just arrived"
+bus.on('fileEvent', (e) => {
+  const list = macros().filter((x) => x.enabled !== false && x.trigger?.type === 'event' && x.trigger.event === e.event);
+  if (!list.length) return;
+  const files = e.event === 'afterRename' ? [e.to] : e.dest && e.sources ? e.sources.map((p) => pjoin(e.dest, basename(p))) : e.sources || [];
+  const where = e.event === 'afterRename' ? dirname(e.to) : e.dest || (e.sources?.[0] ? dirname(e.sources[0]) : '');
+  for (const m of list) {
+    const f = m.trigger.folder;
+    if (f && !(where && (where.toLowerCase() === f.toLowerCase() || where.toLowerCase().startsWith(f.toLowerCase().replace(/[\\/]$/, '') + (where.includes('\\') ? '\\' : '/'))))) continue;
+    (async () => { if (where && e.event !== 'afterDelete') await navigate(activeTab(), where); await runMacro(m, { newFiles: files }); })();
   }
 });
 export const macroFolders = () => macros().filter((x) => x.enabled !== false && x.trigger?.type === 'folder' && x.trigger.folder).map((x) => x.trigger.folder);

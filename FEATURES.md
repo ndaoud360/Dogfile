@@ -55,7 +55,7 @@ The `// @` lines at the top describe the feature. Dogfile reads the first 40 lin
 | `// @name` | The feature’s name, shown in menus and the feature browser |
 | `// @description` | One sentence about what it does |
 | `// @target` | Where it runs: files, notepad, photos or player |
-| `// @permissions` | Any of: read write network run (leave empty for none) |
+| `// @permissions` | Any of: read write network run hooks (leave empty for none) |
 | `// @version` | Your version number, e.g. 1.0 (raise it when you update) |
 | `// @author` | Your name (optional) |
 | `// @icon` | An Dogfile icon name for its button (optional) |
@@ -635,6 +635,38 @@ Runs a command line, optionally in a folder.
 
 ```js
 dogfile.run('git status', await dogfile.folder());
+```
+
+### File events (hooks)
+
+React to what happens to files, or change it before it happens. Needs the hooks permission (// @permissions hooks). Before-events can answer with changes; after-events are only told. Each listener gets 3 seconds: a slow or failing one is skipped, never blocking the operation.
+
+#### `dogfile.on(event, async (e) => answer?)`
+
+Listens for a file event. e has the event name and what it’s about: { sources, dest, type } for copy / move / delete / compress / extract, { path, name, newName } for a rename, { sources, dest, mode } for a drop, { from, to } after a rename, { path } after a folder opens. A before-event listener can answer { cancel: true, reason } to stop it, { dest } to send the files elsewhere, { sources } to take only some, { newName } to change a rename, { mode: "copy" | "move" } for a drop. Events: beforeCopy, beforeMove, beforeDelete, beforeRename, beforeDrop, beforeCompress, beforeExtract, afterCopy, afterMove, afterDelete, afterRename, afterCompress, afterExtract, navigate.
+
+| Option | Meaning |
+| --- | --- |
+| `event` | The event name, e.g. "beforeMove" |
+| `listener` | async function (e) { … } — return nothing to let it go ahead unchanged |
+
+- **Gives:** nothing
+- **Works in:** File browser
+- **Needs:** `hooks` (Watch and change file operations)
+
+```js
+// photos dropped anywhere go to Pictures\Inbox instead
+dogfile.on('beforeDrop', async (e) => {
+  if (e.sources.every((p) => /\.(jpe?g|png|heic)$/i.test(p))) return { dest: 'C:\\Users\\Ana\\Pictures\\Inbox' };
+});
+
+// never delete anything in a folder named "Keep"
+dogfile.on('beforeDelete', async (e) => {
+  if (e.sources.some((p) => /[\\/]Keep[\\/]/i.test(p))) return { cancel: true, reason: 'Files in Keep are protected' };
+});
+
+// names without spaces
+dogfile.on('beforeRename', async (e) => ({ newName: e.newName.replace(/\s+/g, '-') }));
 ```
 
 ### Remembering things

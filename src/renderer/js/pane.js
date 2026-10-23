@@ -1921,7 +1921,15 @@ async function runDrop(e, dir, paths) {
     if (e.altKey) { A.createShortcuts(paths, dir); return; }
     if (paths.every((p) => samePath(dirname(p), dir)) && !e.ctrlKey) return; // dropped onto its own folder
     if (paths.some((p) => samePath(p, dir) || isInside(dir, p))) { toast("Can't move a folder into itself", { error: true }); return; }
-    const move = e.shiftKey ? true : e.ctrlKey ? false : sameRoot(paths[0], dir);
+    let move = e.shiftKey ? true : e.ctrlKey ? false : sameRoot(paths[0], dir);
+    // features listening for drops may send the files elsewhere, take fewer, switch copy/move, or stop it
+    const H = await import('./hooks.js');
+    if (H.hasListeners() && typeof dir === 'string') {
+      const p = await H.before('beforeDrop', { sources: paths, dest: dir, mode: move ? 'move' : 'copy' });
+      if (p.cancel) { toast(p.reason, { error: true }); return; }
+      if (!p.sources.length) return;
+      paths = p.sources; dir = p.dest; move = p.mode === 'move';
+    }
     if (e.button === 2 || state.settings.askOnDrop) {
       showMenu([
         { label: 'Move here', icon: 'cut', run: () => A.transfer(paths, dir, 'move') },

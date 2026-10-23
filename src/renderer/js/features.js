@@ -34,7 +34,10 @@ function start() {
       storageSet: (fid, k, v) => { const st = (state.settings.extStorage ||= {}); st[fid] = { ...(st[fid] || {}), [k]: v }; saveSettings(); return true; },
     },
   });
+  // features' file-event listeners (dogfile.on) hear copies, moves, deletes, renames, drops…
+  if (!hooked) { hooked = true; import('./hooks.js').then((H) => H.addHookSource((ev, p) => host.hook(ev, p))); }
 }
+let hooked = false;
 // right-click menu items from features whose "when" fits the selection
 export function featureMenuItems(items) {
   const menus = state.featureMenus || [];

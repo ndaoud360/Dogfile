@@ -118,9 +118,21 @@ export function openInOtherPane(items) {
 // ======================================================================
 const jobWaiters = new Map();
 let undoing = false;
+// operations features may watch and change (dogfile.on('beforeMove'…)), by job type
+const HOOKED = { copy: 'Copy', move: 'Move', trash: 'Delete', delete: 'Delete', compress: 'Compress', extract: 'Extract' };
 export function runJob(spec) {
   if (spec.network == null) { const net = (p) => p && (/^\\\\/.test(p) || (state.drives || []).some((d) => d.type === 'network' && d.path && String(p).toUpperCase().startsWith(d.path.toUpperCase().slice(0, 2)))); spec = { ...spec, network: net(spec.dest) || (spec.sources || []).some(net) }; }
-  return new Promise(async (resolve) => {
+  return new Promise(async (resolve0) => {
+    const kind = HOOKED[spec.type];
+    const H = kind && !undoing && !spec.noHooks ? await import('./hooks.js') : null;
+    let resolve = resolve0;
+    if (H?.hasListeners()) {
+      const p = await H.before('before' + kind, { sources: [...(spec.sources || [])], dest: spec.dest ?? null, type: spec.type });
+      if (p.cancel) { toast(p.reason, { error: true }); resolve0({ status: 'cancelled', title: spec.type, error: p.reason, cancelledBy: p.by }); return; }
+      if (!p.sources?.length) { resolve0({ status: 'cancelled', title: spec.type, error: 'No files left to work on' }); return; }
+      spec = { ...spec, sources: p.sources, dest: p.dest ?? spec.dest };
+      resolve = (j) => { if (j?.status === 'done') H.after('after' + kind, { sources: spec.sources, dest: spec.dest ?? null, type: spec.type }); resolve0(j); };
+    } else if (H) resolve = (j) => { if (j?.status === 'done') H.after('after' + kind, { sources: spec.sources, dest: spec.dest ?? null, type: spec.type }); resolve0(j); };
     const id = await api('ops:start', spec);
     // a quick job can finish before its id arrives here (events and answers travel separately)
     if (finishedEarly.has(id)) { const j = finishedEarly.get(id); finishedEarly.delete(id); resolve(j); return; }
@@ -380,6 +392,13 @@ export async function renameOne(it, newName) {
   if (it.mtp) { try { await api('mtp:rename', it.path, newName); } catch (e) { toast(e.message, { error: true }); } return loadTab(activeTab(), { soft: true }); }
   if (/[<>:"/\\|?*\x00-\x1f]/.test(newName) && IS_WIN()) return toast('A file name can\'t contain any of: \\ / : * ? " < > |', { error: true });
   if (!state.settings.showExtensions && !it.isDir && it.ext && !newName.includes('.')) newName += '.' + it.name.split('.').pop();
+  // features listening for renames may change the new name or stop it
+  const H = await import('./hooks.js');
+  if (H.hasListeners()) {
+    const p = await H.before('beforeRename', { path: it.path, name: it.name, newName });
+    if (p.cancel) return toast(p.reason, { error: true });
+    newName = p.newName;
+  }
   const to = pjoin(dirname(it.path), newName);
   const oldExt = extname(it.name), newExt = extname(newName);
   if (!it.isDir && oldExt !== newExt && state.settings.warnExtChange !== false) {
@@ -390,6 +409,7 @@ export async function renameOne(it, newName) {
     moveTags(it.path, to);
     pushUndo({ type: 'renamed', pairs: [[it.path, to]] }, `Rename "${it.name}"`);
     bus.emit('renamedOne', { from: it.path, to, name: newName });
+    H.after('afterRename', { from: it.path, to });
     const t = activeTab();
     await loadTab(t, { soft: true });
     selectOnly(t, normalize(to));
@@ -415,6 +435,17 @@ export async function batchRename(items) {
 // rename many at once (two-phase, so swaps like a->b, b->a work); one undo step
 export async function renamePairs(pairs, title) {
   pairs = pairs.filter((p) => p.from !== p.to);
+  const H = await import('./hooks.js');
+  if (H.hasListeners() && !undoing) {
+    const kept = [];
+    for (const p of pairs) {
+      const r = await H.before('beforeRename', { path: p.from, name: basename(p.from), newName: basename(p.to) });
+      if (r.cancel) continue;
+      kept.push({ ...p, to: pjoin(dirname(p.to), r.newName) });
+    }
+    if (kept.length < pairs.length) toast(`${pairs.length - kept.length} rename${pairs.length - kept.length === 1 ? ' was' : 's were'} stopped by a feature`);
+    pairs = kept.filter((p) => p.from !== p.to);
+  }
   const tmp = pairs.map((p) => [p.from, p.from + '.atlas-' + uid()]);
   const done = [];
   try {
@@ -425,6 +456,7 @@ export async function renamePairs(pairs, title) {
     for (let k = done.length; k < pairs.length; k++) await api('fs:rename', tmp[k][1], pairs[k].from).catch(() => {});
   }
   if (done.length) pushUndo({ type: 'renamed', pairs: done }, title || `Rename ${done.length} items`);
+  for (const [from, to] of done) H.after('afterRename', { from, to });
   for (let i = 0; i < paneCount(); i++) { const t = paneTab(i); if (t) await loadTab(t, { soft: true }); }
   toast(`Renamed ${done.length} item${done.length === 1 ? '' : 's'}. Ctrl+Z undoes it.`);
   return done;

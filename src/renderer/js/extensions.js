@@ -12,6 +12,7 @@ export const PERMS = {
   write: ['Change files', 'Create, rename, move, copy, save and recycle files'],
   network: ['Use the internet', 'Send and receive data from websites'],
   run: ['Run commands', 'Run programs and scripts in the built-in terminal (you see them run)'],
+  hooks: ['Watch and change file operations', 'See copies, moves, deletes and renames before they happen, and change where they go or stop them'],
 };
 const NEEDS = { 'files.list': 'read', 'files.stat': 'read', 'files.readText': 'read', 'files.writeText': 'write', 'files.rename': 'write', 'files.copy': 'write', 'files.move': 'write', 'files.mkdir': 'write', 'files.trash': 'write', 'net.fetch': 'network', run: 'run' };
 
@@ -135,6 +136,21 @@ export function startFeatures({ target, getSettings, provide = {}, onChange }) {
     menus: () => [...running.values()].flatMap((r) => r.menus.map((c) => ({ ...c, feature: r.feature, run: (ctx) => runCmd(r, c.id, ctx) }))),
     errors: new Map(),
     reload,
+    // file events: every feature's listeners for this event, one after another, each allowed 3 seconds
+    hook: async (event, payload) => {
+      const out = [];
+      for (const r of running.values()) {
+        for (const hk of r.hooks.filter((x) => x.event === event)) {
+          const res = await Promise.race([runCmd(r, hk.id, { event, ...payload }), new Promise((ok) => setTimeout(() => ok(undefined), 3000))]);
+          out.push({ feature: r.feature.name || r.feature.id, result: res });
+          // a stop ends the round: later listeners don't need to hear about it
+          if (res && typeof res === 'object' && res.cancel) return out;
+          // later listeners see the changes made so far
+          if (res && typeof res === 'object') payload = { ...payload, ...Object.fromEntries(Object.entries(res).filter(([k]) => k in payload)) };
+        }
+      }
+      return out;
+    },
   };
   function runCmd(r, cmd, ctx) {
     return new Promise((resolve) => { const runId = ++runSeq; runs.set(runId, resolve); r.worker.postMessage({ type: 'run', cmd, runId, ctx: ctx ? JSON.parse(JSON.stringify(ctx)) : {} }); });
@@ -174,11 +190,17 @@ export function startFeatures({ target, getSettings, provide = {}, onChange }) {
   }
   function start(feature) {
     const worker = new Worker(new URL('./ext-worker.js', import.meta.url));
-    const r = { worker, feature, commands: [], menus: [] };
+    const r = { worker, feature, commands: [], menus: [], hooks: [] };
     worker.onmessage = async (e) => {
       const m = e.data || {};
       if (m.type === 'call') { try { worker.postMessage({ type: 'reply', id: m.id, result: await handle(r, m) }); } catch (err) { worker.postMessage({ type: 'reply', id: m.id, error: String(err.message || err) }); } }
-      else if (m.type === 'register') { (m.kind === 'command' ? r.commands : r.menus).push(m.def); onChange?.(); }
+      else if (m.type === 'register') {
+        if (m.kind === 'hook') {
+          if (!(feature.permissions || []).includes('hooks')) { const e2 = `dogfile.on('${m.def.event}') needs the “${PERMS.hooks[0]}” permission. Add “hooks” to the // @permissions line at the top of the feature, then install it again.`; log(feature, e2, 'error'); toast(`${feature.name}: ${e2}`, { error: true, ms: 8000 }); return; }
+          r.hooks.push(m.def); return;
+        }
+        (m.kind === 'command' ? r.commands : r.menus).push(m.def); onChange?.();
+      }
       else if (m.type === 'done') { const res = runs.get(m.runId); runs.delete(m.runId); if (m.error) { const e2 = friendly(m.error + '\n' + (m.stack || '')); log(feature, e2, 'error'); toast(`${feature.name}: ${e2}`, { error: true, ms: 8000 }); } res?.(m.result); }
       else if (m.type === 'error') { const e2 = friendly(m.error); host.errors.set(feature.id, e2); log(feature, e2, 'error'); toast(`The feature “${feature.name}” has an error: ${e2.split('\n')[0]}`, { error: true, ms: 8000 }); }
       else if (m.type === 'log') { console.log(`[feature ${feature.name}]`, m.text); log(feature, m.text, 'log'); }

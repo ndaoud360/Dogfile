@@ -11,6 +11,8 @@ const atlas = Object.freeze({
   version: 1,
   // registering things
   addCommand(def) { if (!def || !def.id || typeof def.run !== 'function') throw new Error('addCommand needs { id, title, run }'); handlers.set(def.id, def.run); postMessage({ type: 'register', kind: 'command', def: { id: def.id, title: def.title || def.id, icon: def.icon || 'puzzle', keys: def.keys || null, toolbar: !!def.toolbar } }); },
+  // file events (needs the "hooks" permission): fn(event) may answer { cancel, reason } / { dest } / { sources } / { newName } / { mode }
+  on(event, fn) { if (typeof event !== 'string' || typeof fn !== 'function') throw new Error('dogfile.on needs (eventName, function)'); const id = 'hook-' + (++seq); handlers.set(id, fn); postMessage({ type: 'register', kind: 'hook', def: { id, event } }); },
   addMenuItem(def) { if (!def || typeof def.run !== 'function') throw new Error('addMenuItem needs { title, run }'); const id = def.id || 'menu-' + (++seq); handlers.set(id, def.run); postMessage({ type: 'register', kind: 'menu', def: { id, title: def.title || id, icon: def.icon || 'puzzle', when: def.when || null } }); },
   // talking to the person
   ui: Object.freeze({

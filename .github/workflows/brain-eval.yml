@@ -27,6 +27,11 @@ jobs:
             file: Qwen3.5-2B-Q4_K_M.gguf
     steps:
       - uses: actions/checkout@v4
+      - name: Git's bash on the path (self-hosted Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
       - uses: actions/cache@v4
         if: vars.RUNNER != 'pc'
         with:

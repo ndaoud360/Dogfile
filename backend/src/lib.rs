@@ -4,6 +4,10 @@
 // provide (windows, dialogs, events).
 pub mod args;
 pub mod license;
+#[cfg(feature = "llm")]
+pub mod llm;
+#[cfg(not(feature = "llm"))]
+#[path = "llm_off.rs"]
 pub mod llm;
 pub mod uipak;
 pub mod dispatch;

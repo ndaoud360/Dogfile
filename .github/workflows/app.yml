@@ -326,11 +326,9 @@ jobs:
           ESBUILD_DIR="$RUNNER_TEMP/esbuild" node build/pack-ui.mjs
       - name: Build (ARM64)
         shell: pwsh
-        env:
-          # llama.cpp (the assistant's model) doesn't build for ARM with MSVC's own compiler; Visual Studio's clang-cl does
-          CMAKE_GENERATOR_TOOLSET: ClangCL
         run: |
-          cargo build --release -p dogfile --target aarch64-pc-windows-msvc --message-format=short 2>&1 | Tee-Object -FilePath build.log
+          # without the assistant's model for now: llama.cpp needs clang for ARM, which the cmake crate's VS generator won't take
+          cargo build --release -p dogfile --target aarch64-pc-windows-msvc --no-default-features --features custom-protocol --message-format=short 2>&1 | Tee-Object -FilePath build.log
           $code = $LASTEXITCODE
           if ($code -ne 0) { Write-Output "::error title=arm64-build::$((Get-Content build.log | Select-String -Pattern '(^|: )error|CMake Error|fatal error|failed' | Select-Object -First 60) -join '%0A')" }
           else { Write-Output "::notice title=arm64-build::$([math]::Round((Get-Item target/aarch64-pc-windows-msvc/release/dogfile.exe).Length/1MB,1)) MB" }

@@ -41,8 +41,8 @@ suppaftp = { version = "6", features = ["rustls"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
 webpki-roots = "1"
 # the assistant's language model (llama.cpp, built in; no GPU backend yet)
-llama-cpp-2 = { version = "0.1.160", default-features = false, features = ["common"] }
-llama-cpp-sys-2 = { version = "0.1.160", default-features = false, features = ["common"] }
+llama-cpp-2 = { version = "0.1.160", default-features = false, features = ["common"], optional = true }
+llama-cpp-sys-2 = { version = "0.1.160", default-features = false, features = ["common"], optional = true }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = [
@@ -58,3 +58,12 @@ clipboard-win = "5"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+[features]
+# the assistant's language model (llama.cpp); off for builds where it doesn't compile yet (Windows on ARM)
+default = ["llm"]
+llm = ["dep:llama-cpp-2", "dep:llama-cpp-sys-2"]
+
+[[example]]
+name = "brain_eval"
+required-features = ["llm"]

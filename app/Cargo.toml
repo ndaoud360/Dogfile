@@ -8,7 +8,7 @@ description = "Dogfile file manager"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-dogfile-backend = { path = "../backend" }
+dogfile-backend = { path = "../backend", default-features = false }
 dogfile-core = { path = "../core" }
 tauri = { version = "2", features = ["tray-icon", "image-png"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
@@ -30,4 +30,5 @@ windows-core = "0.62"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
-default = ["custom-protocol"]
+llm = ["dogfile-backend/llm"]
+default = ["custom-protocol", "llm"]

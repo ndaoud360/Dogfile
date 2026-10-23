@@ -22,9 +22,6 @@ jobs:
           - name: 4b
             repo: unsloth/Qwen3.5-4B-GGUF
             file: Qwen3.5-4B-Q4_K_M.gguf
-          - name: 2b
-            repo: unsloth/Qwen3.5-2B-GGUF
-            file: Qwen3.5-2B-Q4_K_M.gguf
     steps:
       - uses: actions/checkout@v4
       - name: Git's bash on the path (self-hosted Windows)
@@ -62,6 +59,8 @@ jobs:
           h=$(sha256sum .cargo/config.toml | cut -c1-16); if [ "$(cat target/.ggml-flags 2>/dev/null)" != "$h" ]; then cargo clean --release -p llama-cpp-sys-2 || true; mkdir -p target; echo "$h" > target/.ggml-flags; fi
           cargo build --release -p dogfile-backend --example brain_eval 2>&1 | tail -3
       - name: Run
+        env:
+          BRAIN_LIMIT: '12'   # a quick run while the speed is being worked on
         run: |
           M=models; [ "${{ vars.RUNNER }}" = pc ] && M="$HOME/dogfile-models"
           set -o pipefail

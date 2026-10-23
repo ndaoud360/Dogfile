@@ -178,6 +178,7 @@ pub fn serve(model_path: &Path, state_dir: &Path, rx: Receiver<Job>, status: &dy
             // back to just after the fixed part
             ctx.clear_kv_cache();
             ctx.state_seq_set(&snapshot, 0).map_err(|e| e.to_string())?;
+            let t_restore = t0.elapsed().as_millis() as u64;
             let toks = vocab.tokenize(request_prompt(&job.context).as_bytes(), false, true);
             if sys_tokens.len() + toks.len() + MAX_OUT > N_CTX as usize {
                 return Err("That request is too long for the assistant".into());
@@ -185,6 +186,8 @@ pub fn serve(model_path: &Path, state_dir: &Path, rx: Receiver<Job>, status: &dy
             let mut pos = sys_tokens.len() as i32;
             decode_tokens(&mut ctx, &toks, pos, true)?;
             pos += toks.len() as i32;
+            let t_read = t0.elapsed().as_millis() as u64 - t_restore;
+            let (mut t_sample, mut t_decode, mut fallbacks) = (0u128, 0u128, 0u32);
             // greedy decoding under the grammar. Checking the grammar against all ~250k tokens every step is slow, so
             // (like llama.cpp's own sampler) take the most likely token first and only fall back to filtering the whole
             // vocabulary when the grammar rejects it.
@@ -193,6 +196,7 @@ pub fn serve(model_path: &Path, state_dir: &Path, rx: Receiver<Job>, status: &dy
             let mut batch = LlamaBatch::new(1, 1);
             let mut n_out = 0;
             loop {
+                let ts = Instant::now();
                 let logits = ctx.get_logits_ith(-1);
                 let best = logits.iter().enumerate().fold((0usize, f32::NEG_INFINITY), |m, (i, &l)| if l > m.1 { (i, l) } else { m });
                 let cand = LlamaToken::new(best.0 as i32);
@@ -201,6 +205,7 @@ pub fn serve(model_path: &Path, state_dir: &Path, rx: Receiver<Job>, status: &dy
                 let tok = if one.data[0].logit().is_finite() {
                     cand
                 } else {
+                    fallbacks += 1;
                     let mut all = ctx.token_data_array_ith(-1);
                     grammar_s.apply(&mut all);
                     all.data.iter().filter(|d| d.logit().is_finite()).max_by(|x, y| x.logit().total_cmp(&y.logit())).map(|d| d.id()).ok_or("The assistant got stuck")?
@@ -211,14 +216,18 @@ pub fn serve(model_path: &Path, state_dir: &Path, rx: Receiver<Job>, status: &dy
                 grammar_s.accept(tok);
                 out.extend(vocab.token_to_piece(tok, false, None));
                 n_out += 1;
+                t_sample += ts.elapsed().as_micros();
+                let td = Instant::now();
                 batch.clear();
                 batch.add(tok, pos, &[0], true).map_err(|e| e.to_string())?;
                 ctx.decode(&mut batch).map_err(|e| e.to_string())?;
+                t_decode += td.elapsed().as_micros();
                 pos += 1;
             }
             let text = String::from_utf8_lossy(&out).to_string();
             let plan: Value = serde_json::from_str(text.trim()).map_err(|e| format!("The assistant gave an answer that couldn't be read ({e})"))?;
-            Ok(json!({ "plan": plan, "ms": t0.elapsed().as_millis() as u64, "tokensIn": toks.len(), "tokensOut": n_out }))
+            Ok(json!({ "plan": plan, "ms": t0.elapsed().as_millis() as u64, "tokensIn": toks.len(), "tokensOut": n_out,
+                "timing": { "restoreMs": t_restore, "readMs": t_read, "sampleMs": t_sample / 1000, "decodeMs": t_decode / 1000, "fallbacks": fallbacks } }))
         })();
         let _ = job.reply.send(r);
     }

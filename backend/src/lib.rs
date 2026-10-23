@@ -30,6 +30,7 @@ pub mod ai;
 pub mod imgmeta;
 pub mod netdiscover;
 pub mod remote;
+pub mod reminders;
 pub mod cloudapi;
 pub mod git;
 pub mod pty;
@@ -116,6 +117,8 @@ pub fn start(cfg: Config, host: Arc<dyn Host>) {
     });
     // drives plugged in or out
     sys::start_drive_watch();
+    // document reminders: watched folders and the hourly date check
+    reminders::start();
     // the instant index starts a moment after the window is up
     tokio::spawn(async {
         tokio::time::sleep(std::time::Duration::from_millis(1500)).await;

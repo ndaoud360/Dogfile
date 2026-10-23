@@ -144,6 +144,7 @@ const INTENTS = [
     const mins = ago ? (num(ago[1]) || { twenty: 20, thirty: 30 }[ago[1]] || 1) * (/^h/.test(ago[2]) ? 60 : 1) : null;
     return { undo: /\b(undo|put back|reverse)\b/.test(s), what: what ? { renam: 'renamed', rename: 'renamed', mov: 'moved', move: 'moved', cop: 'created', copy: 'created', delet: 'trashed', delete: 'trashed', recycl: 'trashed', recycle: 'trashed', trash: 'trashed' }[what.replace(/(ed|ing|e)$/, '')] || { rename: 'renamed', move: 'moved', copy: 'created', delete: 'trashed', recycle: 'trashed', trash: 'trashed' }[what] || null : null, folder: /\bfolder\b/.test(s), minutesAgo: mins, today: /\btoday\b/.test(s) };
   }],
+  ['reminders', (t, s) => (/\b(remind(?:er)?s?|notif(?:y|ication)s?|alert)\b.*\b(expir\w*|renew\w*|due|passport|licen[cs]e|insurance|warranty|document|bill)\b|\b(expir\w*|renew\w*)\b.*\b(remind\w*|notif\w*|alert|track|watch)\b|\bdocument reminders?\b|\bwhen (?:does|do|is) (?:my )?\w+ (?:expire|due)\b/.test(s) ? { about: /\b(this|these|it|selected)\b/.test(s) } : null)],
   ['whoLocks', (t, s) => (/\b(what|which)\b.*\b(program|process|app|application)\b.*\b(locking|using|has .* open|holding|blocking)\b|\bwho(?:'s| is) (?:locking|using)\b|\bwhat'?s (?:locking|using)\b|\bin use by\b/.test(s) ? {} : null)],
   // ---------- pictures, songs & videos ----------
   ['similarTo', (t, s) => (/\b(?:look|looks|looking)\s+(?:like|similar to)\s+(?:this|these|the selected|that|the one)|\bsimilar to (?:this|these|the selected)\b|\blike this (?:one|picture|photo|image|video|song)\b/.test(s) ? {} : null)],

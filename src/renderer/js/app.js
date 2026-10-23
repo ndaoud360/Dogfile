@@ -29,6 +29,7 @@ import './collections.js';
 import './rules.js';
 import * as U from './updates.js';
 import './history.js';
+import './reminders.js';
 import './workspaces.js';
 import './cliphistory.js';
 import './a11y.js';
@@ -544,6 +545,7 @@ async function boot() {
   // a dot on File while an update is waiting
   bus.on('updateStatus', () => document.querySelector('.menu-tab[data-menu="file"]')?.classList.toggle('has-update', !!U.U.status?.available));
   if (launch.select) setTimeout(() => navigate(activeTab(), launch.path, { select: launch.select }), 50);
+  if (launch.open === 'reminders') setTimeout(() => import('./reminders.js').then((m) => m.openReminders(launch.reminder)), 300);
   focusPane(state.activePane);
   initLicense({ test: info.test && !window.__dogTestLicense });
   document.body.classList.add('ready');

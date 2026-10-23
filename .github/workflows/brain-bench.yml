@@ -2,9 +2,6 @@
 # with clang) on the assistant's model, to compare with Dogfile's build. Results go to annotations and the brain-eval branch.
 name: brain-bench
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/brain-bench.yml']
   workflow_dispatch:
 permissions:
   contents: write

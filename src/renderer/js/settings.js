@@ -343,6 +343,7 @@ export async function openSettings(section = 'general', opts = {}) {
         group('Connections & automation'),
         row('Server connections', h('button', { class: 'btn small', onclick: () => import('./network.js').then((m) => m.connectionsDialog()) }, 'Manage…'), 'NAS, Windows shares, SFTP, FTP and WebDAV. Passwords are stored encrypted on this PC.'),
         row('Folder automations', h('button', { class: 'btn small', onclick: () => import('./rules.js').then((m) => m.automationsManager()) }, 'Manage…'), 'Rules that sort new files in a folder automatically.'),
+        row('Document reminders', h('button', { class: 'btn small', onclick: () => import('./reminders.js').then((m) => m.openReminders()) }, 'Open…'), 'Dogfile reads new scans, photos and PDFs on this PC, finds expiry and due dates (passports, licences, insurance, warranties, bills) and reminds you before them.'),
         group('Music'),
         row('AcoustID key (song identification)', text('acoustidKey', 'paste your free key'), h('span', { html: 'Lets “Identify by sound” in the tag editor recognize songs from their audio. Free: sign in at acoustid.org, choose “Register an application”, and paste the API key here.' })),
       );

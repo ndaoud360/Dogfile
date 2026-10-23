@@ -95,7 +95,8 @@
     "hex": "view a file's bytes (hex viewer)",
     "compare": "compare or sync two folders",
     "writeFeature": "write a custom Dogfile feature (.dogmod)",
-    "checkFeature": "check a custom Dogfile feature for problems"
+    "checkFeature": "check a custom Dogfile feature for problems",
+    "reminders": "document reminders: be reminded before passports, licences, insurance, warranties or bills expire or are due"
   },
   "examples": [
     [

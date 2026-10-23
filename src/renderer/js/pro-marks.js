@@ -12,9 +12,10 @@ export const FEATURES = {
   remote: 'Cloud, SFTP and FTP connections',
   convert: 'Media conversion',
   ocr: 'Reading text in images (OCR)',
+  reminders: 'Document reminders',
   features: 'Custom features',
 };
-export const PLURAL = new Set(['panes', 'dupes', 'space', 'automation', 'versions', 'remote', 'features']);
+export const PLURAL = new Set(['panes', 'dupes', 'space', 'automation', 'versions', 'remote', 'features', 'reminders']);
 export const PRO_COMMANDS = {
   assistant: 'assistant', aiModels: 'assistant',
   layout3: 'panes', layout4: 'panes',
@@ -27,6 +28,7 @@ export const PRO_COMMANDS = {
   connections: 'remote', addConnection: 'remote',
   contactSheet: 'convert',
   features: 'features', createFeature: 'features', featureStore: 'features',
+  reminders: 'reminders', remindAbout: 'reminders',
 };
 // menu items built without a command id get their star from the label
 const PRO_LABELS = [
@@ -39,6 +41,7 @@ const PRO_LABELS = [
   [/^(versions|save a version|file versions|keep versions)/i, 'versions'],
   [/^(automations?|folder rules|record a macro|macros)/i, 'automation'],
   [/^(ask the (file )?assistant|ask dogfile)/i, 'assistant'],
+  [/^(document reminders|remind me)/i, 'reminders'],
 ];
 export const proForLabel = (label) => (PRO_LABELS.find(([re]) => re.test(label || '')) || [])[1] || null;
 export const starHtml = '<span class="pro-star" title="Dogfile Pro">★</span>';

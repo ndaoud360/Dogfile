@@ -160,6 +160,7 @@ def('verifyChecksums', 'Verify checksums…', { icon: 'shieldCheck', cat: 'Tools
 def('assistant', 'Ask the file assistant…', { icon: 'sparkle', keys: ['Ctrl+J'], cat: 'Tools', run: () => import('./assistant.js').then((m) => m.toggleAssistant()) });
 def('connections', 'Server connections (NAS, SFTP, FTP, WebDAV)…', { icon: 'server', cat: 'Tools', run: () => import('./network.js').then((m) => m.connectionsDialog()) });
 def('addConnection', 'Add a server connection…', { icon: 'server', cat: 'Tools', run: () => import('./network.js').then((m) => m.editConnection(null)) });
+def('reminders', 'Document reminders…', { icon: 'bell', cat: 'Tools', run: () => import('./reminders.js').then((m) => m.openReminders()) });
 def('clipHistory', 'Clipboard history…', { icon: 'clipboard', keys: ['Ctrl+Shift+V'], cat: 'Edit', run: () => import('./cliphistory.js').then((m) => m.showHistory()) });
 def('fileTypes', 'File types (what opens each kind of file)…', { icon: 'open', cat: 'App', run: () => import('./assoc.js').then((m) => m.fileTypesDialog()) });
 def('nextRegionF6', 'Move to the next area', { keys: ['F6'], cat: 'Navigate', hidden: true, when: () => paneCount() < 2, run: () => import('./a11y.js').then((m) => m.cycleRegion(false)) });

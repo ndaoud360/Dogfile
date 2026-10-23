@@ -1048,6 +1048,7 @@ export function buildItemsMenu(t, items) {
       { label: 'Open in code editor', icon: 'code', run: () => openInEditor(items) },
       allDirs && { label: 'Open terminal here', icon: 'terminal', run: () => api('shell:terminal', real[0].path, state.settings.terminal) },
       { label: 'Calculate size', icon: 'chart', run: () => C('analyzeSelection') },
+      one && !one.isDir && /^(pdf|jpe?g|png|heic|heif|webp|tiff?|bmp|docx|odt|txt|rtf)$/i.test(one.ext || '') && { label: 'Remind me before this expires…', icon: 'bell', run: () => import('./reminders.js').then((m) => m.remindAbout(one)) },
       one && { label: 'Versions…', icon: 'history', run: () => import('./history.js').then((m) => m.versionsDialog(one.path)) },
       { label: 'Create checksum file…', icon: 'shieldCheck', run: () => import('./history.js').then((m) => m.createChecksums(real)) },
       one && /\.(sha256|sha1|md5)$/i.test(one.name) && { label: 'Verify checksums', icon: 'shieldCheck', run: () => import('./history.js').then((m) => m.verifyChecksums(one.path)) },

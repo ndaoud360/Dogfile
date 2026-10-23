@@ -343,6 +343,13 @@ export const HANDLERS = {
     say(`Found it: “${e.title}” ${mins < 1 ? 'just now' : mins < 120 ? `${mins} min ago` : `at ${new Date(e.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`}${e.rec.pairs?.length === 1 ? ` (${basename(e.rec.pairs[0][0])} → ${basename(e.rec.pairs[0][1])})` : ''}.`);
     acts(btn('Undo it', async (ev) => { ev.target.disabled = true; try { await H.undoEntry(e); say('Undone.'); } catch (err) { say(`Couldn’t undo: ${err.message}`); } }, 'primary'));
   },
+  async reminders(x, { say }) {
+    const R = await import('./reminders.js');
+    const items = selectedItems(activeTab()).filter((i) => !i.isDir);
+    if (x.about && items.length === 1) { R.remindAbout(items[0]); return say(`Reading ${items[0].name} for its expiry date…`); }
+    R.openReminders();
+    say(R.remCfg().enabled ? 'Here are your document reminders.' : 'Turn on document reminders here: Dogfile will look through your Downloads and Documents for passports, licences, insurance, warranties and bills, and remind you before they expire.');
+  },
   async whoLocks(x, { say }) {
     const items = selectedItems(activeTab());
     if (!items.length) return say('Select the file that won’t delete or move, then ask again.');

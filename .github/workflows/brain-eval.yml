@@ -3,9 +3,7 @@
 # grammar as Dogfile) and saves every answer to the brain-eval branch: results-<model>.json and summary.md.
 name: brain-eval
 on:
-  push:
-    branches: [main]
-    paths: ['backend/brain.json', 'backend/src/llm.rs', 'backend/examples/brain_eval.rs', 'build/brain-cases.json', '.github/workflows/brain-eval.yml']
+  # started by hand only (Actions > brain-eval > Run workflow): a run takes a while and uses the runner
   workflow_dispatch:
 permissions:
   contents: write

@@ -113,6 +113,16 @@ fn backend() -> Result<&'static LlamaBackend, String> {
     .as_ref()
     .map_err(|e| e.clone())
 }
+/// Windows 11 moves programs whose window isn't in front onto the slow, power-saving cores (EcoQoS), which makes the
+/// model several times slower on Intel 12th gen and later. Opt this process out while the model runs.
+fn full_speed() {
+    #[cfg(windows)]
+    unsafe {
+        use windows::Win32::System::Threading::{GetCurrentProcess, ProcessPowerThrottling, SetProcessInformation, PROCESS_POWER_THROTTLING_EXECUTION_SPEED, PROCESS_POWER_THROTTLING_STATE};
+        let st = PROCESS_POWER_THROTTLING_STATE { Version: 1, ControlMask: PROCESS_POWER_THROTTLING_EXECUTION_SPEED, StateMask: 0 };
+        let _ = SetProcessInformation(GetCurrentProcess(), ProcessPowerThrottling, &st as *const _ as *const core::ffi::c_void, std::mem::size_of::<PROCESS_POWER_THROTTLING_STATE>() as u32);
+    }
+}
 /// what llama.cpp was built with and found (AVX2 = 1 …)
 pub fn system_info() -> String {
     unsafe { std::ffi::CStr::from_ptr(llama_cpp_sys_2::llama_print_system_info()) }.to_string_lossy().trim().to_string()
@@ -125,8 +135,10 @@ fn threads() -> (i32, i32) {
             return (g, r);
         }
     }
+    // about one per physical core, at most 8: on the PCs measured, using the hyper-threads too made reading 4-8x slower
     let n = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4);
-    ((n / 2).clamp(2, 8) as i32, n.clamp(2, 16) as i32)
+    let t = (n / 2).clamp(2, 8) as i32;
+    (t, t)
 }
 fn hash(s: &str) -> String {
     use sha2::{Digest, Sha256};
@@ -137,6 +149,7 @@ fn hash(s: &str) -> String {
 /// Run the model on this thread until the channel closes. `status` reports progress ("loading", "ready").
 pub fn serve(model_path: &Path, state_dir: &Path, rx: Receiver<Job>, status: &dyn Fn(&str)) -> Result<(), String> {
     status("loading");
+    full_speed();
     let backend = backend()?;
     status(&format!("cpu: {} | threads {:?}", system_info(), threads()));
     let mparams = LlamaModelParams::default();

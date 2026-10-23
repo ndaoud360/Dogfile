@@ -39,16 +39,19 @@ jobs:
           # llama.cpp's own Windows build (clang, AVX2)
           try {
           $rel = Invoke-RestMethod https://api.github.com/repos/ggml-org/llama.cpp/releases/latest
-          $asset = $rel.assets | Where-Object { $_.name -match 'bin-win-cpu-x64\.zip$' } | Select-Object -First 1
+          $asset = $rel.assets | Where-Object { $_.name -match 'win' -and $_.name -match 'x64' -and $_.name -match '(cpu|avx2)' -and $_.name -notmatch '(cuda|vulkan|sycl|hip|opencl|cudart)' } | Select-Object -First 1
+          if (-not $asset) { $o += "llama.cpp assets: $(($rel.assets | ForEach-Object name) -join ', ')" }
           $d = "$env:RUNNER_TEMP\llamacpp"; Remove-Item -Recurse -Force $d -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Force $d | Out-Null
           Invoke-WebRequest $asset.browser_download_url -OutFile "$d\l.zip"; Expand-Archive "$d\l.zip" -DestinationPath $d -Force
           $bench = Get-ChildItem $d -Recurse -Filter llama-bench.exe | Select-Object -First 1
           $o += "llama.cpp $($rel.tag_name) ($($asset.name))"
-          foreach ($m in @('Qwen3.5-4B-Q4_K_M.gguf', 'Qwen3-4B-Instruct-2507-Q4_K_M.gguf')) {
+          foreach ($m in @('Qwen3.5-4B-Q4_K_M.gguf')) {
             $mp = "$env:USERPROFILE\dogfile-models\$m"
             if (-not (Test-Path $mp)) { $o += "$m not downloaded"; continue }
-            $r = & $bench.FullName -m $mp -p 64 -n 32 -t 4,8 -r 2 -o md 2>$null | Out-String
-            $o += "== $m"; $o += $r
+            $r = & $bench.FullName -m $mp -p 64 -n 32 -t 4,6,8 -r 2 -o md 2>$null | Out-String
+            $o += "== $m (normal)"; $o += $r
+            $r = & $bench.FullName -m $mp -p 64 -n 32 -t 6 -r 2 --prio 2 -o md 2>$null | Out-String
+            $o += "== $m (--prio 2: high priority, no power throttling)"; $o += $r
           }
           } catch { $o += "llama.cpp bench failed: $_" }
           $text = $o -join "`n"

@@ -91,21 +91,192 @@
     "checkFeature": "check a custom Dogfile feature for problems"
   },
   "examples": [
-    ["Folder: C:\\Users\\Ana\\Documents\nIn this folder: History.txt, Budget.xlsx, Old (folder)\nRequest: Move History.txt to downloads", {"steps": [{"do": "files", "action": "move", "names": ["History.txt"], "to": "downloads"}]}],
-    ["Folder: C:\\Users\\Ana\\Downloads\nRequest: find all the pdfs from last week and zip them as receipts then move the zip to my desktop", {"steps": [{"do": "files", "action": "find", "what": "pdfs modified last week", "where": "here"}, {"do": "files", "action": "zip", "where": "previous", "to": "receipts"}, {"do": "files", "action": "move", "names": ["receipts.zip"], "to": "desktop"}]}],
-    ["Folder: C:\\Users\\Ana\\Pictures\nSelected: IMG_2041.jpg, IMG_2042.jpg\nRequest: tag these red and rename them with the date they were taken", {"steps": [{"do": "files", "action": "tag", "where": "selection", "to": "red"}, {"do": "files", "action": "rename", "where": "selection", "to": "the date taken"}]}],
-    ["Folder: C:\\Users\\Ana\nRequest: show me my file history", {"steps": [{"do": "feature", "id": "history"}]}],
-    ["Folder: C:\\Users\\Ana\nRequest: undo the rename i did 5 minutes ago", {"steps": [{"do": "feature", "id": "history", "detail": "undo the rename from 5 minutes ago"}]}],
-    ["Folder: D:\\Music\nRequest: whats eating my disk space", {"steps": [{"do": "feature", "id": "analyze"}]}],
-    ["Folder: C:\\Users\\Ana\\Videos\nRequest: convert every mkv here to mp4 and then delete the mkvs", {"steps": [{"do": "feature", "id": "convertMedia", "detail": "every mkv here to mp4"}, {"do": "files", "action": "delete", "what": "mkv files", "where": "here"}]}],
-    ["Folder: C:\\Projects\nRequest: how do i make the sidebar see through", {"steps": [{"do": "help", "question": "how do I make the sidebar see-through?"}]}],
-    ["Folder: C:\\Projects\nRequest: make the sidebar see through and switch to dark mode", {"steps": [{"do": "feature", "id": "glass", "detail": "on"}, {"do": "feature", "id": "theme", "detail": "dark"}]}],
-    ["Folder: C:\\Users\\Ana\\Desktop\nIn this folder: notes.txt, Screenshot 1.png, Screenshot 2.png, todo.md\nRequest: put all the screenshots in a folder called shots", {"steps": [{"do": "files", "action": "new_folder", "to": "shots", "where": "here"}, {"do": "files", "action": "move", "what": "screenshots", "where": "here", "to": "shots"}]}],
-    ["Folder: C:\\Users\\Ana\\Documents\nOpen in this tab: Notepad, editing letter.txt\nRequest: fix the spelling and make it more formal", {"steps": [{"do": "app", "request": "fix the spelling and make it more formal"}]}],
-    ["Folder: C:\\Users\\Ana\nRequest: write a short thank you email to my landlord", {"steps": [{"do": "write", "request": "a short thank you email to my landlord"}]}],
-    ["Folder: C:\\Users\\Ana\nRequest: delete the thing", {"steps": [{"do": "ask", "question": "Which file or folder should I delete?"}]}],
-    ["Folder: C:\\Users\\Ana\nRequest: thanks!", {"steps": [{"do": "say", "text": "You're welcome!"}]}],
-    ["Folder: C:\\Users\\Ana\\Music\nRequest: open my downloads and show the biggest files there", {"steps": [{"do": "go", "place": "downloads"}, {"do": "files", "action": "find", "what": "the 20 largest files", "where": "downloads"}]}],
-    ["Folder: C:\\Work\nIn this folder: Macros.xlsx, Automation plan.docx, history notes.md\nRequest: copy automation plan and history notes to the backup folder on D", {"steps": [{"do": "files", "action": "copy", "names": ["Automation plan.docx", "history notes.md"], "to": "D:\\backup"}]}]
+    [
+      "Folder: C:\\Users\\Ana\\Documents\nIn this folder: History.txt, Budget.xlsx, Old (folder)\nRequest: Move History.txt to downloads",
+      {
+        "steps": [
+          {
+            "do": "files",
+            "action": "move",
+            "names": [
+              "History.txt"
+            ],
+            "to": "downloads"
+          }
+        ]
+      }
+    ],
+    [
+      "Folder: C:\\Users\\Ana\\Downloads\nRequest: find all the pdfs from last week and zip them as receipts then move the zip to my desktop",
+      {
+        "steps": [
+          {
+            "do": "files",
+            "action": "find",
+            "what": "pdfs modified last week",
+            "where": "here"
+          },
+          {
+            "do": "files",
+            "action": "zip",
+            "where": "previous",
+            "to": "receipts"
+          },
+          {
+            "do": "files",
+            "action": "move",
+            "names": [
+              "receipts.zip"
+            ],
+            "to": "desktop"
+          }
+        ]
+      }
+    ],
+    [
+      "Folder: C:\\Users\\Ana\\Pictures\nSelected: IMG_2041.jpg, IMG_2042.jpg\nRequest: tag these red and rename them with the date they were taken",
+      {
+        "steps": [
+          {
+            "do": "files",
+            "action": "tag",
+            "where": "selection",
+            "to": "red"
+          },
+          {
+            "do": "files",
+            "action": "rename",
+            "where": "selection",
+            "to": "the date taken"
+          }
+        ]
+      }
+    ],
+    [
+      "Folder: C:\\Users\\Ana\nRequest: show me my file history",
+      {
+        "steps": [
+          {
+            "do": "feature",
+            "id": "history"
+          }
+        ]
+      }
+    ],
+    [
+      "Folder: C:\\Users\\Ana\\Videos\nRequest: convert every mkv here to mp4 and then delete the mkvs",
+      {
+        "steps": [
+          {
+            "do": "feature",
+            "id": "convertMedia",
+            "detail": "every mkv here to mp4"
+          },
+          {
+            "do": "files",
+            "action": "delete",
+            "what": "mkv files",
+            "where": "here"
+          }
+        ]
+      }
+    ],
+    [
+      "Folder: C:\\Projects\nRequest: how do i make the sidebar see through",
+      {
+        "steps": [
+          {
+            "do": "help",
+            "question": "how do I make the sidebar see-through?"
+          }
+        ]
+      }
+    ],
+    [
+      "Folder: C:\\Projects\nRequest: make the sidebar see through and switch to dark mode",
+      {
+        "steps": [
+          {
+            "do": "feature",
+            "id": "glass",
+            "detail": "on"
+          },
+          {
+            "do": "feature",
+            "id": "theme",
+            "detail": "dark"
+          }
+        ]
+      }
+    ],
+    [
+      "Folder: C:\\Users\\Ana\\Desktop\nIn this folder: notes.txt, Screenshot 1.png, Screenshot 2.png, todo.md\nRequest: put all the screenshots in a folder called shots",
+      {
+        "steps": [
+          {
+            "do": "files",
+            "action": "new_folder",
+            "to": "shots",
+            "where": "here"
+          },
+          {
+            "do": "files",
+            "action": "move",
+            "what": "screenshots",
+            "where": "here",
+            "to": "shots"
+          }
+        ]
+      }
+    ],
+    [
+      "Folder: C:\\Users\\Ana\\Documents\nOpen in this tab: Notepad, editing letter.txt\nRequest: fix the spelling and make it more formal",
+      {
+        "steps": [
+          {
+            "do": "app",
+            "request": "fix the spelling and make it more formal"
+          }
+        ]
+      }
+    ],
+    [
+      "Folder: C:\\Users\\Ana\nRequest: write a short thank you email to my landlord",
+      {
+        "steps": [
+          {
+            "do": "write",
+            "request": "a short thank you email to my landlord"
+          }
+        ]
+      }
+    ],
+    [
+      "Folder: C:\\Users\\Ana\nRequest: delete the thing",
+      {
+        "steps": [
+          {
+            "do": "ask",
+            "question": "Which file or folder should I delete?"
+          }
+        ]
+      }
+    ],
+    [
+      "Folder: C:\\Work\nIn this folder: Macros.xlsx, Automation plan.docx, history notes.md\nRequest: copy automation plan and history notes to the backup folder on D",
+      {
+        "steps": [
+          {
+            "do": "files",
+            "action": "copy",
+            "names": [
+              "Automation plan.docx",
+              "history notes.md"
+            ],
+            "to": "D:\\backup"
+          }
+        ]
+      }
+    ]
   ]
 }

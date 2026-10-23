@@ -111,10 +111,10 @@ fn backend() -> Result<&'static LlamaBackend, String> {
     .as_ref()
     .map_err(|e| e.clone())
 }
-fn threads() -> i32 {
+/// threads for generating (one token at a time: physical cores are best) and for reading (batches: all of them)
+fn threads() -> (i32, i32) {
     let n = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4);
-    // llama.cpp is fastest on physical cores; logical counts are usually twice that
-    (n / 2).clamp(2, 8) as i32
+    ((n / 2).clamp(2, 8) as i32, n.clamp(2, 16) as i32)
 }
 fn hash(s: &str) -> String {
     use sha2::{Digest, Sha256};
@@ -128,8 +128,8 @@ pub fn serve(model_path: &Path, state_dir: &Path, rx: Receiver<Job>, status: &dy
     let backend = backend()?;
     let mparams = LlamaModelParams::default();
     let model = LlamaModel::load_from_file(backend, model_path, &mparams).map_err(|e| format!("The assistant's model couldn't be loaded: {e}"))?;
-    let n = threads();
-    let cparams = LlamaContextParams::default().with_n_ctx(NonZeroU32::new(N_CTX)).with_n_batch(512).with_n_threads(n).with_n_threads_batch(n);
+    let (n_gen, n_read) = threads();
+    let cparams = LlamaContextParams::default().with_n_ctx(NonZeroU32::new(N_CTX)).with_n_batch(512).with_n_threads(n_gen).with_n_threads_batch(n_read);
     let mut ctx = model.new_context(backend, cparams).map_err(|e| e.to_string())?;
     let grammar = llama_cpp_2::json_schema_to_grammar(&schema().to_string()).map_err(|e| format!("grammar: {e}"))?;
     let vocab = model.vocab();
@@ -184,8 +184,8 @@ pub fn serve(model_path: &Path, state_dir: &Path, rx: Receiver<Job>, status: &dy
             let last = -1; // the last logits in the context
             let mut n_out = 0;
             loop {
+                // sample() also feeds the token to the grammar (accepting it again would break the grammar)
                 let tok: LlamaToken = sampler.sample(&ctx, last);
-                sampler.accept(tok);
                 if vocab.is_eog(tok) || n_out >= MAX_OUT {
                     break;
                 }

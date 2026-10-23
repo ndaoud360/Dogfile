@@ -1,0 +1,8 @@
+# llama.cpp (the assistant's model) is compiled with the x86 speed-ups that nearly every PC since 2015 has (AVX2, FMA,
+# F16C). Without them it runs 10-20x slower. llm::cpu_ok() keeps it off on older processors. ggml ignores these on ARM.
+[env]
+GGML_AVX = "ON"
+GGML_AVX2 = "ON"
+GGML_FMA = "ON"
+GGML_F16C = "ON"
+GGML_BMI2 = "ON"

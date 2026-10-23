@@ -18,11 +18,18 @@
     "- say: greetings, thanks, or anything unrelated to files and Dogfile. text: a short friendly reply. Never state facts about the user's files here.",
     "",
     "Rules:",
+    "- Opening a file or folder is a files step with action open. Use app only when there is an \"Open in this tab\" line and the request is about that document, picture or video.",
+    "- These are features, never files actions: rotate or flip pictures (transformPics); convert pictures to another format, heic to jpg (convertImages); convert videos or audio, or compress (shrink) them (convertMedia); turn an archive into another type, rar to zip (convertArchive); bring back an earlier version (restoreVersion); checksums or hashes (makeChecksums); star ratings (rate); writing a Dogfile feature or mod (writeFeature). zip only means packing files into a new archive, rename only changes names, tag only adds tags.",
+    "- move and copy always have to: the place after into, to, in or onto.",
+    "- Sorting files into folders by type, year, month or anything else is files with action group and that in to. declutter is only for tidying a folder without saying how.",
+    "- size is only for how much space files take. Finding the biggest, newest or oldest files is find, with that in what (\"the 10 biggest files\").",
+    "- To show a folder use go; to change how files look (gallery, list, details) use the view feature. Never repeat a step.",
+    "- When the user means particular files from \"In this folder\" or \"Selected\" (\"the other two\", \"the final one\"), list their exact names in names, not in what.",
+    "- If the user gives a file's name but it isn't listed (\"the file called history\"), put the name in names anyway: Dogfile searches for it. Use ask only when there's no name and no kind of file to go on.",
     "- Break a request with several parts into steps, in order. Later steps can work on earlier results with where: previous.",
     "- A word that is part of a file name (History.txt, settings.json, \"Macros list.docx\") is a file, never a feature.",
     "- \"it\", \"this\", \"these\" mean the selection when something is selected; otherwise the previous result.",
     "- Only use a feature when the user wants that feature. Moving, copying, deleting, zipping, renaming or tagging files is always a files step.",
-    "- Don't guess. If the user names a file that isn't in this folder or selected, still use names (Dogfile searches for it). If you can't tell what they want, use ask.",
     "- Questions starting with how, where, why, what does, can I about Dogfile itself are help, not features.",
     "- Keep text short. Use the user's language for say, ask and help."
   ],
@@ -44,7 +51,7 @@
     "collection": "smart collection: a saved live search",
     "writeTags": "write Dogfile tags into the files' Windows properties",
     "autoTag": "tag pictures automatically by what's in them",
-    "rate": "give files a star rating",
+    "rate": "give files a star rating (1 to 5 stars)",
     "folderNote": "a note or checklist shown at the top of a folder",
     "note": "attach a note to the selected file",
     "docProps": "edit document properties (author, title, keywords)",
@@ -67,7 +74,7 @@
     "similarMedia": "find similar videos or songs",
     "classifyPics": "separate screenshots from camera photos",
     "convertImages": "convert pictures to another format or size",
-    "convertMedia": "convert or compress videos and audio",
+    "convertMedia": "convert videos and audio to another format, or compress (shrink) them",
     "transformPics": "rotate or flip pictures",
     "contactSheet": "contact sheet (thumbnail grid) of videos or photos",
     "analyze": "disk space map: what's using the space",
@@ -159,6 +166,24 @@
           {
             "do": "feature",
             "id": "history"
+          }
+        ]
+      }
+    ],
+    [
+      "Folder: C:\\Users\\Ana\\Pictures\nSelected: IMG_0101.jpg\nRequest: rotate it 90 degrees and sort this folder into folders by year",
+      {
+        "steps": [
+          {
+            "do": "feature",
+            "id": "transformPics",
+            "detail": "rotate 90 degrees"
+          },
+          {
+            "do": "files",
+            "action": "group",
+            "where": "here",
+            "to": "year"
           }
         ]
       }

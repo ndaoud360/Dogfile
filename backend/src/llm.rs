@@ -22,6 +22,8 @@ use llama_cpp_2::llama_batch::LlamaBatch;
 use llama_cpp_2::model::params::LlamaModelParams;
 use llama_cpp_2::model::LlamaModel;
 use llama_cpp_2::sampling::LlamaSampler;
+use llama_cpp_2::token::data::LlamaTokenData;
+use llama_cpp_2::token::data_array::LlamaTokenDataArray;
 use llama_cpp_2::token::LlamaToken;
 
 pub const BRAIN: &str = include_str!("../brain.json");
@@ -178,17 +180,30 @@ pub fn serve(model_path: &Path, state_dir: &Path, rx: Receiver<Job>, status: &dy
             let mut pos = sys_tokens.len() as i32;
             decode_tokens(&mut ctx, &toks, pos, true)?;
             pos += toks.len() as i32;
-            let mut sampler = LlamaSampler::chain_simple([LlamaSampler::grammar(&model, &grammar, "root").map_err(|e| format!("grammar: {e}"))?, LlamaSampler::greedy()]);
+            // greedy decoding under the grammar. Checking the grammar against all ~250k tokens every step is slow, so
+            // (like llama.cpp's own sampler) take the most likely token first and only fall back to filtering the whole
+            // vocabulary when the grammar rejects it.
+            let mut grammar_s = LlamaSampler::grammar(&model, &grammar, "root").map_err(|e| format!("grammar: {e}"))?;
             let mut out: Vec<u8> = Vec::new();
             let mut batch = LlamaBatch::new(1, 1);
-            let last = -1; // the last logits in the context
             let mut n_out = 0;
             loop {
-                // sample() also feeds the token to the grammar (accepting it again would break the grammar)
-                let tok: LlamaToken = sampler.sample(&ctx, last);
+                let logits = ctx.get_logits_ith(-1);
+                let best = logits.iter().enumerate().fold((0usize, f32::NEG_INFINITY), |m, (i, &l)| if l > m.1 { (i, l) } else { m });
+                let cand = LlamaToken::new(best.0 as i32);
+                let mut one = LlamaTokenDataArray::new(vec![LlamaTokenData::new(cand, best.1, 0.0)], false);
+                grammar_s.apply(&mut one);
+                let tok = if one.data[0].logit().is_finite() {
+                    cand
+                } else {
+                    let mut all = ctx.token_data_array_ith(-1);
+                    grammar_s.apply(&mut all);
+                    all.data.iter().filter(|d| d.logit().is_finite()).max_by(|x, y| x.logit().total_cmp(&y.logit())).map(|d| d.id()).ok_or("The assistant got stuck")?
+                };
                 if vocab.is_eog(tok) || n_out >= MAX_OUT {
                     break;
                 }
+                grammar_s.accept(tok);
                 out.extend(vocab.token_to_piece(tok, false, None));
                 n_out += 1;
                 batch.clear();
@@ -308,6 +323,17 @@ fn test_plans() -> Option<Value> {
     let f = std::env::var("DOGFILE_TEST_PLANS").ok()?;
     serde_json::from_str(&std::fs::read_to_string(f).ok()?).ok()
 }
+/// the model is built for processors with AVX2 (nearly every PC since 2015); older ones keep the built-in assistant
+pub fn cpu_ok() -> bool {
+    #[cfg(target_arch = "x86_64")]
+    {
+        is_x86_feature_detected!("avx2") && is_x86_feature_detected!("fma") && is_x86_feature_detected!("f16c") && is_x86_feature_detected!("bmi2")
+    }
+    #[cfg(not(target_arch = "x86_64"))]
+    {
+        true
+    }
+}
 /// llm:status
 pub fn status(_a: &Args) -> R {
     if test_plans().is_some() {
@@ -315,7 +341,8 @@ pub fn status(_a: &Args) -> R {
     }
     let c = chosen();
     let mut v = status_json();
-    v["available"] = json!(c.is_some());
+    v["available"] = json!(c.is_some() && cpu_ok());
+    v["cpuOk"] = json!(cpu_ok());
     v["model"] = json!(c.map(|x| x.0));
     v["memoryGb"] = json!(crate::sys::total_memory_gb());
     Ok(v)
@@ -324,6 +351,9 @@ pub fn status(_a: &Args) -> R {
 pub fn warm(_a: &Args) -> R {
     if test_plans().is_some() {
         return Ok(json!(true));
+    }
+    if !cpu_ok() {
+        return Err("This PC's processor is too old for the assistant's model".into());
     }
     let (_, f) = chosen().ok_or("The assistant's model isn't downloaded")?;
     ensure(&f, &crate::ai::models_dir());
@@ -336,6 +366,9 @@ pub async fn plan(a: &Args) -> R {
     if let Some(t) = test_plans() {
         let req = context.lines().last().unwrap_or("").trim_start_matches("Request: ").trim().to_string();
         return t.get(&req).map(|p| json!({ "plan": p, "ms": 1 })).ok_or_else(|| format!("no test plan for {req:?}"));
+    }
+    if !cpu_ok() {
+        return Err("This PC's processor is too old for the assistant's model".into());
     }
     let (_, f) = chosen().ok_or("The assistant's model isn't downloaded")?;
     let tx = ensure(&f, &crate::ai::models_dir());

@@ -786,6 +786,12 @@ async function runFilesStep(step, el, { t, sel, last }) {
   }
   // what it works on: the selection, the last result, names checked against the real files, or a search
   let onSel = null;
+  // exact names put in "what" by mistake ("Q3 Report.docx, Q3 Report (1).docx"): use them as names
+  if (!step.names?.length && step.what && /[,;]|\.[a-z0-9]{1,5}\b/i.test(step.what)) {
+    const parts = String(step.what).split(/\s*(?:[,;]|\band\b)\s*/).map((x) => x.trim()).filter(Boolean);
+    const all = [...sel, ...(t?.items || []), ...(C.items || [])];
+    if (parts.length && parts.every((x) => all.some((i) => i.name.toLowerCase() === x.toLowerCase()))) step = { ...step, names: parts, what: '' };
+  }
   if (step.names?.length) {
     const pools = [sel, t?.items || [], C.items || []];
     let { found, missing } = resolveNames(step.names, pools);

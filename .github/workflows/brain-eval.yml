@@ -17,11 +17,25 @@ jobs:
         shell: bash
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         include:
           - name: 4b
             repo: unsloth/Qwen3.5-4B-GGUF
             file: Qwen3.5-4B-Q4_K_M.gguf
+            threads: ''
+          - name: 4b-t8
+            repo: unsloth/Qwen3.5-4B-GGUF
+            file: Qwen3.5-4B-Q4_K_M.gguf
+            threads: '8,8'
+          - name: 4b-t4
+            repo: unsloth/Qwen3.5-4B-GGUF
+            file: Qwen3.5-4B-Q4_K_M.gguf
+            threads: '4,4'
+          - name: qwen3-4b
+            repo: unsloth/Qwen3-4B-Instruct-2507-GGUF
+            file: Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+            threads: ''
     steps:
       - uses: actions/checkout@v4
       - name: Git's bash on the path (self-hosted Windows)
@@ -61,8 +75,9 @@ jobs:
       - name: Run
         env:
           BRAIN_LIMIT: '12'   # a quick run while the speed is being worked on
+          BRAIN_THREADS: ${{ matrix.threads }}
         run: |
-          M=models; [ "${{ vars.RUNNER }}" = pc ] && M="$HOME/dogfile-models"
+          M=models; [ "${{ vars.RUNNER }}" = pc ] && M="$HOME/dogfile-models" && export BRAIN_STATE_DIR="$HOME/dogfile-models/state"
           set -o pipefail
           nproc 2>/dev/null || echo "$NUMBER_OF_PROCESSORS"
           ./target/release/examples/brain_eval "$M/${{ matrix.file }}" build/brain-cases.json results-${{ matrix.name }}.json 2>&1 | tee log-${{ matrix.name }}.txt

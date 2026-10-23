@@ -40,7 +40,7 @@ fn main() {
     }
     let (tx, rx) = channel();
     let m = std::path::PathBuf::from(model);
-    let state_dir = std::env::temp_dir().join("dogfile-brain-eval");
+    let state_dir = std::env::var("BRAIN_STATE_DIR").map(std::path::PathBuf::from).unwrap_or_else(|_| std::env::temp_dir().join("dogfile-brain-eval"));
     let t0 = std::time::Instant::now();
     std::thread::spawn(move || {
         if let Err(e) = dogfile_backend::llm::serve(&m, &state_dir, rx, &|s| eprintln!("[{:.1}s] {s}", t0.elapsed().as_secs_f32())) {

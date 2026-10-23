@@ -119,6 +119,12 @@ pub fn system_info() -> String {
 }
 /// threads for generating (one token at a time: physical cores are best) and for reading (batches: all of them)
 fn threads() -> (i32, i32) {
+    // BRAIN_THREADS="gen,read" overrides (for measuring)
+    if let Some((g, r)) = std::env::var("BRAIN_THREADS").ok().and_then(|v| v.split_once(',').map(|(a, b)| (a.trim().parse().ok(), b.trim().parse().ok()))) {
+        if let (Some(g), Some(r)) = (g, r) {
+            return (g, r);
+        }
+    }
     let n = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4);
     ((n / 2).clamp(2, 8) as i32, n.clamp(2, 16) as i32)
 }

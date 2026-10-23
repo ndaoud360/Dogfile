@@ -96,6 +96,13 @@ pub fn start(cfg: Config, host: Arc<dyn Host>) {
     }
     engine::init();
     license::start_background();
+    // the assistant's model gives its memory back after 10 minutes unused
+    tokio::spawn(async {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+            llm::idle_check(600);
+        }
+    });
     ops::configure_from_settings();
     // the media server for live video conversion (a page can't stream from a custom scheme)
     tokio::spawn(async {

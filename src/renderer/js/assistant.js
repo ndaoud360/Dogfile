@@ -11,7 +11,8 @@ import { parseRequest, expandTopic, describePlan } from './assistant-parse.js';
 import { onWorkMsgFor } from './tools.js';
 import { planRules, describeAction } from './organize.js';
 import { parseAppRequest, writingRequest, APP_SUGGEST } from './assistant-apps.js';
-import { matchIntent, OVER_APPS } from './assistant-intents.js';
+import { matchIntent, OVER_APPS, intentParams } from './assistant-intents.js';
+import { brainStatus, brainOn, contextFor, understand, resolveNames, sentenceFor, describeStep } from './assistant-brain.js';
 import { activeAppTab, appAsk } from './apptabs.js';
 import { requirePro } from './license.js';
 
@@ -19,7 +20,7 @@ export const results = new Map(); // id -> items (shown in a tab as atlas:search
 let panel = null, log = null, input = null, sendBtn = null;
 // the request being worked on (Stop ends it) and what the conversation is about (for follow-ups)
 let busy = null;
-const C = { items: null, plan: null };
+const C = { items: null, plan: null, pendingAsk: null };
 function setBusy(on) {
   busy = on ? { stop: false, jobs: new Set() } : null;
   if (!sendBtn) return;
@@ -42,9 +43,29 @@ export function toggleAssistant(force) {
   const open = wantOpen;
   panel.classList.toggle('open', open);
   document.body.classList.toggle('assistant-open', open);
-  if (open) { placeholder(); setTimeout(() => input.focus(), 50); }
+  if (open) { placeholder(); setTimeout(() => input.focus(), 50); brainOnOpen(); }
   bus.emit('syncFrames');
 }
+// when the panel opens: load the model now (so the first request is quick), or offer it once
+let offered = false;
+async function brainOnOpen() {
+  const st = await brainStatus();
+  if (!st) return;
+  if (brainOn(st)) { if (st.state === 'off') api('llm:warm').catch(() => {}); return; }
+  if (st.available || offered || state.settings.brainOfferHidden) return;
+  offered = true;
+  const small = (st.memoryGb || 16) < 9;
+  const size = small ? '1.3 GB' : '2.7 GB';
+  const box = h('div', { class: 'as-offer' },
+    h('b', {}, 'Make me understand anything you ask'),
+    h('p', {}, `Download my language model (${size}, once) and I’ll understand messy, multi-part requests: “move History.txt to Downloads, then zip last week’s PDFs and tag them red”. It runs privately on this PC, also offline.`),
+    h('div', { class: 'as-acts' },
+      h('button', { class: 'btn small primary', onclick: async () => { box.remove(); const { ensureModels } = await import('./ai.js'); if (await ensureModels([small ? 'brain-small' : 'brain'])) { api('llm:warm').catch(() => {}); log.append(msg('bot', h('p', {}, 'Ready. Ask me anything about your files.'))); scrollDown(); } } }, `Download (${size})`),
+      h('button', { class: 'btn small', onclick: () => { box.remove(); } }, 'Not now'),
+      h('button', { class: 'btn small', onclick: () => { state.settings.brainOfferHidden = true; saveSettingsLater(); box.remove(); } }, 'Don’t ask again')));
+  log.prepend(box);
+}
+const saveSettingsLater = () => import('./core.js').then((m) => m.saveSettings());
 function placeholder() {
   if (!input) return;
   const app = activeAppTab()?.app;
@@ -512,6 +533,13 @@ async function execute(plan, card, { t, sel }) {
   }
   if (plan.action === 'tag') {
     const defs = (plan.tags?.length ? plan.tags : [plan.tag]).map((w) => state.tags.defs.find((d) => d.id === w || d.name.toLowerCase() === String(w).toLowerCase())).filter(Boolean);
+    for (const w of (plan.tags?.length ? plan.tags : [plan.tag]).filter(Boolean)) {
+      if (!defs.some((d) => d.id === w || d.name.toLowerCase() === String(w).toLowerCase()) && !/^(red|orange|yellow|green|blue|purple|gray)$/i.test(w)) {
+        const d = { id: 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: String(w)[0].toUpperCase() + String(w).slice(1), color: '#12a594' };
+        state.tags.defs.push(d); defs.push(d);
+        import('./core.js').then((m) => { m.saveTags?.(); bus.emit('tags'); });
+      }
+    }
     if (!defs.length) defs.push(state.tags.defs[0]);
     acts.append(btn(`Tag ${defs.map((d) => d.name).join(' and ')}`, () => { const ps = chosen().map((f) => f.path); for (const d of defs) setTags(ps, d.id, true); done(`Tagged ${ps.length} ${defs.map((d) => d.name).join(' and ')}.`); }, 'primary'));
   }
@@ -538,8 +566,8 @@ const hasTarget = (p) => !!(p.kinds.length || p.topic.length || p.exts.length ||
 function ask(text) { return askAssistant(text); }
 export const resolveNamedFolderPublic = (name) => resolveNamedFolder(name);
 // an action the assistant recognised (settings, tools, history, archives…): see assistant-actions.js
-async function runIntent(intent, text) {
-  const card = startCard(text);
+async function runIntent(intent, text, into = null) {
+  const card = into || startCard(text);
   const { HANDLERS } = await import('./assistant-actions.js');
   const fn = HANDLERS[intent.id];
   if (!fn) { card.append(h('p', {}, 'I know what you mean, but I can’t do that yet.')); return; }
@@ -559,14 +587,15 @@ const WRITE_NEW = /\b(email|e-mail|letter|message|note|memo|poem|story|post|twee
 export async function askAssistant(text) {
   if (busy) stopNow();
   const intent = matchIntent(text);
+  const t = activeTab();
+  const sel = selectedItems(t).filter((i) => !i.virtual);
   // a built-in app in this tab (Notepad, Photos, Player): the request is about it, unless it's clearly about files
   const appT = activeAppTab();
-  if (appT && APP_NAME[appT.app]) {
+  const brainReady = brainOn(await brainStatus());
+  if (appT && APP_NAME[appT.app] && !brainReady) {
     if (intent && (OVER_APPS.has(intent.id) || (intent.id === 'contactSheet' && appT.app === 'player'))) return runIntent(intent, text);
     if (await askApp(appT, text)) return;
   }
-  const t = activeTab();
-  const sel = selectedItems(t).filter((i) => !i.virtual);
   // small talk
   if (/^\s*(hi|hello|hey|yo|thanks|thank you|thx|cheers|good (morning|evening|afternoon))\b[\s!.]*$/i.test(text)) {
     const card = startCard(text);
@@ -574,6 +603,8 @@ export async function askAssistant(text) {
     return;
   }
   if (/^\s*(?:what (?:can|do) you (?:do|help with)|what are you(?: for)?|help|what can i ask(?: you)?|show me what you can do)\s*\??\s*$/i.test(text)) { showAbilities(startCard(text)); return; }
+  // the language model, when it's installed: it understands the request; the rules below are the fallback
+  if (brainOn(await brainStatus()) && (await withBrain(text, { t, sel, appT: appT && APP_NAME[appT.app] ? appT : null }))) return;
   if (intent && intent.id !== 'help') return runIntent(intent, text);
   // something for Notepad / Photos / the Player about the one selected file: open it there and do it
   if (!intent && sel.length === 1 && !sel[0].isDir && !NOT_IN_APP.test(text)) {
@@ -632,6 +663,177 @@ export async function askAssistant(text) {
   }
   return runPlan(plan, startCard(text), { t, sel });
 }
+
+// ---------------- the language model ----------------
+const WAITS = new Set(['move', 'copy', 'delete', 'zip', 'tag', 'shelf']);
+/** understand `text` with the model and carry out its steps; false = fall back to the rules */
+async function withBrain(text, { t, sel, appT }) {
+  const card = startCard(text);
+  const status = h('div', { class: 'as-status' }, h('span', { class: 'as-spin' }), 'Thinking…');
+  card.append(status);
+  scrollDown();
+  const st = await brainStatus();
+  if (st?.state !== 'ready') status.lastChild.textContent = 'Waking up the assistant (the first time takes a moment)…';
+  const ctx = contextFor({ t, sel, appT, last: C.items ? { items: C.items } : null, pendingAsk: C.pendingAsk }, text);
+  setBusy(true);
+  const r = await understand(ctx);
+  setBusy(false);
+  status.remove();
+  if (r.error) {
+    // couldn't understand with the model: the rules have a go (without a second copy of the message)
+    const wrap = card.parentElement; wrap?.previousElementSibling?.remove(); wrap?.remove();
+    console.warn('assistant model:', r.error);
+    return false;
+  }
+  C.pendingAsk = null;
+  const steps = r.steps;
+  // an app request alone goes straight to the app (its own card)
+  if (steps.length === 1 && steps[0].do === 'app' && appT) {
+    const wrap = card.parentElement; wrap?.previousElementSibling?.remove(); wrap?.remove();
+    if (await askApp(appT, steps[0].request || text)) return true;
+    return false;
+  }
+  if (steps.length > 1) card.append(h('p', { class: 'hint' }, `${steps.length} steps:`), h('ol', { class: 'as-steps' }, ...steps.map((x) => h('li', {}, describeStep(x)))));
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+    const el = steps.length > 1 ? h('div', { class: 'as-step' }, h('div', { class: 'as-step-head' }, `${i + 1}. ${describeStep(step)}`)) : card;
+    if (el !== card) card.append(el);
+    scrollDown();
+    const cont = await runStep(step, el, { t: activeTab(), sel: i === 0 ? sel : selectedItems(activeTab()).filter((x) => !x.virtual), appT, text, last: i < steps.length - 1 });
+    if (cont === false) break;
+  }
+  scrollDown();
+  return true;
+}
+
+/** wait until a step's action has been done (its "Done" line), skipped, or failed */
+function waitForDone(el) {
+  return new Promise((resolve) => {
+    if (el.querySelector('.as-done, .as-err')) return resolve(true);
+    const primary = el.querySelector('.as-acts .btn.primary');
+    if (!primary) return resolve(true);
+    const skip = h('button', { class: 'btn small' }, 'Skip this step');
+    const stop = h('button', { class: 'btn small' }, 'Stop here');
+    const bar = h('div', { class: 'as-acts as-wait' }, h('span', { class: 'hint' }, 'The next step starts when this one is done.'), skip, stop);
+    el.append(bar);
+    scrollDown();
+    const mo = new MutationObserver(() => { if (el.querySelector('.as-done, .as-err')) { finish(true); } });
+    const finish = (v) => { mo.disconnect(); bar.remove(); resolve(v); };
+    mo.observe(el, { childList: true, subtree: true });
+    skip.onclick = () => finish(true);
+    stop.onclick = () => finish(false);
+  });
+}
+
+async function runStep(step, el, { t, sel, appT, text, last }) {
+  const say = (x) => el.append(h('p', {}, x));
+  switch (step.do) {
+    case 'say': say(step.text || '…'); return true;
+    case 'ask': say(step.question || 'Could you say a bit more?'); C.pendingAsk = { request: text, question: step.question || '' }; return false;
+    case 'help': { answerHelp(step.question || text, await helpSearch(step.question || text), el); return true; }
+    case 'feature': {
+      const params = intentParams(step.id, step.detail ? `${step.detail}` : text);
+      const merged = Object.keys(params).length ? params : intentParams(step.id, text);
+      await runIntent({ id: step.id, ...merged }, step.detail || text, el);
+      return true;
+    }
+    case 'go': {
+      const k = sys.known || {};
+      const p = String(step.place || '').trim();
+      const key = p.toLowerCase().replace(/^(my|the)\s+/, '').replace(/\s+folder$/, '');
+      const map = { home: 'atlas:home', 'this pc': 'atlas:thispc', computer: 'atlas:thispc', 'recycle bin': 'atlas:recycle', trash: 'atlas:recycle', recent: 'atlas:recent', network: 'atlas:network', photos: k.pictures, ...k };
+      let dest = map[key] || (/^([a-z]:[\\/]?|\\\\|\/)/i.test(p) ? p : null);
+      if (!dest) dest = await resolveNamedFolder(p);
+      if (!dest) { say(`I couldn’t find a place called “${p}”.`); return false; }
+      await navigate(activeTab(), dest);
+      el.append(h('p', { class: 'as-done' }, `Showing ${basename(dest) || p}.`));
+      return true;
+    }
+    case 'app': {
+      if (appT) { await askApp(appT, step.request || text); return true; }
+      say('Open the document, picture or video first (it opens in Notepad, Photos or the Player), then ask again.');
+      return false;
+    }
+    case 'write': {
+      const { openTool } = await import('./apptabs.js');
+      openTool('editor', [], { inTab: true });
+      let tab = null;
+      for (let i = 0; i < 40 && !(tab = activeAppTab()?.app === 'editor' ? activeAppTab() : null); i++) await new Promise((r) => setTimeout(r, 150));
+      if (!tab) { say('Notepad didn’t open.'); return false; }
+      await new Promise((r) => setTimeout(r, 600));
+      await writeInNotepad(tab, step.request || text, { mode: 'insert', autoInsert: true });
+      return true;
+    }
+    case 'files': return runFilesStep(step, el, { t, sel, last });
+  }
+  say('I’m not sure how to do that yet.');
+  return false;
+}
+
+async function runFilesStep(step, el, { t, sel, last }) {
+  const a = step.action;
+  const where = String(step.where || '').toLowerCase();
+  // a new folder: made straight away
+  if (a === 'new_folder') {
+    const base = where && where !== 'here' ? await resolveDest(step.where, t) : { path: t?.path && !isVirtual(t.path) ? t.path : sys.known?.documents };
+    if (!base?.path) { el.append(h('p', {}, 'Open the folder to make it in first.')); return false; }
+    const name = String(step.to || 'New folder').replace(/[<>:"/\\|?*]/g, '_').trim() || 'New folder';
+    const p = pjoin(base.path, name);
+    if (!(await api('fs:stat', p))) await api('fs:mkdir', p);
+    el.append(h('p', { class: 'as-done' }, `Made the folder “${name}”.`));
+    if (t?.path && samePathish(base.path, t.path)) loadTab(t, { soft: true });
+    return true;
+  }
+  // what it works on: the selection, the last result, names checked against the real files, or a search
+  let onSel = null;
+  if (step.names?.length) {
+    const pools = [sel, t?.items || [], C.items || []];
+    let { found, missing } = resolveNames(step.names, pools);
+    // not in the lists (made a moment ago by an earlier step, say): check the folders themselves
+    if (missing.length) {
+      const dirs = [...new Set([t?.path && !isVirtual(t.path) ? t.path : null, ...(C.items || []).map((i) => dirname(i.path)), ...sel.map((i) => dirname(i.path))].filter(Boolean))];
+      const still = [];
+      for (const n of missing) {
+        let hit = null;
+        for (const d of dirs) { const st = await api('fs:stat', pjoin(d, n)).catch(() => null); if (st) { hit = { ...st, path: pjoin(d, n), name: n, isDir: !!st.isDir, ext: n.includes('.') ? n.split('.').pop().toLowerCase() : '' }; break; } }
+        if (hit) found.push(hit); else still.push(n);
+      }
+      missing = still;
+    }
+    if (found.length && !missing.length) onSel = found;
+    else if (!found.length && (where === 'selection' || where === 'previous')) onSel = where === 'selection' ? sel : C.items;
+    else {
+      if (found.length) el.append(h('p', { class: 'hint' }, `I couldn’t find ${missing.map((m) => `“${m}”`).join(', ')} here, so I’ll look for ${missing.length === 1 ? 'it' : 'them'}.`));
+      step = { ...step, _exact: missing };
+    }
+  } else if (where === 'selection' && sel.length) onSel = sel;
+  else if (where === 'previous' && C.items?.length) onSel = C.items;
+  else if ((where === 'selection' || where === 'previous') && !sel.length && !C.items?.length) { el.append(h('p', {}, 'Select the files first (or ask me to find them), then ask again.')); return false; }
+  const { sentence, folder } = sentenceFor(step, { onSelection: !!onSel });
+  const plan = parseRequest(sentence, { hasSelection: !!onSel });
+  // the model's reading wins over the parser's guesses
+  plan.raw = sentence;
+  plan.action = { new_folder: 'find', select: 'find' }[a] || a;
+  if (onSel) { plan.scope = 'selection'; plan.topic = []; plan.kinds = plan.kinds || []; }
+  // names that weren't here: a search for exactly those names (and nothing else)
+  if (step._exact) {
+    const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    plan.regex = `^(?:${step._exact.map((n) => (/\.[a-z0-9]{1,6}$/i.test(n) ? esc(n) : `${esc(n)}(?:\\.[^.]+)?`)).join('|')})$`;
+    plan.topic = []; plan.kinds = []; plan.exts = []; plan.quoted = []; plan.excludeExts = [];
+    plan.notes = [`named ${step._exact.map((n) => `“${n}”`).join(' or ')}`];
+    if (plan.scope === 'selection' || plan.scope === 'everywhere') plan.scope = null;
+  }
+  if ((a === 'move' || a === 'copy') && step.to) plan.dest = step.to;
+  if (a === 'zip' && step.to) plan.zipName = /\.(zip|7z|tar|tgz|tar\.gz)$/i.test(step.to) ? step.to : `${step.to}.zip`;
+  if (a === 'tag' && step.to) { plan.tags = step.to.split(/\s*(?:,|\band\b)\s*/).map((x) => x.trim().toLowerCase()).filter(Boolean); plan.tag = plan.tags[0]; }
+  if (a === 'rename' && step.to && plan.renameMode !== 'content') { plan.renameMode = 'describe'; plan.renameText = step.to; }
+  if (folder) { plan.folderName = null; plan.resolvedFolder = folder; plan.scope = plan.scope === 'selection' ? 'selection' : null; }
+  const items = onSel ? onSel.map((f) => ({ ...f, isDir: !!f.isDir })) : sel;
+  await runPlan(plan, el, { t, sel: items });
+  if (last && WAITS.has(plan.action)) return waitForDone(el);
+  return true;
+}
+const samePathish = (a, b) => String(a).replace(/[\\/]+$/, '').toLowerCase() === String(b).replace(/[\\/]+$/, '').toLowerCase();
 
 // ---------------- the app in this tab ----------------
 const FILE_TALK = /\b(files?|folders?|downloads|documents folder|desktop|pdfs?|photos (?:from|in|about)|videos (?:from|in)|organi[sz]e my|rename these|zip|move (?:these|them|my)|delete (?:these|them|my files))\b/i;

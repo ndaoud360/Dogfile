@@ -317,6 +317,21 @@ export async function openSettings(section = 'general', opts = {}) {
         group('Search'),
         row('Instant search index', h('div', { class: 'stack' }, toggle('indexEnabled'), indexBox), 'Dogfile keeps a list of every file on your drives, so searches, Go to file (Ctrl+P) and folder sizes are instant. It stays up to date while Dogfile runs.'),
         row('Index Windows and program folders', toggle('indexSystem'), 'Off by default: Windows, Program Files, ProgramData and AppData hold most of a system drive\'s files and take memory, but are rarely searched. Searching inside them still works, just without the index.'),
+        row('Assistant’s language model', (() => {
+          const box = h('div', { class: 'stack' });
+          const draw = async () => {
+            const [ai, st] = await Promise.all([api('ai:status'), api('llm:status').catch(() => ({}))]);
+            box.innerHTML = '';
+            const dl = (k, label) => (ai[k]?.ready ? h('button', { class: 'btn small', onclick: async () => { await api('llm:stop'); await api('ai:remove', k); draw(); } }, `Remove ${label}`) : h('button', { class: 'btn small primary', onclick: async () => { const { ensureModels } = await import('./ai.js'); await ensureModels([k]); draw(); } }, `Download ${label}`));
+            box.append(
+              h('label', { class: 'check' }, toggle('assistantBrain'), ' Use it to understand requests'),
+              select('assistantModel', [['auto', 'Best one downloaded'], ['brain', '4B: understands most (2.7 GB, 8 GB+ memory)'], ['brain-small', '2B: faster, less memory (1.3 GB)']], () => api('llm:stop')),
+              h('div', { class: 'row-inline', style: { flexWrap: 'wrap', gap: '6px' } }, dl('brain', '4B'), dl('brain-small', '2B')),
+              h('div', { class: 'hint' }, st.available ? `In use: ${st.model === 'brain' ? 'Qwen3.5 4B' : 'Qwen3.5 2B'} · ${{ ready: 'loaded', loading: 'loading…', reading: 'getting ready…', off: 'loads when you ask something' }[st.state] || st.state}` : 'Not downloaded: the assistant uses its built-in rules.'));
+          };
+          draw();
+          return box;
+        })(), 'Qwen3.5 by Alibaba (Apache 2.0), run by llama.cpp inside Dogfile. Private: it runs on this PC, also offline. It turns what you type into steps; Dogfile checks the files and shows you the plan before changing anything.'),
         row('AI search', h('div', { class: 'row-inline' }, toggle('aiSearch'), h('button', { class: 'btn small', onclick: () => import('./ai.js').then((m) => m.modelsDialog()) }, 'Models…')), 'Search photos, videos and songs by describing them (“photos of a dog running on grass”). Runs privately on this PC with free models downloaded once.'),
         (() => {
           const st = h('div', { class: 'hint' }, 'Searches ask voidtools Everything for instant whole-disk results. Needs Everything running and its command-line tool es.exe.');

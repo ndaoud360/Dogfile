@@ -277,3 +277,24 @@ pub async fn everything_status() -> R {
     let run = if es.is_some() { None } else { everything_exe() };
     Ok(json!({ "es": es.as_ref().map(|p| p.to_string_lossy().into_owned()), "running": es.is_some() || run.is_some(), "exe": run.map(|p| p.to_string_lossy().into_owned()) }))
 }
+
+/// the PC's memory in GB (to suggest the right size of the assistant's model)
+pub fn total_memory_gb() -> f64 {
+    #[cfg(windows)]
+    {
+        use windows::Win32::System::SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX};
+        let mut m = MEMORYSTATUSEX { dwLength: std::mem::size_of::<MEMORYSTATUSEX>() as u32, ..Default::default() };
+        if unsafe { GlobalMemoryStatusEx(&mut m) }.is_ok() {
+            return m.ullTotalPhys as f64 / 1073741824.0;
+        }
+        0.0
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("sysctl").args(["-n", "hw.memsize"]).output().ok().and_then(|o| String::from_utf8_lossy(&o.stdout).trim().parse::<f64>().ok()).map(|b| b / 1073741824.0).unwrap_or(0.0)
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        std::fs::read_to_string("/proc/meminfo").ok().and_then(|s| s.lines().find(|l| l.starts_with("MemTotal")).and_then(|l| l.split_whitespace().nth(1)?.parse::<f64>().ok())).map(|kb| kb / 1048576.0).unwrap_or(0.0)
+    }
+}

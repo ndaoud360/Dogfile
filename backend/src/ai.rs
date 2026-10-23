@@ -18,7 +18,7 @@ struct Model {
     files: &'static [&'static str],
     optional: &'static [&'static str],
 }
-const MODELS: [(&str, Model); 6] = [
+const MODELS: [(&str, Model); 8] = [
     ("clip", Model { repo: "Xenova/clip-vit-base-patch32", label: "Pictures & video (CLIP)", files: &["config.json", "preprocessor_config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "onnx/text_model_quantized.onnx", "onnx/vision_model_quantized.onnx"], optional: &["special_tokens_map.json"] }),
     ("whisper", Model { repo: "Xenova/whisper-base", label: "Speech to text (Whisper)", files: &["config.json", "generation_config.json", "preprocessor_config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "added_tokens.json", "onnx/encoder_model_quantized.onnx", "onnx/decoder_model_merged_quantized.onnx"], optional: &["special_tokens_map.json", "added_tokens.json"] }),
     ("minilm", Model { repo: "Xenova/all-MiniLM-L6-v2", label: "Text understanding (MiniLM)", files: &["config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "onnx/model_quantized.onnx"], optional: &["special_tokens_map.json"] }),
@@ -26,8 +26,21 @@ const MODELS: [(&str, Model); 6] = [
     // int8 for the processor (works everywhere) or 4-bit for the graphics card (much faster where WebGPU works)
     ("writer", Model { repo: "onnx-community/Qwen2.5-0.5B-Instruct", label: "Writing helper (Qwen2.5 0.5B)", files: &["config.json", "generation_config.json", "tokenizer.json", "tokenizer_config.json", "onnx/model_quantized.onnx"], optional: &["generation_config.json"] }),
     ("writer-gpu", Model { repo: "onnx-community/Qwen2.5-0.5B-Instruct", label: "Writing helper for the graphics card (Qwen2.5 0.5B)", files: &["config.json", "generation_config.json", "tokenizer.json", "tokenizer_config.json", "onnx/model_q4f16.onnx"], optional: &["generation_config.json"] }),
+    // the assistant's language model (llama.cpp, GGUF): 4B for most PCs, 2B where memory is short
+    ("brain", Model { repo: "unsloth/Qwen3.5-4B-GGUF", label: "Assistant (Qwen3.5 4B)", files: &["Qwen3.5-4B-Q4_K_M.gguf"], optional: &[] }),
+    ("brain-small", Model { repo: "unsloth/Qwen3.5-2B-GGUF", label: "Assistant, smaller (Qwen3.5 2B)", files: &["Qwen3.5-2B-Q4_K_M.gguf"], optional: &[] }),
     ("clap", Model { repo: "Xenova/clap-htsat-unfused", label: "Music & sounds (CLAP)", files: &["config.json", "preprocessor_config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "onnx/text_model_quantized.onnx", "onnx/audio_model_quantized.onnx"], optional: &["special_tokens_map.json"] }),
 ];
+/// the file of a downloaded single-file model (the assistant's GGUF), when it's all there
+pub fn ready_file(k: &str) -> Option<PathBuf> {
+    let m = model(k)?;
+    let f = dir_of(m).join(m.files.first()?);
+    let partial = f.with_extension("part");
+    (f.exists() && !partial.exists()).then_some(f)
+}
+pub fn models_dir() -> PathBuf {
+    root()
+}
 fn model(k: &str) -> Option<&'static Model> {
     MODELS.iter().find(|(n, _)| *n == k).map(|(_, m)| m)
 }

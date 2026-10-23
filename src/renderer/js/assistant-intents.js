@@ -177,9 +177,17 @@ const INTENTS = [
   ['compare', (t, s) => (/\b(compare|sync|mirror|synchroni[sz]e|diff)\b.*\b(folders?|backup|directories|with|against)\b/.test(s) && !/\bsync(?:ed|hroni[sz]ed)?\s+(?:brows|navigat)/.test(s) && !/\btext file\b|\.\w{2,5}\b(?!.*folder)/.test(s) ? { mirror: /\bmirror\b|\bleft to right\b|\bone[- ]way\b/.test(s), rightToLeft: /\bright to left\b/.test(s) } : null)],
 ];
 
-export function matchIntent(text) {
+/** the details of one intent (by id) read from text: the model picked the feature, this reads its specifics */
+export function intentParams(id, text) {
   const t = String(text || '').trim();
   const s = ' ' + t.toLowerCase().replace(/[“”]/g, '"').replace(/[‘’]/g, "'") + ' ';
+  const it = INTENTS.find(([k]) => k === id);
+  return (it && it[1](t, s)) || {};
+}
+export function matchIntent(text) {
+  const t = String(text || '').trim();
+  // file names (History.txt, "Macros list.docx") are files, not features: hidden from the feature words
+  const s = ' ' + t.toLowerCase().replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/"[^"]+\.[a-z0-9]{1,5}"|'[^']+\.[a-z0-9]{1,5}'|\b[\w()&+-]+(?: [\w()&+-]+){0,3}\.(?!com\b|net\b|org\b)[a-z][a-z0-9]{0,4}\b/g, (m) => (/^\.?(dogmod|sha256|sha1|md5|ps1|py|bat|cmd|sh|js)$/.test(m.slice(m.lastIndexOf('.'))) || /^(?:the |a |an )?\.?[a-z0-9]{1,5}$/.test(m) ? m : ' a-file ')) + ' ';
   for (const [id, test] of INTENTS) {
     const r = test(t, s);
     if (r) return { id, ...r };

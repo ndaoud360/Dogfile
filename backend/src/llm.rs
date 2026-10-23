@@ -286,3 +286,75 @@ pub fn idle_check(secs: u64) {
         stop();
     }
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// the calls the interface makes
+use crate::args::{Args, R};
+
+/// which model to use: the setting, else the bigger one when it's there
+fn chosen() -> Option<(String, PathBuf)> {
+    let pref = crate::setting("assistantModel").as_str().unwrap_or("auto").to_string();
+    let order: &[&str] = match pref.as_str() {
+        "brain-small" => &["brain-small", "brain"],
+        _ => &["brain", "brain-small"],
+    };
+    order.iter().find_map(|k| crate::ai::ready_file(k).map(|f| (k.to_string(), f)))
+}
+/// development builds only: DOGFILE_TEST_PLANS=<file.json> ({"request text": plan}) stands in for the model
+fn test_plans() -> Option<Value> {
+    if !cfg!(debug_assertions) {
+        return None;
+    }
+    let f = std::env::var("DOGFILE_TEST_PLANS").ok()?;
+    serde_json::from_str(&std::fs::read_to_string(f).ok()?).ok()
+}
+/// llm:status
+pub fn status(_a: &Args) -> R {
+    if test_plans().is_some() {
+        return Ok(json!({ "state": "ready", "available": true, "model": "test", "memoryGb": 16 }));
+    }
+    let c = chosen();
+    let mut v = status_json();
+    v["available"] = json!(c.is_some());
+    v["model"] = json!(c.map(|x| x.0));
+    v["memoryGb"] = json!(crate::sys::total_memory_gb());
+    Ok(v)
+}
+/// llm:warm: load the model now (when the assistant opens), so the first request doesn't wait for it
+pub fn warm(_a: &Args) -> R {
+    if test_plans().is_some() {
+        return Ok(json!(true));
+    }
+    let (_, f) = chosen().ok_or("The assistant's model isn't downloaded")?;
+    ensure(&f, &crate::ai::models_dir());
+    touch();
+    Ok(json!(true))
+}
+/// llm:plan {context}: the steps for one request
+pub async fn plan(a: &Args) -> R {
+    let context = a.s(0)?;
+    if let Some(t) = test_plans() {
+        let req = context.lines().last().unwrap_or("").trim_start_matches("Request: ").trim().to_string();
+        return t.get(&req).map(|p| json!({ "plan": p, "ms": 1 })).ok_or_else(|| format!("no test plan for {req:?}"));
+    }
+    let (_, f) = chosen().ok_or("The assistant's model isn't downloaded")?;
+    let tx = ensure(&f, &crate::ai::models_dir());
+    touch();
+    let (rtx, rrx) = channel();
+    tx.send(Job { context, reply: rtx }).map_err(|_| "The assistant stopped; try again".to_string())?;
+    let r = tokio::task::spawn_blocking(move || rrx.recv_timeout(std::time::Duration::from_secs(240)))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|_| {
+            // a stuck or crashed worker is replaced on the next request
+            stop();
+            state().lock().unwrap().1.clone().unwrap_or_else(|| "The assistant took too long to answer".into())
+        })?;
+    touch();
+    r
+}
+/// llm:stop
+pub fn stop_call(_a: &Args) -> R {
+    stop();
+    Ok(json!(true))
+}

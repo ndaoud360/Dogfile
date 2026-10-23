@@ -6,7 +6,7 @@ use crate::*;
 use serde_json::{json, Value};
 
 pub const NAMES: &[&str] = &[
-    "license:status", "license:startTrial", "license:activate", "license:offlineRequest", "license:offlineApply", "license:deactivate", "license:checkout", "license:claim", "license:refresh",
+    "license:status", "llm:status", "llm:warm", "llm:plan", "llm:stop", "license:startTrial", "license:activate", "license:offlineRequest", "license:offlineApply", "license:deactivate", "license:checkout", "license:claim", "license:refresh",
     "sys:info", "fs:list", "fs:subdirs", "fs:stat", "fs:exists", "fs:isDir", "fs:mkdir", "fs:newFile", "fs:rename", "fs:uniqueName", "fs:readText", "fs:readBytes", "fs:writeText", "fs:writeImage", "fs:hash",
     "fs:attributes", "fs:setAttributes", "fs:setTimes", "fs:symlink", "fs:shortcut", "fs:readLink", "fs:drives", "fs:eject", "fs:mapped", "fs:recentWindows", "fs:statMany", "thumb:get", "icon:get",
     "shell:open", "shell:openExternal", "shell:openWith", "shell:runAs", "shell:showInExplorer", "shell:terminal", "shell:properties", "shell:verbs", "shell:invokeVerb", "shell:beep", "shell:launch",
@@ -45,6 +45,10 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
     match name {
         // ---------- Dogfile Pro ----------
         "license:status" => license::status(&a),
+        "llm:status" => llm::status(&a),
+        "llm:warm" => llm::warm(&a),
+        "llm:plan" => llm::plan(&a).await,
+        "llm:stop" => llm::stop_call(&a),
         "license:startTrial" => license::start_trial(&a).await,
         "license:activate" => license::activate(&a).await,
         "license:offlineRequest" => license::offline_request(&a),

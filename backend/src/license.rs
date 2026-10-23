@@ -555,6 +555,7 @@ pub fn gate(name: &str, a: &Args) -> Option<R> {
         "remote:signIn", "remote:get", "remote:put", "remote:mkdir", "remote:rename", "remote:copy", "remote:open", "remote:test",
         "ext:install", "ai:download", "media:export", "media:contactSheet", "llm:plan", "llm:warm",
         "reminders:analyze", "reminders:add", "reminders:scanNow",
+        "meta:write", "meta:stripAll",
     ];
     const QUIET: &[&str] = &["versions:track", "rules:watch"];
     let dupes = name == "work:start" && a.v(0)["type"].as_str() == Some("dupes");

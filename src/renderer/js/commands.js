@@ -141,6 +141,9 @@ for (const [k, l] of [['name', 'Name'], ['mtime', 'Date modified'], ['size', 'Si
 // ---------------- tools ----------------
 def('search', 'Search', { icon: 'search', keys: ['Ctrl+E', 'Ctrl+Shift+F'], cat: 'Tools', run: () => T.openSearchBar() });
 def('advSearch', 'Advanced search…', { icon: 'filter', keys: ['Ctrl+Alt+F'], cat: 'Tools', run: () => T.advancedSearch() });
+def('photoDetails', 'Edit photo details…', { icon: 'camera', cat: 'File', run: () => import('./metadata.js').then((m) => m.editPhotoDetails(S_())) });
+def('removeLocation', 'Remove location from photos', { icon: 'globe', cat: 'File', run: () => import('./metadata.js').then((m) => m.removeLocation(S_())) });
+def('streams', 'Hidden streams (alternate data streams)…', { icon: 'stack', cat: 'File', run: () => import('./metadata.js').then((m) => m.streamsDialog(S_())) });
 def('compareFiles', 'Compare two files…', { icon: 'compare', cat: 'Tools', run: async () => {
   // two files selected here, or the file selected in each of two panes, or pick them
   const here = selectedItems(T_()).filter((i) => !i.isDir);

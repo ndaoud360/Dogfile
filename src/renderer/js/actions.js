@@ -537,6 +537,8 @@ export async function reverseRecord(r) {
       }
     } else if (r.type === 'created') { await runJob({ type: 'trash', sources: r.paths }); }
     else if (r.type === 'trashed') { await api('recycle:restoreOriginal', r.paths); }
+    // photo details: each file gets back the values it had
+    else if (r.type === 'metadata') { for (const f of r.files || []) await api('meta:write', [f.path], f.values, {}); }
   } finally { undoing = false; }
   r.undone = true;
   bus.emit('historyUndone', r);
@@ -1084,6 +1086,9 @@ export function buildItemsMenu(t, items) {
       one && !one.isDir && { label: 'Compute hashes', icon: 'hash', run: () => properties([one]) },
       real.some((i) => KINDS.video.includes(i.ext) || ['mkv', 'm2ts', 'ts'].includes(i.ext)) && { label: 'Make contact sheet', icon: 'viewGrid', run: () => import('./gallery.js').then((m) => m.contactSheets(real)) },
       one && !one.isDir && KINDS.image.includes(one.ext) && IS_WIN() && { label: 'Set as desktop background', icon: 'desktop', run: () => import('./mediatools.js').then((m) => m.setWallpaper(one.path)) },
+      real.some((i) => !i.isDir && /^(jpe?g|jfif|png|heic|heif|tiff?|webp|avif|jxl|dng|cr2|cr3|crw|nef|nrw|arw|srf|sr2|orf|raf|rw2|pef|srw|x3f|3fr|erf|kdc|mef|mos|mrw|rwl|iiq|psd|gif)$/i.test(i.ext || '')) && { label: 'Edit photo details…', icon: 'camera', run: () => import('./metadata.js').then((m) => m.editPhotoDetails(real)) },
+      real.some((i) => !i.isDir && /^(jpe?g|jfif|png|heic|heif|tiff?|webp|dng|cr2|cr3|nef|arw|orf|raf|rw2)$/i.test(i.ext || '')) && { label: 'Remove location from photos', icon: 'globe', run: () => import('./metadata.js').then((m) => m.removeLocation(real)) },
+      IS_WIN() && real.some((i) => !i.isDir) && { label: 'Hidden streams…', icon: 'stack', run: () => import('./metadata.js').then((m) => m.streamsDialog(real)) },
       { label: 'Show in Windows Explorer', icon: 'folder', run: () => api('shell:showInExplorer', paths[0], true), hidden: !IS_WIN() },
       ...(state.settings.customCommands || []).map((c) => ({ label: c.name, icon: 'command', run: () => runCustomCommand(c, t) })),
     ] },

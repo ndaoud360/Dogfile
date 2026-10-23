@@ -1,5 +1,6 @@
 // Tabs, panes, navigation, listing, sorting/grouping/filtering, the virtualized views
 // (Grid · Details · List · Columns), selection (click/shift/ctrl/marquee/type-ahead), inline rename and drag & drop.
+import { playFolderAnim, directionOf } from './folderanim.js';
 import {
   api, state, sys, bus, h, esc, isVirtual, isMtp, isRemote, remoteParts, pjoin, dirname, basename, normalize, samePath, isInside, splitPath, virtualTitle,
   fmtSize, fmtDate, dateBucket, sizeBucket, kindOf, typeLabel, natCmp, debounce, fileUrl, uid, IS_WIN, addRecent, tagsOf,
@@ -185,6 +186,8 @@ export async function navigate(t, rawPath, { push = true, select = null, keepScr
   if (!p.startsWith('atlas:search')) t.searchInfo = null;
   const prev = t.path;
   if (prev && prev !== p) rememberFolderView(t);
+  // the folder animation plays once the new folder has rendered (into a folder: open; back up: close)
+  if (prev && prev !== p && !fromSync && !p.startsWith('atlas:search')) t._anim = { dir: directionOf(prev, p) };
   t.path = p;
   if (push) {
     t.history = t.history.slice(0, t.hi + 1);
@@ -283,6 +286,10 @@ export async function loadTab(t, { soft = false } = {}) {
   if (t.focus && !exists.has(t.focus)) t.focus = null;
   recompute(t);
   renderTabPanes(t);
+  if (t._anim) {
+    const a = t._anim; t._anim = null;
+    state.panes.forEach((pid, i) => { if (pid === t.id && i < paneCount() && paneEls[i]) playFolderAnim(paneEls[i], a.dir); });
+  }
   if (!isVirtual(p)) {
     if (state.settings.gitBadges) api('git:status', p).then((g) => { if (t.path === p) { t.git = g ? indexGit(g) : null; renderTabPanes(t, true); bus.emit('status'); } });
     else t.git = null;

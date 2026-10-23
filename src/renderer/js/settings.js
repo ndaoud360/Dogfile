@@ -1,4 +1,5 @@
 // Settings: general, appearance, behavior, views, tools, keyboard shortcuts (remappable), custom commands, tags, data.
+import { FOLDER_ANIMS } from './folderanim.js';
 import { setNativeDialogs } from './core.js';
 import { api, state, bus, h, esc, saveSettings, saveTags, toast, IS_WIN, DEFAULT_SETTINGS, sys, onMain, debounce } from './core.js';
 import { icon } from './icons.js';
@@ -103,6 +104,15 @@ export async function openSettings(section = 'general', opts = {}) {
         row('Full breadcrumb path', toggle('fullCrumbs'), 'Show the drive and every folder instead of starting at your user folder.'),
         row('Show status bar', toggle('showStatusBar')),
         row('Folding sidebar animation', toggle('foldAnimation'), 'The paper-fold effect when the sidebar opens or closes.'),
+        row('Folder animation', h('div', { class: 'row-inline' }, select('folderAnimation', FOLDER_ANIMS.map(([v, l]) => [v, l])), h('button', { class: 'btn small', title: 'Play it on the folder that’s open', onclick: async () => {
+          const { playFolderAnim } = await import('./folderanim.js');
+          const { paneEls } = await import('./pane.js');
+          const el = paneEls[state.activePane];
+          if (!el) return;
+          await playFolderAnim(el, 'open', state.settings.folderAnimation || 'fade');
+          await new Promise((r) => setTimeout(r, 250));
+          playFolderAnim(el, 'close', state.settings.folderAnimation || 'fade');
+        } }, 'Preview')), 'How a folder’s contents appear when you open it, and when you go back. Unfold opens out from the middle like a foldable phone.'),
         row('Glass sidebar', toggle('sidebarGlass'), 'Aero / liquid-glass look: the sidebar turns see-through and Windows blurs whatever is behind the window.'),
         row('Colors', h('button', { class: 'btn small', onclick: () => show('colors') }, 'Customize colors…'), 'Accent color, presets and every part of the interface.'),
       );

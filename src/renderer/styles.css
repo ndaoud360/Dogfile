@@ -644,7 +644,12 @@ input[type='color'] { width: 40px; height: 30px; border: 1px solid var(--line-2)
 .set-content h2 { font-size: 20px; font-weight: 500; margin: 14px 0 10px; color: var(--text); }
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .set-label { font-size: 13.5px; color: var(--text); flex: 1; }
-.set-ctl { flex: none; max-width: 60%; display: flex; justify-content: flex-end; }
+.set-ctl { flex: none; max-width: 60%; min-width: 0; display: flex; justify-content: flex-end; }
+/* long switch labels wrap inside the control column instead of spilling over the description */
+.set-ctl > * { min-width: 0; max-width: 100%; }
+.set-ctl .check { white-space: normal; align-items: flex-start; text-align: left; line-height: 1.35; }
+.set-ctl .check > input, .set-ctl .check > .switch { flex: none; margin-top: 1px; }
+.set-ctl .stack { align-items: stretch; }
 .set-ctl .input { min-width: 240px; }
 .keys-list { margin-top: 8px; }
 .keys-cat { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--text-4); margin: 16px 0 4px; }
@@ -1645,3 +1650,8 @@ body.show-pro-stars .pro-star { display: inline; }
 /* the assistant button: a star in its corner */
 #btn-assistant { position: relative; }
 body.show-pro-stars #btn-assistant::after { content: '★'; position: absolute; top: 3px; right: 3px; font-size: 8px; line-height: 1; color: var(--pro); }
+
+/* folder animation "Unfold": a soft line of light along the centre hinge while the view opens */
+.pane-body { position: relative; }
+.hinge-glow { position: absolute; top: 0; bottom: 0; left: 50%; width: 120px; margin-left: -60px; pointer-events: none; z-index: 3;
+  background: radial-gradient(ellipse 50% 60% at 50% 50%, color-mix(in srgb, var(--accent) 38%, transparent), transparent 70%); }

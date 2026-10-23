@@ -118,6 +118,7 @@ const P = {
   layout2v: '<rect x="3.5" y="5" width="17" height="14"/><path d="M12 5v14"/>',
   layout2h: '<rect x="3.5" y="5" width="17" height="14"/><path d="M3.5 12h17"/>',
   layout3: '<rect x="3.5" y="5" width="17" height="14"/><path d="M12 5v14M12 12h8.5"/>',
+  layoutcustom: '<rect x="3.5" y="5" width="17" height="14"/><path d="M10 5v14M10 11h10.5M15.5 11v8"/>',
   layout4: '<rect x="3.5" y="5" width="17" height="14"/><path d="M12 5v14M3.5 12h17"/>',
   swap: '<path d="M4 8.5h14l-3.5-3.5M20 15.5H6l3.5 3.5"/>',
   link: '<path d="M10 14a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M14 10a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1-1"/>',

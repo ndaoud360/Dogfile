@@ -30,7 +30,90 @@ export function newTabState(path, opts = {}) {
 export const tabById = (id) => state.tabs.find((t) => t.id === id);
 export const paneTab = (i) => tabById(state.panes[i]);
 export const activeTab = () => paneTab(state.activePane);
-export const paneCount = () => ({ 1: 1, '2v': 2, '2h': 2, 3: 3, 4: 4 }[state.layout] || 1);
+export const paneCount = () => (state.layout === 'custom' && state.splitTree ? treeLeaves(state.splitTree).length : ({ 1: 1, '2v': 2, '2h': 2, 3: 3, 4: 4 }[state.layout] || 1));
+
+// ---- free splits: any pane can be split right or down, as often as wanted (up to MAX_PANES) ----
+// state.splitTree is a tree: a leaf is { pane: i } (state.panes[i]), a split is { dir: 'v' | 'h', r: 0.5, a, b }
+// ('v' = side by side, r = the share of the first child). The fixed layouts are the same trees.
+export const MAX_PANES = 6;
+export function treeLeaves(n, out = []) { if (!n) return out; if (n.pane != null) out.push(n.pane); else { treeLeaves(n.a, out); treeLeaves(n.b, out); } return out; }
+export function presetTree(layout) {
+  const L = (i) => ({ pane: i });
+  const v = state.paneSizes?.v ?? 0.5, hh = state.paneSizes?.h ?? 0.5;
+  switch (layout) {
+    case '2v': return { dir: 'v', r: v, a: L(0), b: L(1) };
+    case '2h': return { dir: 'h', r: hh, a: L(0), b: L(1) };
+    case '3': return { dir: 'v', r: v, a: L(0), b: { dir: 'h', r: hh, a: L(1), b: L(2) } };
+    case '4': return { dir: 'v', r: v, a: { dir: 'h', r: hh, a: L(0), b: L(2) }, b: { dir: 'h', r: hh, a: L(1), b: L(3) } };
+    default: return L(0);
+  }
+}
+/** split pane `idx` in two: 'v' puts the new pane to the right, 'h' below (`before`: left / above). The new pane
+ *  shows `tabId` (a tab dragged there) or the same folder. */
+export function splitPane(idx = state.activePane, dir = 'v', { tabId = null, before = false } = {}) {
+  let n = paneCount();
+  if (n >= MAX_PANES) { toast(`Up to ${MAX_PANES} panes`); return; }
+  if (n >= 2 && !requirePro('panes')) return;
+  if (state.layout !== 'custom' || !state.splitTree) { state.splitTree = presetTree(state.layout); state.layout = 'custom'; }
+  // a tab already showing in another pane moves: that pane closes first
+  if (tabId) {
+    const at = state.panes.slice(0, n).indexOf(tabId);
+    if (at === idx) return;
+    if (at >= 0) { const target = state.panes[idx]; closePaneInTree(at); idx = state.panes.indexOf(target); n = paneCount(); if (state.layout !== 'custom') { state.splitTree = { pane: 0 }; state.layout = 'custom'; } }
+  }
+  const panes = state.panes.slice(0, n);
+  const walk = (node) => {
+    if (node.pane === idx) return { dir, r: 0.5, a: before ? { pane: n } : { pane: idx }, b: before ? { pane: idx } : { pane: n } };
+    if (node.pane != null) return node;
+    return { ...node, a: walk(node.a), b: walk(node.b) };
+  };
+  let id = tabId;
+  if (!id) {
+    const src = state.tabs.find((x) => x.id === panes[idx]);
+    const t = newTabState(); state.tabs.push(t);
+    navigate(t, src && !src.app ? src.path : 'atlas:home', { push: true });
+    if (src && !src.app) { t.view = src.view; t.sort = { ...src.sort }; }
+    id = t.id;
+  }
+  panes[n] = id;
+  state.splitTree = walk(state.splitTree);
+  state.panes = panes;
+  // number panes in reading order (left to right, top to bottom)
+  const order = treeLeaves(state.splitTree);
+  const renum = (node) => (node.pane != null ? { pane: order.indexOf(node.pane) } : { ...node, a: renum(node.a), b: renum(node.b) });
+  state.panes = order.map((i) => panes[i]);
+  state.splitTree = renum(state.splitTree);
+  state.activePane = state.panes.indexOf(id);
+  bus.emit('tabs'); bus.emit('layout'); bus.emit('saveSession');
+}
+/** take pane `idx` out of a free layout: its neighbour grows into the space. Returns false when it isn't one. */
+function closePaneInTree(idx) {
+  if (state.layout !== 'custom' || !state.splitTree) return false;
+  const drop = (node) => {
+    if (node.pane != null) return node.pane === idx ? null : node;
+    const a = drop(node.a), b = drop(node.b);
+    return !a ? b : !b ? a : { ...node, a, b };
+  };
+  const tree = drop(state.splitTree);
+  const old = treeLeaves(tree);
+  const activeId = state.panes[state.activePane];
+  // number the panes again in reading order
+  const renum = (node) => (node.pane != null ? { pane: old.indexOf(node.pane) } : { ...node, a: renum(node.a), b: renum(node.b) });
+  state.panes = old.map((i) => state.panes[i]);
+  state.splitTree = old.length > 1 ? renum(tree) : null;
+  state.layout = old.length > 1 ? 'custom' : '1';
+  const ai = state.panes.indexOf(activeId);
+  state.activePane = ai >= 0 ? ai : Math.min(old.indexOf(idx) >= 0 ? old.indexOf(idx) : 0, state.panes.length - 1);
+  return true;
+}
+/** close a pane (keeps its tab) */
+export function closePane(idx = state.activePane) {
+  const n = paneCount();
+  if (n < 2) return;
+  if (state.layout !== 'custom') { state.splitTree = presetTree(state.layout); state.layout = 'custom'; }
+  closePaneInTree(idx);
+  bus.emit('tabs'); bus.emit('layout'); bus.emit('saveSession');
+}
 
 export function openTab(path, { activate = true, background = false, pane = null, after = null } = {}) {
   const t = newTabState();
@@ -87,6 +170,7 @@ export async function closeTab(t, { force = false } = {}) {
   // in a split view the pane closes with its tab and the layout shrinks (4 → 3 → 2 → 1)
   const n = paneCount();
   const pi = state.panes.slice(0, n).indexOf(t.id);
+  if (pi >= 0 && n > 1 && closePaneInTree(pi)) { bus.emit('tabs'); bus.emit('layout'); return; }
   if (pi >= 0 && n > 1) {
     const P = state.panes.slice(0, n);
     let layout, order;
@@ -127,6 +211,7 @@ export function duplicateTab(t) {
 export function setLayout(layout) {
   if ((layout === '3' || layout === '4') && !requirePro('panes')) return;
   state.layout = layout;
+  state.splitTree = null;
   const n = paneCount();
   const panes = state.panes.slice(0, n).filter(Boolean);
   // fill new panes with unshown tabs or clones of the active location
@@ -528,6 +613,33 @@ export function buildPanes(host) {
     host.append(c1, splitter('v'), c2);
     host.style.gridTemplateColumns = `${v}fr 1px ${1 - v}fr`; host.style.gridTemplateRows = '';
   }
+  if (state.layout === 'custom' && state.splitTree && n > 1) {
+    // a free layout: nested two-way splits, each with its own divider
+    host.style.gridTemplateColumns = ''; host.style.gridTemplateRows = '';
+    const tpl = (node) => `${node.r}fr 1px ${1 - node.r}fr`;
+    const build = (node) => {
+      if (node.pane != null) return mk(node.pane);
+      const box = h('div', { class: `split-node ${node.dir}` });
+      box.style[node.dir === 'v' ? 'gridTemplateColumns' : 'gridTemplateRows'] = tpl(node);
+      const div = h('div', { class: `splitter ${node.dir}` });
+      div.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const r = box.getBoundingClientRect();
+        const move = (ev) => {
+          node.r = Math.min(0.88, Math.max(0.12, node.dir === 'v' ? (ev.clientX - r.left) / r.width : (ev.clientY - r.top) / r.height));
+          box.style[node.dir === 'v' ? 'gridTemplateColumns' : 'gridTemplateRows'] = tpl(node);
+          paneEls.forEach((p, i) => renderView(i));
+        };
+        const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); bus.emit('saveSession'); };
+        window.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
+      });
+      div.addEventListener('dblclick', () => { node.r = 0.5; buildPanes(host); });
+      box.append(build(node.a), div, build(node.b));
+      return box;
+    };
+    host.classList.add('free');
+    host.append(build(state.splitTree));
+  }
   if (n === 1) { host.style.gridTemplateColumns = ''; host.style.gridTemplateRows = ''; }
   for (let i = 0; i < n; i++) renderPane(i);
   watchPanes();
@@ -902,7 +1014,7 @@ export function renderView(i) {
   // Ctrl+wheel in Details / List makes rows bigger or smaller instead of switching view
   if (t.rowZoom && t.rowZoom !== 1) { el.root.style.setProperty('--row-h', ROW_H(t) + 'px'); el.root.style.setProperty('--fs', String((state.settings.fontScale || 1) * t.rowZoom)); }
   else { el.root.style.removeProperty('--row-h'); el.root.style.removeProperty('--fs'); }
-  if (t.view === 'columns' && !isVirtual(t.path)) return renderColumns(el, t);
+  if (t.view === 'columns' && t.path && !isVirtual(t.path)) return renderColumns(el, t);
   el.scroller.classList.remove('miller');
   if (t.error === 'netdown') {
     el.inner.style.height = '100%';
@@ -1241,26 +1353,41 @@ function hydrateImages(el, t, nodes) {
 export function clearThumbCache(p) { for (const k of [...thumbCache.keys()]) if (!p || k.startsWith(p + "|")) { thumbBytes -= thumbCache.get(k)?.length || 0; thumbCache.delete(k); } if (!p) thumbBytes = 0; }
 
 // ---------- Miller columns ----------
+// Miller columns: every folder from the drive down to this one, side by side (as deep as it goes), then the
+// current folder, then a preview of the focused file. Going deeper slides the new column in from the right;
+// columns can be resized by dragging their right edge (double-click resets).
+const millerCache = new Map(); // dir -> { items, at }
+const millerW = new Map(); // dir -> width (px), for this session
+async function millerList(dir) {
+  const c = millerCache.get(dir);
+  if (c && Date.now() - c.at < 8000) return c.items;
+  const r = await api('fs:list', dir).catch(() => ({ items: [] }));
+  const items = (r.items || []).filter(visibleFilter).sort((a, b) => (a.isDir !== b.isDir ? (a.isDir ? -1 : 1) : natCmp(a.name, b.name)));
+  millerCache.set(dir, { items, at: Date.now() });
+  if (millerCache.size > 200) millerCache.delete(millerCache.keys().next().value);
+  return items;
+}
 async function renderColumns(el, t) {
   el.scroller.classList.add('miller');
   el.scroller.querySelector('.details-head')?.remove();
   el.inner.style.height = '100%';
   el.inner.style.minWidth = '';
-  const chain = splitPath(t.path).map((c) => c.path).filter((p) => !isVirtual(p));
-  const cols = chain.slice(Math.max(0, chain.length - 6));
+  const cols = splitPath(t.path).map((c) => c.path).filter((p) => !isVirtual(p));
   const seq = (el._millerSeq = (el._millerSeq || 0) + 1);
-  const data = await Promise.all(cols.slice(0, -1).map(async (dir) => {
-    const r = await api('fs:list', dir);
-    const items = (r.items || []).filter(visibleFilter).sort((a, b) => (a.isDir !== b.isDir ? (a.isDir ? -1 : 1) : natCmp(a.name, b.name)));
-    return { dir, items };
-  }));
+  const data = await Promise.all(cols.slice(0, -1).map(async (dir) => ({ dir, items: await millerList(dir) })));
   if (el._millerSeq !== seq) return;
+  const prev = el._millerChain || [];
+  const deeper = prev.length && cols.length > prev.length && prev.every((p, i) => samePath(p, cols[i]));
+  const prevScroll = el.inner.querySelector('.mrow')?.scrollLeft || 0;
+  el._millerChain = cols;
+  const w = (dir, d) => millerW.get(dir) || d;
+  const grip = '<div class="mgrip" title="Drag to resize · double-click to reset"></div>';
   const html = [];
   data.forEach((col, k) => {
     const next = cols[k + 1];
-    html.push(`<div class="mcol" data-dir="${esc(col.dir)}">${col.items.map((it) => `<div class="mitem${samePath(it.path, next) ? ' trail' : ''}${it.hidden ? ' hidden-item' : ''}" data-path="${esc(it.path)}" data-dir="${it.isDir ? 1 : 0}">${smallIcon(it)}<span class="nm">${esc(displayName(it))}</span>${it.isDir ? `<span class="chev">${icon('chevronRight')}</span>` : ''}</div>`).join('')}</div>`);
+    html.push(`<div class="mcol" data-dir="${esc(col.dir)}" style="width:${w(col.dir, 250)}px">${col.items.map((it) => `<div class="mitem${samePath(it.path, next) ? ' trail' : ''}${it.hidden ? ' hidden-item' : ''}" data-path="${esc(it.path)}" data-dir="${it.isDir ? 1 : 0}">${smallIcon(it)}<span class="nm">${esc(displayName(it))}</span>${it.isDir ? `<span class="chev">${icon('chevronRight')}</span>` : ''}</div>`).join('')}${grip}</div>`);
   });
-  html.push(`<div class="mcol current">${t.shown.map((it, ix) => `<div class="mitem cell${itemClasses(t, it)}" data-ix="${ix}" role="option" aria-selected="${t.sel.has(it.path)}" draggable="true" data-path="${esc(it.path)}">${smallIcon(it)}<span class="nm">${esc(displayName(it))}</span>${tagDots(it)}${gitBadge(t, it)}${it.isDir ? `<span class="chev">${icon('chevronRight')}</span>` : ''}</div>`).join('') || '<div class="hint pad">Empty folder</div>'}</div>`);
+  html.push(`<div class="mcol current${deeper && !document.body.classList.contains('reduce-motion') ? ' mslide' : ''}" data-dir="${esc(t.path)}" style="width:${w(t.path, 280)}px">${t.shown.map((it, ix) => `<div class="mitem cell${itemClasses(t, it)}" data-ix="${ix}" role="option" aria-selected="${t.sel.has(it.path)}" draggable="true" data-path="${esc(it.path)}">${smallIcon(it)}<span class="nm">${esc(displayName(it))}</span>${tagDots(it)}${gitBadge(t, it)}${it.isDir ? `<span class="chev">${icon('chevronRight')}</span>` : ''}</div>`).join('') || '<div class="hint pad">Empty folder</div>'}${grip}</div>`);
   const focusIt = t.focus && t.shown[t.indexOf.get(t.focus)];
   if (focusIt && !focusIt.isDir) html.push(`<div class="mcol mpreview" data-preview="${esc(focusIt.path)}"></div>`);
   el.inner.innerHTML = `<div class="mrow">${html.join('')}</div>`;
@@ -1268,10 +1395,27 @@ async function renderColumns(el, t) {
     m.addEventListener('click', () => { const p = m.dataset.path; if (m.dataset.dir === '1') navigate(t, p); else navigate(t, dirname(p), { select: p }); });
     m.addEventListener('contextmenu', (e) => { e.preventDefault(); A.folderContextMenu(m.dataset.path, e); });
   });
+  // resizing a column by its right edge
+  el.inner.querySelectorAll('.mgrip').forEach((g) => {
+    const col = g.parentElement;
+    g.addEventListener('mousedown', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const x0 = e.clientX, w0 = col.offsetWidth;
+      const move = (ev) => { const nw = Math.max(140, Math.min(700, w0 + ev.clientX - x0)); col.style.width = nw + 'px'; millerW.set(col.dataset.dir, nw); };
+      const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); document.body.classList.remove('col-resizing'); };
+      document.body.classList.add('col-resizing');
+      window.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
+    });
+    g.addEventListener('dblclick', (e) => { e.stopPropagation(); millerW.delete(col.dataset.dir); col.style.width = (col.classList.contains('current') ? 280 : 250) + 'px'; });
+    g.addEventListener('click', (e) => e.stopPropagation());
+  });
   const pv = el.inner.querySelector('.mpreview');
   if (pv) bus.emit('renderMiniPreview', { el: pv, item: focusIt });
   const row = el.inner.querySelector('.mrow');
-  row.scrollLeft = row.scrollWidth;
+  // keep the current folder (and its preview) in view: glide there from where the row was
+  const end = row.scrollWidth - row.clientWidth;
+  if (document.body.classList.contains('reduce-motion') || !prev.length) row.scrollLeft = end;
+  else { row.scrollLeft = Math.min(prevScroll, end); requestAnimationFrame(() => row.scrollTo({ left: end, behavior: 'smooth' })); }
   el.inner.querySelector('.mcol.current .focused')?.scrollIntoView({ block: 'nearest' });
   hydrateImages(el, t);
 }
@@ -1575,9 +1719,9 @@ function wirePane(el) {
   const zoneOf = (e) => {
     const r = el.root.getBoundingClientRect();
     const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
-    if (paneCount() >= 4) return 'center';
+    if (paneCount() >= MAX_PANES) return 'center';
     if (x < 0.22) return 'left'; if (x > 0.78) return 'right';
-    if (y > 0.75) return 'bottom'; if (y < 0.18 && paneCount() === 1) return 'top';
+    if (y > 0.75) return 'bottom'; if (y < 0.18) return 'top';
     return 'center';
   };
   let hint = null;
@@ -1600,23 +1744,8 @@ function wirePane(el) {
     const z = zoneOf(e); clearHint();
     const id = e.dataTransfer.getData('application/x-atlas-tab');
     if (!tabById(id)) return;
-    const n = paneCount();
     if (z === 'center') return showTabInPane(id, el.idx);
-    const vertical = z === 'left' || z === 'right';
-    const next = n === 1 ? (vertical ? '2v' : '2h') : n === 2 ? '3' : '4';
-    const before = z === 'left' || z === 'top';
-    const cur = state.panes.slice(0, n).filter((p) => p !== id);
-    setLayout(next);
-    setTimeout(() => {
-      const m = paneCount();
-      let order = [...cur];
-      if (n === 1) order = before ? [id, ...cur] : [...cur, id];
-      else order.splice(before ? el.idx : el.idx + 1, 0, id);
-      state.panes = order.slice(0, m);
-      while (state.panes.length < m) { const free = state.tabs.find((t2) => !state.panes.includes(t2.id)); if (!free) break; state.panes.push(free.id); }
-      state.activePane = state.panes.indexOf(id);
-      bus.emit('layout');
-    }, 0);
+    splitPane(el.idx, z === 'left' || z === 'right' ? 'v' : 'h', { tabId: id, before: z === 'left' || z === 'top' });
   });
 }
 

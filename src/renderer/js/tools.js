@@ -445,7 +445,7 @@ export async function analyzeSelection() {
 // ======================================================================
 export function snapshot() {
   const tabs = state.tabs.filter((t) => !t.app);
-  return { layout: state.layout, paneSizes: { ...state.paneSizes }, tabs: tabs.map((t) => ({ path: t.path?.startsWith('atlas:search') ? 'atlas:home' : t.path, view: t.view, sort: t.sort, group: t.group, pinned: t.pinned, locked: t.locked, gridSize: t.gridSize, color: t.color })), panes: state.panes.map((id) => Math.max(0, tabs.findIndex((t) => t.id === id))), activePane: state.activePane };
+  return { layout: state.layout, splitTree: state.splitTree ? JSON.parse(JSON.stringify(state.splitTree)) : null, paneSizes: { ...state.paneSizes }, tabs: tabs.map((t) => ({ path: t.path?.startsWith('atlas:search') ? 'atlas:home' : t.path, view: t.view, sort: t.sort, group: t.group, pinned: t.pinned, locked: t.locked, gridSize: t.gridSize, color: t.color })), panes: state.panes.map((id) => Math.max(0, tabs.findIndex((t) => t.id === id))), activePane: state.activePane };
 }
 export function restoreSnapshot(s) {
   if (!s || !s.tabs?.length) return false;
@@ -460,7 +460,11 @@ export function restoreSnapshot(s) {
   // three or four panes are Pro: a saved layout opens with two without it
   if ((state.layout === '3' || state.layout === '4') && !isPro()) state.layout = '2v';
   state.paneSizes = s.paneSizes || { v: 0.5, h: 0.5 };
-  const n = { 1: 1, '2v': 2, '2h': 2, 3: 3, 4: 4 }[state.layout] || 1;
+  state.splitTree = s.layout === 'custom' ? s.splitTree || null : null;
+  if (state.layout === 'custom' && !state.splitTree) state.layout = '1';
+  const leaves = (nd) => (!nd ? 0 : nd.pane != null ? 1 : leaves(nd.a) + leaves(nd.b));
+  if (state.layout === 'custom' && leaves(state.splitTree) > 2 && !isPro()) { state.layout = '2v'; state.splitTree = null; }
+  const n = state.layout === 'custom' ? leaves(state.splitTree) : { 1: 1, '2v': 2, '2h': 2, 3: 3, 4: 4 }[state.layout] || 1;
   state.panes = (s.panes || [0]).slice(0, n).map((i) => state.tabs[i]?.id).filter(Boolean);
   while (state.panes.length < n) { const free = state.tabs.find((t) => !state.panes.includes(t.id)); if (free) state.panes.push(free.id); else { const t = newTabState(); t.path = 'atlas:home'; t.history = ['atlas:home']; t.hi = 0; state.tabs.push(t); state.panes.push(t.id); } }
   state.activePane = Math.min(s.activePane || 0, n - 1);

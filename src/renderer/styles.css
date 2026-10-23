@@ -1723,3 +1723,24 @@ body.show-pro-stars #btn-assistant::after { content: '★'; position: absolute; 
 .rem-file-line { display: flex; align-items: center; gap: 8px; }
 .rem-file-line svg { width: 16px; height: 16px; color: var(--text-2); }
 @media (max-width: 640px) { .rem-row { flex-wrap: wrap; } .rem-acts { width: 100%; justify-content: flex-end; } .rem-more { padding-left: 12px; } }
+
+/* ---- free splits ---- */
+.panes.free { display: grid; grid-template-columns: 1fr; grid-template-rows: 1fr; }
+.split-node { display: grid; min-width: 0; min-height: 0; background: var(--line); }
+.split-node.v { grid-template-rows: 1fr; }
+.split-node.h { grid-template-columns: 1fr; }
+.split-node > .pane, .split-node > .split-node { min-width: 0; min-height: 0; }
+
+/* ---- Miller columns: resizing, cascading ---- */
+.mcol { position: relative; }
+.mgrip { position: absolute; top: 0; right: -3px; width: 7px; height: 100%; cursor: col-resize; z-index: 2; }
+.mgrip:hover, body.col-resizing .mgrip:active { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+body.col-resizing, body.col-resizing * { cursor: col-resize !important; user-select: none; }
+.mcol.mslide { animation: mcol-in .32s cubic-bezier(.16, 1, .3, 1) both; }
+.mcol.mslide .mitem { animation: mitem-in .34s cubic-bezier(.16, 1, .3, 1) both; }
+.mcol.mslide .mitem:nth-child(2) { animation-delay: 15ms; } .mcol.mslide .mitem:nth-child(3) { animation-delay: 30ms; }
+.mcol.mslide .mitem:nth-child(4) { animation-delay: 45ms; } .mcol.mslide .mitem:nth-child(5) { animation-delay: 60ms; }
+.mcol.mslide .mitem:nth-child(n+6) { animation-delay: 75ms; }
+@keyframes mcol-in { from { transform: translateX(-28px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes mitem-in { from { transform: translateX(-10px); opacity: 0; } to { transform: none; opacity: 1; } }
+.mrow { scroll-behavior: auto; }

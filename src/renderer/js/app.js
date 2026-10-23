@@ -141,7 +141,7 @@ function renderTabs() {
       dragTab = t; e.dataTransfer.setData('application/x-atlas-tab', t.id); e.dataTransfer.effectAllowed = 'move'; el.classList.add('dragging');
       document.body.classList.add('tab-dragging'); // lets the drag pass over built-in app tabs (iframes) too
       const n = state.settings.splitTips || 0;
-      if (n < 3 && paneCount() < 4) { state.settings.splitTips = n + 1; saveSettings(); toast('Drop the tab on the left, right or bottom edge of a pane to split the window. Drop in the middle to show it there.'); }
+      if (n < 3 && paneCount() < 6) { state.settings.splitTips = n + 1; saveSettings(); toast('Drop the tab on the left, right or bottom edge of a pane to split the window. Drop in the middle to show it there.'); }
     });
     el.addEventListener('dragend', () => { dragTab = null; el.classList.remove('dragging'); document.body.classList.remove('tab-dragging'); document.querySelectorAll('.pane.tab-drop').forEach((p) => p.classList.remove('tab-drop')); });
     el.addEventListener('dragover', (e) => {
@@ -389,10 +389,14 @@ function initMenubar() {
       { header: 'Split view' },
       L('1', 'Single pane', 'layout1', 'Ctrl+Alt+1'), L('2v', 'Two side by side', 'layout2v', 'Ctrl+Alt+2'), L('2h', 'Two stacked', 'layout2h', 'Ctrl+Alt+3'), L('3', 'Three panes', 'layout3', 'Ctrl+Alt+4'), L('4', 'Four panes (2×2)', 'layout4', 'Ctrl+Alt+5'),
       { separator: true },
+      { label: 'Split this pane right', icon: 'layout2v', keys: 'Ctrl+Alt+\\', run: () => bus.cmd('splitRight') },
+      { label: 'Split this pane down', icon: 'layout2h', keys: 'Ctrl+Alt+-', run: () => bus.cmd('splitDown') },
+      { label: 'Close this pane', icon: 'close', keys: 'Ctrl+Alt+W', run: () => bus.cmd('closePane'), disabled: paneCount() < 2 },
+      { separator: true },
       { label: 'Sync browsing', icon: 'sync', checked: state.settings.syncNavigation, run: () => bus.cmd('syncNav') },
       { label: 'Swap panes', icon: 'swap', keys: 'Ctrl+U', run: () => bus.cmd('swapPanes'), disabled: paneCount() < 2 },
       { label: 'Compare folders', icon: 'compare', run: () => bus.cmd('compare') },
-      { label: 'Equalize pane sizes', run: () => { state.paneSizes = { v: 0.5, h: 0.5 }; rebuild(); } },
+      { label: 'Equalize pane sizes', run: () => { state.paneSizes = { v: 0.5, h: 0.5 }; const eq = (nd) => { if (nd && nd.pane == null) { nd.r = 0.5; eq(nd.a); eq(nd.b); } }; eq(state.splitTree); rebuild(); } },
     ], r.right, r.bottom + 4, { alignRight: true });
   });
   $('tab-add').innerHTML = icon('plus');
@@ -483,7 +487,9 @@ function rebuild() {
 bus.on('rebuild', rebuild);
 let lastLayoutKey = '';
 bus.on('layout', () => {
-  const key = state.layout + '|' + state.panes.slice(0, paneCount()).join(',');
+  // a free layout is rebuilt when its shape changes (a split added or closed), not when a divider moves
+  const shape = (n) => (!n ? '' : n.pane != null ? String(n.pane) : `${n.dir}(${shape(n.a)},${shape(n.b)})`);
+  const key = (state.layout === 'custom' ? 'custom:' + shape(state.splitTree) : state.layout) + '|' + state.panes.slice(0, paneCount()).join(',');
   if (key.split('|')[0] !== lastLayoutKey.split('|')[0] || !document.querySelector('.pane')) { lastLayoutKey = key; rebuild(); return; }
   lastLayoutKey = key;
   for (let i = 0; i < paneCount(); i++) { const t = paneTab(i); if (t) { ensureLoaded(t); } }

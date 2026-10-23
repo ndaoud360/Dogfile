@@ -5,7 +5,7 @@ import { openTool } from './apptabs.js';
 import { icon } from './icons.js';
 import {
   activeTab, paneTab, paneCount, navigate, goBack, goForward, goUp, openTab, closeTab, reopenClosedTab, duplicateTab, setLayout,
-  focusPane, selectedItems, selectAll, selectNone, invertSelection, setView, loadTab, otherPaneTab, startPathEdit, paneEls,
+  focusPane, splitPane, closePane, selectedItems, selectAll, selectNone, invertSelection, setView, loadTab, otherPaneTab, startPathEdit, paneEls,
   renderAll, recompute, renderTabPanes, clearThumbCache, touchView, showTabInPane, selectOnly, confirmLeaveAll,
 } from './pane.js';
 import * as A from './actions.js';
@@ -54,6 +54,9 @@ def('layout4', 'Four panes (2×2)', { icon: 'layout4', keys: ['Ctrl+Alt+5'], cat
 def('toggleSplit', 'Toggle dual pane', { icon: 'split', keys: ['F3'], cat: 'Layout', run: () => setLayout(paneCount() > 1 ? '1' : '2v') });
 def('nextPane', 'Focus next pane', { keys: ['Tab', 'Ctrl+Alt+Right'], cat: 'Layout', run: () => focusPane((state.activePane + 1) % paneCount()), when: () => paneCount() > 1 });
 def('prevPane', 'Focus previous pane', { keys: ['Shift+Tab', 'Ctrl+Alt+Left'], cat: 'Layout', run: () => focusPane((state.activePane - 1 + paneCount()) % paneCount()), when: () => paneCount() > 1 });
+def('splitRight', 'Split this pane right', { icon: 'layout2v', keys: ['Ctrl+Alt+\\'], cat: 'Layout', run: () => splitPane(state.activePane, 'v') });
+def('splitDown', 'Split this pane down', { icon: 'layout2h', keys: ['Ctrl+Alt+-'], cat: 'Layout', run: () => splitPane(state.activePane, 'h') });
+def('closePane', 'Close this pane', { icon: 'close', keys: ['Ctrl+Alt+W'], cat: 'Layout', run: () => closePane(state.activePane), when: () => paneCount() > 1 });
 def('swapPanes', 'Swap panes', { icon: 'swap', keys: ['Ctrl+U'], cat: 'Layout', run: () => { if (paneCount() < 2) return; const a = state.activePane, b = (a + 1) % paneCount(); [state.panes[a], state.panes[b]] = [state.panes[b], state.panes[a]]; bus.emit('layout'); } });
 def('mirrorPane', 'Show this folder in the other pane', { icon: 'split', keys: ['Ctrl+Alt+Down'], cat: 'Layout', run: () => { const o = otherPaneTab(); if (!o) setLayout('2v'); setTimeout(() => navigate(otherPaneTab(), T_().path), 0); } });
 def('syncNav', 'Sync browsing between panes', { icon: 'sync', cat: 'Layout', check: () => state.settings.syncNavigation, run: () => { state.settings.syncNavigation = !state.settings.syncNavigation; saveSettings(); toast(state.settings.syncNavigation ? 'Synchronized browsing on' : 'Synchronized browsing off'); bus.emit('settings'); } });

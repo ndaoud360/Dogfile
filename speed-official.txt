@@ -1,0 +1,9 @@
+CPU: AMD EPYC 9V74 80-Core Processor                 | cores 2 | threads 4
+llama.cpp: llama-b11856-bin-win-cpu-x64.zip
+| model                          |       size |     params | backend    | threads |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | ------: | --------------: | -------------------: |
+| qwen35 2B Q4_K - Medium        |   1.18 GiB |     1.88 B | CPU        |       4 |            pp64 |        127.19 ± 0.78 |
+| qwen35 2B Q4_K - Medium        |   1.18 GiB |     1.88 B | CPU        |       4 |            tg32 |         23.93 ± 0.19 |
+
+build: 3642238cc (11856)
+

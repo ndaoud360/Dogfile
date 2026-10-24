@@ -1,0 +1,42 @@
+[0.0s] loading
+[0.0s] server: D:\a\_temp\llamacpp\llama-server.exe | threads 2 | port 54156
+[1.5s] reading
+[24.9s] ready
+PASS   1   1721ms  Request: Move History.txt to downloads  =>  {"steps":[{"action":"move","do":"files","names":["History.txt"],"to":"downloads"}]}
+          tokens in 45 out 22  {"cached":2714,"decodeMs":1054.638,"engine":"llama-server","read":45,"readMs":661.51}
+PASS   2   1667ms  Request: open history.txt  =>  {"steps":[{"action":"open","do":"files","names":["History.txt"],"where":"here"}]}
+          tokens in 38 out 22  {"cached":2714,"decodeMs":1056.799,"engine":"llama-server","read":38,"readMs":605.81}
+FAIL   3   1894ms  Request: delete macros.xlsx and automation.pdf  =>  {"steps":[{"action":"delete","do":"files","what":"Macros.xlsx and Automation.pdf","where":"here"}]}
+          tokens in 43 out 26  {"cached":2714,"decodeMs":1228.854,"engine":"llama-server","read":43,"readMs":660.707}
+PASS   4   1704ms  Request: copy theme.css to the desktop  =>  {"steps":[{"action":"copy","do":"files","names":["theme.css"],"to":"desktop"}]}
+          tokens in 42 out 22  {"cached":2714,"decodeMs":1050.376,"engine":"llama-server","read":42,"readMs":649.205}
+PASS   5   1077ms  Request: show me my file history  =>  {"steps":[{"do":"feature","id":"history"}]}
+          tokens in 29 out 13  {"cached":2714,"decodeMs":606.252,"engine":"llama-server","read":29,"readMs":466.251}
+PASS   6   1084ms  Request: oops undo that last move  =>  {"steps":[{"do":"feature","id":"history"}]}
+          tokens in 30 out 13  {"cached":2714,"decodeMs":574.492,"engine":"llama-server","read":30,"readMs":504.829}
+PASS   7   1507ms  Request: find every pdf i downloaded this month  =>  {"steps":[{"action":"find","do":"files","what":"pdfs","where":"here"}]}
+          tokens in 31 out 22  {"cached":2714,"decodeMs":1001.896,"engine":"llama-server","read":31,"readMs":500.726}
+PASS   8   3535ms  Request: zip all the pdfs from last week, call it receipts, then move the zip to my desktop  =>  {"steps":[{"action":"find","do":"files","what":"pdfs modified last week","where":"here"},{"action":"zip","do":"files","to":"receipts","where":"previous"},{"action":"move","do":"files","names":["receipts.zip"],"to":"desktop"}]}
+          tokens in 44 out 60  {"cached":2714,"decodeMs":2879.746,"engine":"llama-server","read":44,"readMs":650.418}
+7/8 passed, 1773 ms per request on average
+--- second start (the fixed part restored from disk)
+[0.0s] loading
+[0.0s] server: D:\a\_temp\llamacpp\llama-server.exe | threads 2 | port 54208
+[1.6s] ready
+PASS   1   1668ms  Request: Move History.txt to downloads  =>  {"steps":[{"action":"move","do":"files","names":["History.txt"],"to":"downloads"}]}
+          tokens in 45 out 22  {"cached":2714,"decodeMs":1024.718,"engine":"llama-server","read":45,"readMs":638.864}
+PASS   2   1592ms  Request: open history.txt  =>  {"steps":[{"action":"open","do":"files","names":["History.txt"],"where":"here"}]}
+          tokens in 38 out 22  {"cached":2714,"decodeMs":1014.612,"engine":"llama-server","read":38,"readMs":572.522}
+FAIL   3   1823ms  Request: delete macros.xlsx and automation.pdf  =>  {"steps":[{"action":"delete","do":"files","what":"Macros.xlsx and Automation.pdf","where":"here"}]}
+          tokens in 43 out 26  {"cached":2714,"decodeMs":1191.61,"engine":"llama-server","read":43,"readMs":626.822}
+PASS   4   1652ms  Request: copy theme.css to the desktop  =>  {"steps":[{"action":"copy","do":"files","names":["theme.css"],"to":"desktop"}]}
+          tokens in 42 out 22  {"cached":2714,"decodeMs":1018.346,"engine":"llama-server","read":42,"readMs":628.766}
+PASS   5   1052ms  Request: show me my file history  =>  {"steps":[{"do":"feature","id":"history"}]}
+          tokens in 29 out 13  {"cached":2714,"decodeMs":570.777,"engine":"llama-server","read":29,"readMs":476.981}
+PASS   6   1077ms  Request: oops undo that last move  =>  {"steps":[{"do":"feature","id":"history"}]}
+          tokens in 30 out 13  {"cached":2714,"decodeMs":592.061,"engine":"llama-server","read":30,"readMs":480.457}
+PASS   7   1519ms  Request: find every pdf i downloaded this month  =>  {"steps":[{"action":"find","do":"files","what":"pdfs","where":"here"}]}
+          tokens in 31 out 22  {"cached":2714,"decodeMs":999.739,"engine":"llama-server","read":31,"readMs":514.815}
+PASS   8   3492ms  Request: zip all the pdfs from last week, call it receipts, then move the zip to my desktop  =>  {"steps":[{"action":"find","do":"files","what":"pdfs modified last week","where":"here"},{"action":"zip","do":"files","to":"receipts","where":"previous"},{"action":"move","do":"files","names":["receipts.zip"],"to":"desktop"}]}
+          tokens in 44 out 60  {"cached":2714,"decodeMs":2857.182,"engine":"llama-server","read":44,"readMs":629.327}
+7/8 passed, 1734 ms per request on average

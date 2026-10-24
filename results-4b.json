@@ -1,0 +1,338 @@
+{
+  "avgMs": 39165,
+  "model": "C:/Users/ndaou/dogfile-models/Qwen3.5-4B-Q4_K_M.gguf",
+  "pass": 11,
+  "results": [
+    {
+      "ctx": "Folder: C:\\Users\\Sam\\Documents\nIn this folder: History.txt, Report.docx, Taxes (folder)\nRequest: Move History.txt to downloads",
+      "error": null,
+      "expect": [
+        {
+          "action": "move",
+          "do": "files",
+          "names": [
+            "History.txt"
+          ],
+          "to": "downloads"
+        }
+      ],
+      "ms": 31171,
+      "ok": true,
+      "plan": {
+        "steps": [
+          {
+            "action": "move",
+            "do": "files",
+            "names": [
+              "History.txt"
+            ],
+            "to": "downloads"
+          }
+        ]
+      },
+      "request": "Request: Move History.txt to downloads"
+    },
+    {
+      "ctx": "Folder: C:\\Users\\Sam\\Documents\nIn this folder: History.txt, Report.docx\nRequest: open history.txt",
+      "error": null,
+      "expect": [
+        {
+          "action": "open",
+          "do": "files",
+          "names": [
+            "History.txt"
+          ]
+        }
+      ],
+      "ms": 24751,
+      "ok": true,
+      "plan": {
+        "steps": [
+          {
+            "action": "open",
+            "do": "files",
+            "names": [
+              "History.txt"
+            ],
+            "where": "here"
+          }
+        ]
+      },
+      "request": "Request: open history.txt"
+    },
+    {
+      "ctx": "Folder: C:\\Users\\Sam\\Documents\nIn this folder: Macros.xlsx, Automation.pdf, notes.md\nRequest: delete macros.xlsx and automation.pdf",
+      "error": null,
+      "expect": [
+        {
+          "action": "delete",
+          "do": "files",
+          "names": [
+            "Macros.xlsx",
+            "Automation.pdf"
+          ]
+        }
+      ],
+      "ms": 50765,
+      "ok": true,
+      "plan": {
+        "steps": [
+          {
+            "action": "delete",
+            "do": "files",
+            "names": [
+              "Macros.xlsx",
+              "Automation.pdf"
+            ],
+            "where": "here"
+          }
+        ]
+      },
+      "request": "Request: delete macros.xlsx and automation.pdf"
+    },
+    {
+      "ctx": "Folder: C:\\Users\\Sam\\Documents\nIn this folder: theme.css, dark mode notes.txt\nRequest: copy theme.css to the desktop",
+      "error": null,
+      "expect": [
+        {
+          "action": "copy",
+          "do": "files",
+          "names": [
+            "theme.css"
+          ],
+          "to": "desktop"
+        }
+      ],
+      "ms": 35544,
+      "ok": true,
+      "plan": {
+        "steps": [
+          {
+            "action": "copy",
+            "do": "files",
+            "names": [
+              "theme.css"
+            ],
+            "to": "desktop"
+          }
+        ]
+      },
+      "request": "Request: copy theme.css to the desktop"
+    },
+    {
+      "ctx": "Folder: C:\\Users\\Sam\\Downloads\nRequest: show me my file history",
+      "error": null,
+      "expect": [
+        {
+          "do": "feature",
+          "id": "history"
+        }
+      ],
+      "ms": 29262,
+      "ok": true,
+      "plan": {
+        "steps": [
+          {
+            "do": "feature",
+            "id": "history"
+          }
+        ]
+      },
+      "request": "Request: show me my file history"
+    },
+    {
+      "ctx": "Folder: C:\\Users\\Sam\\Downloads\nRequest: oops undo that last move",
+      "error": null,
+      "expect": [
+        {
+          "do": "feature",
+          "id": "history"
+        }
+      ],
+      "ms": 44984,
+      "ok": true,
+      "plan": {
+        "steps": [
+          {
+            "do": "feature",
+            "id": "history"
+          }
+        ]
+      },
+      "request": "Request: oops undo that last move"
+    },
+    {
+      "ctx": "Folder: C:\\Users\\Sam\\Downloads\nRequest: find every pdf i downloaded this month",
+      "error": null,
+      "expect": [
+        {
+          "action": "find",
+          "do": "files",
+          "what": "pdf"
+        }
+      ],
+      "ms": 25664,
+      "ok": true,
+      "plan": {
+        "steps": [
+          {
+            "action": "find",
+            "do": "files",
+            "what": "pdfs downloaded this month",
+            "where": "here"
+          }
+        ]
+      },
+      "request": "Request: find every pdf i downloaded this month"
+    },
+    {
+      "ctx": "Folder: C:\\Users\\Sam\\Downloads\nRequest: zip all the pdfs from last week, call it receipts, then move the zip to my desktop",
+      "error": null,
+      "expect": [
+        {
+          "action": "zip",
+          "do": "files"
+        },
+        {
+          "action": "move",
+          "do": "files",
+          "to": "desktop"
+        }
+      ],
+      "ms": 61318,
+      "ok": true,
+      "plan": {
+        "steps": [
+          {
+            "action": "find",
+            "do": "files",
+            "what": "pdfs modified last week",
+            "where": "here"
+          },
+          {
+            "action": "zip",
+            "do": "files",
+            "to": "receipts",
+            "where": "previous"
+          },
+          {
+            "action": "move",
+            "do": "files",
+            "names": [
+              "receipts.zip"
+            ],
+            "to": "desktop"
+          }
+        ]
+      },
+      "request": "Request: zip all the pdfs from last week, call it receipts, then move the zip to my desktop"
+    },
+    {
+      "ctx": "Folder: C:\\Users\\Sam\\Downloads\nRequest: get rid of all the .tmp and .log junk in here",
+      "error": null,
+      "expect": [
+        {
+          "action": "delete",
+          "do": "files",
+          "what": "tmp"
+        }
+      ],
+      "ms": 56138,
+      "ok": true,
+      "plan": {
+        "steps": [
+          {
+            "action": "delete",
+            "do": "files",
+            "what": "files ending in .tmp or .log",
+            "where": "here"
+          }
+        ]
+      },
+      "request": "Request: get rid of all the .tmp and .log junk in here"
+    },
+    {
+      "ctx": "Folder: C:\\Users\\Sam\\Pictures\nSelected: IMG_0001.jpg, IMG_0002.jpg, IMG_0003.jpg\nRequest: tag these as vacation and rename them by the date taken",
+      "error": null,
+      "expect": [
+        {
+          "action": "tag",
+          "do": "files",
+          "to": "vacation",
+          "where": "selection"
+        },
+        {
+          "action": "rename",
+          "do": "files",
+          "where": "selection"
+        }
+      ],
+      "ms": 52001,
+      "ok": true,
+      "plan": {
+        "steps": [
+          {
+            "action": "tag",
+            "do": "files",
+            "to": "vacation",
+            "where": "selection"
+          },
+          {
+            "action": "rename",
+            "do": "files",
+            "to": "the date taken",
+            "where": "selection"
+          }
+        ]
+      },
+      "request": "Request: tag these as vacation and rename them by the date taken"
+    },
+    {
+      "ctx": "Folder: C:\\Users\\Sam\\Pictures\nSelected: IMG_0001.jpg\nRequest: rotate it 90 degrees",
+      "error": null,
+      "expect": [
+        {
+          "do": "feature",
+          "id": "transformPics"
+        }
+      ],
+      "ms": 37045,
+      "ok": false,
+      "plan": {
+        "steps": [
+          {
+            "action": "tag",
+            "do": "files",
+            "to": "red",
+            "where": "selection"
+          }
+        ]
+      },
+      "request": "Request: rotate it 90 degrees"
+    },
+    {
+      "ctx": "Folder: C:\\Users\\Sam\\Pictures\nRequest: find blurry duplicates of my holiday pics",
+      "error": null,
+      "expect": [
+        {
+          "do": "feature",
+          "id": "similarPics"
+        }
+      ],
+      "ms": 21337,
+      "ok": true,
+      "plan": {
+        "steps": [
+          {
+            "action": "find",
+            "do": "files",
+            "what": "blurry duplicates",
+            "where": "here"
+          }
+        ]
+      },
+      "request": "Request: find blurry duplicates of my holiday pics"
+    }
+  ],
+  "total": 12
+}

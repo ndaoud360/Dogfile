@@ -1,0 +1,29 @@
+[0.0s] loading
+[0.0s] cpu: CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | REPACK = 1 | | threads (8, 16)
+[3.5s] reading
+[352.5s] ready
+PASS   1  45703ms  Request: Move History.txt to downloads  =>  {"steps":[{"action":"move","do":"files","names":["History.txt"],"to":"downloads"}]}
+          tokens in 44 out 21  {"decodeMs":14316,"fallbacks":0,"readMs":31246,"restoreMs":130,"sampleMs":7}
+PASS   2  29962ms  Request: open history.txt  =>  {"steps":[{"action":"open","do":"files","names":["History.txt"]}]}
+          tokens in 38 out 17  {"decodeMs":8819,"fallbacks":0,"readMs":20985,"restoreMs":146,"sampleMs":5}
+PASS   3  54472ms  Request: delete macros.xlsx and automation.pdf  =>  {"steps":[{"action":"delete","do":"files","names":["Macros.xlsx","Automation.pdf"],"where":"here"}]}
+          tokens in 43 out 25  {"decodeMs":13716,"fallbacks":0,"readMs":40574,"restoreMs":166,"sampleMs":7}
+PASS   4  45015ms  Request: copy theme.css to the desktop  =>  {"steps":[{"action":"copy","do":"files","names":["theme.css"],"to":"desktop"}]}
+          tokens in 42 out 21  {"decodeMs":19289,"fallbacks":0,"readMs":25561,"restoreMs":153,"sampleMs":7}
+PASS   5  26685ms  Request: show me my file history  =>  {"steps":[{"do":"feature","id":"history"}]}
+          tokens in 29 out 12  {"decodeMs":6784,"fallbacks":0,"readMs":19546,"restoreMs":345,"sampleMs":4}
+PASS   6  37107ms  Request: oops undo that last move  =>  {"steps":[{"do":"feature","id":"history"}]}
+          tokens in 30 out 12  {"decodeMs":6644,"fallbacks":0,"readMs":30316,"restoreMs":139,"sampleMs":4}
+PASS   7  38897ms  Request: find every pdf i downloaded this month  =>  {"steps":[{"action":"find","do":"files","what":"pdfs downloaded this month","where":"here"}]}
+          tokens in 31 out 24  {"decodeMs":12933,"fallbacks":0,"readMs":25756,"restoreMs":194,"sampleMs":7}
+PASS   8  64265ms  Request: zip all the pdfs from last week, call it receipts, then move the zip to my desktop  =>  {"steps":[{"action":"find","do":"files","what":"pdfs modified last week","where":"here"},{"action":"zip","do":"files","to":"receipts","where":"previous"},{"action":"move","do":"files","names":["receipts.zip"],"to":"desktop"}]}
+          tokens in 44 out 59  {"decodeMs":34708,"fallbacks":0,"readMs":29393,"restoreMs":138,"sampleMs":19}
+PASS   9  60174ms  Request: get rid of all the .tmp and .log junk in here  =>  {"steps":[{"action":"delete","do":"files","what":".tmp and .log files","where":"here"}]}
+          tokens in 37 out 25  {"decodeMs":16912,"fallbacks":0,"readMs":42705,"restoreMs":537,"sampleMs":16}
+PASS  10  69473ms  Request: tag these as vacation and rename them by the date taken  =>  {"steps":[{"action":"tag","do":"files","to":"vacation","where":"selection"},{"action":"rename","do":"files","to":"the date taken","where":"selection"}]}
+          tokens in 61 out 39  {"decodeMs":24958,"fallbacks":0,"readMs":44209,"restoreMs":290,"sampleMs":12}
+PASS  11  38459ms  Request: rotate it 90 degrees  =>  {"steps":[{"detail":"rotate 90 degrees","do":"feature","id":"transformPics"}]}
+          tokens in 40 out 22  {"decodeMs":12760,"fallbacks":1,"readMs":25365,"restoreMs":259,"sampleMs":70}
+PASS  12  36066ms  Request: find blurry duplicates of my holiday pics  =>  {"steps":[{"action":"find","do":"files","what":"blurry duplicates","where":"here"}]}
+          tokens in 31 out 22  {"decodeMs":11348,"fallbacks":0,"readMs":24561,"restoreMs":143,"sampleMs":6}
+12/12 passed, 45523 ms per request on average

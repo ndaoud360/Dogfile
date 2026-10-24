@@ -1,0 +1,21 @@
+[0.0s] loading
+[0.0s] cpu: CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | REPACK = 1 | | threads (2, 2)
+[1.1s] reading
+[38.4s] ready
+PASS   1   2129ms  Request: Move History.txt to downloads  =>  {"steps":[{"action":"move","do":"files","names":["History.txt"],"to":"downloads"}]}
+          tokens in 45 out 21  {"decodeMs":1149,"fallbacks":0,"readMs":964,"restoreMs":8,"sampleMs":5}
+PASS   2   1942ms  Request: open history.txt  =>  {"steps":[{"action":"open","do":"files","names":["History.txt"],"where":"here"}]}
+          tokens in 38 out 21  {"decodeMs":1112,"fallbacks":0,"readMs":817,"restoreMs":5,"sampleMs":5}
+FAIL   3   2159ms  Request: delete macros.xlsx and automation.pdf  =>  {"steps":[{"action":"delete","do":"files","what":"Macros.xlsx and Automation.pdf","where":"here"}]}
+          tokens in 43 out 25  {"decodeMs":1312,"fallbacks":0,"readMs":833,"restoreMs":5,"sampleMs":6}
+PASS   4   1966ms  Request: copy theme.css to the desktop  =>  {"steps":[{"action":"copy","do":"files","names":["theme.css"],"to":"desktop"}]}
+          tokens in 42 out 21  {"decodeMs":1148,"fallbacks":0,"readMs":805,"restoreMs":5,"sampleMs":5}
+PASS   5   1231ms  Request: show me my file history  =>  {"steps":[{"do":"feature","id":"history"}]}
+          tokens in 29 out 12  {"decodeMs":625,"fallbacks":0,"readMs":596,"restoreMs":5,"sampleMs":3}
+PASS   6   1294ms  Request: oops undo that last move  =>  {"steps":[{"do":"feature","id":"history"}]}
+          tokens in 30 out 12  {"decodeMs":650,"fallbacks":0,"readMs":633,"restoreMs":5,"sampleMs":3}
+PASS   7   1913ms  Request: find every pdf i downloaded this month  =>  {"steps":[{"action":"find","do":"files","what":"pdfs downloaded this month","where":"here"}]}
+          tokens in 31 out 24  {"decodeMs":1283,"fallbacks":0,"readMs":616,"restoreMs":5,"sampleMs":5}
+PASS   8   3844ms  Request: zip all the pdfs from last week, call it receipts, then move the zip to my desktop  =>  {"steps":[{"action":"find","do":"files","what":"pdfs modified last week","where":"here"},{"action":"zip","do":"files","to":"receipts","where":"previous"},{"action":"move","do":"files","names":["receipts.zip"],"to":"desktop"}]}
+          tokens in 44 out 59  {"decodeMs":2993,"fallbacks":0,"readMs":829,"restoreMs":5,"sampleMs":14}
+7/8 passed, 2059 ms per request on average

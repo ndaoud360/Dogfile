@@ -1,0 +1,9 @@
+CPU: 12th Gen Intel(R) Core(TM) i9-12900H | cores 14 | threads 20 | max 2500 MHz | now 2500 MHz
+RAM: 31.7 GB total, 16.1 GB free
+Memory sticks: 4GB@4800MHz, 4GB@4800MHz, 4GB@4800MHz, 4GB@4800MHz, 4GB@4800MHz, 4GB@4800MHz, 4GB@4800MHz, 4GB@4800MHz
+Power plan: Power Scheme GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c  (High performance)
+Battery: 78% status 2 (2 = plugged in)
+Busiest programs (CPU seconds so far): msedgewebview2 41157s, svchost 17848s, System 16949s, msedgewebview2 8839s, audiodg 6595s, msedge 4344s
+CPU load now: 3%
+llama.cpp assets: nightly-tag.txt
+llama.cpp bench failed: Cannot validate argument on parameter 'Uri'. The argument is null or empty. Provide an argument that is not null or empty, and then try the command again.

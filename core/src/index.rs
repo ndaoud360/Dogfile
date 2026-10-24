@@ -278,6 +278,10 @@ impl Tree {
         std::fs::rename(&tmp, file)
     }
     pub fn load(file: &Path) -> std::io::Result<Tree> {
+        // a damaged file (disk trouble, an interrupted copy) must never be trusted: every length is checked
+        // against the file's real size, so it can't ask for gigabytes of memory or point outside itself
+        let fsize = std::fs::metadata(file)?.len() as usize;
+        let bad = || std::io::Error::other("damaged index");
         let mut r = BufReader::with_capacity(1 << 20, std::fs::File::open(file)?);
         let mut b4 = [0u8; 4];
         let mut b8 = [0u8; 8];
@@ -286,13 +290,15 @@ impl Tree {
         if &b4 != b"ATIX" { return Err(std::io::Error::other("not an index")) }
         r.read_exact(&mut b4)?;
         if u32::from_le_bytes(b4) != 2 { return Err(std::io::Error::other("old index")) }
-        let mut rstr = |r: &mut BufReader<std::fs::File>| -> std::io::Result<String> { let mut l = [0u8; 4]; r.read_exact(&mut l)?; let mut v = vec![0u8; u32::from_le_bytes(l) as usize]; r.read_exact(&mut v)?; Ok(String::from_utf8_lossy(&v).into_owned()) };
+        let rstr = |r: &mut BufReader<std::fs::File>| -> std::io::Result<String> { let mut l = [0u8; 4]; r.read_exact(&mut l)?; let n = u32::from_le_bytes(l) as usize; if n > 65_536 || n > fsize { return Err(std::io::Error::other("damaged index")) } let mut v = vec![0u8; n]; r.read_exact(&mut v)?; Ok(String::from_utf8_lossy(&v).into_owned()) };
         let root = rstr(&mut r)?;
         let method = rstr(&mut r)?;
         r.read_exact(&mut b8)?;
         let built_at = f64::from_le_bytes(b8);
         r.read_exact(&mut b4)?;
         let n = u32::from_le_bytes(b4) as usize;
+        // each entry takes 28 bytes in the file
+        if n.saturating_mul(28) > fsize { return Err(bad()) }
         let mut entries = Vec::with_capacity(n);
         for _ in 0..n {
             r.read_exact(&mut b4)?; let parent = u32::from_le_bytes(b4);
@@ -304,9 +310,13 @@ impl Tree {
             entries.push(E { parent, name_off, name_len, flags, size, mtime, files: 0 });
         }
         r.read_exact(&mut b4)?;
-        let mut names = vec![0u8; u32::from_le_bytes(b4) as usize];
+        let nl = u32::from_le_bytes(b4) as usize;
+        if nl > fsize { return Err(bad()) }
+        let mut names = vec![0u8; nl];
         r.read_exact(&mut names)?;
         let n = entries.len();
+        // the root (entry 0) has no parent; deleted entries keep stale values and are skipped
+        if entries.iter().skip(1).any(|e| e.flags & F_DELETED == 0 && (e.parent as usize >= n || e.name_off as usize + e.name_len as usize > names.len())) { return Err(bad()) }
         let mut t = Tree { root, entries, names, first: vec![NONE; n], next: vec![NONE; n], deleted: 0, built_at, method };
         for i in 1..t.entries.len() as u32 {
             let e = t.entries[i as usize];
@@ -846,6 +856,21 @@ mod tests {
         assert_eq!(t2.entries[0].size, 1055 + 500 - 500);
         let x = base.join("a").join("new").join("deep").join("x.bin");
         assert_eq!(t2.path(t2.lookup(&util::path_str(&x)).unwrap()), util::path_str(&x));
+        // a damaged file is refused, never trusted: cut short, a huge count, garbage everywhere
+        let good = std::fs::read(&f).unwrap();
+        let bad = base.join("../atlas-idx-bad.atix");
+        std::fs::write(&bad, &good[..good.len() / 2]).unwrap();
+        assert!(Tree::load(&bad).is_err());
+        let mut huge = good.clone();
+        let at = 8 + 4 + t.root.len() + 4 + t.method.len() + 8;
+        huge[at..at + 4].copy_from_slice(&u32::MAX.to_le_bytes());
+        std::fs::write(&bad, &huge).unwrap();
+        assert!(Tree::load(&bad).is_err());
+        let mut junk = good.clone();
+        for (i, b) in junk.iter_mut().enumerate().skip(at + 4) { *b = (i * 131 % 251) as u8; }
+        std::fs::write(&bad, &junk).unwrap();
+        assert!(Tree::load(&bad).is_err());
+        let _ = std::fs::remove_file(&bad);
         let _ = std::fs::remove_dir_all(&base);
         let _ = std::fs::remove_file(&f);
     }

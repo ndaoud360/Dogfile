@@ -347,6 +347,11 @@ async function render3D(box, path, alive) {
   cam.near = dist / 1000; cam.far = dist * 50; cam.updateProjectionMatrix();
   const ctl = new T.OrbitControls(cam, renderer.domElement); ctl.enableDamping = true; ctl.autoRotate = !r.flat; ctl.autoRotateSpeed = 1.2;
   renderer.domElement.addEventListener('pointerdown', () => (ctl.autoRotate = false));
+  // it turns for a few seconds, then only draws when someone moves it (a model left in the details pane used half a core)
+  const spinUntil = performance.now() + 8000;
+  let raf = 0;
+  const kick = () => { if (!raf) raf = requestAnimationFrame(loop); };
+  ctl.addEventListener('change', kick);
   // the first animation plays
   const mixer = r.animations.length ? new T.AnimationMixer(r.object) : null;
   if (mixer) mixer.clipAction(r.animations[0]).play();
@@ -355,10 +360,19 @@ async function render3D(box, path, alive) {
   ro.observe(box);
   let last = performance.now();
   const loop = (now) => {
+    raf = 0;
     if (!box.isConnected || !alive()) { ro.disconnect(); mixer?.stopAllAction(); obj.traverse((o) => { o.geometry?.dispose?.(); for (const m of [].concat(o.material || [])) { for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'alphaMap', 'bumpMap']) m[k]?.dispose?.(); m.dispose?.(); } }); renderer.dispose(); renderer.forceContextLoss(); return; }
     const dt = Math.min(0.1, ((now || last) - last) / 1000); last = now || last;
     mixer?.update(dt);
-    ctl.update(); renderer.render(scene, cam); requestAnimationFrame(loop);
+    if (ctl.autoRotate && (now || 0) > spinUntil) ctl.autoRotate = false;
+    const moved = ctl.update();
+    renderer.render(scene, cam);
+    // keep going only while something moves: turning, settling after a drag, or an animation; never while hidden
+    if (!document.hidden && (moved || ctl.autoRotate || mixer)) kick();
+    else last = performance.now();
   };
+  // checks now and then that it's still in the page (so it's let go when the pane changes) and wakes it when shown
+  const watch = setInterval(() => { if (!box.isConnected || !alive()) { clearInterval(watch); loop(performance.now()); } }, 2000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) kick(); });
   loop();
 }

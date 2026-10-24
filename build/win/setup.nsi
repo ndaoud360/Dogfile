@@ -104,9 +104,16 @@ SectionEnd
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 Section "Uninstall"
-  nsExec::Exec 'taskkill /F /IM Dogfile.exe'
-  Sleep 500
-  ; give Explorer back what Dogfile took over (default file manager, right-click verbs)
+  ; Everything Dogfile put on this PC goes: the program, settings, caches, downloaded tools (models, ExifTool,
+  ; the CAD reader, adb, scrcpy), the web view's profile, temporary files, shortcuts and every registry entry.
+  ; (The free trial is remembered by Dogfile's server, not on this PC, so removing it all doesn't reset it.)
+
+  ; stop Dogfile and everything it started (its web view, helpers, players, the phone tools)
+  nsExec::Exec '"$APPDATA\Dogfile\tools\platform-tools\adb.exe" kill-server'
+  nsExec::Exec 'taskkill /F /T /IM Dogfile.exe'
+  Sleep 1500
+
+  ; give Explorer back what Dogfile took over (default file manager, right-click verbs), old names included
   DeleteRegKey HKCU "Software\Classes\Folder\shell\open"
   DeleteRegKey HKCU "Software\Classes\Folder\shell\explore"
   DeleteRegKey HKCU "Software\Classes\CLSID\{52205fd8-5dfb-447d-801a-d0b52f2e83e1}"
@@ -114,10 +121,48 @@ Section "Uninstall"
   DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\video\shell\DogfilePlay"
   DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\audio\shell\DogfilePlay"
   DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\image\shell\DogfileView"
-  Delete "$SMPROGRAMS\Dogfile.lnk"
-  Delete "$DESKTOP\Dogfile.lnk"
+  DeleteRegKey HKCU "Software\Classes\*\shell\AtlasEdit"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\video\shell\AtlasPlay"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\audio\shell\AtlasPlay"
+  DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\image\shell\AtlasView"
+  ; notifications, start with Windows, its own keys
+  DeleteRegKey HKCU "Software\Classes\AppUserModelId\Dogfile.Dogfile"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "Dogfile"
+  DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Notifications\Settings\Dogfile.Dogfile"
   DeleteRegKey HKCU "${UNINST}"
   DeleteRegKey HKCU "Software\Dogfile"
-  ; your settings stay in %APPDATA%\Dogfile unless you remove them yourself
+
+  ; shortcuts
+  Delete "$SMPROGRAMS\Dogfile.lnk"
+  Delete "$DESKTOP\Dogfile.lnk"
+  Delete "$SMPROGRAMS\Atlas Files.lnk"
+  Delete "$DESKTOP\Atlas Files.lnk"
+
+  ; settings, tags, history, the search index, models, tools, the web view profile
+  RMDir /r "$APPDATA\Dogfile"
+  RMDir /r "$APPDATA\Atlas Files"
+  RMDir /r "$LOCALAPPDATA\Dogfile"
+  RMDir /r "$LOCALAPPDATA\com.dogfile.app"
+
+  ; temporary files (extracted archive entries, phone copies, conversions)
+  FindFirst $0 $1 "$TEMP\dogfile*"
+  loop_tmp:
+    StrCmp $1 "" done_tmp
+    RMDir /r "$TEMP\$1"
+    Delete "$TEMP\$1"
+    FindNext $0 $1
+    Goto loop_tmp
+  done_tmp:
+  FindClose $0
+  FindFirst $0 $1 "$TEMP\atlas-*"
+  loop_tmp2:
+    StrCmp $1 "" done_tmp2
+    RMDir /r "$TEMP\$1"
+    FindNext $0 $1
+    Goto loop_tmp2
+  done_tmp2:
+  FindClose $0
+
+  ; the program itself (a portable copy keeps its data here too)
   RMDir /r "$INSTDIR"
 SectionEnd

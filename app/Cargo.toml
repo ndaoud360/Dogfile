@@ -23,7 +23,7 @@ tauri-plugin-single-instance = "2"
 tauri-runtime = "2"
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.58", features = ["Win32_Foundation", "Win32_Graphics_Dwm", "Win32_UI_WindowsAndMessaging", "Win32_UI_Controls"] }
+windows = { version = "0.58", features = ["Win32_Foundation", "Win32_Graphics_Dwm", "Win32_UI_WindowsAndMessaging", "Win32_UI_Controls", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Threading"] }
 winreg = "0.55"
 webview2-com = "0.39"
 windows-core = "0.62"

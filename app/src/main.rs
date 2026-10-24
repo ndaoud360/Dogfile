@@ -79,7 +79,54 @@ impl AppHost {
     }
 
     /// a file-browser window
+    /// a saved window position, only if most of the window would be on one of the screens attached now
+    /// (a position saved while minimizing, or on a monitor that's gone, opened the window where no one could see it)
+    fn on_screen(&self, saved: &Value) -> Option<(f64, f64)> {
+        let (x, y) = (saved["x"].as_f64()?, saved["y"].as_f64()?);
+        let (w, h) = (saved["width"].as_f64().unwrap_or(1000.0), saved["height"].as_f64().unwrap_or(700.0));
+        if x <= -10000.0 || y <= -10000.0 || w < 200.0 || h < 150.0 {
+            return None;
+        }
+        let mons = self.app().available_monitors().ok()?;
+        let ok = mons.iter().any(|m| {
+            let f = m.scale_factor();
+            let (mx, my) = (m.position().x as f64 / f, m.position().y as f64 / f);
+            let (mw, mh) = (m.size().width as f64 / f, m.size().height as f64 / f);
+            // the title area (top 40 px) and at least 200 px of width must be on this screen
+            let ix = (x + w).min(mx + mw) - x.max(mx);
+            y >= my - 10.0 && y + 40.0 <= my + mh && ix >= 200.0
+        });
+        if ok { Some((x, y)) } else { None }
+    }
+    fn sane_size(saved: &Value, dw: f64, dh: f64) -> (f64, f64) {
+        let w = saved["width"].as_f64().filter(|v| (380.0..=10000.0).contains(v)).unwrap_or(dw);
+        let h = saved["height"].as_f64().filter(|v| (300.0..=10000.0).contains(v)).unwrap_or(dh);
+        (w, h)
+    }
     fn create_main(&self, launch: Value) {
+        // if the window can't be made (a locked web view profile, most often), clean up and try again, and as a
+        // last resort start with a fresh profile: Dogfile always opens
+        for attempt in 0..3 {
+            match self.try_create_main(launch.clone()) {
+                Ok(()) => return,
+                Err(e) => {
+                    startup_log(&format!("main window failed (try {}): {e}", attempt + 1));
+                    if attempt == 0 {
+                        end_leftover_webviews(std::process::id());
+                        if let Some(old) = std::fs::read(heartbeat_file()).ok().and_then(|b| serde_json::from_slice::<Value>(&b).ok()).and_then(|v| v["pid"].as_u64()) {
+                            end_leftover_webviews(old as u32);
+                        }
+                        std::thread::sleep(std::time::Duration::from_millis(500));
+                    } else {
+                        let fresh = dogfile_backend::st().data_dir.join(format!("WebView-{}", std::process::id()));
+                        startup_log(&format!("using a fresh web view profile: {}", fresh.display()));
+                        *WEBVIEW_DIR.lock() = Some(fresh);
+                    }
+                }
+            }
+        }
+    }
+    fn try_create_main(&self, launch: Value) -> Result<(), String> {
         let n = self.seq.fetch_add(1, Ordering::Relaxed) + 1;
         let label = format!("main-{n}");
         self.launches.lock().insert(label.clone(), launch);
@@ -88,17 +135,33 @@ impl AppHost {
         let b = WebviewWindowBuilder::new(self.app(), &label, page_url("index.html", &format!("w={label}")))
             .title("Dogfile")
             .min_inner_size(380.0, 300.0)
-            .inner_size(saved["width"].as_f64().unwrap_or(1360.0), saved["height"].as_f64().unwrap_or(880.0));
-        let b = if first && saved["x"].is_number() { b.position(saved["x"].as_f64().unwrap_or(80.0), saved["y"].as_f64().unwrap_or(60.0)) } else { b.center() };
+            .inner_size(Self::sane_size(&saved, 1360.0, 880.0).0, Self::sane_size(&saved, 1360.0, 880.0).1);
+        let b = match self.on_screen(&saved).filter(|_| first) { Some((x, y)) => b.position(x, y), None => b.center() };
         let maximized = first && saved["maximized"].as_bool().unwrap_or(false);
         match self.build(b, "main") {
             Ok(w) => {
                 if maximized {
                     let _ = w.maximize();
                 }
+                // the window shows when its page has loaded; if that never comes, it shows anyway
+                let label = w.label().to_string();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(5));
+                    if let Some(w) = host().win(&label) {
+                        if !w.is_visible().unwrap_or(true) && !host().quitting.load(Ordering::Relaxed) {
+                            startup_log(&format!("{label}: the page didn't finish loading in 5 s, showing the window anyway"));
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
+                    }
+                });
             }
-            Err(e) => eprintln!("window: {e}"),
+            Err(e) => {
+                self.launches.lock().remove(&label);
+                return Err(e.to_string());
+            }
         }
+        Ok(())
     }
 
     fn build(&self, b: WebviewWindowBuilder<'_, tauri::Wry, AppHandle>, kind: &str) -> tauri::Result<WebviewWindow> {
@@ -115,6 +178,9 @@ impl AppHost {
             .additional_browser_args(BROWSER_ARGS)
             .on_page_load(|w, p| {
                 if matches!(p.event(), tauri::webview::PageLoadEvent::Finished) {
+                    if w.label().starts_with("main") {
+                        startup_log(&format!("{}: page loaded, window shown", w.label()));
+                    }
                     let _ = w.show();
                     let _ = w.set_focus();
                 }
@@ -150,6 +216,14 @@ impl AppHost {
                 winx::webview_memory_low(&target, false);
                 let _ = target.show();
                 let _ = target.unminimize();
+                // somewhere no screen shows: back to the middle of the main screen
+                let visible = target.outer_position().ok().zip(target.outer_size().ok()).map(|(p, sz)| {
+                    let f = target.scale_factor().unwrap_or(1.0);
+                    self.on_screen(&json!({ "x": p.x as f64 / f, "y": p.y as f64 / f, "width": sz.width as f64 / f, "height": sz.height as f64 / f })).is_some()
+                });
+                if visible == Some(false) && !target.is_maximized().unwrap_or(false) {
+                    let _ = target.center();
+                }
                 let _ = target.set_focus();
                 self.emit(target.label(), "app:open", launch);
                 return;
@@ -236,10 +310,10 @@ impl AppHost {
     }
 }
 
-#[cfg(windows)]
+static WEBVIEW_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
 fn webview_data_dir() -> PathBuf {
     // keep the web view's cache beside Dogfile's own data (portable copies keep everything in one folder)
-    dogfile_backend::st().data_dir.join("WebView")
+    WEBVIEW_DIR.lock().clone().unwrap_or_else(|| dogfile_backend::st().data_dir.join("WebView"))
 }
 
 fn js_str(v: &impl serde::Serialize) -> String {
@@ -355,8 +429,8 @@ impl Host for AppHost {
         let b = WebviewWindowBuilder::new(self.app(), &label, page_url(&format!("{kind}.html"), &format!("w={label}")))
             .title(title)
             .min_inner_size(340.0, 260.0)
-            .inner_size(saved["width"].as_f64().unwrap_or(if big { 1280.0 } else { 1100.0 }), saved["height"].as_f64().unwrap_or(if big { 760.0 } else { 800.0 }));
-        let b = if saved["x"].is_number() { b.position(saved["x"].as_f64().unwrap_or(80.0), saved["y"].as_f64().unwrap_or(60.0)) } else { b.center() };
+            .inner_size(Self::sane_size(&saved, if big { 1280.0 } else { 1100.0 }, if big { 760.0 } else { 800.0 }).0, Self::sane_size(&saved, if big { 1280.0 } else { 1100.0 }, if big { 760.0 } else { 800.0 }).1);
+        let b = match self.on_screen(&saved) { Some((x, y)) => b.position(x, y), None => b.center() };
         if let Err(e) = self.build(b, kind) {
             eprintln!("tool window: {e}");
         }
@@ -619,6 +693,14 @@ fn resource_dirs() -> (PathBuf, PathBuf) {
 // Never stuck: a copy of Dogfile that froze (or hung while quitting) keeps the "already running" lock, so every
 // new launch hands over to it and nothing opens. The running copy touches a heartbeat file from its UI thread;
 // a new launch that finds an old heartbeat ends that copy (after checking it really is Dogfile) and starts.
+/// what happened while starting (the last few starts), for when Dogfile doesn't open
+fn startup_log(msg: &str) {
+    let f = data_dir().join("startup.log");
+    let old = std::fs::read_to_string(&f).unwrap_or_default();
+    let keep: String = if old.len() > 20_000 { old[old.len() - 10_000..].to_string() } else { old };
+    let t = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0);
+    let _ = std::fs::write(&f, format!("{keep}[{t}] {msg}\n"));
+}
 fn heartbeat_file() -> PathBuf {
     data_dir().join("running.json")
 }
@@ -627,9 +709,11 @@ fn end_frozen_copy() {
     let Ok(v) = serde_json::from_slice::<Value>(&b) else { return };
     let (Some(pid), Some(t)) = (v["pid"].as_u64(), v["t"].as_u64()) else { return };
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
-    if pid as u32 == std::process::id() || now.saturating_sub(t) < 20 {
+    if pid as u32 == std::process::id() {
         return;
     }
+    let fresh_beat = now.saturating_sub(t) < 20;
+    let _ = fresh_beat;
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -637,7 +721,11 @@ fn end_frozen_copy() {
             let out = std::process::Command::new("tasklist").args(["/FI", &format!("PID eq {pid}"), "/FO", "CSV", "/NH"]).creation_flags(0x0800_0000).output();
             out.map(|o| String::from_utf8_lossy(&o.stdout).to_lowercase().contains("dogfile")).unwrap_or(false)
         };
-        // gone already (a crash): nothing to do
+        // still running and answering: it's the copy the launch is handed to, leave it alone
+        if is_dogfile() && fresh_beat {
+            return;
+        }
+        // still running but silent: frozen
         if is_dogfile() {
             // the PC may just have woken up: a healthy copy writes again within a few seconds
             for _ in 0..14 {
@@ -647,12 +735,61 @@ fn end_frozen_copy() {
                     return;
                 }
             }
+            startup_log(&format!("an earlier Dogfile (process {pid}) stopped responding: ending it"));
             let _ = std::process::Command::new("taskkill").args(["/PID", &pid.to_string(), "/F"]).creation_flags(0x0800_0000).status();
             std::thread::sleep(std::time::Duration::from_millis(400));
         }
     }
+    // it didn't quit cleanly: what its web view left running goes too
+    end_leftover_webviews(pid as u32);
     let _ = std::fs::remove_file(heartbeat_file());
 }
+/// The web view's helper processes (msedgewebview2.exe) from a Dogfile that didn't quit cleanly can live on and
+/// keep its profile folder locked, so the next Dogfile can't make its window. The ones that earlier Dogfile
+/// started (and their children) are ended.
+#[cfg(windows)]
+fn end_leftover_webviews(old_pid: u32) {
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Diagnostics::ToolHelp::{CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS};
+    use windows::Win32::System::Threading::{OpenProcess, TerminateProcess, PROCESS_TERMINATE};
+    let mut procs: Vec<(u32, u32, String)> = vec![];
+    unsafe {
+        let Ok(snap) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) else { return };
+        let mut e = PROCESSENTRY32W { dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32, ..Default::default() };
+        if Process32FirstW(snap, &mut e).is_ok() {
+            loop {
+                let n = e.szExeFile.iter().position(|&c| c == 0).unwrap_or(e.szExeFile.len());
+                procs.push((e.th32ProcessID, e.th32ParentProcessID, String::from_utf16_lossy(&e.szExeFile[..n]).to_lowercase()));
+                if Process32NextW(snap, &mut e).is_err() { break }
+            }
+        }
+        let _ = CloseHandle(snap);
+    }
+    // the old Dogfile's web view processes, then theirs
+    let mut doomed: Vec<u32> = procs.iter().filter(|p| p.1 == old_pid && p.2 == "msedgewebview2.exe").map(|p| p.0).collect();
+    let mut i = 0;
+    while i < doomed.len() {
+        let parent = doomed[i];
+        for p in procs.iter().filter(|p| p.1 == parent && p.2 == "msedgewebview2.exe") {
+            if !doomed.contains(&p.0) { doomed.push(p.0) }
+        }
+        i += 1;
+    }
+    if !doomed.is_empty() {
+        startup_log(&format!("ending {} web view process(es) left by an earlier Dogfile", doomed.len()));
+    }
+    for pid in doomed {
+        unsafe {
+            if let Ok(h) = OpenProcess(PROCESS_TERMINATE, false, pid) {
+                let _ = TerminateProcess(h, 1);
+                let _ = CloseHandle(h);
+            }
+        }
+    }
+}
+#[cfg(not(windows))]
+fn end_leftover_webviews(_old_pid: u32) {}
+
 fn start_heartbeat(app: AppHandle) {
     std::thread::spawn(move || loop {
         let a = app.clone();
@@ -690,6 +827,7 @@ fn main() {
     }
     let test_mode = std::env::var("ATLAS_TEST").as_deref() == Ok("1");
     if !test_mode {
+        startup_log(&format!("--- starting Dogfile {} (process {})", env!("CARGO_PKG_VERSION"), std::process::id()));
         end_frozen_copy();
     }
     let rt = tokio::runtime::Builder::new_multi_thread().worker_threads(2).max_blocking_threads(16).enable_all().thread_name("dogfile").build().expect("runtime");
@@ -713,6 +851,9 @@ fn main() {
     {
         let _g = rt.enter();
         dogfile_backend::start(dogfile_backend::Config { data_dir: data_dir(), renderer_dir, ui_pak: ui_pak(), res_dir, test_mode }, h.clone());
+    }
+    if !test_mode {
+        startup_log("back end ready");
     }
     *h.corners.lock() = dogfile_backend::setting("windowCorners").as_str().unwrap_or("round").to_string();
 
@@ -829,7 +970,7 @@ fn main() {
             // quitting can never hang: whatever is still busy after 5 s, the process ends
             std::thread::spawn(|| {
                 std::thread::sleep(std::time::Duration::from_secs(5));
-                let _ = std::fs::remove_file(heartbeat_file());
+                // not clean: the heartbeat file stays, so the next start tidies up after this one
                 std::process::exit(0);
             });
             dogfile_backend::shutdown();

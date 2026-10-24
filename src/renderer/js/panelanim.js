@@ -149,9 +149,13 @@ function sizer(name, el, edge) {
   if (pos === 'absolute' || pos === 'fixed') return () => {};
   const prop = edge === 'left' || edge === 'right' ? 'width' : 'height';
   const minProp = prop === 'width' ? 'minWidth' : 'minHeight';
+  // padding and borders along the fold come off while it animates (the real panel is hidden then): otherwise the
+  // panel can't get smaller than them and jumps by that much at the start and the end (the ribbon's 11px)
+  const sides = prop === 'width' ? ['paddingLeft', 'paddingRight', 'borderLeftWidth', 'borderRightWidth'] : ['paddingTop', 'paddingBottom', 'borderTopWidth', 'borderBottomWidth'];
   return (px) => {
-    if (px == null) { el.style[prop] = ''; el.style[minProp] = ''; el.style.overflow = ''; el.style.flexBasis = ''; return; }
+    if (px == null) { el.style[prop] = ''; el.style[minProp] = ''; el.style.overflow = ''; el.style.flexBasis = ''; for (const k of sides) el.style[k] = ''; return; }
     el.style[prop] = px + 'px'; el.style[minProp] = '0px'; el.style.flexBasis = 'auto'; el.style.overflow = 'hidden';
+    for (const k of sides) el.style[k] = '0px';
   };
 }
 

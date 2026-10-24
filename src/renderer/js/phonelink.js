@@ -10,8 +10,9 @@ let dlg = null; // { body, render }
 const ago = (ms) => { if (!ms) return ''; const s = (Date.now() - ms) / 1000; return s < 90 ? 'just now' : s < 3600 ? `${Math.round(s / 60)} min ago` : s < 86400 ? `${Math.round(s / 3600)} h ago` : new Date(ms).toLocaleDateString(); };
 
 /** the Phone transfer window */
-export async function openPhoneTransfer() {
+export async function openPhoneTransfer({ focus } = {}) {
   if (dlg) return;
+  let focused = !focus;
   const body = h('div', { class: 'ph-wrap' });
   let pairing = null, timer = 0;
   const render = async () => {
@@ -45,7 +46,10 @@ export async function openPhoneTransfer() {
         h('button', { class: 'btn small', onclick: async () => { await api('phone:forget', d.id); render(); } }, 'Forget')));
     }
     body.append(h('h4', {}, 'Your phones'), devs);
-    body.append(h('h4', {}, 'Browse an Android phone from This PC'), await adbSection(render));
+    const adbHead = h('h4', {}, 'Browse an Android phone from This PC');
+    body.append(adbHead, await adbSection(render));
+    // opened from This PC's "Add a phone": straight to that part
+    if (!focused && focus === 'android') { focused = true; requestAnimationFrame(() => adbHead.scrollIntoView({ block: 'start' })); }
     // waiting for the phone
     const out = h('div', { class: 'ph-list' });
     if (!st.outbox.length) out.append(h('div', { class: 'ph-empty' }, 'Right-click files and choose Send to phone. They wait here until your phone picks them up.'));
@@ -97,7 +101,7 @@ async function adbSection(rerender) {
       for (;;) { await new Promise((r) => setTimeout(r, 700)); const s2 = await api('phone:adbStatus'); if (s2.ready) break; if (!s2.downloading) { toast(s2.error || 'Couldn’t download it', { error: true }); break; } }
       rerender();
     } }, 'Set it up');
-    box.append(h('div', { class: 'ph-line' }, h('span', { class: 'lbl sub' }, 'See and copy the files on your phone, like a drive. Dogfile needs a small free tool from Google for this (about 7 MB).'), btn));
+    box.append(h('div', { class: 'ph-line' }, h('span', { class: 'sub ph-desc' }, 'See and copy the files on your phone, like a drive. Dogfile needs a small free tool from Google for this (about 7 MB).'), btn));
     return box;
   }
   const addr = h('input', { class: 'input small', placeholder: '192.168.1.20:37099', style: { width: '170px' } });

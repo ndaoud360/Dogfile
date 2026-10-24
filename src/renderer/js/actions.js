@@ -26,6 +26,7 @@ export async function openItems(items, { pane = state.activePane, newTab = false
   const t = paneTab(pane);
   const dirs = items.filter((i) => i.isDir);
   let files = items.filter((i) => !i.isDir);
+  if (items.length === 1 && items[0].addPhone) { import('./phonelink.js').then((m) => m.openPhoneTransfer({ focus: 'android' })); return; }
   if (items.length === 1 && items[0].netdev) { const d = items[0].netdev; if (d.url) api('shell:openExternal', d.url); else if (d.source === 'ssdp') toast(`${d.name}${d.model ? ` (${d.model})` : ''} at ${d.ip}. This device has no web page to open.`); else api('net:open', d.name); return; }
   const feats = files.filter((f) => /\.(dogmod|atlasfeature)$/i.test(f.name || f.path));
   if (feats.length) { files = files.filter((f) => !feats.includes(f)); const F = await import('./features.js'); for (const f of feats) await F.importFeature(f.path); if (!files.length && !dirs.length) return; }
@@ -851,6 +852,8 @@ export async function listThisPC() {
   const items = [];
   // Devices and drives first, then network locations, then the user folders
   for (const d of drives.filter((x) => x.type !== 'network')) items.push(V({ name: d.name, path: d.path, virtual: d.type === 'portable', section: 'Devices and drives', drive: d }));
+  // no phone yet: a tile next to the drives that sets one up (Wi-Fi or USB), so people know where phones show up
+  if (IS_WIN() && !drives.some((x) => x.type === 'portable')) items.push(V({ name: 'Add a phone', path: 'atlas:addphone', virtual: true, isDir: false, section: 'Devices and drives', addPhone: true, drive: { type: 'portable', devType: state.settings.phoneAdb ? 'Not connected right now' : 'Browse your phone here', total: 0, free: 0 } }));
   for (const d of drives.filter((x) => x.type === 'network')) items.push(V({ name: d.name, path: d.path, virtual: false, section: 'Network locations', drive: d }));
   items.push(...knownItems('Folders'));
   return items;

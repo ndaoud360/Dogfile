@@ -330,7 +330,7 @@ mod win {
     use std::sync::OnceLock;
 
     #[link(name = "kernel32")]
-    extern "system" {
+    unsafe extern "system" {
         fn CreateJobObjectW(attrs: *const c_void, name: *const u16) -> *mut c_void;
         fn SetInformationJobObject(job: *mut c_void, class: i32, info: *const c_void, len: u32) -> i32;
         fn AssignProcessToJobObject(job: *mut c_void, process: *mut c_void) -> i32;

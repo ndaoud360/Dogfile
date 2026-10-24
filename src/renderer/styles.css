@@ -1885,6 +1885,8 @@ body.col-resizing, body.col-resizing * { cursor: col-resize !important; user-sel
 .ph-line { display: flex; align-items: center; gap: 8px; }
 .ph-line .lbl { flex: none; }
 .ph-line .path { flex: 1; min-width: 0; color: var(--text-3); }
+.ph-line .ph-desc { flex: 1; min-width: 0; }
+.ph-line > .btn { flex: none; }
 .ph-note.bad { color: var(--danger, #d64545); font-size: 13px; }
 
 /* Demo mode sign at the top of the window */

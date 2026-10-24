@@ -25,8 +25,10 @@ export function contextFor({ t, sel, appT, last, pendingAsk }, text) {
   if (items.length && p && !isVirtual(p)) {
     const words = String(text).toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2);
     const score = (i) => words.reduce((a, w) => a + (i.name.toLowerCase().includes(w) ? 1 : 0), 0);
-    const ranked = [...items].sort((a, b) => score(b) - score(a));
-    const shown = ranked.slice(0, 60);
+    // the names the request mentions, and a handful of others for a sense of the folder: every name costs reading time
+    const ranked = [...items].map((i) => [i, score(i)]).sort((a, b) => b[1] - a[1]);
+    const hits = ranked.filter(([, sc]) => sc > 0).slice(0, 20).map(([i]) => i);
+    const shown = [...hits, ...ranked.filter(([, sc]) => sc === 0).slice(0, Math.max(6, 20 - hits.length)).map(([i]) => i)];
     lines.push(`In this folder: ${shown.map((i) => i.name + (i.isDir ? ' (folder)' : '')).join(', ')}${items.length > shown.length ? ` (+${items.length - shown.length} more)` : ''}`);
   }
   if (appT?.app) lines.push(`Open in this tab: ${APP_LABEL[appT.app] || appT.app}${appT.appPath ? `, ${appT.app === 'editor' ? 'editing' : appT.app === 'player' ? 'playing' : 'showing'} ${basename(appT.appPath)}` : ''}`);

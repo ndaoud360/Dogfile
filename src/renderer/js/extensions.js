@@ -14,7 +14,7 @@ export const PERMS = {
   run: ['Run commands', 'Run programs and scripts in the built-in terminal (you see them run)'],
   hooks: ['Watch and change file operations', 'See copies, moves, deletes and renames before they happen, and change where they go or stop them'],
 };
-const NEEDS = { 'files.list': 'read', 'files.stat': 'read', 'files.readText': 'read', 'files.writeText': 'write', 'files.rename': 'write', 'files.copy': 'write', 'files.move': 'write', 'files.mkdir': 'write', 'files.trash': 'write', 'net.fetch': 'network', run: 'run' };
+const NEEDS = { 'files.list': 'read', 'files.stat': 'read', 'files.readText': 'read', 'files.writeText': 'write', 'files.rename': 'write', 'files.copy': 'write', 'files.move': 'write', 'files.mkdir': 'write', 'files.trash': 'write', 'net.fetch': 'network', run: 'run', runPowerShell: 'run' };
 
 // "// @name Screenplay formatter" style headers at the top of a feature's code
 export function parseFeature(code, fallback = {}) {
@@ -180,6 +180,7 @@ export function startFeatures({ target, getSettings, provide = {}, onChange }) {
       case 'files.open': return provide.open ? provide.open(a[0]) : api('shell:open', a[0]);
       case 'net.fetch': return api('ext:fetch', a[0], a[1] || {});
       case 'run': if (provide.run) return provide.run(a[0], a[1]); return api('shell:runCommand', a[0], a[1]);
+      case 'runPowerShell': if (provide.runPowerShell) return provide.runPowerShell(a[0], a[1]); throw new Error('dogfile.runPowerShell() works in the file browser');
       case 'clipboard.writeText': await api('clip:writeText', a[0]); return true;
       case 'storage.get': { const all = (await api('store:get', 'ext-storage')) || {}; const v = all[f.id]?.[a[0]]; return v !== undefined ? v : ((getSettings().extStorage || {})[f.id]?.[a[0]] ?? null); }
       case 'storage.set': { const all = (await api('store:get', 'ext-storage')) || {}; all[f.id] = { ...(all[f.id] || {}), [a[0]]: a[1] }; await api('store:set', 'ext-storage', all); return true; }

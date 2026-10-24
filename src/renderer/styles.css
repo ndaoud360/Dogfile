@@ -889,7 +889,7 @@ body.folding #app-frames { z-index: 19; }
 .pk-namewrap { display: flex; align-items: center; gap: 8px; flex: 1 1 260px; min-width: 0; font-size: 12.5px; color: var(--text-2); }
 .pk-namewrap .input { flex: 1; min-width: 0; }
 .pk-filter { max-width: 260px; min-width: 0; }
-@media (max-width: 720px) { .pk { grid-template-columns: minmax(0, 1fr); } .pk-places { display: none; } .pk-cols, .pk-row { grid-template-columns: 22px minmax(0, 1fr) 70px; } .pk-cols { grid-template-columns: minmax(0, 1fr) 70px; } .pk-d, .pk-cols span:nth-child(2) { display: none; } }
+@media (max-width: 720px) { .pk { grid-template-columns: minmax(0, 1fr); } .pk-places { display: none; } .pk-cols, .pk-row { grid-template-columns: 22px minmax(0, 1fr) 70px; } .pk-cols { grid-template-columns: minmax(0, 1fr) 70px; } .pk-d, .pk-cols .pk-col:nth-child(2) { display: none; } }
 .mb-msg { color: var(--text); font-size: 14px; }
 /* sidebar lists must shrink to scroll (flex items default to min-height: auto) */
 .side-list { min-height: 0; }
@@ -1391,7 +1391,8 @@ body.kbd .cell.focused, body.kbd-always .cell.focused { outline: 2px solid var(-
 body.kbd .side-item:focus, body.kbd-always .side-item:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 body.reduce-motion *, body.reduce-motion *::before, body.reduce-motion *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
 body.high-contrast { --text: #000; --text-2: #111; --text-3: #333; --text-4: #555; --line: #888; --line-2: #666; --bg-hover: rgba(0,0,0,.12); --bg-sel: #cfe3ff; }
-@media (prefers-color-scheme: dark) { body.high-contrast:not(.light) { --text: #fff; --text-2: #f2f2f2; --text-3: #d0d0d0; --text-4: #b0b0b0; --line: #9a9a9a; --line-2: #bdbdbd; --bg-hover: rgba(255,255,255,.16); } }
+/* follows Dogfile's own theme (not Windows'), so a light Dogfile on a dark Windows stays dark-on-light */
+html[data-theme=dark] body.high-contrast { --text: #fff; --text-2: #f2f2f2; --text-3: #d0d0d0; --text-4: #b0b0b0; --line: #9a9a9a; --line-2: #bdbdbd; --bg-hover: rgba(255,255,255,.16); --bg-sel: #1f4f8f; }
 body.high-contrast .cell.selected .label, body.high-contrast .drow.selected { text-decoration: underline; }
 body.big-targets .icon-btn { min-width: 36px; min-height: 36px; }
 body.big-targets .btn { min-height: 36px; }
@@ -1898,3 +1899,9 @@ body.col-resizing, body.col-resizing * { cursor: col-resize !important; user-sel
 .set-row.stacked .pa-set { grid-template-columns: repeat(2, minmax(0, 1fr) 132px); gap: 8px 14px; width: 100%; }
 .set-row.stacked .row-inline { flex-wrap: wrap; }
 .set-row.stacked .pa-set .input { min-width: 0; width: 100%; }
+.pk-col { all: unset; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; color: var(--text-3); font-size: 11.5px; padding: 2px 0; }
+.pk-col:hover { color: var(--text); }
+.pk-col.on { color: var(--text); font-weight: 600; }
+.pk-arrow { font-size: 8px; opacity: .8; }
+.pk-cols .pk-col:nth-child(3) { justify-self: end; }
+.ph-steps { margin: 0; padding-left: 18px; line-height: 1.6; }

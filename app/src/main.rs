@@ -615,8 +615,73 @@ fn resource_dirs() -> (PathBuf, PathBuf) {
     (src.join("src").join("renderer"), src)
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// Never stuck: a copy of Dogfile that froze (or hung while quitting) keeps the "already running" lock, so every
+// new launch hands over to it and nothing opens. The running copy touches a heartbeat file from its UI thread;
+// a new launch that finds an old heartbeat ends that copy (after checking it really is Dogfile) and starts.
+fn heartbeat_file() -> PathBuf {
+    data_dir().join("running.json")
+}
+fn end_frozen_copy() {
+    let Ok(b) = std::fs::read(heartbeat_file()) else { return };
+    let Ok(v) = serde_json::from_slice::<Value>(&b) else { return };
+    let (Some(pid), Some(t)) = (v["pid"].as_u64(), v["t"].as_u64()) else { return };
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    if pid as u32 == std::process::id() || now.saturating_sub(t) < 20 {
+        return;
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        let is_dogfile = || {
+            let out = std::process::Command::new("tasklist").args(["/FI", &format!("PID eq {pid}"), "/FO", "CSV", "/NH"]).creation_flags(0x0800_0000).output();
+            out.map(|o| String::from_utf8_lossy(&o.stdout).to_lowercase().contains("dogfile")).unwrap_or(false)
+        };
+        // gone already (a crash): nothing to do
+        if is_dogfile() {
+            // the PC may just have woken up: a healthy copy writes again within a few seconds
+            for _ in 0..14 {
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                let fresh = std::fs::read(heartbeat_file()).ok().and_then(|b| serde_json::from_slice::<Value>(&b).ok()).and_then(|v| v["t"].as_u64()).unwrap_or(0);
+                if fresh > t {
+                    return;
+                }
+            }
+            let _ = std::process::Command::new("taskkill").args(["/PID", &pid.to_string(), "/F"]).creation_flags(0x0800_0000).status();
+            std::thread::sleep(std::time::Duration::from_millis(400));
+        }
+    }
+    let _ = std::fs::remove_file(heartbeat_file());
+}
+fn start_heartbeat(app: AppHandle) {
+    std::thread::spawn(move || loop {
+        let a = app.clone();
+        // written from the UI thread: if that thread hangs, the heartbeat stops and the next launch knows
+        let _ = app.run_on_main_thread(move || {
+            let _ = a;
+            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+            let _ = std::fs::write(heartbeat_file(), json!({ "pid": std::process::id(), "t": now }).to_string());
+        });
+        std::thread::sleep(std::time::Duration::from_secs(5));
+    });
+}
+/// what went wrong, kept for next time (data folder > crash.log)
+fn crash_log() {
+    let prev = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let when = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+        let msg = format!("[{when}] Dogfile {} crashed: {info}\n{}\n\n", env!("CARGO_PKG_VERSION"), std::backtrace::Backtrace::force_capture());
+        let f = data_dir().join("crash.log");
+        let old = std::fs::read_to_string(&f).unwrap_or_default();
+        let keep = if old.len() > 200_000 { old[old.len() - 100_000..].to_string() } else { old };
+        let _ = std::fs::write(&f, keep + &msg);
+        prev(info);
+    }));
+}
+
 fn main() {
     dogfile_backend::mark_start();
+    crash_log();
     let argv: Vec<String> = std::env::args().collect();
     // the elevated helper that builds the index from the NTFS file table
     if argv.get(1).map(|s| s.as_str()) == Some("--build-index") && argv.len() >= 4 {
@@ -624,6 +689,9 @@ fn main() {
         std::process::exit(dogfile_core::index::build_cli(&argv[2], &argv[3]));
     }
     let test_mode = std::env::var("ATLAS_TEST").as_deref() == Ok("1");
+    if !test_mode {
+        end_frozen_copy();
+    }
     let rt = tokio::runtime::Builder::new_multi_thread().worker_threads(2).max_blocking_threads(16).enable_all().thread_name("dogfile").build().expect("runtime");
     tauri::async_runtime::set(rt.handle().clone());
 
@@ -661,6 +729,9 @@ fn main() {
         })
         .setup(move |app| {
             let _ = host().app.set(app.handle().clone());
+            if !test_mode {
+                start_heartbeat(app.handle().clone());
+            }
             let l = launch::parse(&argv.iter().skip(1).cloned().collect::<Vec<_>>(), None);
             if test_mode {
                 if let Ok(tool) = std::env::var("ATLAS_TEST_TOOL") {
@@ -755,7 +826,14 @@ fn main() {
     let _ = PhysicalSize::<u32>::new(0, 0);
     app.run(|_app, e| {
         if let RunEvent::Exit = e {
+            // quitting can never hang: whatever is still busy after 5 s, the process ends
+            std::thread::spawn(|| {
+                std::thread::sleep(std::time::Duration::from_secs(5));
+                let _ = std::fs::remove_file(heartbeat_file());
+                std::process::exit(0);
+            });
             dogfile_backend::shutdown();
+            let _ = std::fs::remove_file(heartbeat_file());
         }
     });
 }

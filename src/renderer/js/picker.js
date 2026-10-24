@@ -122,7 +122,11 @@ async function picker(mode, opts = {}) {
       const seen = new Set(here.map((x) => x.path));
       src = here.concat((found || []).filter((x) => !seen.has(x.path)));
     }
-    return src.filter((it) => (mode === 'folder' ? it.isDir : true) && filterOk(it));
+    const out = src.filter((it) => (mode === 'folder' ? it.isDir : true) && filterOk(it));
+    // the column picked in the header, folders first; clicking it again turns the order around
+    const { key, dir } = pkSort();
+    const val = (it) => (key === 'mtime' ? it.mtime || 0 : key === 'size' ? (it.isDir ? -1 : it.size || 0) : 0);
+    return out.sort((a, b) => (a.isDir !== b.isDir ? (a.isDir ? -1 : 1) : (key === 'name' ? natCmp(a.name, b.name) : val(a) - val(b) || natCmp(a.name, b.name)) * dir));
   }
   function draw() {
     const rows = shown();
@@ -223,7 +227,18 @@ async function picker(mode, opts = {}) {
     closeFn(target);
   }
   const head = h('div', { class: 'pk-bar' }, backBtn, upBtn, pathInput, searchInput, newBtn);
-  const main = h('div', { class: 'pk-main' }, head, h('div', { class: 'pk-cols' }, h('span', {}, 'Name'), h('span', {}, 'Modified'), h('span', {}, 'Size')), list);
+  const cols = h('div', { class: 'pk-cols' });
+  const drawCols = () => {
+    const { key, dir } = pkSort();
+    cols.innerHTML = '';
+    for (const [k, label] of [['name', 'Name'], ['mtime', 'Modified'], ['size', 'Size']]) {
+      const b = h('button', { class: 'pk-col' + (k === key ? ' on' : ''), title: `Sort by ${label.toLowerCase()}` }, label, k === key ? h('span', { class: 'pk-arrow' }, dir > 0 ? '▲' : '▼') : null);
+      b.addEventListener('click', () => { const cur = pkSort(); setPkSort({ key: k, dir: cur.key === k ? -cur.dir : k === 'name' ? 1 : -1 }); drawCols(); draw(); });
+      cols.append(b);
+    }
+  };
+  drawCols();
+  const main = h('div', { class: 'pk-main' }, head, cols, list);
   const foot = h('div', { class: 'pk-foot' }, status,
     mode === 'save' ? h('label', { class: 'pk-namewrap' }, h('span', {}, 'File name'), nameInput) : null,
     (mode !== 'folder' && filters.length) ? filterSel : null);
@@ -245,6 +260,9 @@ async function picker(mode, opts = {}) {
   return v || null;
 }
 
+// the sort picked in the header, shared by every Dogfile window
+const pkSort = () => { try { return { key: 'name', dir: 1, ...JSON.parse(localStorage.getItem('pickerSort') || '{}') }; } catch { return { key: 'name', dir: 1 }; } };
+const setPkSort = (v) => { try { localStorage.setItem('pickerSort', JSON.stringify(v)); } catch {} };
 export const pickFolder = (title, opts = {}) => picker('folder', { ...opts, title });
 export const openFiles = (opts = {}) => picker('open', opts);
 export const saveFile = (opts = {}) => picker('save', opts);

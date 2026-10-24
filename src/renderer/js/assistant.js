@@ -603,6 +603,10 @@ export async function askAssistant(text) {
     return;
   }
   if (/^\s*(?:what (?:can|do) you (?:do|help with)|what are you(?: for)?|help|what can i ask(?: you)?|show me what you can do)\s*\??\s*$/i.test(text)) { showAbilities(startCard(text)); return; }
+  // a short, plain command the rules know for sure ("dark mode", "open settings", "show hidden files") runs at once;
+  // the language model is for longer or several-step requests, where it understands better
+  const words = String(text).trim().split(/\s+/).length;
+  if (intent && intent.id !== 'help' && words <= 8 && !/\b(and|then|after|also|but|except|unless)\b/i.test(text)) return runIntent(intent, text);
   // the language model, when it's installed: it understands the request; the rules below are the fallback
   if (brainOn(await brainStatus()) && (await withBrain(text, { t, sel, appT: appT && APP_NAME[appT.app] ? appT : null }))) return;
   if (intent && intent.id !== 'help') return runIntent(intent, text);

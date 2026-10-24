@@ -88,9 +88,9 @@ function makeRenderer() {
 }
 // adaptive resolution: full sharpness when still, lower while moving if frames are slow
 let prMove = 1;
-const basePR = () => Math.min(devicePixelRatio || 1, lowEnd ? 1 : 2);
+const basePR = () => Math.min(devicePixelRatio || 1, lowEnd ? 1 : 1.5);
 let moving = false, idleT = 0;
-function idleSoon() { clearTimeout(idleT); idleT = setTimeout(() => { if (R && R.renderer.getPixelRatio() !== basePR()) { R.renderer.setPixelRatio(basePR()); resize(); } }, 250); }
+function idleSoon() { clearTimeout(idleT); idleT = setTimeout(() => { if (moving || P.autoRotate || M.cur?.anim?.playing) return; slowFrames = 0; if (R && lowered) { lowered = false; R.renderer.setPixelRatio(basePR()); resize(); } }, 400); }
 function resize() {
   if (!R) return;
   const box = $('md-view'), w = box.clientWidth, hh = box.clientHeight;
@@ -101,7 +101,7 @@ function resize() {
   need();
 }
 
-let raf = 0, dirty = true, last = 0, slowFrames = 0;
+let raf = 0, dirty = true, last = 0, slowFrames = 0, lowered = false;
 function need() { dirty = true; if (!raf) raf = requestAnimationFrame(tick); }
 function tick(now) {
   raf = 0;
@@ -114,15 +114,16 @@ function tick(now) {
   const A = M.cur?.anim;
   if (A?.playing && A.action) { A.mixer.update(dt); syncScrub(); more = true; }
   if (dirty || more) {
-    const t0 = performance.now();
     draw();
     dirty = false;
-    // frames too slow while moving: draw fewer pixels until it stops
-    const ft = performance.now() - t0;
-    if ((moving || P.autoRotate || A?.playing) && ft > 28) { if (++slowFrames > 3) { slowFrames = 0; prMove = Math.max(0.5, R.renderer.getPixelRatio() * 0.8); R.renderer.setPixelRatio(prMove); resize(); } }
-    else slowFrames = 0;
+    // real frame times (not just the drawing call): if they stay slow while things move, draw fewer pixels,
+    // once, and go back to full sharpness when it all stops (resizing every few frames was what stuttered)
+    if ((moving || P.autoRotate || A?.playing) && dt > 0.045) { if (++slowFrames > 12 && !lowered) { lowered = true; prMove = Math.max(0.6, basePR() * 0.66); R.renderer.setPixelRatio(prMove); resize(); } }
+    else if (slowFrames > 0) slowFrames--;
   }
-  if (more) raf = requestAnimationFrame(tick); else last = 0;
+  // one frame at a time: a "changed" event during this frame has already asked for the next one
+  if (more && !raf) raf = requestAnimationFrame(tick);
+  if (!more && !raf) last = 0;
 }
 function draw() {
   const { renderer, scene, cam } = R;
@@ -772,6 +773,16 @@ onHost({ open: (m) => setQueue(m.files, { autoPlaylist: m.autoPlaylist || m.file
 onAsk(async (op) => {
   if (op === 'context') return { ok: true, name: M.cur ? nameOf(M.cur.path) : '', path: M.cur?.path || '', triangles: M.cur?.info.tris, materials: M.cur?.mats.length, animations: M.cur?.anim?.clips.length || 0 };
   return { ok: false, msg: `I can’t do “${op}” in Dogfile 3D yet` };
+});
+// closing: give the graphics memory back straight away instead of whenever the browser gets round to it
+window.addEventListener('pagehide', () => {
+  try {
+    cancelAnimationFrame(raf);
+    disposeModel(M.cur); M.cur = null;
+    R?.env?.dispose(); R?.pano?.dispose();
+    R?.renderer?.dispose(); R?.renderer?.forceContextLoss?.();
+    import('./model-load.js').then((m) => m.stopCad?.()).catch(() => {});
+  } catch {}
 });
 window.__m3d = { M, get P() { return P; }, get R() { return R; }, show, setQueue, frame, importMap, loadTexture, targets, applyMaterials, chanOn, setMap: (v) => { mapView = v; resetPreviews(); applyMapView(); renderBar(); need(); }, applyBackground, snapshot, draw };
 boot().then(() => initLicense({ test: true })).catch((e) => { console.error(e); document.body.innerHTML = `<pre style="padding:20px;color:#f66">${esc(e.stack || e.message)}</pre>`; });

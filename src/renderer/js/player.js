@@ -93,6 +93,9 @@ async function load(i, { startAt = null, autoplay = true } = {}) {
     item.duration = P.duration;
     item.title = P.info.format?.tags?.title || P.info.format?.tags?.TITLE;
   } else P.duration = 0;
+  // no details (the media engine couldn't read it): a video file is still a video
+  const VIDEO_EXT = [...KINDS.video, 'mkv', 'm2ts', 'mts', 'vob', 'divx', 'f4v', 'asf', 'rmvb'];
+  if (!P.vStream && (!P.info || !(P.info.streams || []).length) && VIDEO_EXT.includes((item.path.split('.').pop() || '').toLowerCase())) P.vStream = { codec_type: 'video', guessed: true };
   document.body.classList.toggle('audio-only', !P.vStream);
   document.body.classList.toggle('has-video', !!P.vStream);
   setupAudioView();
@@ -167,7 +170,11 @@ v.addEventListener('playing', () => { setBusy(false); renderButtons(); });
 v.addEventListener('canplay', () => setBusy(false));
 v.addEventListener('pause', () => { renderButtons(); showControls(); saveResume(); });
 v.addEventListener('play', () => { renderButtons(); hideControlsSoon(); });
-v.addEventListener('loadedmetadata', () => { applyAspect(); renderTime(); });
+v.addEventListener('loadedmetadata', () => {
+  // the web view found a picture after all: show the video, not the music view
+  if (v.videoWidth > 0 && !P.vStream) { P.vStream = { codec_type: 'video', width: v.videoWidth, height: v.videoHeight, guessed: true }; document.body.classList.remove('audio-only'); document.body.classList.add('has-video'); tellHost({ type: 'state', kind: 'video', path: P.item?.path }); }
+  applyAspect(); renderTime();
+});
 v.addEventListener('timeupdate', () => {
   renderTime();
   if (P.ab && P.ab.b != null && pos() >= P.ab.b) seek(P.ab.a);

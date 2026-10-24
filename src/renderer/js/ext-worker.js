@@ -45,6 +45,7 @@ const atlas = Object.freeze({
   net: Object.freeze({ fetch: (url, opts) => call('net.fetch', String(url), opts ? { method: opts.method, headers: opts.headers, body: opts.body == null ? undefined : String(opts.body) } : {}) }),
   // run a command in the built-in terminal (needs the "run" permission; the person sees it run)
   run: (command, cwd) => call('run', String(command), cwd),
+  runPowerShell: (script, cwd) => call('runPowerShell', String(script), cwd),
   // copy text (no permission needed: features can put text on the clipboard but never read it)
   clipboard: Object.freeze({ writeText: (t) => call('clipboard.writeText', String(t)) }),
   // a little storage of the feature's own

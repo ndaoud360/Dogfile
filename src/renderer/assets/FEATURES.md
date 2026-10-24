@@ -637,6 +637,18 @@ Runs a command line, optionally in a folder.
 dogfile.run('git status', await dogfile.folder());
 ```
 
+#### `dogfile.runPowerShell(script, folder?)`
+
+Runs a PowerShell script (several lines are fine) in the terminal’s own PowerShell. Nothing needs quoting, and no second PowerShell is started.
+
+- **Gives:** Promise
+- **Works in:** File browser
+- **Needs:** `run` (Run commands)
+
+```js
+dogfile.runPowerShell('Get-ChildItem | Sort-Object Length -Descending | Select-Object -First 5');
+```
+
 ### File events (hooks)
 
 React to what happens to files, or change it before it happens. Needs the hooks permission (// @permissions hooks). Before-events can answer with changes; after-events are only told. Each listener gets 3 seconds: a slow or failing one is skipped, never blocking the operation.
@@ -648,7 +660,7 @@ Listens for a file event. e has the event name and what it’s about: { sources,
 | Option | Meaning |
 | --- | --- |
 | `event` | The event name, e.g. "beforeMove" |
-| `listener` | async function (e) { … } — return nothing to let it go ahead unchanged |
+| `listener` | async function (e) { … }. Return nothing to let it go ahead unchanged |
 
 - **Gives:** nothing
 - **Works in:** File browser

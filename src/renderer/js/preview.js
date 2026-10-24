@@ -355,7 +355,7 @@ async function render3D(box, path, alive) {
   ro.observe(box);
   let last = performance.now();
   const loop = (now) => {
-    if (!box.isConnected || !alive()) { ro.disconnect(); mixer?.stopAllAction(); renderer.dispose(); obj.traverse((o) => o.geometry?.dispose?.()); return; }
+    if (!box.isConnected || !alive()) { ro.disconnect(); mixer?.stopAllAction(); obj.traverse((o) => { o.geometry?.dispose?.(); for (const m of [].concat(o.material || [])) { for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'alphaMap', 'bumpMap']) m[k]?.dispose?.(); m.dispose?.(); } }); renderer.dispose(); renderer.forceContextLoss(); return; }
     const dt = Math.min(0.1, ((now || last) - last) / 1000); last = now || last;
     mixer?.update(dt);
     ctl.update(); renderer.render(scene, cam); requestAnimationFrame(loop);

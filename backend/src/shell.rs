@@ -355,12 +355,28 @@ pub async fn net_open(a: &Args) -> R {
 pub async fn mtp(name: &str, a: &Args) -> R {
     let a0 = a.v(0);
     let a1 = a.v(1);
+    if let Some(r) = adb_route(name, &a0, &a1).await {
+        return r;
+    }
     let name = name.to_string();
     blocking(move || win::mtp::call(&name, a0, a1)).await?
 }
 #[cfg(not(windows))]
-pub async fn mtp(_name: &str, _a: &Args) -> R {
+pub async fn mtp(name: &str, a: &Args) -> R {
+    let (a0, a1) = (a.v(0), a.v(1));
+    if let Some(r) = adb_route(name, &a0, &a1).await {
+        return r;
+    }
     Err("Phones and cameras are only available on Windows".into())
+}
+/// Android phones connected through adb (Wi-Fi or USB debugging) have their own names: those go to adb
+async fn adb_route(name: &str, a0: &Value, a1: &Value) -> Option<R> {
+    let path = if name == "mtp:copyIn" { a1.as_str().map(String::from) } else { a0.as_str().map(String::from).or_else(|| a0.as_array().and_then(|v| v.first()).and_then(|x| x.as_str()).map(String::from)) };
+    let dev = crate::adb::dev_of(&path?)?;
+    if !crate::adb::is_adb_name(&dev) {
+        return None;
+    }
+    Some(crate::adb::call(name, a0.clone(), a1.clone()).await)
 }
 pub async fn mtp_fetch(a: &Args) -> R {
     let p = a.s(0)?;

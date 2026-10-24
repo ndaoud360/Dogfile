@@ -139,7 +139,12 @@ function sizer(name, el, edge) {
     const ws = document.getElementById('workspace');
     return (px) => { ws.style.gridTemplateColumns = px == null ? '' : `1fr ${px > 0.5 ? 1 : 0}px ${px}px`; };
   }
-  // overlays (assistant, activity) float over everything: nothing beside them moves
+  // the assistant floats over the window but the files make room for it with a margin: that margin follows the fold
+  if (name === 'assistant') {
+    const ws = document.getElementById('workspace');
+    return (px) => { ws.style.marginRight = px == null ? '' : px + 'px'; };
+  }
+  // other overlays (activity) float over everything: nothing beside them moves
   const pos = getComputedStyle(el).position;
   if (pos === 'absolute' || pos === 'fixed') return () => {};
   const prop = edge === 'left' || edge === 'right' ? 'width' : 'height';

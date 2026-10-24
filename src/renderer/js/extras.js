@@ -251,6 +251,16 @@ export async function runInTerminal({ command, cwd }) {
   api('pty:write', ptyId, command + '\r');
   term?.focus();
 }
+/** a PowerShell script in the terminal: saved to a file, then run as a script block in the open PowerShell */
+export async function runPowerShellScript(script, cwd) {
+  const dir = sys.userData + sys.sep + 'tmp';
+  await api('fs:mkdir', dir).catch(() => {});
+  const file = dir + sys.sep + 'script-' + Date.now().toString(36) + '.ps1';
+  await api('fs:writeText', file, script);
+  const q = file.replace(/'/g, "''");
+  if (sys.platform === 'win32' && termShell === 'cmd') return runInTerminal({ command: `powershell -NoProfile -ExecutionPolicy Bypass -File "${file}"`, cwd });
+  return runInTerminal({ command: `& ([ScriptBlock]::Create((Get-Content -Raw -LiteralPath '${q}'))); Remove-Item -LiteralPath '${q}' -ErrorAction SilentlyContinue`, cwd });
+}
 // how to run a script file in the current shell
 export function scriptCommand(file, shell = termShell) {
   const ext = (file.split('.').pop() || '').toLowerCase();

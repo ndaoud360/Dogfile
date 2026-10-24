@@ -38,6 +38,7 @@ pub mod meta;
 pub mod model3d;
 pub mod phonelink;
 pub mod demo;
+pub mod adb;
 pub mod git;
 pub mod pty;
 pub mod clip;
@@ -112,7 +113,7 @@ pub fn start(cfg: Config, host: Arc<dyn Host>) {
     tokio::spawn(async {
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(60)).await;
-            llm::idle_check(600);
+            llm::idle_check(900);
         }
     });
     ops::configure_from_settings();

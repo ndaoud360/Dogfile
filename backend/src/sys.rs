@@ -84,6 +84,8 @@ pub async fn drives() -> R {
         let devs = tokio::task::spawn_blocking(crate::win::portable_devices).await.unwrap_or_default();
         d.extend(devs);
     }
+    // Android phones over Wi-Fi or USB debugging
+    d.extend(crate::adb::drive_entries().await);
     Ok(json!(d))
 }
 /// watch for drives and phones being plugged in or out

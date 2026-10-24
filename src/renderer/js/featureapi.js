@@ -78,6 +78,7 @@ export const SECTIONS = [
   ] },
   { id: 'run', title: 'Running commands', intro: 'Needs the run permission. In the file browser the command runs in the built-in terminal so the person sees it; elsewhere it starts in the background.', items: [
     { name: 'dogfile.run', sig: 'dogfile.run(command, folder?)', returns: 'Promise', perm: 'run', where: 'all', desc: 'Runs a command line, optionally in a folder.', example: `dogfile.run('git status', await dogfile.folder());` },
+    { name: 'dogfile.runPowerShell', sig: 'dogfile.runPowerShell(script, folder?)', returns: 'Promise', perm: 'run', where: ['files'], desc: 'Runs a PowerShell script (several lines are fine) in the terminal’s own PowerShell. Nothing needs quoting, and no second PowerShell is started.', example: `dogfile.runPowerShell('Get-ChildItem | Sort-Object Length -Descending | Select-Object -First 5');` },
   ] },
   { id: 'events', title: 'File events (hooks)', intro: 'React to what happens to files, or change it before it happens. Needs the hooks permission (// @permissions hooks). Before-events can answer with changes; after-events are only told. Each listener gets 3 seconds: a slow or failing one is skipped, never blocking the operation.', items: [
     { name: 'dogfile.on', sig: 'dogfile.on(event, async (e) => answer?)', returns: 'nothing', perm: 'hooks', where: ['files'],

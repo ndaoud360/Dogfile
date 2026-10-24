@@ -45,6 +45,7 @@ export async function openPhoneTransfer() {
         h('button', { class: 'btn small', onclick: async () => { await api('phone:forget', d.id); render(); } }, 'Forget')));
     }
     body.append(h('h4', {}, 'Your phones'), devs);
+    body.append(h('h4', {}, 'Browse an Android phone from This PC'), await adbSection(render));
     // waiting for the phone
     const out = h('div', { class: 'ph-list' });
     if (!st.outbox.length) out.append(h('div', { class: 'ph-empty' }, 'Right-click files and choose Send to phone. They wait here until your phone picks them up.'));
@@ -78,6 +79,43 @@ export async function openPhoneTransfer() {
   modal({ title: 'Phone transfer', body, width: 640, className: 'ph-modal', buttons: [{ label: 'Done', primary: true }], onClose: () => { clearInterval(timer); dlg = null; } });
   dlg.close = () => document.querySelector('.ph-modal .modal-head .icon-btn')?.click();
   render();
+}
+
+// Android over Wireless debugging: the phone becomes a drive in This PC (backend/src/adb.rs)
+async function adbSection(rerender) {
+  const box = h('div', { class: 'ph-set' });
+  const st = await api('phone:adbStatus').catch(() => ({}));
+  for (const name of st.phones || []) {
+    box.append(h('div', { class: 'ph-row ph-list' }, h('span', { class: 'ph-ic', html: icon('phone') }), h('div', { class: 'ph-main' }, h('div', {}, name, h('span', { class: 'ph-pill' }, 'In This PC'))),
+      h('button', { class: 'btn small', onclick: () => { dlg?.close(); navigate(activeTab(), `atlas:mtp|${name}|`); } }, 'Open'),
+      h('button', { class: 'btn small', onclick: async () => { await api('phone:adbDisconnect', name); rerender(); } }, 'Disconnect')));
+  }
+  if (!st.ready) {
+    const btn = h('button', { class: 'btn small primary', onclick: async () => {
+      btn.disabled = true; btn.textContent = 'Getting it…';
+      await api('phone:adbInstall');
+      for (;;) { await new Promise((r) => setTimeout(r, 700)); const s2 = await api('phone:adbStatus'); if (s2.ready) break; if (!s2.downloading) { toast(s2.error || 'Couldn’t download it', { error: true }); break; } }
+      rerender();
+    } }, 'Set it up');
+    box.append(h('div', { class: 'ph-line' }, h('span', { class: 'lbl sub' }, 'See and copy the files on your phone, like a drive. Dogfile needs a small free tool from Google for this (about 7 MB).'), btn));
+    return box;
+  }
+  const addr = h('input', { class: 'input small', placeholder: '192.168.1.20:37099', style: { width: '170px' } });
+  const code = h('input', { class: 'input small', placeholder: '6-digit code', style: { width: '110px' }, inputmode: 'numeric' });
+  const pair = h('button', { class: 'btn small primary', onclick: async () => {
+    if (!addr.value.trim() || !code.value.trim()) return toast('Type the address and the code from the phone');
+    pair.disabled = true; pair.textContent = 'Pairing…';
+    try { await api('phone:adbPair', addr.value, code.value); toast('Connected. Your phone is in This PC now.'); }
+    catch (e) { toast(e.message, { error: true }); }
+    rerender();
+  } }, 'Pair');
+  box.append(
+    h('ol', { class: 'sub ph-steps' },
+      h('li', {}, 'On the phone, open Settings › Developer options and turn on Wireless debugging.'),
+      h('li', {}, 'Tap Pair device with pairing code, then type what it shows here.')),
+    h('div', { class: 'ph-line' }, addr, code, pair),
+    h('div', { class: 'sub' }, 'No Developer options? Go to Settings › About phone and tap Build number seven times. Plugging in with USB debugging on works too. iPhones can’t be browsed this way: Apple doesn’t allow it.'));
+  return box;
 }
 
 async function sendTextDialog() {

@@ -3,7 +3,7 @@
 // @description Shows your Android phone on your PC, full resolution and full screen if you like, by USB or Wi-Fi
 // @target files
 // @permissions run
-// @version 1.0
+// @version 1.1
 // @author Dogfile
 // @icon phone
 
@@ -20,13 +20,8 @@ const QUALITY = {
   light: ['--max-size=1280', '--video-bit-rate=4M', '--max-fps=30'],   // slow Wi-Fi or older PCs
 };
 
-// ---- running PowerShell from the terminal, whatever shell it uses ----
-// the script travels encoded, so no quoting can go wrong in cmd or PowerShell
-function encode(script) {
-  let bin = '';
-  for (let i = 0; i < script.length; i++) { const c = script.charCodeAt(i); bin += String.fromCharCode(c & 255, c >> 8); }
-  return btoa(bin);
-}
+// ---- PowerShell, run inside the terminal's own PowerShell (no second PowerShell is started: security software
+// often blocks that) ----
 const psq = (s) => `'${String(s).replace(/'/g, "''")}'`;
 // Start-Process joins arguments with spaces: a value with spaces in it is put in double quotes
 const quoteArg = (a) => (/\s/.test(a) ? a.replace(/^(--[\w-]+=)?(.*)$/, (m, k, v) => `${k || ''}"${v.replace(/"/g, '')}"`) : a);
@@ -53,7 +48,7 @@ if (-not $exe) {
 $adb = Join-Path $exe.DirectoryName 'adb.exe'
 `;
 async function ps(body) {
-  await dogfile.run(`powershell -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${encode(SETUP + body)}`);
+  await dogfile.runPowerShell(SETUP + body);
 }
 // scrcpy in its own window: the terminal is free again straight away
 async function mirror(extra = [], note = 'Mirroring your phone') {

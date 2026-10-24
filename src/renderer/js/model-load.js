@@ -89,6 +89,8 @@ export async function installCad(progress) {
     if (!s.downloading) throw new Error(s.error || 'The CAD reader couldn’t be downloaded');
   }
 }
+/** the CAD worker holds 50+ MB once used: stopped when the viewer closes */
+export function stopCad() { cadWorker?.terminate(); cadWorker = null; }
 async function readCad(path, ext, { quality = 'normal' } = {}) {
   const st = await api('m3d:cadStatus');
   if (!st?.ready) { const e = new Error('The CAD reader isn’t installed yet'); e.code = 'NO_CAD'; throw e; }

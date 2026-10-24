@@ -200,6 +200,7 @@ jobs:
           STORE_IDENTITY_NAME: ${{ vars.STORE_IDENTITY_NAME }}
           STORE_PUBLISHER: ${{ vars.STORE_PUBLISHER }}
           STORE_PUBLISHER_NAME: ${{ vars.STORE_PUBLISHER_NAME }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           trap { Write-Output "::error title=package::$_ %0A$($_.InvocationInfo.PositionMessage -replace "[`r`n]+",'%0A')"; continue }
           $dl = "$env:RUNNER_TEMP/dl"; New-Item -ItemType Directory -Force $dl | Out-Null
@@ -219,9 +220,13 @@ jobs:
           New-Item -ItemType Directory -Force "$out/7zfull", "$out/7zfull-arm64" | Out-Null
           Copy-Item "$dl/7zfull/*" "$out/7zfull/"; Copy-Item "$dl/7zfull-arm64/*" "$out/7zfull-arm64/"
           # the media engine
-          foreach ($f in @('ffmpeg-n8.1-latest-win64-gpl-shared-8.1.zip', 'ffmpeg-n8.0-latest-win64-gpl-shared-8.0.zip')) {
-            try { Invoke-WebRequest "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/$f" -OutFile "$dl/ff.zip"; break } catch { Write-Output "::warning title=ffmpeg::$f not found" }
-          }
+          # the newest stable shared build listed in the release (names change with each FFmpeg version), master as a fallback
+          $ffRel = Invoke-RestMethod 'https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/latest' -Headers @{ 'User-Agent' = 'Dogfile-CI'; 'Authorization' = "Bearer $env:GITHUB_TOKEN" }
+          $ffAsset = $ffRel.assets | Where-Object { $_.name -match '^ffmpeg-n[\d.]+-latest-win64-gpl-shared-[\d.]+\.zip$' } | Sort-Object { [version](($_.name -replace '^ffmpeg-n([\d.]+)-.*','$1') + '.0') } -Descending | Select-Object -First 1
+          if (-not $ffAsset) { $ffAsset = $ffRel.assets | Where-Object { $_.name -eq 'ffmpeg-master-latest-win64-gpl-shared.zip' } | Select-Object -First 1 }
+          if (-not $ffAsset) { Write-Output "::error title=ffmpeg::No FFmpeg build found"; exit 1 }
+          Invoke-WebRequest $ffAsset.browser_download_url -OutFile "$dl/ff.zip"
+          Write-Output "::notice title=ffmpeg::$($ffAsset.name)"
           Copy-Item target/release/dogfile.exe "$dl/Dogfile.exe"
           $env:DOGFILE_7Z_FULL = "$dl/7zfull"
           $pk = node build/package-win.mjs "$dl/Dogfile.exe" "$dl/ff.zip" 2>&1

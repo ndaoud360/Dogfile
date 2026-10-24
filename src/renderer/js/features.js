@@ -31,6 +31,9 @@ function start() {
       runJob: (spec) => A.runJob(spec),
       open: (p) => { A.openItems([{ path: p, name: basename(p), isDir: false, ext: (p.split('.').pop() || '').toLowerCase() }]); return true; },
       run: async (cmd, cwd) => { const ex = await import('./extras.js'); await ex.runInTerminal({ command: cmd, cwd: cwd || activeTab()?.path }); return true; },
+      // a PowerShell script, run inside the terminal's own PowerShell (no second PowerShell is started, which security
+      // software often blocks, and no script policy gets in the way)
+      runPowerShell: async (script, cwd) => { const ex = await import('./extras.js'); await ex.runPowerShellScript(script, cwd || activeTab()?.path); return true; },
       storageSet: (fid, k, v) => { const st = (state.settings.extStorage ||= {}); st[fid] = { ...(st[fid] || {}), [k]: v }; saveSettings(); return true; },
     },
   });

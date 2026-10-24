@@ -342,8 +342,12 @@ use crate::args::{Args, R};
 /// which model to use: the setting, else the bigger one when it's there
 fn chosen() -> Option<(String, PathBuf)> {
     let pref = crate::setting("assistantModel").as_str().unwrap_or("auto").to_string();
+    // "auto" on a PC with few cores: the 2B model answers in about half the time
+    let few_cores = threads().0 <= 3;
     let order: &[&str] = match pref.as_str() {
         "brain-small" => &["brain-small", "brain"],
+        "brain" => &["brain", "brain-small"],
+        _ if few_cores => &["brain-small", "brain"],
         _ => &["brain", "brain-small"],
     };
     order.iter().find_map(|k| crate::ai::ready_file(k).map(|f| (k.to_string(), f)))

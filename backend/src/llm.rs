@@ -27,8 +27,8 @@ use llama_cpp_2::token::data_array::LlamaTokenDataArray;
 use llama_cpp_2::token::LlamaToken;
 
 pub const BRAIN: &str = include_str!("../brain.json");
-const N_CTX: u32 = 8192;
-const MAX_OUT: usize = 600;
+pub(crate) const N_CTX: u32 = 8192;
+pub(crate) const MAX_OUT: usize = 600;
 
 fn brain() -> &'static Value {
     static B: OnceLock<Value> = OnceLock::new();
@@ -73,6 +73,10 @@ pub fn schema() -> Value {
     })
 }
 
+/// the output grammar (GBNF) made from the schema
+pub(crate) fn grammar() -> Result<String, String> {
+    llama_cpp_2::json_schema_to_grammar(&schema().to_string()).map_err(|e| format!("grammar: {e}"))
+}
 /// the fixed start of every prompt (ChatML, as Qwen expects)
 pub fn system_prompt() -> String {
     let b = brain();
@@ -135,12 +139,11 @@ fn threads() -> (i32, i32) {
             return (g, r);
         }
     }
-    // about one per physical core, at most 8: on the PCs measured, using the hyper-threads too made reading 4-8x slower
-    let n = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4);
-    let t = (n / 2).clamp(2, 8) as i32;
+    // the fast cores only (hybrid Intel processors), at most 8: threads on the slow cores or hyper-threads hold the rest up
+    let t = crate::llm_server::threads();
     (t, t)
 }
-fn hash(s: &str) -> String {
+pub(crate) fn hash(s: &str) -> String {
     use sha2::{Digest, Sha256};
     let d = Sha256::digest(s.as_bytes());
     d.iter().take(8).map(|b| format!("{b:02x}")).collect()
@@ -157,7 +160,7 @@ pub fn serve(model_path: &Path, state_dir: &Path, rx: Receiver<Job>, status: &dy
     let (n_gen, n_read) = threads();
     let cparams = LlamaContextParams::default().with_n_ctx(NonZeroU32::new(N_CTX)).with_n_batch(512).with_n_threads(n_gen).with_n_threads_batch(n_read);
     let mut ctx = model.new_context(backend, cparams).map_err(|e| e.to_string())?;
-    let grammar = llama_cpp_2::json_schema_to_grammar(&schema().to_string()).map_err(|e| format!("grammar: {e}"))?;
+    let grammar = grammar()?;
     let vocab = model.vocab();
 
     // the fixed part: from the disk cache when it's there, otherwise read once and saved
@@ -291,7 +294,7 @@ fn now() -> u64 {
 pub fn ensure(model: &Path, state_dir: &Path) -> Sender<Job> {
     let mut w = worker().lock().unwrap();
     if let Some(x) = w.as_ref() {
-        if x.model == model {
+        if x.model == model && state().lock().unwrap().0 != "off" {
             return x.tx.clone();
         }
     }
@@ -306,7 +309,26 @@ pub fn ensure(model: &Path, state_dir: &Path) -> Sender<Job> {
         .name("dogfile-brain".into())
         .stack_size(8 << 20)
         .spawn(move || {
-            let r = serve(&m, &sd, rx, &|st| state().lock().unwrap().0 = st.to_string());
+            let set = |st: &str| state().lock().unwrap().0 = st.to_string();
+            // llama.cpp's own server program when it's there (much faster), else the engine built into Dogfile
+            let mut r = Err(String::new());
+            let mut fall_back = true;
+            if let Some(exe) = crate::llm_server::find() {
+                let ready = std::cell::Cell::new(false);
+                r = crate::llm_server::serve(&exe, &m, &sd, &rx, &|st| {
+                    if st == "ready" {
+                        ready.set(true);
+                    }
+                    set(st)
+                });
+                if let Err(e) = &r {
+                    eprintln!("assistant: llama-server: {e}");
+                }
+                fall_back = r.is_err() && !ready.get();
+            }
+            if fall_back {
+                r = serve(&m, &sd, rx, &set);
+            }
             let mut s = state().lock().unwrap();
             s.0 = "off".into();
             if let Err(e) = r {
@@ -395,6 +417,12 @@ pub fn warm(_a: &Args) -> R {
     let (_, f) = chosen().ok_or("The assistant's model isn't downloaded")?;
     ensure(&f, &crate::ai::models_dir());
     touch();
+    // a copy without llama.cpp's server program gets it once; the model restarts on it after the current request
+    tokio::spawn(async {
+        if let Ok(true) = crate::llm_server::fetch_if_missing().await {
+            stop();
+        }
+    });
     Ok(json!(true))
 }
 /// llm:plan {context}: the steps for one request
@@ -411,7 +439,10 @@ pub async fn plan(a: &Args) -> R {
     let tx = ensure(&f, &crate::ai::models_dir());
     touch();
     let (rtx, rrx) = channel();
-    tx.send(Job { context, reply: rtx }).map_err(|_| "The assistant stopped; try again".to_string())?;
+    if tx.send(Job { context, reply: rtx }).is_err() {
+        stop();
+        return Err("The assistant stopped; try again".to_string());
+    }
     let r = tokio::task::spawn_blocking(move || rrx.recv_timeout(std::time::Duration::from_secs(240)))
         .await
         .map_err(|e| e.to_string())?

@@ -6,6 +6,8 @@ pub mod args;
 pub mod license;
 #[cfg(feature = "llm")]
 pub mod llm;
+#[cfg(feature = "llm")]
+pub mod llm_server;
 #[cfg(not(feature = "llm"))]
 #[path = "llm_off.rs"]
 pub mod llm;
@@ -74,6 +76,9 @@ pub struct State {
 }
 
 static STATE: OnceLock<State> = OnceLock::new();
+pub fn try_st() -> Option<&'static State> {
+    STATE.get()
+}
 pub fn st() -> &'static State {
     STATE.get().expect("backend not started")
 }

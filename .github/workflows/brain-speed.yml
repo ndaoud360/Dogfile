@@ -1,0 +1,91 @@
+# Speed check for the assistant's model on Windows: llama.cpp's own build (llama-bench), the engine built into Dogfile,
+# and Dogfile driving llama.cpp's server program, on the same requests. Runs on a push to the brain-speed branch (or by
+# hand); the logs go to the brain-eval branch as speed-*.txt.
+name: brain-speed
+on:
+  workflow_dispatch:
+  push:
+    branches: [brain-speed]
+permissions:
+  contents: write
+jobs:
+  speed:
+    runs-on: ${{ vars.RUNNER == 'pc' && fromJSON('["self-hosted","Windows","X64"]') || 'windows-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Paths (self-hosted Windows)
+        shell: powershell
+        run: |
+          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin", "$env:ProgramFiles\LLVM\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
+      - uses: actions/cache@v4
+        if: vars.RUNNER != 'pc'
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: brain-${{ hashFiles('Cargo.lock') }}
+          restore-keys: brain-
+      - uses: actions/cache@v4
+        if: vars.RUNNER != 'pc'
+        with:
+          path: models
+          key: model-Qwen3.5-2B-Q4_K_M.gguf
+      - name: Model and llama.cpp
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          $M = if ('${{ vars.RUNNER }}' -eq 'pc') { "$env:USERPROFILE\dogfile-models" } else { "$PWD\models" }
+          New-Item -ItemType Directory -Force $M | Out-Null
+          $f = "$M\Qwen3.5-2B-Q4_K_M.gguf"
+          if (-not (Test-Path $f) -or (Get-Item $f).Length -lt 1000000) { Invoke-WebRequest 'https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/main/Qwen3.5-2B-Q4_K_M.gguf' -OutFile $f }
+          "MODEL=$f" >> $env:GITHUB_ENV
+          $h = @{ 'User-Agent' = 'Dogfile-CI'; 'Authorization' = "Bearer $env:GITHUB_TOKEN" }
+          $asset = $null
+          foreach ($r in (Invoke-RestMethod 'https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=10' -Headers $h)) {
+            $a = $r.assets | Where-Object { $_.name -match '^llama-.*-bin-win-cpu-x64\.zip$' } | Select-Object -First 1
+            if ($a) { $asset = $a; break }
+          }
+          $d = "$env:RUNNER_TEMP\llamacpp"; Remove-Item -Recurse -Force $d -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Force $d | Out-Null
+          Invoke-WebRequest $asset.browser_download_url -OutFile "$d\l.zip"; Expand-Archive "$d\l.zip" -DestinationPath $d -Force
+          $srv = (Get-ChildItem $d -Recurse -Filter llama-server.exe | Select-Object -First 1).FullName
+          $bench = (Get-ChildItem $d -Recurse -Filter llama-bench.exe | Select-Object -First 1).FullName
+          "LLAMA_SERVER=$srv" >> $env:GITHUB_ENV
+          $cpu = Get-CimInstance Win32_Processor
+          $o = @("CPU: $($cpu.Name) | cores $($cpu.NumberOfCores) | threads $($cpu.NumberOfLogicalProcessors)", "llama.cpp: $($asset.name)")
+          $o += (& $bench -m $f -p 64 -n 32 -t 4 -r 2 -o md 2>$null | Out-String)
+          $o -join "`n" | Set-Content speed-official.txt
+          Get-Content speed-official.txt
+      - name: Build
+        shell: bash
+        run: cargo build --release -p dogfile-backend --example brain_eval 2>&1 | tail -3
+      - name: Dogfile's built-in engine
+        shell: bash
+        env:
+          BRAIN_LIMIT: '8'
+        run: |
+          export BRAIN_STATE_DIR="$RUNNER_TEMP/state-inproc"
+          timeout 3000 ./target/release/examples/brain_eval "$MODEL" build/brain-cases.json results-inproc.json > speed-inproc.txt 2>&1 || true
+          tail -30 speed-inproc.txt
+      - name: Dogfile with llama.cpp's server program
+        shell: bash
+        env:
+          BRAIN_LIMIT: '8'
+        run: |
+          export BRAIN_STATE_DIR="$RUNNER_TEMP/state-server" DOGFILE_LLAMA_SERVER="$LLAMA_SERVER"
+          timeout 3000 ./target/release/examples/brain_eval "$MODEL" build/brain-cases.json results-server.json > speed-server.txt 2>&1 || true
+          echo "--- second start (the fixed part restored from disk)" >> speed-server.txt
+          timeout 3000 ./target/release/examples/brain_eval "$MODEL" build/brain-cases.json results-server2.json >> speed-server.txt 2>&1 || true
+          tail -40 speed-server.txt
+          cat "$RUNNER_TEMP/state-server/llama-server.log" 2>/dev/null | tail -60 > speed-server-log.txt || true
+      - name: Save
+        if: always()
+        shell: bash
+        run: |
+          d="$RUNNER_TEMP/out"; rm -rf "$d"; mkdir -p "$d"
+          git fetch -q origin brain-eval && git --work-tree="$d" checkout origin/brain-eval -- . || true
+          cp speed-*.txt "$d/" 2>/dev/null || true
+          cd "$d"; git init -q -b brain-eval; git config user.name "github-actions"; git config user.email "actions@github.com"
+          git add -A && git commit -qm "speed ${{ github.sha }}" && git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" brain-eval

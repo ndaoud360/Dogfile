@@ -8,6 +8,11 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// unpack a zip: Windows' own tar (Git's GNU tar, often first on the path in CI, reads "D:" as a remote host)
+const unzip = (zip, dir) => {
+  if (process.platform === 'win32') execFileSync(path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe'), ['-xf', zip, '-C', dir]);
+  else execFileSync('unzip', ['-q', zip, '-d', dir]);
+};
 const [exe, ffZip] = process.argv.slice(2);
 if (!exe || !fs.existsSync(exe)) { console.error('usage: node build/package-win.mjs <Dogfile.exe> <ffmpeg.zip>'); process.exit(1); }
 // DOGFILE_ARCH=arm64 builds the Windows on ARM folder (dist/Dogfile-arm64) next to the x64 one
@@ -25,7 +30,7 @@ fs.copyFileSync(exe, path.join(outDir, 'Dogfile.exe'));
 if (ffZip) {
   const tmp = path.join(root, 'dist', '_ff');
   fs.mkdirSync(tmp, { recursive: true });
-  if (process.platform === 'win32') execFileSync('tar', ['-xf', ffZip, '-C', tmp]); else execFileSync('unzip', ['-q', ffZip, '-d', tmp]);
+  unzip(ffZip, tmp);
   const base = fs.readdirSync(tmp).map((d) => path.join(tmp, d)).find((d) => fs.existsSync(path.join(d, 'bin', 'ffmpeg.exe')));
   ffVersion = (path.basename(base).match(/-(\d+\.\d+)$/) || path.basename(base).match(/n(\d+\.\d+)/) || [])[1] || 'bundled';
   const ffOut = path.join(outDir, 'ffmpeg');
@@ -33,6 +38,28 @@ if (ffZip) {
   for (const f of fs.readdirSync(path.join(base, 'bin'))) if (f !== 'ffplay.exe') fs.copyFileSync(path.join(base, 'bin', f), path.join(ffOut, f));
   if (fs.existsSync(path.join(base, 'LICENSE.txt'))) fs.copyFileSync(path.join(base, 'LICENSE.txt'), path.join(ffOut, 'LICENSE-ffmpeg.txt'));
   fs.writeFileSync(path.join(ffOut, 'README.txt'), 'FFmpeg (https://ffmpeg.org) builds by BtbN (https://github.com/BtbN/FFmpeg-Builds), licensed under the GPL. Used by Dogfile Player to play formats the web view cannot decode natively.\r\n');
+  fs.rmSync(tmp, { recursive: true, force: true });
+}
+
+// the assistant's fast engine: llama.cpp's own server program and its libraries (official Windows CPU build)
+const llamaZip = process.env.DOGFILE_LLAMA_ZIP;
+if (ARCH === 'x64' && llamaZip && fs.existsSync(llamaZip)) {
+  const tmp = path.join(root, 'dist', '_llama');
+  fs.mkdirSync(tmp, { recursive: true });
+  unzip(llamaZip, tmp);
+  const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
+  const files = walk(tmp);
+  const server = files.find((f) => path.basename(f).toLowerCase() === 'llama-server.exe');
+  if (server) {
+    const lOut = path.join(outDir, 'llama');
+    fs.mkdirSync(lOut, { recursive: true });
+    for (const f of files) {
+      const b = path.basename(f);
+      if (path.dirname(f) === path.dirname(server) && (/\.dll$/i.test(b) || b.toLowerCase() === 'llama-server.exe' || /^license/i.test(b))) fs.copyFileSync(f, path.join(lOut, b));
+    }
+    fs.writeFileSync(path.join(lOut, 'README.txt'), 'llama.cpp (https://github.com/ggml-org/llama.cpp), MIT license. Runs the assistant\'s language model on this PC.\r\n');
+    console.log('bundled llama-server');
+  }
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 

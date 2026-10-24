@@ -45,6 +45,29 @@ jobs:
         run: |
           npm install --prefix "$RUNNER_TEMP/esbuild" --no-audit --no-fund --silent esbuild@0.24.2
           ESBUILD_DIR="$RUNNER_TEMP/esbuild" node build/pack-ui.mjs
+      - name: llama.cpp's server program (the assistant's fast engine)
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          # the newest official Windows CPU build (clang + OpenMP, picks the best code for the processor at start);
+          # shipped in Dogfile's llama/ folder, and its address and checksum go into the program so a copy updated
+          # without the folder can download the same files
+          $ProgressPreference = 'SilentlyContinue'
+          $dl = "$env:RUNNER_TEMP/dl"; New-Item -ItemType Directory -Force $dl | Out-Null
+          $h = @{ 'User-Agent' = 'Dogfile-CI'; 'Authorization' = "Bearer $env:GITHUB_TOKEN" }
+          $asset = $null; $tag = $null
+          foreach ($r in (Invoke-RestMethod 'https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=10' -Headers $h)) {
+            $a = $r.assets | Where-Object { $_.name -match '^llama-.*-bin-win-cpu-x64\.zip$' } | Select-Object -First 1
+            if ($a) { $asset = $a; $tag = $r.tag_name; break }
+          }
+          if (-not $asset) { Write-Output "::warning title=llama-server::no Windows CPU build in the last 10 llama.cpp releases"; exit 0 }
+          Invoke-WebRequest $asset.browser_download_url -OutFile "$dl/llama.zip"
+          $sha = (Get-FileHash "$dl/llama.zip" -Algorithm SHA256).Hash.ToLower()
+          "DOGFILE_LLAMA_URL=$($asset.browser_download_url)" >> $env:GITHUB_ENV
+          "DOGFILE_LLAMA_SHA256=$sha" >> $env:GITHUB_ENV
+          "DOGFILE_LLAMA_ZIP=$dl/llama.zip" >> $env:GITHUB_ENV
+          Write-Output "::notice title=llama-server::$tag $($asset.name) $sha"
       - name: Build
         shell: pwsh
         run: |

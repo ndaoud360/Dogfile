@@ -43,7 +43,13 @@ fn main() {
     let state_dir = std::env::var("BRAIN_STATE_DIR").map(std::path::PathBuf::from).unwrap_or_else(|_| std::env::temp_dir().join("dogfile-brain-eval"));
     let t0 = std::time::Instant::now();
     std::thread::spawn(move || {
-        if let Err(e) = dogfile_backend::llm::serve(&m, &state_dir, rx, &|s| eprintln!("[{:.1}s] {s}", t0.elapsed().as_secs_f32())) {
+        let st = |s: &str| eprintln!("[{:.1}s] {s}", t0.elapsed().as_secs_f32());
+        // DOGFILE_LLAMA_SERVER=<llama-server> runs it through llama.cpp's server program, as Dogfile does when it's there
+        let r = match dogfile_backend::llm_server::find() {
+            Some(exe) => dogfile_backend::llm_server::serve(&exe, &m, &state_dir, &rx, &st),
+            None => dogfile_backend::llm::serve(&m, &state_dir, rx, &st),
+        };
+        if let Err(e) = r {
             eprintln!("model error: {e}");
         }
     });

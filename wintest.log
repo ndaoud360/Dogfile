@@ -1,0 +1,15 @@
+startup: window ready 998 ms after the program started (page 573 ms)
+platform win32 temp C:\Users\RUNNER~1\AppData\Local\Temp\ 7z true ffmpeg false
+ok   drives 8ms C:\ fixed Windows 32GB free | D:\ fixed Temporary Storage 153GB free
+ok   list C:\Windows (attributes) 3ms 111 items, hidden 4, system 5, 3 ms
+ok   list System32 (big folder) 27ms 4665 items in 27 ms
+ok   mkdir + files 12ms a.txt,b.txt,out
+ok   rename case only 6ms a.txt,B.txt,out
+ok   hash 3ms 
+ok   copy job 9ms done
+ok   copy again (keep both) 18ms done a (2).txt,a.txt,B.txt
+ok   move job 16ms done true
+ok   recycle + list + restore 1291ms done restored=true
+ok   attributes hidden 7ms {"archive":true,"compressed":false,"created":"2026-10-24T16:58:45.900Z","encrypted":false,"hidden":true,"readonly":false,"system":false}
+ok   shortcut 17ms C:\Users\RUNNER~1\AppData\Local\Temp\dogtest\a.txt
+ok   clipboard files 5ms {"cut":false,"paths":["C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\\\dogtest\\a.txt"]}

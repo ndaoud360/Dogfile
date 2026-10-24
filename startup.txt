@@ -1,0 +1,4 @@
+startup: window ready 733 ms after the program started (page 318 ms)
+startup: window ready 732 ms after the program started (page 326 ms)
+startup: window ready 728 ms after the program started (page 326 ms)
+startup: window ready 717 ms after the program started (page 328 ms)

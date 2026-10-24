@@ -1,0 +1,8 @@
+startup: window ready 1091 ms after the program started (page 531 ms)
+check: available=true latest=9.9.9 size=33624817 error=null
+download: ready=true stages=unpack,ready
+install: {"ok":true,"version":"9.9.9"}
+
+startup: window ready 748 ms after the program started (page 343 ms)
+UPDATE APPLIED: restarted from D:\a\Dogfile\Dogfile\target\release\Dogfile.exe, components { "app": "9.9.9" }
+

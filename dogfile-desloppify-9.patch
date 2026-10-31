@@ -1,0 +1,173 @@
+diff --git a/backend/src/license.rs b/backend/src/license.rs
+index dee1b0e..894309d 100644
+--- a/backend/src/license.rs
++++ b/backend/src/license.rs
+@@ -579,21 +579,24 @@ pub fn start_background() {
+     });
+ }
+ 
++/// The calls only Dogfile Pro may make (a call is free unless it is named here or in QUIET_CALLS).
++const PRO_CALLS: &[&str] = &[
++    "versions:save", "versions:list", "versions:restore", "versions:remove", "versions:overview",
++    "remote:signIn", "remote:get", "remote:put", "remote:mkdir", "remote:rename", "remote:copy", "remote:open", "remote:test",
++    "ext:install", "ai:download", "media:export", "media:contactSheet", "llm:plan", "llm:warm",
++    "reminders:analyze", "reminders:add", "reminders:scanNow",
++    "meta:write", "meta:stripAll",
++];
++/// Background calls that quietly do nothing without Pro, instead of reporting an error.
++const QUIET_CALLS: &[&str] = &["versions:track", "rules:watch"];
++
+ /// Calls only Dogfile Pro may make. Background ones (tracking, folder rules) quietly do nothing instead.
+ pub fn gate(name: &str, a: &Args) -> Option<R> {
+-    const PRO: &[&str] = &[
+-        "versions:save", "versions:list", "versions:restore", "versions:remove", "versions:overview",
+-        "remote:signIn", "remote:get", "remote:put", "remote:mkdir", "remote:rename", "remote:copy", "remote:open", "remote:test",
+-        "ext:install", "ai:download", "media:export", "media:contactSheet", "llm:plan", "llm:warm",
+-        "reminders:analyze", "reminders:add", "reminders:scanNow",
+-        "meta:write", "meta:stripAll",
+-    ];
+-    const QUIET: &[&str] = &["versions:track", "rules:watch"];
+     let dupes = name == "work:start" && a.v(0)["type"].as_str() == Some("dupes");
+-    if !(PRO.contains(&name) || QUIET.contains(&name) || dupes) || pro() {
++    if !(PRO_CALLS.contains(&name) || QUIET_CALLS.contains(&name) || dupes) || pro() {
+         return None;
+     }
+-    if QUIET.contains(&name) {
++    if QUIET_CALLS.contains(&name) {
+         if name == "rules:watch" {
+             // stop any folder rules that were running
+             let _ = crate::watch::rules_watch("", &Args(vec![json!([])]));
+@@ -622,6 +625,21 @@ mod tests {
+         assert!(ed25519_dalek::VerifyingKey::from_bytes(&b).is_ok(), "pubkey is not a valid key");
+     }
+     #[test]
++    fn every_gated_call_is_a_call_that_exists() {
++        // a call renamed in the dispatcher but not in the list above would quietly become free
++        for n in PRO_CALLS.iter().chain(QUIET_CALLS) {
++            assert!(crate::dispatch::NAMES.contains(n), "{n} is gated but the dispatcher has no such call");
++        }
++    }
++    #[test]
++    fn buying_and_activating_can_never_be_gated() {
++        for n in ["license:status", "license:startTrial", "license:activate", "license:offlineRequest", "license:offlineApply", "license:deactivate", "license:checkout", "license:claim", "license:refresh"] {
++            assert!(!PRO_CALLS.contains(&n) && !QUIET_CALLS.contains(&n), "{n} must stay free");
++            assert!(gate(n, &Args(vec![])).is_none());
++        }
++        assert!(gate("fs:list", &Args(vec![])).is_none());
++    }
++    #[test]
+     fn only_a_licence_or_the_trial_unlocks_pro_in_a_release_build() {
+         assert!(allows_pro(Mode::Licensed) && allows_pro(Mode::Trial));
+         assert!(!allows_pro(Mode::Expired) && !allows_pro(Mode::None));
+diff --git a/backend/src/remote.rs b/backend/src/remote.rs
+index bf9cbec..f67b5a9 100644
+--- a/backend/src/remote.rs
++++ b/backend/src/remote.rs
+@@ -34,6 +34,11 @@ fn rp(p: &str) -> String {
+ fn rjoin(a: &str, b: &str) -> String {
+     if a.ends_with('/') { format!("{a}{b}") } else { format!("{a}/{b}") }
+ }
++/// An FTP command ends at a line break, so a name, path or password with one in it would run as a second command (the
++/// FTP library in use doesn't refuse them). None is ever a real name; they are refused before anything is sent.
++fn ftp_arg(p: &str) -> Result<&str, String> {
++    if p.contains(['\r', '\n', '\0']) { Err("That name has a line break in it, which FTP can’t carry safely.".into()) } else { Ok(p) }
++}
+ fn url(id: &str, p: &str) -> String {
+     format!("atlas:remote|{id}|{}", rp(p))
+ }
+@@ -199,6 +204,9 @@ fn ftp_connect(c: &Value, pw: &str) -> Result<Ftp, String> {
+     let addr = format!("{host}:{}", port_of(c, 21));
+     let user = c["user"].as_str().filter(|u| !u.is_empty()).unwrap_or("anonymous").to_string();
+     let pass = if !pw.is_empty() { pw.to_string() } else if c["user"].as_str().map(|u| !u.is_empty()).unwrap_or(false) { String::new() } else { "guest".into() };
++    ftp_arg(&host)?;
++    ftp_arg(&user)?;
++    ftp_arg(&pass)?;
+     let mut f = if c["type"] == "ftps" {
+         let s = suppaftp::RustlsFtpStream::connect(&addr).map_err(|e| e.to_string())?;
+         let cfg = tls_config(c["allowSelfSigned"].as_bool().unwrap_or(false))?;
+@@ -214,6 +222,7 @@ fn ftp_connect(c: &Value, pw: &str) -> Result<Ftp, String> {
+     Ok(f)
+ }
+ fn ftp_list(f: &mut Ftp, dir: &str) -> Result<Vec<Ent>, String> {
++    ftp_arg(dir)?;
+     let lines = ftp_do!(f, s => s.list(Some(dir)).map_err(|e| e.to_string())?);
+     Ok(lines
+         .iter()
+@@ -346,6 +355,10 @@ async fn stat_raw(s: &mut Session, p: &str) -> Option<(bool, u64)> {
+     match &s.kind {
+         Kind::Sftp(c) => c.sftp.metadata(p).await.ok().map(|m| (m.is_dir(), m.size.unwrap_or(0))),
+         Kind::Ftp(f) => {
++            // a name that can't be sent is reported like one that isn't there
++            if ftp_arg(p).is_err() {
++                return None;
++            }
+             let (f, p) = (f.clone(), p.to_string());
+             tokio::task::spawn_blocking(move || {
+                 let mut g = f.lock();
+@@ -459,6 +472,7 @@ async fn get_into(id: &str, paths: &[String], local_dir: &Path, prog: &mut Progr
+                     w.flush().await.map_err(|e| e.to_string())?;
+                 }
+                 Kind::Ftp(f) => {
++                    ftp_arg(&r)?;
+                     let (f, r2, l2) = (f.clone(), r.clone(), l.clone());
+                     tokio::task::spawn_blocking(move || -> Result<(), String> {
+                         let mut g = f.lock();
+@@ -509,6 +523,7 @@ pub async fn put(win: &str, a: &Args) -> R {
+                 match &g.kind {
+                     Kind::Sftp(c) => { let _ = c.sftp.create_dir(&r).await; }
+                     Kind::Ftp(f) => {
++                        ftp_arg(&r)?;
+                         let (f, r2) = (f.clone(), r.clone());
+                         let _ = tokio::task::spawn_blocking(move || ftp_do!(&mut *f.lock(), s => { let _ = s.mkdir(&r2); })).await;
+                     }
+@@ -537,6 +552,7 @@ pub async fn put(win: &str, a: &Args) -> R {
+                     f.shutdown().await.map_err(|e| e.to_string())?;
+                 }
+                 Kind::Ftp(f) => {
++                    ftp_arg(&r)?;
+                     let (f, r2, l2) = (f.clone(), r.clone(), l.clone());
+                     tokio::task::spawn_blocking(move || -> Result<(), String> {
+                         let mut rd = std::fs::File::open(&l2).map_err(|e| e.to_string())?;
+@@ -591,6 +607,9 @@ pub async fn remove(a: &Args) -> R {
+                 for d in &dirs { c.sftp.remove_dir(d.as_str()).await.map_err(|e| e.to_string())?; }
+             }
+             Kind::Ftp(f) => {
++                for x in files.iter().chain(&dirs) {
++                    ftp_arg(x)?;
++                }
+                 let f = f.clone();
+                 tokio::task::spawn_blocking(move || -> Result<(), String> {
+                     let mut g = f.lock();
+@@ -616,6 +635,8 @@ pub async fn rename(a: &Args) -> R {
+     match &g.kind {
+         Kind::Sftp(c) => c.sftp.rename(from, to).await.map_err(|e| e.to_string())?,
+         Kind::Ftp(f) => {
++            ftp_arg(&from)?;
++            ftp_arg(&to)?;
+             let f = f.clone();
+             tokio::task::spawn_blocking(move || ftp_do!(&mut *f.lock(), s => s.rename(from.as_str(), to.as_str()).map_err(|e| e.to_string()))).await.map_err(|e| e.to_string())??
+         }
+@@ -649,6 +670,7 @@ pub async fn mkdir(a: &Args) -> R {
+     match &g.kind {
+         Kind::Sftp(c) => c.sftp.create_dir(p).await.map_err(|e| e.to_string())?,
+         Kind::Ftp(f) => {
++            ftp_arg(&p)?;
+             let f = f.clone();
+             tokio::task::spawn_blocking(move || {
+                 ftp_do!(&mut *f.lock(), s => {
+@@ -864,6 +886,15 @@ mod tests {
+         std::fs::remove_dir_all(&d).ok();
+     }
+     #[test]
++    fn a_line_break_in_an_ftp_name_is_refused_before_anything_is_sent() {
++        for ok in ["/pub/report.txt", "/a b/ünï (1).txt", "tab\there", "", "p@ss:word;'\"x"] {
++            assert_eq!(ftp_arg(ok), Ok(ok));
++        }
++        for bad in ["x\r\nDELE /important", "a\nb", "a\rb", "nul\0byte", "\r\n", "pw\r\nSITE CHMOD 777 /"] {
++            assert!(ftp_arg(bad).is_err(), "{bad:?} must be refused");
++        }
++    }
++    #[test]
+     fn a_damaged_list_is_an_error_and_is_left_alone() {
+         let d = tmp("damaged");
+         let f = d.join("ssh-hosts.json");

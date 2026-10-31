@@ -579,21 +579,24 @@ pub fn start_background() {
     });
 }
 
+/// The calls only Dogfile Pro may make (a call is free unless it is named here or in QUIET_CALLS).
+const PRO_CALLS: &[&str] = &[
+    "versions:save", "versions:list", "versions:restore", "versions:remove", "versions:overview",
+    "remote:signIn", "remote:get", "remote:put", "remote:mkdir", "remote:rename", "remote:copy", "remote:open", "remote:test",
+    "ext:install", "ai:download", "media:export", "media:contactSheet", "llm:plan", "llm:warm",
+    "reminders:analyze", "reminders:add", "reminders:scanNow",
+    "meta:write", "meta:stripAll",
+];
+/// Background calls that quietly do nothing without Pro, instead of reporting an error.
+const QUIET_CALLS: &[&str] = &["versions:track", "rules:watch"];
+
 /// Calls only Dogfile Pro may make. Background ones (tracking, folder rules) quietly do nothing instead.
 pub fn gate(name: &str, a: &Args) -> Option<R> {
-    const PRO: &[&str] = &[
-        "versions:save", "versions:list", "versions:restore", "versions:remove", "versions:overview",
-        "remote:signIn", "remote:get", "remote:put", "remote:mkdir", "remote:rename", "remote:copy", "remote:open", "remote:test",
-        "ext:install", "ai:download", "media:export", "media:contactSheet", "llm:plan", "llm:warm",
-        "reminders:analyze", "reminders:add", "reminders:scanNow",
-        "meta:write", "meta:stripAll",
-    ];
-    const QUIET: &[&str] = &["versions:track", "rules:watch"];
     let dupes = name == "work:start" && a.v(0)["type"].as_str() == Some("dupes");
-    if !(PRO.contains(&name) || QUIET.contains(&name) || dupes) || pro() {
+    if !(PRO_CALLS.contains(&name) || QUIET_CALLS.contains(&name) || dupes) || pro() {
         return None;
     }
-    if QUIET.contains(&name) {
+    if QUIET_CALLS.contains(&name) {
         if name == "rules:watch" {
             // stop any folder rules that were running
             let _ = crate::watch::rules_watch("", &Args(vec![json!([])]));
@@ -620,6 +623,21 @@ mod tests {
         let b = base64::engine::general_purpose::STANDARD.decode(c["pubkey"].as_str().unwrap_or("").trim()).expect("pubkey is not base64");
         let b = <[u8; 32]>::try_from(b.as_slice()).expect("pubkey is not 32 bytes");
         assert!(ed25519_dalek::VerifyingKey::from_bytes(&b).is_ok(), "pubkey is not a valid key");
+    }
+    #[test]
+    fn every_gated_call_is_a_call_that_exists() {
+        // a call renamed in the dispatcher but not in the list above would quietly become free
+        for n in PRO_CALLS.iter().chain(QUIET_CALLS) {
+            assert!(crate::dispatch::NAMES.contains(n), "{n} is gated but the dispatcher has no such call");
+        }
+    }
+    #[test]
+    fn buying_and_activating_can_never_be_gated() {
+        for n in ["license:status", "license:startTrial", "license:activate", "license:offlineRequest", "license:offlineApply", "license:deactivate", "license:checkout", "license:claim", "license:refresh"] {
+            assert!(!PRO_CALLS.contains(&n) && !QUIET_CALLS.contains(&n), "{n} must stay free");
+            assert!(gate(n, &Args(vec![])).is_none());
+        }
+        assert!(gate("fs:list", &Args(vec![])).is_none());
     }
     #[test]
     fn only_a_licence_or_the_trial_unlocks_pro_in_a_release_build() {

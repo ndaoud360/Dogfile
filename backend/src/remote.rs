@@ -34,6 +34,11 @@ fn rp(p: &str) -> String {
 fn rjoin(a: &str, b: &str) -> String {
     if a.ends_with('/') { format!("{a}{b}") } else { format!("{a}/{b}") }
 }
+/// An FTP command ends at a line break, so a name, path or password with one in it would run as a second command (the
+/// FTP library in use doesn't refuse them). None is ever a real name; they are refused before anything is sent.
+fn ftp_arg(p: &str) -> Result<&str, String> {
+    if p.contains(['\r', '\n', '\0']) { Err("That name has a line break in it, which FTP can’t carry safely.".into()) } else { Ok(p) }
+}
 fn url(id: &str, p: &str) -> String {
     format!("atlas:remote|{id}|{}", rp(p))
 }
@@ -199,6 +204,9 @@ fn ftp_connect(c: &Value, pw: &str) -> Result<Ftp, String> {
     let addr = format!("{host}:{}", port_of(c, 21));
     let user = c["user"].as_str().filter(|u| !u.is_empty()).unwrap_or("anonymous").to_string();
     let pass = if !pw.is_empty() { pw.to_string() } else if c["user"].as_str().map(|u| !u.is_empty()).unwrap_or(false) { String::new() } else { "guest".into() };
+    ftp_arg(&host)?;
+    ftp_arg(&user)?;
+    ftp_arg(&pass)?;
     let mut f = if c["type"] == "ftps" {
         let s = suppaftp::RustlsFtpStream::connect(&addr).map_err(|e| e.to_string())?;
         let cfg = tls_config(c["allowSelfSigned"].as_bool().unwrap_or(false))?;
@@ -214,6 +222,7 @@ fn ftp_connect(c: &Value, pw: &str) -> Result<Ftp, String> {
     Ok(f)
 }
 fn ftp_list(f: &mut Ftp, dir: &str) -> Result<Vec<Ent>, String> {
+    ftp_arg(dir)?;
     let lines = ftp_do!(f, s => s.list(Some(dir)).map_err(|e| e.to_string())?);
     Ok(lines
         .iter()
@@ -346,6 +355,10 @@ async fn stat_raw(s: &mut Session, p: &str) -> Option<(bool, u64)> {
     match &s.kind {
         Kind::Sftp(c) => c.sftp.metadata(p).await.ok().map(|m| (m.is_dir(), m.size.unwrap_or(0))),
         Kind::Ftp(f) => {
+            // a name that can't be sent is reported like one that isn't there
+            if ftp_arg(p).is_err() {
+                return None;
+            }
             let (f, p) = (f.clone(), p.to_string());
             tokio::task::spawn_blocking(move || {
                 let mut g = f.lock();
@@ -459,6 +472,7 @@ async fn get_into(id: &str, paths: &[String], local_dir: &Path, prog: &mut Progr
                     w.flush().await.map_err(|e| e.to_string())?;
                 }
                 Kind::Ftp(f) => {
+                    ftp_arg(&r)?;
                     let (f, r2, l2) = (f.clone(), r.clone(), l.clone());
                     tokio::task::spawn_blocking(move || -> Result<(), String> {
                         let mut g = f.lock();
@@ -509,6 +523,7 @@ pub async fn put(win: &str, a: &Args) -> R {
                 match &g.kind {
                     Kind::Sftp(c) => { let _ = c.sftp.create_dir(&r).await; }
                     Kind::Ftp(f) => {
+                        ftp_arg(&r)?;
                         let (f, r2) = (f.clone(), r.clone());
                         let _ = tokio::task::spawn_blocking(move || ftp_do!(&mut *f.lock(), s => { let _ = s.mkdir(&r2); })).await;
                     }
@@ -537,6 +552,7 @@ pub async fn put(win: &str, a: &Args) -> R {
                     f.shutdown().await.map_err(|e| e.to_string())?;
                 }
                 Kind::Ftp(f) => {
+                    ftp_arg(&r)?;
                     let (f, r2, l2) = (f.clone(), r.clone(), l.clone());
                     tokio::task::spawn_blocking(move || -> Result<(), String> {
                         let mut rd = std::fs::File::open(&l2).map_err(|e| e.to_string())?;
@@ -591,6 +607,9 @@ pub async fn remove(a: &Args) -> R {
                 for d in &dirs { c.sftp.remove_dir(d.as_str()).await.map_err(|e| e.to_string())?; }
             }
             Kind::Ftp(f) => {
+                for x in files.iter().chain(&dirs) {
+                    ftp_arg(x)?;
+                }
                 let f = f.clone();
                 tokio::task::spawn_blocking(move || -> Result<(), String> {
                     let mut g = f.lock();
@@ -616,6 +635,8 @@ pub async fn rename(a: &Args) -> R {
     match &g.kind {
         Kind::Sftp(c) => c.sftp.rename(from, to).await.map_err(|e| e.to_string())?,
         Kind::Ftp(f) => {
+            ftp_arg(&from)?;
+            ftp_arg(&to)?;
             let f = f.clone();
             tokio::task::spawn_blocking(move || ftp_do!(&mut *f.lock(), s => s.rename(from.as_str(), to.as_str()).map_err(|e| e.to_string()))).await.map_err(|e| e.to_string())??
         }
@@ -649,6 +670,7 @@ pub async fn mkdir(a: &Args) -> R {
     match &g.kind {
         Kind::Sftp(c) => c.sftp.create_dir(p).await.map_err(|e| e.to_string())?,
         Kind::Ftp(f) => {
+            ftp_arg(&p)?;
             let f = f.clone();
             tokio::task::spawn_blocking(move || {
                 ftp_do!(&mut *f.lock(), s => {
@@ -862,6 +884,15 @@ mod tests {
         drop(Work { path: b.clone(), keep: true });
         assert!(!a.exists() && b.exists());
         std::fs::remove_dir_all(&d).ok();
+    }
+    #[test]
+    fn a_line_break_in_an_ftp_name_is_refused_before_anything_is_sent() {
+        for ok in ["/pub/report.txt", "/a b/ünï (1).txt", "tab\there", "", "p@ss:word;'\"x"] {
+            assert_eq!(ftp_arg(ok), Ok(ok));
+        }
+        for bad in ["x\r\nDELE /important", "a\nb", "a\rb", "nul\0byte", "\r\n", "pw\r\nSITE CHMOD 777 /"] {
+            assert!(ftp_arg(bad).is_err(), "{bad:?} must be refused");
+        }
     }
     #[test]
     fn a_damaged_list_is_an_error_and_is_left_alone() {

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:*; img-src 'self' http://127.0.0.1:* data: blob:; connect-src 'self' http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; font-src 'self' http://127.0.0.1:* data:; script-src 'self'">
+  <title>Dogfile Photos</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="viewer.css">
+</head>
+<body class="tool viewer-app">
+  <header id="vw-title">
+    <span class="vw-logo"></span>
+    <span id="vw-name">Dogfile Photos</span>
+    <span id="vw-count"></span>
+    <div class="tab-drag"></div>
+    <div id="win-ctl"></div>
+  </header>
+  <div id="vw-main">
+    <aside id="vw-tools"></aside>
+    <div id="vw-stage">
+      <div id="vw-layers"><img id="img-a" alt="" crossorigin="anonymous" draggable="false"><img id="img-b" alt="" crossorigin="anonymous" draggable="false"></div>
+      <canvas id="vw-canvas"></canvas>
+      <div id="vw-crop"><div class="crop-box"><i class="h nw"></i><i class="h ne"></i><i class="h sw"></i><i class="h se"></i><i class="g1"></i><i class="g2"></i></div></div>
+      <button class="vw-nav prev" id="vw-prev" title="Previous (←)"></button>
+      <button class="vw-nav next" id="vw-next" title="Next (→)"></button>
+      <div id="vw-osd"></div>
+      <div id="vw-empty"><div class="em-title">Dogfile Photos</div><div class="em-sub">Open photos from Dogfile, or drop them here</div><button class="btn" id="vw-open">Open photos…</button></div>
+      <div id="vw-info" class="vw-panel"></div>
+    </div>
+    <aside id="vw-queue"><div class="q-head"><span>Queue</span><span id="q-count"></span><span class="ctl-spacer"></span><button class="icon-btn small" id="q-add" title="Add photos"></button></div><div id="q-items"></div></aside>
+  </div>
+  <footer id="vw-bar"></footer>
+  <div id="toasts"></div>
+  <script type="module" src="js/viewer.js"></script>
+</body>
+</html>

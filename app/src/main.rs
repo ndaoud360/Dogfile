@@ -1,0 +1,1122 @@
+// Dogfile: the window around the interface. Tauri shows the pages in the system web view (WebView2 on Windows);
+// everything else (files, copies, search, media…) is answered by dogfile-backend, in this same process.
+//
+// Pages load from the custom scheme dogfile:// (http://dogfile.localhost/ on Windows). The page's calls go to
+// /invoke on that scheme; events come back through window.__dogEvent (see src/renderer/js/bridge.js).
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+mod launch;
+#[cfg(windows)]
+mod winx;
+
+use dogfile_backend::host::{DialogOpts, Host};
+use dogfile_backend::http::{self as bhttp, Body as RBody, Req};
+use parking_lot::Mutex;
+use serde_json::{json, Value};
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::{Arc, OnceLock};
+use tauri::{AppHandle, DragDropEvent, Manager, PhysicalPosition, PhysicalSize, RunEvent, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
+
+/// Browser flags shared by every window (they must match, or WebView2 refuses the second window).
+/// One renderer process for all of Dogfile's pages (same site), and nothing running in the background.
+const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,msEdgeTranslate,msImplicitSignin,msWebView2TextureStream,SpareRendererForSitePerProcess,MediaRouter,OptimizationHints,Translate,AutofillServerCommunication --process-per-site --disable-background-networking --disable-component-update --disable-domain-reliability --no-pings";
+
+fn page_url(page: &str, query: &str) -> WebviewUrl {
+    let q = if query.is_empty() { String::new() } else { format!("?{query}") };
+    let s = if cfg!(any(windows, target_os = "android")) { format!("http://dogfile.localhost/app/{page}{q}") } else { format!("dogfile://localhost/app/{page}{q}") };
+    WebviewUrl::External(s.parse().unwrap())
+}
+
+/// Windows build number (19045 = Windows 10 22H2, 22000 = first Windows 11, 22621 = 11 22H2)
+#[cfg(windows)]
+fn win_build() -> u32 {
+    winreg::RegKey::predef(winreg::enums::HKEY_LOCAL_MACHINE)
+        .open_subkey("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion")
+        .and_then(|k| k.get_value::<String, _>("CurrentBuildNumber"))
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0)
+}
+#[cfg(not(windows))]
+fn win_build() -> u32 {
+    0
+}
+
+fn glass_effect(w: &WebviewWindow, on: bool) -> bool {
+    use tauri::window::{Effect, EffectsBuilder};
+    if on {
+        // Windows 11 22H2 and later draw Acrylic as a system backdrop, which stays smooth. Before that, Acrylic is an
+        // old window trick that makes the whole window lag (clicks and hover seconds late) whenever its content changes
+        // a lot, like the sidebar folding, so those versions get the plain blur instead.
+        let fx = if win_build() >= 22523 { Effect::Acrylic } else { Effect::Blur };
+        w.set_effects(EffectsBuilder::new().effect(fx).build()).or_else(|_| w.set_effects(EffectsBuilder::new().effect(Effect::Mica).build())).is_ok()
+    } else {
+        w.set_effects(None).is_ok()
+    }
+}
+
+// ---------------- the host: windows, events, dialogs ----------------
+pub struct AppHost {
+    app: OnceLock<AppHandle>,
+    launches: Mutex<HashMap<String, Value>>,
+    pending: Mutex<HashMap<String, Value>>,
+    seq: AtomicU32,
+    quitting: AtomicBool,
+    tray: Mutex<Option<tauri::tray::TrayIcon>>,
+    corners: Mutex<String>,
+    close_ok: Mutex<std::collections::HashSet<String>>,
+    asking: Mutex<std::collections::HashSet<String>>,
+    answered: Mutex<std::collections::HashSet<String>>,
+    /// windows created see-through (the glass sidebar shows the desktop behind them)
+    glassy: Mutex<std::collections::HashSet<String>>,
+}
+
+impl AppHost {
+    /// the app once Tauri has set it up. The back end starts first and may already call in (events, windows lists):
+    /// those calls just do nothing until then, instead of stopping the program (which kept Dogfile from opening).
+    fn app(&self) -> &AppHandle {
+        self.app.get().expect("app not ready")
+    }
+    fn app_opt(&self) -> Option<&AppHandle> {
+        self.app.get()
+    }
+    fn win(&self, label: &str) -> Option<WebviewWindow> {
+        self.app_opt()?.get_webview_window(label)
+    }
+    fn theme_bg(&self, kind: &str) -> tauri::window::Color {
+        if kind == "player" {
+            return tauri::window::Color(0, 0, 0, 255);
+        }
+        if kind == "viewer" || kind == "model" {
+            return tauri::window::Color(11, 11, 13, 255);
+        }
+        let theme = dogfile_backend::setting("theme");
+        let dark = match theme.as_str() {
+            Some("dark") => true,
+            Some("light") => false,
+            _ => self.system_dark(),
+        };
+        if dark { tauri::window::Color(21, 22, 24, 255) } else { tauri::window::Color(239, 239, 240, 255) }
+    }
+
+    /// a file-browser window
+    /// a saved window position, only if most of the window would be on one of the screens attached now
+    /// (a position saved while minimizing, or on a monitor that's gone, opened the window where no one could see it)
+    fn on_screen(&self, saved: &Value) -> Option<(f64, f64)> {
+        let (x, y) = (saved["x"].as_f64()?, saved["y"].as_f64()?);
+        let (w, h) = (saved["width"].as_f64().unwrap_or(1000.0), saved["height"].as_f64().unwrap_or(700.0));
+        if x <= -10000.0 || y <= -10000.0 || w < 200.0 || h < 150.0 {
+            return None;
+        }
+        let mons = self.app_opt()?.available_monitors().ok()?;
+        let ok = mons.iter().any(|m| {
+            let f = m.scale_factor();
+            let (mx, my) = (m.position().x as f64 / f, m.position().y as f64 / f);
+            let (mw, mh) = (m.size().width as f64 / f, m.size().height as f64 / f);
+            // the title area (top 40 px) and at least 200 px of width must be on this screen
+            let ix = (x + w).min(mx + mw) - x.max(mx);
+            y >= my - 10.0 && y + 40.0 <= my + mh && ix >= 200.0
+        });
+        if ok { Some((x, y)) } else { None }
+    }
+    fn sane_size(saved: &Value, dw: f64, dh: f64) -> (f64, f64) {
+        let w = saved["width"].as_f64().filter(|v| (380.0..=10000.0).contains(v)).unwrap_or(dw);
+        let h = saved["height"].as_f64().filter(|v| (300.0..=10000.0).contains(v)).unwrap_or(dh);
+        (w, h)
+    }
+    fn create_main(&self, launch: Value) {
+        // if the window can't be made (a locked web view profile, most often), clean up and try again, and as a
+        // last resort start with a fresh profile: Dogfile always opens
+        if self.app_opt().is_none() {
+            return;
+        }
+        for attempt in 0..3 {
+            match self.try_create_main(launch.clone()) {
+                Ok(()) => return,
+                Err(e) => {
+                    startup_log(&format!("main window failed (try {}): {e}", attempt + 1));
+                    if attempt == 0 {
+                        end_leftover_webviews(std::process::id());
+                        if let Some(old) = std::fs::read(heartbeat_file()).ok().and_then(|b| serde_json::from_slice::<Value>(&b).ok()).and_then(|v| v["pid"].as_u64()) {
+                            end_leftover_webviews(old as u32);
+                        }
+                        std::thread::sleep(std::time::Duration::from_millis(500));
+                    } else {
+                        let fresh = dogfile_backend::st().data_dir.join(format!("WebView-{}", std::process::id()));
+                        startup_log(&format!("using a fresh web view profile: {}", fresh.display()));
+                        *WEBVIEW_DIR.lock() = Some(fresh);
+                    }
+                }
+            }
+        }
+    }
+    fn try_create_main(&self, launch: Value) -> Result<(), String> {
+        if self.app_opt().is_none() {
+            return Err("not set up yet".into());
+        }
+        let n = self.seq.fetch_add(1, Ordering::Relaxed) + 1;
+        let label = format!("main-{n}");
+        self.launches.lock().insert(label.clone(), launch);
+        let first = self.app().webview_windows().keys().all(|k| !k.starts_with("main"));
+        let saved = dogfile_backend::store::get("window").unwrap_or(json!({}));
+        let b = WebviewWindowBuilder::new(self.app(), &label, page_url("index.html", &format!("w={label}")))
+            .title("Dogfile")
+            .min_inner_size(380.0, 300.0)
+            .inner_size(Self::sane_size(&saved, 1360.0, 880.0).0, Self::sane_size(&saved, 1360.0, 880.0).1);
+        let b = match self.on_screen(&saved).filter(|_| first) { Some((x, y)) => b.position(x, y), None => b.center() };
+        let maximized = first && saved["maximized"].as_bool().unwrap_or(false);
+        match self.build(b, "main") {
+            Ok(w) => {
+                if maximized {
+                    let _ = w.maximize();
+                }
+                // the window shows when its page has loaded; if that never comes, it shows anyway
+                let label = w.label().to_string();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(5));
+                    if let Some(w) = host().win(&label) {
+                        if !w.is_visible().unwrap_or(true) && !host().quitting.load(Ordering::Relaxed) {
+                            startup_log(&format!("{label}: the page didn't finish loading in 5 s, showing the window anyway"));
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
+                    }
+                });
+            }
+            Err(e) => {
+                self.launches.lock().remove(&label);
+                return Err(e.to_string());
+            }
+        }
+        Ok(())
+    }
+
+    fn build(&self, b: WebviewWindowBuilder<'_, tauri::Wry, AppHandle>, kind: &str) -> tauri::Result<WebviewWindow> {
+        // glass sidebar: main windows are always made see-through (the page paints its own background), so turning
+        // glass on later works at once in every open window, without opening a new one
+        let see_through = kind == "main" && cfg!(windows);
+        let glass = see_through && dogfile_backend::setting_bool("sidebarGlass", false);
+        let b = b
+            .decorations(false)
+            .shadow(true)
+            .visible(false)
+            .resizable(true);
+        let b = if see_through { b.transparent(true).background_color(tauri::window::Color(0, 0, 0, 0)) } else { b.background_color(self.theme_bg(kind)) };
+        let b = b
+            .zoom_hotkeys_enabled(false)
+            .additional_browser_args(BROWSER_ARGS)
+            .on_page_load(|w, p| {
+                if matches!(p.event(), tauri::webview::PageLoadEvent::Finished) {
+                    if w.label().starts_with("main") {
+                        startup_log(&format!("{}: page loaded, window shown", w.label()));
+                    }
+                    let _ = w.show();
+                    let _ = w.set_focus();
+                }
+            });
+        #[cfg(windows)]
+        let b = b.data_directory(webview_data_dir());
+        let w = b.build()?;
+        if see_through {
+            self.glassy.lock().insert(w.label().to_string());
+        }
+        if glass {
+            glass_effect(&w, true);
+        }
+        #[cfg(windows)]
+        if let Ok(h) = w.hwnd() {
+            winx::set_corners(h.0 as isize, &self.corners.lock());
+        }
+        // a page that never reports finished loading still shows (e.g. a slow first start)
+        let w2 = w.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(2500));
+            if !w2.is_visible().unwrap_or(true) {
+                let _ = w2.show();
+            }
+        });
+        Ok(w)
+    }
+
+    fn open_path_anywhere(&self, launch: Value) {
+        let wins: Vec<String> = self.windows().into_iter().filter(|w| w.starts_with("main")).collect();
+        let want_new = launch["newWindow"].as_bool().unwrap_or(false);
+        if let Some(target) = wins.first().and_then(|l| self.win(l)) {
+            if !want_new {
+                #[cfg(windows)]
+                winx::webview_memory_low(&target, false);
+                let _ = target.show();
+                let _ = target.unminimize();
+                // somewhere no screen shows: back to the middle of the main screen
+                let visible = target.outer_position().ok().zip(target.outer_size().ok()).map(|(p, sz)| {
+                    let f = target.scale_factor().unwrap_or(1.0);
+                    self.on_screen(&json!({ "x": p.x as f64 / f, "y": p.y as f64 / f, "width": sz.width as f64 / f, "height": sz.height as f64 / f })).is_some()
+                });
+                if visible == Some(false) && !target.is_maximized().unwrap_or(false) {
+                    let _ = target.center();
+                }
+                let _ = target.set_focus();
+                self.emit(target.label(), "app:open", launch);
+                return;
+            }
+        }
+        self.create_main(launch);
+    }
+
+    fn handle_launch(&self, l: launch::Launch, first: bool) {
+        // Control Panel and the like: File Explorer shows them (Dogfile only registers for folders on disk, so
+        // this doesn't come back here)
+        if let Some(place) = &l.shell {
+            if l.path.is_none() {
+                let _ = std::process::Command::new("explorer.exe").arg(place).spawn();
+                if first {
+                    std::process::exit(0);
+                }
+                return;
+            }
+        }
+        let tools = !l.edit.is_empty() || !l.play.is_empty() || !l.view.is_empty();
+        if !l.edit.is_empty() {
+            self.open_tool("editor", l.edit.clone(), json!({}));
+        }
+        if !l.play.is_empty() {
+            self.open_tool("player", l.play.clone(), json!({ "play": true }));
+        }
+        if !l.view.is_empty() {
+            let one = l.view.len() == 1;
+            self.open_tool("viewer", l.view.clone(), json!({ "autoPlaylist": one }));
+        }
+        if tools && l.path.is_none() {
+            return;
+        }
+        let v = json!({ "path": l.path, "select": l.select });
+        if first { self.create_main(v) } else { self.open_path_anywhere(v) }
+    }
+
+    fn save_bounds(&self, w: &tauri::Window) {
+        if !w.label().starts_with("main") {
+            let kind = w.label().split('-').next().unwrap_or("").to_string();
+            if w.is_minimized().unwrap_or(false) || w.is_maximized().unwrap_or(false) {
+                return;
+            }
+            if let (Ok(p), Ok(s), Ok(f)) = (w.outer_position(), w.inner_size(), w.scale_factor()) {
+                let _ = dogfile_backend::store::set(&format!("{kind}-window"), &json!({ "x": p.x as f64 / f, "y": p.y as f64 / f, "width": s.width as f64 / f, "height": s.height as f64 / f }));
+            }
+            return;
+        }
+        if w.is_minimized().unwrap_or(false) {
+            return;
+        }
+        let maximized = w.is_maximized().unwrap_or(false);
+        let mut v = dogfile_backend::store::get("window").unwrap_or(json!({}));
+        if !maximized {
+            if let (Ok(p), Ok(s), Ok(f)) = (w.outer_position(), w.inner_size(), w.scale_factor()) {
+                v = json!({ "x": p.x as f64 / f, "y": p.y as f64 / f, "width": s.width as f64 / f, "height": s.height as f64 / f });
+            }
+        }
+        v["maximized"] = json!(maximized);
+        let _ = dogfile_backend::store::set("window", &v);
+    }
+
+    fn tray_icon(&self) {
+        if self.tray.lock().is_some() {
+            return;
+        }
+        use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+        use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+        let Some(app) = self.app_opt() else { return };
+        let Ok(new) = MenuItem::with_id(app, "new", "New window", true, None::<&str>) else { return };
+        let Ok(quit) = MenuItem::with_id(app, "quit", "Quit Dogfile", true, None::<&str>) else { return };
+        let Ok(sep) = PredefinedMenuItem::separator(app) else { return };
+        let Ok(menu) = Menu::with_items(app, &[&new, &sep, &quit]) else { return };
+        let icon = tauri::image::Image::from_bytes(include_bytes!("../icons/32x32.png")).ok();
+        let mut b = TrayIconBuilder::with_id("dogfile").tooltip("Dogfile").menu(&menu).show_menu_on_left_click(false);
+        if let Some(i) = icon {
+            b = b.icon(i);
+        }
+        let t = b
+            .on_menu_event(|_app, e| match e.id().as_ref() {
+                "new" => host().open_path_anywhere(json!({ "newWindow": true })),
+                "quit" => host().quit(),
+                _ => {}
+            })
+            .on_tray_icon_event(|_t, e| {
+                if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = e {
+                    host().open_path_anywhere(json!({}));
+                }
+            })
+            .build(app);
+        if let Ok(t) = t {
+            *self.tray.lock() = Some(t);
+        }
+    }
+}
+
+static WEBVIEW_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
+fn webview_data_dir() -> PathBuf {
+    // keep the web view's cache beside Dogfile's own data (portable copies keep everything in one folder)
+    WEBVIEW_DIR.lock().clone().unwrap_or_else(|| dogfile_backend::st().data_dir.join("WebView"))
+}
+
+fn js_str(v: &impl serde::Serialize) -> String {
+    // JSON is valid JavaScript, except two line separators some engines reject inside strings
+    serde_json::to_string(v).unwrap_or_else(|_| "null".into()).replace('\u{2028}', "\\u2028").replace('\u{2029}', "\\u2029")
+}
+
+impl Host for AppHost {
+    fn emit(&self, win: &str, channel: &str, data: Value) {
+        if let Some(w) = self.win(win) {
+            let _ = w.eval(format!("window.__dogEvent&&window.__dogEvent({},{})", js_str(&channel), js_str(&data)));
+        }
+    }
+    fn broadcast(&self, channel: &str, data: Value) {
+        let script = format!("window.__dogEvent&&window.__dogEvent({},{})", js_str(&channel), js_str(&data));
+        let Some(app) = self.app_opt() else { return };
+        for w in app.webview_windows().values() {
+            let _ = w.eval(script.clone());
+        }
+    }
+    fn windows(&self) -> Vec<String> {
+        let Some(app) = self.app_opt() else { return vec![] };
+        let all = app.webview_windows();
+        let mut v: Vec<(bool, String)> = all.iter().map(|(k, w)| (w.is_focused().unwrap_or(false), k.clone())).collect();
+        v.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
+        v.into_iter().map(|x| x.1).collect()
+    }
+    fn win_control(&self, win: &str, action: &str) -> Value {
+        let Some(w) = self.win(win) else { return json!(false) };
+        match action {
+            // glass sidebar on / off: real see-through needs a window created transparent (a new window or restart)
+            // the taskbar button shows how far copies and moves have got: "progress:normal:42", "progress:paused:42",
+            // "progress:error:42", "progress:indeterminate" or "progress:none"
+            a if a.starts_with("progress:") => {
+                use tauri::window::{ProgressBarState, ProgressBarStatus};
+                let mut parts = a.split(':').skip(1);
+                let status = match parts.next().unwrap_or("none") {
+                    "normal" => ProgressBarStatus::Normal,
+                    "paused" => ProgressBarStatus::Paused,
+                    "error" => ProgressBarStatus::Error,
+                    "indeterminate" => ProgressBarStatus::Indeterminate,
+                    _ => ProgressBarStatus::None,
+                };
+                let progress = parts.next().and_then(|p| p.parse::<u64>().ok()).map(|p| p.min(100));
+                let _ = w.set_progress_bar(ProgressBarState { status: Some(status), progress });
+                return json!(true);
+            }
+            "glassOn" | "glassOff" => {
+                let on = action == "glassOn";
+                let see_through = self.glassy.lock().contains(win);
+                let applied = see_through && glass_effect(&w, on);
+                return json!({ "seeThrough": see_through, "applied": applied, "supported": cfg!(windows) });
+            }
+            "min" => {
+                let _ = w.minimize();
+            }
+            // F11 behaves like the maximize button
+            "max" | "fullscreen" => {
+                if w.is_fullscreen().unwrap_or(false) {
+                    let _ = w.set_fullscreen(false);
+                } else if w.is_maximized().unwrap_or(false) {
+                    let _ = w.unmaximize();
+                } else {
+                    let _ = w.maximize();
+                }
+            }
+            "close" => {
+                let _ = w.close();
+            }
+            // the page has dealt with unsaved work: close without asking again
+            "closeNow" => {
+                self.close_ok.lock().insert(win.to_string());
+                self.asking.lock().remove(win);
+                let _ = w.close();
+            }
+            // the page is asking the person (or decided to stay open): don't close it from behind
+            "closeAsking" => {
+                self.asking.lock().insert(win.to_string());
+            }
+            "closeCancel" => {
+                self.asking.lock().remove(win);
+                self.answered.lock().insert(win.to_string());
+            }
+            "devtools" => {
+                #[cfg(debug_assertions)]
+                w.open_devtools();
+            }
+            "quit" => self.quit(),
+            "ontop" => {
+                let on = !w.is_always_on_top().unwrap_or(false);
+                let _ = w.set_always_on_top(on);
+                return json!(on);
+            }
+            "isFullscreen" => return json!(w.is_fullscreen().unwrap_or(false)),
+            "isMaximized" => {}
+            "focus" => {
+                let _ = w.show();
+                let _ = w.unminimize();
+                let _ = w.set_focus();
+            }
+            _ => {}
+        }
+        json!(w.is_maximized().unwrap_or(false))
+    }
+    fn new_window(&self, launch: Value) {
+        self.create_main(launch);
+    }
+    fn open_path(&self, launch: Value) {
+        self.open_path_anywhere(launch);
+    }
+    fn open_tool(&self, kind: &str, files: Vec<String>, opts: Value) {
+        if self.app_opt().is_none() {
+            return;
+        }
+        let label = format!("{kind}-1");
+        let mut o = if opts.is_object() { opts } else { json!({}) };
+        o["files"] = json!(files);
+        if let Some(w) = self.win(&label) {
+            let _ = w.show();
+            let _ = w.unminimize();
+            let _ = w.set_focus();
+            if !files.is_empty() || !o["text"].is_null() {
+                self.emit(&label, &format!("{kind}:open"), o);
+            }
+            return;
+        }
+        self.pending.lock().insert(label.clone(), o);
+        let saved = dogfile_backend::store::get(&format!("{kind}-window")).unwrap_or(json!({}));
+        let big = kind == "player" || kind == "viewer" || kind == "model" || kind == "office";
+        let title = match kind {
+            "editor" => "Dogfile Notepad",
+            "player" => "Dogfile Player",
+            "viewer" => "Dogfile Photos",
+            "model" => "Dogfile 3D",
+            "office" => "Dogfile Office",
+            _ => "Dogfile",
+        };
+        let b = WebviewWindowBuilder::new(self.app(), &label, page_url(&format!("{kind}.html"), &format!("w={label}")))
+            .title(title)
+            .min_inner_size(340.0, 260.0)
+            .inner_size(Self::sane_size(&saved, if big { 1280.0 } else { 1100.0 }, if big { 760.0 } else { 800.0 }).0, Self::sane_size(&saved, if big { 1280.0 } else { 1100.0 }, if big { 760.0 } else { 800.0 }).1);
+        let b = match self.on_screen(&saved) { Some((x, y)) => b.position(x, y), None => b.center() };
+        if let Err(e) = self.build(b, kind) {
+            eprintln!("tool window: {e}");
+        }
+    }
+    fn tool_pending(&self, win: &str) -> Value {
+        self.pending.lock().remove(win).unwrap_or(Value::Null)
+    }
+    fn launch_of(&self, win: &str) -> Value {
+        self.launches.lock().get(win).cloned().unwrap_or(json!({}))
+    }
+    fn set_zoom(&self, win: &str, factor: f64) {
+        if let Some(w) = self.win(win) {
+            let _ = w.set_zoom(factor);
+        }
+    }
+    fn start_drag(&self, win: &str, paths: Vec<String>) {
+        let Some(w) = self.win(win) else { return };
+        let files: Vec<PathBuf> = paths.into_iter().map(PathBuf::from).filter(|p| p.exists()).collect();
+        if files.is_empty() {
+            return;
+        }
+        let w2 = w.clone();
+        let _ = w.run_on_main_thread(move || {
+            let image = drag::Image::Raw(include_bytes!("../icons/drag.png").to_vec());
+            #[cfg(target_os = "linux")]
+            let Ok(target) = w2.gtk_window() else { return };
+            #[cfg(not(target_os = "linux"))]
+            let target = w2;
+            let _ = drag::start_drag(&target, drag::DragItem::Files(files), image, |_r, _p| {}, drag::Options::default());
+        });
+    }
+    fn start_window_drag(&self, win: &str) {
+        if let Some(w) = self.win(win) {
+            let _ = w.start_dragging();
+        }
+    }
+    fn start_window_resize(&self, win: &str, dir: &str) {
+        use tauri_runtime::ResizeDirection as RD;
+        let d = match dir {
+            "North" => RD::North,
+            "South" => RD::South,
+            "East" => RD::East,
+            "West" => RD::West,
+            "NorthEast" => RD::NorthEast,
+            "NorthWest" => RD::NorthWest,
+            "SouthEast" => RD::SouthEast,
+            _ => RD::SouthWest,
+        };
+        if let Some(w) = self.win(win) {
+            let wv: &tauri::Webview = w.as_ref();
+            let _ = wv.window().start_resize_dragging(d);
+        }
+    }
+    fn set_corners(&self, pref: &str) {
+        *self.corners.lock() = pref.to_string();
+        #[cfg(windows)]
+        for w in self.app_opt().map(|a| a.webview_windows()).unwrap_or_default().values() {
+            if let Ok(h) = w.hwnd() {
+                winx::set_corners(h.0 as isize, pref);
+            }
+        }
+    }
+    fn ensure_tray(&self) {
+        self.tray_icon();
+    }
+    fn pick_folder(&self, win: &str, title: Option<String>) -> Option<String> {
+        let mut d = rfd::FileDialog::new();
+        if let Some(t) = title {
+            d = d.set_title(t);
+        }
+        if let Some(w) = self.win(win) {
+            d = d.set_parent(&w);
+        }
+        d.pick_folder().map(|p| p.to_string_lossy().into_owned())
+    }
+    fn open_files(&self, win: &str, o: DialogOpts) -> Vec<String> {
+        let mut d = dialog_from(o);
+        if let Some(w) = self.win(win) {
+            d = d.set_parent(&w);
+        }
+        d.pick_files().unwrap_or_default().into_iter().map(|p| p.to_string_lossy().into_owned()).collect()
+    }
+    fn save_file(&self, win: &str, o: DialogOpts) -> Option<String> {
+        let mut d = dialog_from(o);
+        if let Some(w) = self.win(win) {
+            d = d.set_parent(&w);
+        }
+        d.save_file().map(|p| p.to_string_lossy().into_owned())
+    }
+    fn message_box(&self, win: &str, title: &str, message: &str, detail: &str, buttons: Vec<String>, cancel_id: usize) -> usize {
+        use rfd::{MessageButtons, MessageDialog, MessageDialogResult};
+        let text = if detail.is_empty() { message.to_string() } else { format!("{message}\n\n{detail}") };
+        let mut d = MessageDialog::new().set_title(title).set_description(text);
+        if let Some(w) = self.win(win) {
+            d = d.set_parent(&w);
+        }
+        let b = |i: usize| buttons.get(i).cloned().unwrap_or_default();
+        d = match buttons.len() {
+            0 | 1 => d.set_buttons(MessageButtons::OkCustom(b(0))),
+            2 => d.set_buttons(MessageButtons::OkCancelCustom(b(0), b(1))),
+            _ => d.set_buttons(MessageButtons::YesNoCancelCustom(b(0), b(1), b(2))),
+        };
+        match d.show() {
+            MessageDialogResult::Custom(s) => buttons.iter().position(|x| *x == s).unwrap_or(cancel_id),
+            MessageDialogResult::Ok | MessageDialogResult::Yes => 0,
+            MessageDialogResult::No => 1,
+            _ => cancel_id,
+        }
+    }
+    fn system_dark(&self) -> bool {
+        #[cfg(windows)]
+        {
+            return winx::system_dark();
+        }
+        #[cfg(not(windows))]
+        self.app_opt().and_then(|a| a.webview_windows().values().next().and_then(|w| w.theme().ok())).map(|t| t == tauri::Theme::Dark).unwrap_or(false)
+    }
+    fn accent_color(&self) -> Option<String> {
+        #[cfg(windows)]
+        {
+            return winx::accent_color();
+        }
+        #[cfg(not(windows))]
+        None
+    }
+    fn native_window_handle(&self, win: &str) -> Option<isize> {
+        #[cfg(windows)]
+        {
+            return self.win(win).and_then(|w| w.hwnd().ok()).map(|h| h.0 as isize);
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = win;
+            None
+        }
+    }
+    fn quit(&self) {
+        self.quitting.store(true, Ordering::Relaxed);
+        dogfile_backend::shutdown();
+        match self.app_opt() {
+            Some(a) => a.exit(0),
+            None => std::process::exit(0),
+        }
+    }
+}
+
+fn dialog_from(o: DialogOpts) -> rfd::FileDialog {
+    let mut d = rfd::FileDialog::new();
+    if let Some(t) = o.title {
+        d = d.set_title(t);
+    }
+    if let Some(p) = o.default_path {
+        let pb = PathBuf::from(&p);
+        if pb.is_dir() {
+            d = d.set_directory(pb);
+        } else {
+            if let Some(dir) = pb.parent() {
+                d = d.set_directory(dir);
+            }
+            if let Some(n) = pb.file_name() {
+                d = d.set_file_name(n.to_string_lossy());
+            }
+        }
+    }
+    for (name, exts) in o.filters {
+        let e: Vec<&str> = exts.iter().map(|s| s.as_str()).collect();
+        d = d.add_filter(name, &e);
+    }
+    d
+}
+
+static HOST: OnceLock<Arc<AppHost>> = OnceLock::new();
+fn host() -> &'static Arc<AppHost> {
+    HOST.get().expect("host")
+}
+
+// ---------------- dogfile:// → the back end ----------------
+fn to_req(label: &str, r: tauri::http::Request<Vec<u8>>) -> Req {
+    let uri = r.uri().clone();
+    let headers: HashMap<String, String> = r.headers().iter().map(|(k, v)| (k.as_str().to_lowercase(), v.to_str().unwrap_or("").to_string())).collect();
+    let raw_query = uri.query().unwrap_or("").to_string();
+    Req {
+        method: r.method().to_string(),
+        path: urlencoding::decode(uri.path()).map(|c| c.into_owned()).unwrap_or_else(|_| uri.path().to_string()),
+        query: bhttp::parse_query(&raw_query),
+        raw_query,
+        win: headers.get("x-dog-win").cloned().unwrap_or_else(|| label.to_string()),
+        headers,
+        body: r.into_body(),
+    }
+}
+async fn respond(req: Req) -> tauri::http::Response<Vec<u8>> {
+    let r = bhttp::handle(req).await;
+    let mut b = tauri::http::Response::builder().status(r.status);
+    for (k, v) in &r.headers {
+        b = b.header(k.as_str(), v.as_str());
+    }
+    let body = match r.body {
+        RBody::Bytes(v) => v,
+        // the custom scheme can't stream: gather it (live video goes through the local media server instead)
+        RBody::Stream(mut rx) => {
+            let mut out = Vec::new();
+            while let Some(c) = rx.recv().await {
+                out.extend_from_slice(&c);
+            }
+            out
+        }
+    };
+    b.body(body).unwrap_or_else(|_| tauri::http::Response::new(Vec::new()))
+}
+
+fn data_dir() -> PathBuf {
+    let exe_dir = std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.to_path_buf())).unwrap_or_default();
+    if std::env::var("ATLAS_PORTABLE").as_deref() == Ok("1") || exe_dir.join("portable.txt").exists() {
+        return exe_dir.join("data");
+    }
+    if let Ok(d) = std::env::var("DOGFILE_DATA") {
+        return PathBuf::from(d);
+    }
+    // the same folder the Electron version used, so settings, tags and the index carry over
+    dirs::config_dir().unwrap_or(exe_dir).join("Dogfile")
+}
+/// the interface, packed into the program by the release build (build/pack-ui.mjs)
+#[cfg(ui_pak)]
+static UI_PAK: Option<&[u8]> = Some(include_bytes!(env!("DOGFILE_UI_PAK")));
+#[cfg(not(ui_pak))]
+static UI_PAK: Option<&[u8]> = None;
+/// DOGFILE_UI_DIR=<folder> runs a packed build with an interface folder instead (development)
+fn ui_pak() -> Option<&'static [u8]> {
+    if std::env::var_os("DOGFILE_UI_DIR").is_some() { None } else { UI_PAK }
+}
+
+/// where the interface and the bundled tools are: beside the exe (installed / portable), or the source tree
+fn resource_dirs() -> (PathBuf, PathBuf) {
+    let exe_dir = std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.to_path_buf())).unwrap_or_default();
+    if let Some(d) = std::env::var_os("DOGFILE_UI_DIR") {
+        return (PathBuf::from(d), exe_dir);
+    }
+    if ui_pak().is_some() {
+        // a Mac app bundle keeps the tools in Contents/Resources
+        let mac = exe_dir.join("..").join("Resources");
+        let res = if mac.is_dir() { mac } else { exe_dir.clone() };
+        // an update from a version that kept the interface beside the program left that folder behind
+        let old = res.join("renderer");
+        if res.join("components.json").exists() && old.join("index.html").exists() {
+            std::thread::spawn(move || {
+                let _ = std::fs::remove_dir_all(&old);
+            });
+        }
+        return (res.join("renderer"), res);
+    }
+    // beside the program, in resources/, or in a Mac app bundle's Contents/Resources
+    for base in [exe_dir.clone(), exe_dir.join("resources"), exe_dir.join("..").join("Resources")] {
+        if base.join("renderer").join("index.html").exists() {
+            return (base.join("renderer"), base);
+        }
+    }
+    let src = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+    (src.join("src").join("renderer"), src)
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Never stuck: a copy of Dogfile that froze (or hung while quitting) keeps the "already running" lock, so every
+// new launch hands over to it and nothing opens. The running copy touches a heartbeat file from its UI thread;
+// a new launch that finds an old heartbeat ends that copy (after checking it really is Dogfile) and starts.
+/// what happened while starting (the last few starts), for when Dogfile doesn't open
+fn startup_log(msg: &str) {
+    let f = data_dir().join("startup.log");
+    let old = std::fs::read_to_string(&f).unwrap_or_default();
+    let keep: String = if old.len() > 20_000 { old[old.len() - 10_000..].to_string() } else { old };
+    let t = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0);
+    let _ = std::fs::write(&f, format!("{keep}[{t}] {msg}\n"));
+}
+fn heartbeat_file() -> PathBuf {
+    data_dir().join("running.json")
+}
+fn end_frozen_copy() {
+    let Ok(b) = std::fs::read(heartbeat_file()) else { return };
+    let Ok(v) = serde_json::from_slice::<Value>(&b) else { return };
+    let (Some(pid), Some(t)) = (v["pid"].as_u64(), v["t"].as_u64()) else { return };
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    if pid as u32 == std::process::id() {
+        return;
+    }
+    let fresh_beat = now.saturating_sub(t) < 20;
+    let _ = fresh_beat;
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        let is_dogfile = || {
+            let out = std::process::Command::new("tasklist").args(["/FI", &format!("PID eq {pid}"), "/FO", "CSV", "/NH"]).creation_flags(0x0800_0000).output();
+            out.map(|o| String::from_utf8_lossy(&o.stdout).to_lowercase().contains("dogfile")).unwrap_or(false)
+        };
+        // still running and answering: it's the copy the launch is handed to, leave it alone
+        if is_dogfile() && fresh_beat {
+            return;
+        }
+        // still running but silent: frozen
+        if is_dogfile() {
+            // the PC may just have woken up: a healthy copy writes again within a few seconds
+            for _ in 0..14 {
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                let fresh = std::fs::read(heartbeat_file()).ok().and_then(|b| serde_json::from_slice::<Value>(&b).ok()).and_then(|v| v["t"].as_u64()).unwrap_or(0);
+                if fresh > t {
+                    return;
+                }
+            }
+            startup_log(&format!("an earlier Dogfile (process {pid}) stopped responding: ending it"));
+            let _ = std::process::Command::new("taskkill").args(["/PID", &pid.to_string(), "/F"]).creation_flags(0x0800_0000).status();
+            std::thread::sleep(std::time::Duration::from_millis(400));
+        }
+    }
+    // it didn't quit cleanly: what its web view left running goes too
+    end_leftover_webviews(pid as u32);
+    let _ = std::fs::remove_file(heartbeat_file());
+}
+/// The web view's helper processes (msedgewebview2.exe) from a Dogfile that didn't quit cleanly can live on and
+/// keep its profile folder locked, so the next Dogfile can't make its window. The ones that earlier Dogfile
+/// started (and their children) are ended.
+#[cfg(windows)]
+fn end_leftover_webviews(old_pid: u32) {
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Diagnostics::ToolHelp::{CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS};
+    use windows::Win32::System::Threading::{OpenProcess, TerminateProcess, PROCESS_TERMINATE};
+    let mut procs: Vec<(u32, u32, String)> = vec![];
+    unsafe {
+        let Ok(snap) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) else { return };
+        let mut e = PROCESSENTRY32W { dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32, ..Default::default() };
+        if Process32FirstW(snap, &mut e).is_ok() {
+            loop {
+                let n = e.szExeFile.iter().position(|&c| c == 0).unwrap_or(e.szExeFile.len());
+                procs.push((e.th32ProcessID, e.th32ParentProcessID, String::from_utf16_lossy(&e.szExeFile[..n]).to_lowercase()));
+                if Process32NextW(snap, &mut e).is_err() { break }
+            }
+        }
+        let _ = CloseHandle(snap);
+    }
+    // the old Dogfile's web view processes, then theirs
+    let mut doomed: Vec<u32> = procs.iter().filter(|p| p.1 == old_pid && p.2 == "msedgewebview2.exe").map(|p| p.0).collect();
+    let mut i = 0;
+    while i < doomed.len() {
+        let parent = doomed[i];
+        for p in procs.iter().filter(|p| p.1 == parent && p.2 == "msedgewebview2.exe") {
+            if !doomed.contains(&p.0) { doomed.push(p.0) }
+        }
+        i += 1;
+    }
+    if !doomed.is_empty() {
+        startup_log(&format!("ending {} web view process(es) left by an earlier Dogfile", doomed.len()));
+    }
+    for pid in doomed {
+        unsafe {
+            if let Ok(h) = OpenProcess(PROCESS_TERMINATE, false, pid) {
+                let _ = TerminateProcess(h, 1);
+                let _ = CloseHandle(h);
+            }
+        }
+    }
+}
+#[cfg(not(windows))]
+fn end_leftover_webviews(_old_pid: u32) {}
+
+fn start_heartbeat(app: AppHandle) {
+    std::thread::spawn(move || loop {
+        let a = app.clone();
+        // written from the UI thread: if that thread hangs, the heartbeat stops and the next launch knows
+        let _ = app.run_on_main_thread(move || {
+            let _ = a;
+            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+            let _ = std::fs::write(heartbeat_file(), json!({ "pid": std::process::id(), "t": now }).to_string());
+        });
+        std::thread::sleep(std::time::Duration::from_secs(5));
+    });
+}
+/// what went wrong, kept for next time (data folder > crash.log)
+fn crash_log() {
+    let prev = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let when = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+        let msg = format!("[{when}] Dogfile {} crashed: {info}\n{}\n\n", env!("CARGO_PKG_VERSION"), std::backtrace::Backtrace::force_capture());
+        let f = data_dir().join("crash.log");
+        let old = std::fs::read_to_string(&f).unwrap_or_default();
+        let keep = if old.len() > 200_000 { let mut at = old.len() - 100_000; while !old.is_char_boundary(at) { at += 1; } old[at..].to_string() } else { old };
+        let _ = std::fs::write(&f, keep + &msg);
+        prev(info);
+    }));
+}
+
+fn main() {
+    dogfile_backend::mark_start();
+    crash_log();
+    let argv: Vec<String> = std::env::args().collect();
+    // the elevated helper that builds the index from the NTFS file table
+    if argv.get(1).map(|s| s.as_str()) == Some("--build-index") && argv.len() >= 4 {
+        dogfile_core::init_threads();
+        std::process::exit(dogfile_core::index::build_cli(&argv[2], &argv[3]));
+    }
+    let test_mode = std::env::var("ATLAS_TEST").as_deref() == Ok("1");
+    if !test_mode {
+        startup_log(&format!("--- starting Dogfile {} (process {})", env!("CARGO_PKG_VERSION"), std::process::id()));
+        end_frozen_copy();
+    }
+    let rt = tokio::runtime::Builder::new_multi_thread().worker_threads(std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4).clamp(4, 8)).max_blocking_threads(16).enable_all().thread_name("dogfile").build().expect("runtime");
+    tauri::async_runtime::set(rt.handle().clone());
+
+    let h = Arc::new(AppHost {
+        app: OnceLock::new(),
+        launches: Mutex::new(HashMap::new()),
+        pending: Mutex::new(HashMap::new()),
+        seq: AtomicU32::new(0),
+        quitting: AtomicBool::new(false),
+        tray: Mutex::new(None),
+        corners: Mutex::new("round".into()),
+        close_ok: Mutex::new(Default::default()),
+        asking: Mutex::new(Default::default()),
+        answered: Mutex::new(Default::default()),
+        glassy: Mutex::new(Default::default()),
+    });
+    let _ = HOST.set(h.clone());
+    let (renderer_dir, res_dir) = resource_dirs();
+    {
+        let _g = rt.enter();
+        if let Err(msg) = dogfile_backend::start(dogfile_backend::Config { data_dir: data_dir(), renderer_dir, ui_pak: ui_pak(), res_dir, test_mode }, h.clone()) {
+            // nothing works without the data folder (settings, tags, licence): say why and stop, rather than
+            // opening a window where every save fails
+            eprintln!("{msg}");
+            if !test_mode {
+                rfd::MessageDialog::new().set_level(rfd::MessageLevel::Error).set_title("Dogfile can’t start").set_description(&msg).set_buttons(rfd::MessageButtons::Ok).show();
+            }
+            std::process::exit(1);
+        }
+    }
+    if !test_mode {
+        startup_log("back end ready");
+    }
+    *h.corners.lock() = dogfile_backend::setting("windowCorners").as_str().unwrap_or("round").to_string();
+
+    let app = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|_app, argv, cwd| {
+            let l = launch::parse(&argv.iter().skip(1).cloned().collect::<Vec<_>>(), Some(&cwd));
+            host().handle_launch(l, false);
+        }))
+        .register_asynchronous_uri_scheme_protocol("dogfile", |ctx, request, responder| {
+            let req = to_req(ctx.webview_label(), request);
+            tauri::async_runtime::spawn(async move {
+                responder.respond(respond(req).await);
+            });
+        })
+        .setup(move |app| {
+            let _ = host().app.set(app.handle().clone());
+            if !test_mode {
+                start_heartbeat(app.handle().clone());
+            }
+            let l = launch::parse(&argv.iter().skip(1).cloned().collect::<Vec<_>>(), None);
+            if test_mode {
+                if let Ok(tool) = std::env::var("ATLAS_TEST_TOOL") {
+                    let files: Vec<String> = serde_json::from_str(&std::env::var("ATLAS_TEST_FILES").unwrap_or("[]".into())).unwrap_or_default();
+                    host().open_tool(&tool, files, json!({ "play": true }));
+                    return Ok(());
+                }
+            }
+            host().handle_launch(l, true);
+            if test_mode {
+                if let Ok(steps) = std::env::var("ATLAS_STEPS") {
+                    std::thread::spawn(move || run_test_steps(&steps));
+                }
+            }
+            Ok(())
+        })
+        .on_window_event(|w, e| match e {
+            WindowEvent::CloseRequested { api, .. } => {
+                let h = host();
+                if h.quitting.load(Ordering::Relaxed) {
+                    return;
+                }
+                // the page checks for unsaved work first (Save / Don't save / Cancel), then closes for real
+                if !h.close_ok.lock().remove(w.label()) {
+                    api.prevent_close();
+                    h.emit(w.label(), "app:closeRequested", json!({}));
+                    // a page that doesn't answer (still loading, stuck) still lets the window close
+                    let label = w.label().to_string();
+                    std::thread::spawn(move || {
+                        std::thread::sleep(std::time::Duration::from_millis(1500));
+                        let h = host();
+                        if h.asking.lock().contains(&label) { return }
+                        if h.close_ok.lock().contains(&label) { return }
+                        if let Some(w) = h.win(&label) {
+                            if h.answered.lock().remove(&label) { return }
+                            h.close_ok.lock().insert(label.clone());
+                            let _ = w.close();
+                        }
+                    });
+                    return;
+                }
+                let mains = h.windows().into_iter().filter(|x| x.starts_with("main")).count();
+                // closing the last window while files are still being copied or moved: the work finishes in the
+                // background (Dogfile waits in the tray) instead of stopping halfway, then Dogfile closes
+                let keep = dogfile_backend::setting_bool("keepRunning", false);
+                let busy = dogfile_backend::ops::busy();
+                if w.label().starts_with("main") && mains == 1 && (keep || busy) {
+                    api.prevent_close();
+                    h.emit(w.label(), "app:beforeHide", json!({ "busy": busy }));
+                    if busy && !keep {
+                        let label = w.label().to_string();
+                        std::thread::spawn(move || {
+                            while dogfile_backend::ops::busy() {
+                                std::thread::sleep(std::time::Duration::from_millis(800));
+                            }
+                            // time for the page to show "done" as a Windows notification
+                            std::thread::sleep(std::time::Duration::from_millis(2500));
+                            let h = host();
+                            let still_hidden = h.win(&label).map(|w| !w.is_visible().unwrap_or(false)).unwrap_or(true);
+                            if still_hidden && !dogfile_backend::ops::busy() {
+                                h.quit();
+                            }
+                        });
+                    }
+                    let _ = w.hide();
+                    #[cfg(windows)]
+                    if let Some(wv) = h.win(w.label()) {
+                        winx::webview_memory_low(&wv, true);
+                    }
+                    h.tray_icon();
+                }
+            }
+            WindowEvent::Resized(_) | WindowEvent::Moved(_) => {
+                save_bounds_soon(w.clone());
+                #[cfg(windows)]
+                if let Some(wv) = host().win(w.label()) {
+                    let low = w.is_minimized().unwrap_or(false);
+                    static LOW: Mutex<Option<HashMap<String, bool>>> = Mutex::new(None);
+                    let mut m = LOW.lock();
+                    let m = m.get_or_insert_with(HashMap::new);
+                    if m.get(w.label()) != Some(&low) {
+                        m.insert(w.label().to_string(), low);
+                        winx::webview_memory_low(&wv, low);
+                    }
+                }
+                if w.label().starts_with("main") {
+                    let m = w.is_maximized().unwrap_or(false);
+                    host().emit(w.label(), "win:state", json!({ "maximized": m }));
+                }
+            }
+            WindowEvent::Destroyed => {
+                let label = w.label().to_string();
+                host().launches.lock().remove(&label);
+                dogfile_backend::window_closed(&label);
+            }
+            WindowEvent::DragDrop(d) => {
+                let (kind, paths, pos): (&str, Vec<String>, Option<PhysicalPosition<f64>>) = match d {
+                    DragDropEvent::Enter { paths, position } => ("enter", paths.iter().map(|p| p.to_string_lossy().into_owned()).collect(), Some(*position)),
+                    DragDropEvent::Over { position } => ("over", vec![], Some(*position)),
+                    DragDropEvent::Drop { paths, position } => ("drop", paths.iter().map(|p| p.to_string_lossy().into_owned()).collect(), Some(*position)),
+                    DragDropEvent::Leave => ("leave", vec![], None),
+                    _ => return,
+                };
+                let p = pos.unwrap_or(PhysicalPosition::new(0.0, 0.0));
+                host().emit(w.label(), "dogfile:drag", json!({ "type": kind, "paths": paths, "x": p.x, "y": p.y }));
+            }
+            _ => {}
+        })
+        .build(tauri::generate_context!())
+        .expect("Dogfile could not start");
+    let _ = PhysicalSize::<u32>::new(0, 0);
+    app.run(|_app, e| {
+        if let RunEvent::Exit = e {
+            // quitting can never hang: whatever is still busy after 5 s, the process ends
+            std::thread::spawn(|| {
+                std::thread::sleep(std::time::Duration::from_secs(5));
+                // not clean: the heartbeat file stays, so the next start tidies up after this one
+                std::process::exit(0);
+            });
+            dogfile_backend::shutdown();
+            let _ = std::fs::remove_file(heartbeat_file());
+        }
+    });
+}
+
+/// remember window sizes and positions, at most twice a second
+fn save_bounds_soon(w: tauri::Window) {
+    static GEN: AtomicU32 = AtomicU32::new(0);
+    let g = GEN.fetch_add(1, Ordering::Relaxed) + 1;
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        if GEN.load(Ordering::Relaxed) == g {
+            host().save_bounds(&w);
+        }
+    });
+}
+
+/// Test runs (ATLAS_TEST=1, ATLAS_STEPS=[{js, wait, shot, win}]): run each step's script in a window, print what
+/// it returns, and save a screenshot of the screen (X11, with ImageMagick's `import`).
+fn run_test_steps(steps: &str) {
+    let steps: Vec<Value> = serde_json::from_str(steps).unwrap_or_default();
+    std::thread::sleep(std::time::Duration::from_millis(std::env::var("ATLAS_SHOT_DELAY").ok().and_then(|v| v.parse().ok()).unwrap_or(4000)));
+    for st in steps {
+        let win = st["win"].as_str().map(String::from).or_else(|| host().windows().into_iter().find(|w| w.starts_with("main"))).unwrap_or("main-1".into());
+        if let Some(js) = st["js"].as_str() {
+            // the script goes inside `await (…)`, where a trailing `;` would be a syntax error and nothing would run
+            let js = js.trim_end().trim_end_matches(';');
+            if let Some(w) = host().win(&win) {
+                let script = format!("(async()=>{{try{{const r=await ({js});window.atlas.invoke('test:log',typeof r==='string'?r:JSON.stringify(r))}}catch(e){{window.atlas.invoke('test:log','ERR '+(e&&e.stack||e))}}}})()");
+                let _ = w.eval(script);
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(st["wait"].as_u64().unwrap_or(800)));
+        if let Some(shot) = st["shot"].as_str() {
+            #[cfg(windows)]
+            {
+                let ps = format!("Add-Type -AssemblyName System.Windows.Forms,System.Drawing; $b=[System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $m=New-Object System.Drawing.Bitmap $b.Width,$b.Height; [System.Drawing.Graphics]::FromImage($m).CopyFromScreen($b.Location,[System.Drawing.Point]::Empty,$b.Size); $m.Save('{}')", shot.replace('\'', "''"));
+                let _ = std::process::Command::new("powershell.exe").args(["-NoProfile", "-Command", &ps]).status();
+            }
+            #[cfg(not(windows))]
+            let _ = std::process::Command::new("import").args(["-window", "root", shot]).status();
+            println!("[shot] {shot}");
+        }
+    }
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    host().quit();
+}

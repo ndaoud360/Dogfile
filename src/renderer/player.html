@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:*; img-src 'self' http://127.0.0.1:* data: blob:; media-src 'self' http://127.0.0.1:* blob:; connect-src 'self' http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; font-src 'self' http://127.0.0.1:* data:; script-src 'self'">
+  <title>Dogfile Player</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="player.css">
+</head>
+<body class="tool player-app">
+  <header id="pl-title">
+    <span class="pl-logo"></span>
+    <span id="pl-name">Dogfile Player</span>
+    <div class="tab-drag"></div>
+    <div id="win-ctl"></div>
+  </header>
+  <div id="pl-main">
+    <div id="stage">
+      <video id="v" playsinline preload="auto" crossorigin="anonymous"></video>
+      <div id="audio-view">
+        <div class="av-art"><img id="art" alt=""><div class="av-noart"></div></div>
+        <div class="av-meta"><div id="av-title"></div><div id="av-artist"></div><div id="av-album"></div><div id="av-tags"></div></div>
+        <canvas id="viz"></canvas>
+        <div id="lyrics"></div>
+      </div>
+      <div id="empty">
+        <div class="em-logo"></div>
+        <div class="em-title">Dogfile Player</div>
+        <div class="em-sub">Drop files here, or open media from Dogfile</div>
+        <div class="em-btns"><button class="btn" id="em-open">Open files…</button><button class="btn" id="em-folder">Open folder…</button></div>
+        <div class="em-keys">Space play · F fullscreen · ←/→ seek · ↑/↓ volume · N/P next/prev · F1 all shortcuts</div>
+      </div>
+      <div id="osd"></div>
+      <div id="center-flash"></div>
+      <div id="busy"></div>
+      <div id="banner"></div>
+      <div id="err"></div>
+      <div id="controls">
+        <div id="seek"><div class="sk-buf"></div><div class="sk-fill"></div><div class="sk-ab"></div><div class="sk-knob"></div><div class="sk-chapters"></div>
+          <div id="sk-tip"><img id="sk-thumb" alt=""><span id="sk-time"></span></div></div>
+        <div class="ctl-row">
+          <button class="pb" id="b-play" title="Play / Pause (Space)"></button>
+          <button class="pb" id="b-stop" title="Stop (S)"></button>
+          <button class="pb" id="b-prev" title="Previous (P)"></button>
+          <button class="pb" id="b-next" title="Next (N)"></button>
+          <span class="ctl-sep"></span>
+          <span id="time">0:00 / 0:00</span>
+          <span class="ctl-spacer"></span>
+          <span id="mode-badge" title="How this file is being played"></span>
+          <button class="pb txt" id="b-speed" title="Playback speed ([ / ])">1×</button>
+          <span class="ctl-sep"></span>
+          <button class="pb" id="b-audio" title="Audio track (B)"></button>
+          <button class="pb" id="b-subs" title="Subtitles (V)"></button>
+          <button class="pb" id="b-lyrics" title="Lyrics (Y)"></button>
+          <span class="ctl-sep"></span>
+          <button class="pb" id="b-edit" title="Edit / trim (Ctrl+K)"></button>
+          <button class="pb" id="b-eq" title="Equalizer & effects (Ctrl+E)"></button>
+          <span class="ctl-sep"></span>
+          <button class="pb" id="b-loop" title="Repeat (L)"></button>
+          <button class="pb" id="b-list" title="Playlist (Ctrl+L)"></button>
+          <button class="pb" id="b-more" title="More"></button>
+          <span class="ctl-sep"></span>
+          <button class="pb" id="b-mute" title="Mute (M)"></button>
+          <div id="vol"><div class="vol-fill"></div><div class="vol-100"></div></div>
+          <span id="vol-txt">100%</span>
+          <span class="ctl-sep"></span>
+          <button class="pb" id="b-full" title="Fullscreen (F)"></button>
+        </div>
+      </div>
+    </div>
+    <aside id="playlist">
+      <div class="pl-head"><span>Playlist</span><span id="pl-count"></span><span class="ctl-spacer"></span>
+        <button class="icon-btn small" id="pl-shuffle" title="Shuffle"></button>
+        <button class="icon-btn small" id="pl-add" title="Add files"></button>
+        <button class="icon-btn small" id="pl-more" title="More"></button></div>
+      <div id="pl-items"></div>
+    </aside>
+  </div>
+  <div id="eq-panel"></div>
+  <div id="edit-panel"></div>
+  <div id="tx-panel"></div>
+  <div id="toasts"></div>
+  <script type="module" src="js/player.js"></script>
+</body>
+</html>

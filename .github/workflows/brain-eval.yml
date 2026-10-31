@@ -1,0 +1,86 @@
+# (Runs on the self-hosted PC runner when the repository variable RUNNER is "pc".)
+# Runs the assistant's language model over build/brain-cases.json (real model, real llama.cpp, the same prompt and
+# grammar as Dogfile) and saves every answer to the brain-eval branch: results-<model>.json and summary.md.
+name: brain-eval
+on:
+  # started by hand only (Actions > brain-eval > Run workflow): a run takes a while and uses the runner
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  eval:
+    runs-on: ${{ vars.RUNNER == 'pc' && fromJSON('["self-hosted","Windows","X64"]') || 'ubuntu-latest' }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - name: 4b
+            repo: unsloth/Qwen3.5-4B-GGUF
+            file: Qwen3.5-4B-Q4_K_M.gguf
+            threads: ''
+          - name: 4b-t6
+            repo: unsloth/Qwen3.5-4B-GGUF
+            file: Qwen3.5-4B-Q4_K_M.gguf
+            threads: '6,6'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Git's bash on the path (self-hosted Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin", "$env:ProgramFiles\LLVM\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
+      - uses: actions/cache@v4
+        if: vars.RUNNER != 'pc'
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: brain-${{ hashFiles('Cargo.lock') }}
+          restore-keys: brain-
+      - uses: actions/cache@v4
+        if: vars.RUNNER != 'pc'
+        with:
+          path: models
+          key: model-${{ matrix.file }}
+      - name: Get the model
+        run: |
+          M=models; [ "${{ vars.RUNNER }}" = pc ] && M="$HOME/dogfile-models"   # on your PC the models are kept between runs
+          mkdir -p "$M"
+          if [ ! -s "$M/${{ matrix.file }}" ]; then
+            curl -fsSL -o "$M/${{ matrix.file }}" "https://huggingface.co/${{ matrix.repo }}/resolve/main/${{ matrix.file }}" || {
+              echo "::error title=model::${{ matrix.file }} not found; files in ${{ matrix.repo }}: $(curl -fsSL https://huggingface.co/api/models/${{ matrix.repo }} | jq -r '[.siblings[].rfilename] | join(", ")' | head -c 1500)"; exit 1; }
+          fi
+          ls -la "$M"
+      - name: Build
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then sudo apt-get update -qq && sudo apt-get install -y -qq libclang-dev cmake > /dev/null; fi
+          # rebuild llama.cpp when its build flags (.cargo/config.toml) change: cargo doesn't notice by itself
+          h=$(sha256sum .cargo/config.toml | cut -c1-16); if [ "$(cat target/.ggml-flags 2>/dev/null)" != "$h" ]; then cargo clean --release -p llama-cpp-sys-2 || true; mkdir -p target; echo "$h" > target/.ggml-flags; fi
+          cargo build --release -p dogfile-backend --example brain_eval 2>&1 | tail -3
+      - name: Run
+        env:
+          BRAIN_LIMIT: '12'   # a quick run while the speed is being worked on
+          BRAIN_THREADS: ${{ matrix.threads }}
+        run: |
+          M=models; [ "${{ vars.RUNNER }}" = pc ] && M="$HOME/dogfile-models" && export BRAIN_STATE_DIR="$HOME/dogfile-models/state"
+          set -o pipefail
+          nproc 2>/dev/null || echo "$NUMBER_OF_PROCESSORS"
+          ./target/release/examples/brain_eval "$M/${{ matrix.file }}" build/brain-cases.json results-${{ matrix.name }}.json 2>&1 | tee log-${{ matrix.name }}.txt
+          echo "::notice title=brain-${{ matrix.name }}::$(tail -1 log-${{ matrix.name }}.txt)"
+      - name: Save the results
+        if: always()
+        run: |
+          d="$RUNNER_TEMP/out"; mkdir -p "$d"
+          git fetch -q origin brain-eval 2>/dev/null && git --work-tree="$d" checkout origin/brain-eval -- . 2>/dev/null || true
+          cp results-${{ matrix.name }}.json log-${{ matrix.name }}.txt "$d/" 2>/dev/null || true
+          echo "${{ github.sha }} ${{ matrix.name }}: $(tail -1 log-${{ matrix.name }}.txt)" >> "$d/summary.md"
+          cd "$d"
+          git init -q -b brain-eval
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          git add -A && git commit -qm "brain eval ${{ matrix.name }} ${{ github.sha }}"
+          for i in 1 2 3 4 5; do git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" brain-eval && break; sleep $((RANDOM % 10 + 5)); git fetch -q "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" brain-eval && git rebase -q FETCH_HEAD || true; done

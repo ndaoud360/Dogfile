@@ -1,0 +1,11 @@
+node_modules/
+dist/
+bin/
+core/target/
+vendor/ffmpeg/
+*.zip
+target/
+app/gen/ui.pak
+
+# Desloppify local state
+.desloppify/

@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dogfile, the file manager for Windows</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Dogfile is a file manager for Windows with tabs, split panes, instant search, an AI assistant and built-in apps for documents, photos, music, video and 3D models. Free forever, Pro is a one-time $19.99.">
+<meta name="theme-color" content="#f3f4f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0d12" media="(prefers-color-scheme: dark)">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Dogfile">
+<meta property="og:title" content="Dogfile, the file manager for Windows">
+<meta property="og:description" content="Dogfile is a file manager for Windows with tabs, split panes, instant search, an AI assistant and built-in apps for documents, photos, music, video and 3D models. Free forever, Pro is a one-time $19.99.">
+<meta property="og:image" content="assets/img/og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="assets/img/icon-64.png">
+<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+<link rel="preload" href="assets/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/css/site.css">
+<script src="assets/js/theme.js"></script>
+<script src="assets/js/config.js" defer></script>
+<script src="assets/js/site.js" defer></script>
+</head>
+<body data-page="home">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+  <div class="wrap head-row">
+    <a class="brand" href="index.html" aria-label="Dogfile home"><img src="assets/img/icon-64.png" alt="" width="30" height="30"><span>Dogfile</span></a>
+    <nav class="nav" aria-label="Main"><a href="index.html#features">Features</a><a href="download.html">Free vs Pro</a><a href="download.html#faq">FAQ</a><a href="contact.html">Contact</a></nav>
+    <div class="head-actions">
+      <button class="icon-btn theme-btn" type="button" data-theme-toggle aria-label="Switch theme"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v2M12 20.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1.5 12h2M20.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
+      <a class="btn btn-ghost btn-sm hide-sm" href="download.html#get" data-download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Download Free</span></a>
+      <a class="btn btn-pro btn-sm" href="https://armnbgeluofwseufpqge.supabase.co/functions/v1/license/buy" rel="nofollow noopener" data-buy target="_blank"><svg class="star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span class="spin" aria-hidden="true"></span><span class="btn-label">Buy Pro</span> <span class="price-tag">$19.99</span></a>
+      <button class="icon-btn menu-btn" type="button" data-menu aria-expanded="false" aria-controls="mobile-nav" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    </div>
+  </div>
+  <nav class="wrap mobile-nav" id="mobile-nav" aria-label="Main" hidden><a href="index.html#features">Features</a><a href="download.html">Free vs Pro</a><a href="download.html#faq">FAQ</a><a href="contact.html">Contact</a><div class="btns"><a class="btn btn-primary btn-sm" href="download.html#get" data-download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Download Free</span></a><a class="btn btn-pro btn-sm" href="https://armnbgeluofwseufpqge.supabase.co/functions/v1/license/buy" rel="nofollow noopener" data-buy target="_blank"><svg class="star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span class="spin" aria-hidden="true"></span><span class="btn-label">Buy Pro</span> <span class="price-tag">$19.99</span></a></div></nav>
+</header>
+
+<nav class="side-index" aria-label="On this page">
+  <a href="#features" data-label="Features">Features</a>
+  <a href="#assistant" data-label="AI Assistant">AI Assistant</a>
+  <a href="#compare" data-label="Compare">Compare</a>
+  <a href="#pricing" data-label="Pricing">Pricing</a>
+</nav>
+<main id="main">
+  <section class="hero">
+    <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="wrap">
+      <div class="hero-copy">
+        <span class="eyebrow">File manager for Windows</span>
+        <h1>A File Browser That Does Everything <span class="soft">and More</span></h1>
+        <p class="lede">Tabs, split panes, instant search, an AI Assistant and built-in apps for documents, photos, music, video and 3D models.</p>
+        <div class="hero-ctas">
+          <a class="btn btn-primary btn-big" href="download.html#get" data-download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Download Free</span></a>
+          <a class="btn btn-pro btn-big" href="https://armnbgeluofwseufpqge.supabase.co/functions/v1/license/buy" rel="nofollow noopener" data-buy target="_blank"><svg class="star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span class="spin" aria-hidden="true"></span><span class="btn-label">Buy Pro</span> <span class="price-tag">$19.99</span></a>
+        </div>
+        <ul class="facts">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Free forever, no ads</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>14-day Pro trial, no card</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>One payment, 2 PCs</li>
+        </ul>
+        
+      </div>
+      <div class="hero-stage">
+        <div class="chip c1" aria-hidden="true"><span class="ftype zip">ZIP</span><span><b>font-pack.zip</b><small>590 MB · Downloads</small></span></div>
+<div class="chip c2" aria-hidden="true"><span class="ftype mp3">MP3</span><span><b>Neon Coast.mp3</b><small>Lyrics from the .lrc file</small></span></div>
+<div class="chip c3" aria-hidden="true"><span class="ftype xlsx">XLSX</span><span><b>Budget 2026.xlsx</b><small>Opens in Dogfile Office</small></span></div>
+<div class="chip c4" aria-hidden="true"><span class="ftype glb">3D</span><span><b>DamagedHelmet.gltf</b><small>Opens in Dogfile 3D</small></span></div>
+        <div class="hero-window">
+          <img class="only-light" src="assets/img/hero-light.webp" alt="Dogfile showing the Downloads folder, grouped by date, with the glass sidebar." width="2400" height="1499" fetchpriority="high">
+          <img class="only-dark" src="assets/img/hero-dark.webp" alt="Dogfile in dark mode showing the Downloads folder, grouped by date." width="2400" height="1500">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="features">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>Folders, Previews and Documents in One Window</h2>
+      </div>
+      <div class="showcase">
+        <div class="steps">
+      <div class="step" data-shot="panes">
+        <h3>Tabs and Split Panes</h3>
+        <p>Drag a tab to the edge of the window to split it.</p>
+        <ul><li>Two panes free, three or four with Pro</li><li>Each tab keeps its own view, sort and scroll position</li><li>Workspaces save a layout of tabs and panes to reopen later</li></ul>
+        <div class="shot"><img src="assets/img/feature-panes.webp" alt="Four folders open at once: Wallpapers, Work, Music and Projects." width="2000" height="1250" loading="lazy" decoding="async"></div>
+      </div>
+      <div class="step" data-shot="preview">
+        <h3>See a File Before You Open It</h3>
+        <p>Works for photos, PDFs, Office documents, video, audio, code and archives.</p>
+        <ul><li>Space bar opens a full-size quick look</li><li>Rate, tag and add notes to any file</li></ul>
+        <div class="shot"><img src="assets/img/feature-preview.webp" alt="The preview pane showing a photo with its size, dimensions and colors." width="2000" height="1250" loading="lazy" decoding="async"></div>
+      </div>
+      <div class="step" data-shot="office">
+        <h3>Office Documents, Built In</h3>
+        <p>Word, Excel, PowerPoint and PDF files open in a tab and can be edited and saved. Microsoft Office doesn’t need to be installed.</p>
+        <ul><li>Edit text, tables, cells and formulas</li><li>Present slides full screen</li><li>Search and print PDFs</li></ul>
+        <div class="shot"><img src="assets/img/feature-office.webp" alt="A Word document open in a Dogfile tab, with the Word ribbon showing." width="2000" height="1250" loading="lazy" decoding="async"></div>
+      </div>
+        </div>
+        <div class="stage" aria-hidden="true">
+          <div class="shot"><img src="assets/img/feature-panes.webp" alt="Four folders open at once: Wallpapers, Work, Music and Projects." width="2000" height="1250" data-shot="panes" class="on"><img src="assets/img/feature-preview.webp" alt="The preview pane showing a photo with its size, dimensions and colors." width="2000" height="1250" data-shot="preview" loading="lazy" decoding="async"><img src="assets/img/feature-office.webp" alt="A Word document open in a Dogfile tab, with the Word ribbon showing." width="2000" height="1250" data-shot="office" loading="lazy" decoding="async"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section tint" id="macros">
+    <div class="wrap split">
+      <div class="split-txt">
+        <span class="eyebrow"><span class="pro-badge"><svg class="star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Pro</span></span>
+        <h2>Macro Recorder</h2>
+        <p>Do something once and Dogfile writes down the steps. Replay them with a click, a shortcut, on a schedule, or when new files land in a folder.</p>
+        <p>Every step can be edited, reordered or removed afterward.</p>
+        <button class="btn btn-ghost btn-sm video-btn" type="button" data-video-toggle>Pause the video</button>
+      </div>
+      <div class="shot">
+        <video data-loop autoplay muted loop playsinline preload="metadata" poster="assets/img/macro-poster.webp" width="1440" height="900" aria-label="Recording a macro that selects three PDFs and tags them red, then saving it.">
+          <source src="assets/video/macro.mp4" type="video/mp4">
+        </video>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="reminders">
+    <div class="wrap split">
+      <div class="split-txt">
+        <span class="eyebrow"><span class="pro-badge"><svg class="star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Pro</span></span>
+        <h2>Never Miss a Due Date</h2>
+        <p>Dogfile finds the due or expiry date in your bills, contracts, warranties and IDs, then sends a Windows notification before the day comes.</p>
+        <p>Point it at a folder and new documents are picked up on their own. Nothing leaves your PC.</p>
+        <button class="btn btn-ghost btn-sm video-btn" type="button" data-video-toggle>Pause the video</button>
+      </div>
+      <div class="shot">
+        <video data-loop autoplay muted loop playsinline preload="metadata" poster="assets/img/reminders-poster.webp" width="1440" height="900" aria-label="Dogfile finds the November 15 due date in a car loan statement, a reminder is added, and a Windows notification later says the car payment is due in 5 days.">
+          <source src="assets/video/reminders.mp4" type="video/mp4">
+        </video>
+      </div>
+    </div>
+  </section>
+
+  <section class="section tint" id="apps">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>Built-In Apps for the Files You Open Most</h2>
+      </div>
+      <div class="app-grid"><article class="app-card"><div class="shot"><img src="assets/img/app-audio.webp" alt="Neon Coast.mp3 playing with its lyrics in Dogfile Player." width="1600" height="1000" loading="lazy" decoding="async"></div><div class="txt"><h3>Dogfile Player for music</h3><p>Synced lyrics from .lrc files, an equalizer, speed control, and a queue made from the folder you’re in.</p><div class="tags"><span>MP3</span><span>FLAC</span><span>M4A</span><span>OGG</span><span>WAV</span></div></div></article><article class="app-card"><div class="shot"><img src="assets/img/app-video.webp" alt="A video playing in a Dogfile tab." width="1600" height="1000" loading="lazy" decoding="async"></div><div class="txt"><h3>Dogfile Player for video</h3><p>Plays almost any video file, with subtitles, chapters, frame stepping, screenshots and a trim tool.</p><div class="tags"><span>MP4</span><span>MKV</span><span>WEBM</span><span>AVI</span></div></div></article><article class="app-card"><div class="shot"><img src="assets/img/app-notepad.webp" alt="fold.js open in Dogfile Notepad with JavaScript highlighting." width="1600" height="1000" loading="lazy" decoding="async"></div><div class="txt"><h3>Dogfile Notepad</h3><p>Syntax highlighting for dozens of languages, find and replace, and Markdown preview.</p><div class="tags"><span>JS</span><span>PY</span><span>JSON</span><span>MD</span><span>TXT</span></div></div></article><article class="app-card"><div class="shot"><img src="assets/img/app-3d.webp" alt="A helmet model in Dogfile 3D with its materials listed." width="1600" height="1000" loading="lazy" decoding="async"></div><div class="txt"><h3>Dogfile 3D</h3><p>Textured, clay, normals and wireframe views. Swap materials and inspect each texture.</p><div class="tags"><span>GLTF</span><span>GLB</span><span>OBJ</span><span>FBX</span><span>STL</span><span>STEP</span></div></div></article></div>
+      <p class="also">Also built in: <b>Dogfile Photos</b>, for viewing and editing pictures.</p>
+    </div>
+  </section>
+
+  <section class="section" id="terminal">
+    <div class="wrap split">
+      <div class="split-txt">
+        <h2>PowerShell, Right Under Your Files</h2>
+        <p><span class="kbd">Ctrl</span> <span class="kbd">`</span> opens it in the folder you’re looking at.</p>
+        <ul class="points">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg><span><b>Synced with the pane.</b> Change folder in either one and the other follows.</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg><span><b>PowerShell, PowerShell 7 or Command Prompt.</b> It can also open in its own window.</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span><b>Run scripts from the right-click menu.</b> Python, Node, PowerShell and batch files.</span></li>
+        </ul>
+      </div>
+      <div class="shot"><img src="assets/img/terminal.webp" alt="PowerShell running npm run build under a project folder in Dogfile." width="2000" height="1250" loading="lazy" decoding="async"></div>
+    </div>
+  </section>
+
+  <section class="section tint" id="assistant">
+    <div class="wrap split flip">
+      <div class="split-txt">
+        <span class="eyebrow"><span class="pro-badge"><svg class="star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Pro</span></span>
+        <h2>A Powerful AI Assistant That Lives Locally on Your Browser</h2>
+        <p>Ask for files in plain words: “PDFs from this month.” “Group these by type.” “Files I haven’t opened in six months.” It shows what it understood and asks before changing anything big.</p>
+        <ul class="points">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span><b>Private.</b> It runs on your PC. Nothing is sent anywhere.</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg><span><b>Optional language model.</b> A one-time download (1.3 or 2.7 GB) for longer, multi-step requests. Also runs offline.</span></li>
+        </ul>
+      </div>
+      <div class="shot"><img src="assets/img/assistant.webp" alt="A road trip folder in gallery view, with photos, video previews and song waveforms, and the assistant listing the songs and videos in it." width="2000" height="1250" loading="lazy" decoding="async"></div>
+    </div>
+  </section>
+
+  <section class="section" id="mods">
+    <div class="wrap split">
+      <div class="split-txt">
+        <span class="eyebrow"><span class="pro-badge"><svg class="star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Pro</span></span>
+        <h2>Make Your Own Features</h2>
+        <p>Add your own commands to Dogfile with a few lines of JavaScript, written in Dogfile Notepad and installed with one click.</p>
+        <ul class="points">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg><span><b>Anywhere in Dogfile.</b> The right-click menu, the command palette, Notepad, Photos and the Player.</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span><b>Help as you type.</b> Autocomplete, the full API reference and a checker, one key away (F1).</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg><span><b>Safe to share.</b> Each feature runs in a sandbox and lists what it may do before you install it.</span></li>
+        </ul>
+      </div>
+      <div class="shot"><img src="assets/img/mods.webp" alt="A feature that sorts screenshots by month, open in Dogfile Notepad with the feature reference beside it." width="2000" height="1250" loading="lazy" decoding="async"></div>
+    </div>
+  </section>
+
+  <section class="section tint" id="themes">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>Themes</h2>
+        <p class="lede">Hundreds of color combinations to make the browser your own.</p>
+      </div>
+      <div class="preset-grid"><figure class="card-fig"><div class="shot"><img src="assets/img/preset-midnight.webp" alt="Dogfile with the Midnight theme." width="1600" height="1000" loading="lazy" decoding="async"></div><figcaption><b>Midnight</b></figcaption></figure><figure class="card-fig"><div class="shot"><img src="assets/img/preset-nord.webp" alt="Dogfile with the Nord theme." width="1600" height="1000" loading="lazy" decoding="async"></div><figcaption><b>Nord</b></figcaption></figure><figure class="card-fig"><div class="shot"><img src="assets/img/preset-rose.webp" alt="Dogfile with the Rose theme." width="1600" height="1000" loading="lazy" decoding="async"></div><figcaption><b>Rose</b></figcaption></figure><figure class="card-fig"><div class="shot"><img src="assets/img/preset-solarized.webp" alt="Dogfile with the Solarized theme." width="1600" height="1000" loading="lazy" decoding="async"></div><figcaption><b>Solarized</b></figcaption></figure></div>
+    </div>
+  </section>
+
+  <section class="section" id="animations">
+    <div class="wrap fold-wrap">
+      <div class="fold-notes">
+        <h2>Animations</h2>
+        <p>Cool animations that suit you!</p>
+        <button class="btn btn-ghost btn-sm video-btn" type="button" data-video-toggle>Pause the video</button>
+      </div>
+      <div class="shot">
+        <video data-loop autoplay muted loop playsinline preload="metadata" poster="assets/img/fold-poster.webp" width="1440" height="900" aria-label="The Dogfile sidebar folding closed and opening again.">
+          <source src="assets/video/fold.webm" type="video/webm">
+          <source src="assets/video/fold.mp4" type="video/mp4">
+        </video>
+      </div>
+    </div>
+  </section>
+
+  <section class="section tint" id="compare">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>What Dogfile Has That Others Don’t</h2>
+      </div>
+      <div class="table-wrap">
+        <table class="compare vs">
+          <caption class="sr">Dogfile compared with Directory Opus, OneCommander and Total Commander</caption>
+          <thead><tr><th scope="col"><span class="sr">Feature</span></th><th scope="col" class="col us">Dogfile</th><th scope="col" class="col">Directory Opus</th><th scope="col" class="col">OneCommander</th><th scope="col" class="col">Total Commander</th></tr></thead>
+          <tbody><tr><th scope="row">Edit Word, Excel and PowerPoint files</th><td class="col us"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span class="sr">Yes</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td></tr><tr><th scope="row">Music player with synced lyrics</th><td class="col us"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span class="sr">Yes</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td></tr><tr><th scope="row">3D model viewer with materials and textures</th><td class="col us"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span class="sr">Yes</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td></tr><tr><th scope="row">AI assistant that runs on your PC</th><td class="col us"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span class="sr">Yes</span></span><small class="pro-tag">Pro</small></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td></tr><tr><th scope="row">Macro recorder<small>Records what you do and replays it</small></th><td class="col us"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span class="sr">Yes</span></span><small class="pro-tag">Pro</small></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td></tr><tr><th scope="row">Terminal inside the window, synced with the folder<small>Total Commander has a one-line command box</small></th><td class="col us"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span class="sr">Yes</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td></tr><tr><th scope="row">Three or four panes side by side<small>The others have two</small></th><td class="col us"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span class="sr">Yes</span></span><small class="pro-tag">Pro</small></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td></tr><tr><th scope="row">Add-ons you can write yourself<small>Directory Opus has scripting, Total Commander has plugins</small></th><td class="col us"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span class="sr">Yes</span></span><small class="pro-tag">Pro</small></td><td class="col"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span class="sr">Yes</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td><td class="col"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span class="sr">Yes</span></span></td></tr><tr><th scope="row">Free version for home use<small>Directory Opus and Total Commander are paid after a trial</small></th><td class="col us"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span class="sr">Yes</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td><td class="col"><span class="yes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg><span class="sr">Yes</span></span></td><td class="col"><span class="no"><span aria-hidden="true">–</span><span class="sr">No</span></span></td></tr></tbody>
+        </table>
+      </div>
+      <p class="vs-note">Built-in features only, from each product’s own website, October 2026. Something out of date? <a href="contact.html">Let us know</a>.</p>
+    </div>
+  </section>
+
+  <section class="section" id="more">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>What Else Can Dogfile Do?</h2>
+      </div>
+      <div class="mini-grid"><div class="toolbox"><div class="tb-col"><h3>In the free version</h3><dl><div><dt>Instant search</dt><dd>Results as you type, across every drive.</dd></div><div><dt>Folder sizes</dt><dd>Folders show their size in the list, not just files.</dd></div><div><dt>Archives</dt><dd>Browse ZIP, 7z and TAR files like folders, or make new ones.</dd></div><div><dt>Phone transfer</dt><dd>Pair your phone once with a QR code and send files both ways over Wi‑Fi.</dd></div><div><dt>Smart collections</dt><dd>Virtual folders that gather files by rules, without moving anything.</dd></div><div><dt>Folder notes</dt><dd>Pin a note with to-do boxes to the top of any folder.</dd></div><div><dt>Clipboard history</dt><dd>Ctrl+Shift+V brings back the files and paths you copied earlier.</dd></div><div><dt>Command palette</dt><dd>Ctrl+Shift+P finds any command. Every shortcut can be changed.</dd></div><div><dt>Smart drop</dt><dd>Drop a pile of files and Dogfile offers to extract, sort or file them.</dd></div><div><dt>Checksums</dt><dd>Check a download’s SHA-256 or MD5.</dd></div><div><dt>Six languages</dt><dd>English, Español, Deutsch, Français, Português and 中文.</dd></div><div><dt>Settings sync</dt><dd>The same settings on every PC, through a folder you already sync, like OneDrive.</dd></div><div><dt>Summarize</dt><dd>One click turns a Word, Excel, PowerPoint or PDF file into a short note you can save.</dd></div><div><dt>Linked files</dt><dd>Know what a web page or music project uses, and get a warning before a move breaks it.</dd></div></dl></div><div class="tb-col pro"><h3>With Pro</h3><dl><div><dt>Batch rename studio</dt><dd>Rename by pattern, number, date or file contents, with a live preview.</dd></div><div><dt>Duplicate finder</dt><dd>Exact copies, plus photos and videos that look alike.</dd></div><div><dt>Disk space map</dt><dd>See what fills a drive, and clean up with a list of what will go.</dd></div><div><dt>Compare and sync</dt><dd>Compare two folders and copy only what changed, in either direction.</dd></div><div><dt>Folder rules</dt><dd>Sort new files automatically as they land in a folder.</dd></div><div><dt>File versions</dt><dd>Keep earlier versions of a document and bring one back.</dd></div><div><dt>Time travel</dt><dd>Slide back to see a folder as it was, and revive files that are gone.</dd></div><div><dt>Remote connections</dt><dd>Browse SFTP, FTP and WebDAV servers like a local folder.</dd></div><div><dt>Media conversion</dt><dd>Convert video, audio and images, and make contact sheets.</dd></div><div><dt>Text from images</dt><dd>Copy the text out of a photo or a scanned page (OCR).</dd></div><div><dt>Photo details</dt><dd>Edit dates, titles and other details stored in your photos.</dd></div></dl></div></div></div>
+    </div>
+  </section>
+
+  <section class="section tint" id="pricing">
+    <div class="wrap">
+      <div class="sec-head center">
+        <h2>What It Costs</h2>
+        <p class="lede">Try Pro free for 14 days inside the app. No card needed.</p>
+      </div>
+      <div class="plans">
+        <div class="plan">
+          <div class="plan-top"><span class="plan-name">Free</span><span class="free-badge">Forever</span></div>
+          <div class="price"><b>$0</b></div>
+          <ul>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Tabs and two panes side by side</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Instant search, tags and folder sizes</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Office, Player, Notepad, Photos and 3D</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Terminal, themes and animations</li>
+          </ul>
+          <a class="btn btn-primary btn-big" href="download.html#get" data-download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Download Free</span></a>
+          <p class="plan-foot">No ads · No account</p>
+        </div>
+        <div class="plan pro">
+          <div class="plan-top"><span class="plan-name">Pro</span></div>
+          <div class="price"><b>$19.99</b><span>once</span></div>
+          <ul>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Everything in Free</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>AI assistant and macro recorder</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Due date notifications</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Three and four panes</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>Your own features</li>
+          </ul>
+          <a class="btn btn-pro btn-big" href="https://armnbgeluofwseufpqge.supabase.co/functions/v1/license/buy" rel="nofollow noopener" data-buy target="_blank"><svg class="star" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span class="spin" aria-hidden="true"></span><span class="btn-label">Buy Pro</span> <span class="price-tag">$19.99</span></a>
+          <p class="plan-foot">Works on 2 PCs · Updates included</p>
+        </div>
+      </div>
+      <p class="compare-link"><a href="download.html">Compare Free vs Pro</a> · <a href="download.html#faq">FAQ</a></p>
+    </div>
+  </section>
+</main>
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="foot-row">
+      <a class="brand" href="index.html"><img src="assets/img/icon-64.png" alt="" width="30" height="30"><span>Dogfile</span></a>
+      <nav class="foot-links" aria-label="Footer">
+        <a href="index.html#features">Features</a>
+        <a href="download.html">Free vs Pro</a>
+        <a href="download.html#faq">FAQ</a>
+        <a href="contact.html">Contact</a>
+        <a href="legal.html">Terms and Privacy</a>
+        <a href="legal.html#refunds">Refunds</a>
+      </nav>
+    </div>
+    <p class="foot-small">© <span data-year>2026</span> Dogfile. Windows is a trademark of Microsoft. Payments are handled by Stripe; Dogfile never sees your card.</p>
+  </div>
+</footer>
+</body>
+</html>

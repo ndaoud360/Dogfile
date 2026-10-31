@@ -1,0 +1,775 @@
+[
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Documents\nIn this folder: History.txt, Report.docx, Taxes (folder)\nRequest: Move History.txt to downloads",
+    "expect": [
+      {
+        "do": "files",
+        "action": "move",
+        "names": [
+          "History.txt"
+        ],
+        "to": "downloads"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Documents\nIn this folder: History.txt, Report.docx\nRequest: open history.txt",
+    "expect": [
+      {
+        "do": "files",
+        "action": "open",
+        "names": [
+          "History.txt"
+        ]
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Documents\nIn this folder: Macros.xlsx, Automation.pdf, notes.md\nRequest: delete macros.xlsx and automation.pdf",
+    "expect": [
+      {
+        "do": "files",
+        "action": "delete",
+        "names": [
+          "Macros.xlsx",
+          "Automation.pdf"
+        ]
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Documents\nIn this folder: theme.css, dark mode notes.txt\nRequest: copy theme.css to the desktop",
+    "expect": [
+      {
+        "do": "files",
+        "action": "copy",
+        "names": [
+          "theme.css"
+        ],
+        "to": "desktop"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Downloads\nRequest: show me my file history",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "history"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Downloads\nRequest: oops undo that last move",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "history"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Downloads\nRequest: find every pdf i downloaded this month",
+    "expect": [
+      {
+        "do": "files",
+        "action": "find",
+        "what": "pdf"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Downloads\nRequest: zip all the pdfs from last week, call it receipts, then move the zip to my desktop",
+    "expect": [
+      {
+        "do": "files",
+        "action": "zip"
+      },
+      {
+        "do": "files",
+        "action": "move",
+        "to": "desktop"
+      }
+    ],
+    "min_steps": 2
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Downloads\nRequest: get rid of all the .tmp and .log junk in here",
+    "expect": [
+      {
+        "do": "files",
+        "action": "delete",
+        "what": "tmp"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Pictures\nSelected: IMG_0001.jpg, IMG_0002.jpg, IMG_0003.jpg\nRequest: tag these as vacation and rename them by the date taken",
+    "expect": [
+      {
+        "do": "files",
+        "action": "tag",
+        "where": "selection",
+        "to": "vacation"
+      },
+      {
+        "do": "files",
+        "action": "rename",
+        "where": "selection"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Pictures\nSelected: IMG_0001.jpg\nRequest: rotate it 90 degrees",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "transformPics"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Pictures\nRequest: find blurry duplicates of my holiday pics",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "similarPics"
+      }
+    ],
+    "alt": [
+      [
+        {
+          "do": "files",
+          "action": "find",
+          "what": "duplicate"
+        }
+      ]
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Pictures\nRequest: separate the screenshots from the real photos",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "classifyPics"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Pictures\nRequest: turn all these heic files into jpg",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "convertImages"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Videos\nRequest: compress the videos over 1gb",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "convertMedia"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Music\nRequest: what bpm and key are these songs",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "analyzeAudio"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: whats taking up all my space",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "analyze"
+      }
+    ],
+    "alt": [
+      [
+        {
+          "do": "feature",
+          "id": "cleanup"
+        }
+      ]
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: empty the bin",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "emptyRecycle"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: dark mode please",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "theme",
+        "detail": "dark"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: go dark and make the sidebar glassy",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "theme"
+      },
+      {
+        "do": "feature",
+        "id": "glass"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: show hidden files",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "toggles"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: i want 4 panes",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "layout"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: switch to grid view",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "view"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: connect to my dropbox",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "connect"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: every time a pdf lands in downloads move it to documents\\pdfs",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "automation"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: record a macro",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "macro"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Projects\\site\nRequest: what did i change in this repo",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "gitStatus"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Projects\\site\nRequest: open a terminal here",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "terminal"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Projects\nRequest: compare this folder with the backup on D",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "compare"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Downloads\nIn this folder: setup.zip, photos.rar\nRequest: unzip setup.zip",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "extract"
+      }
+    ],
+    "alt": [
+      [
+        {
+          "do": "files",
+          "names": [
+            "setup.zip"
+          ]
+        }
+      ]
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Downloads\nIn this folder: photos.rar\nRequest: turn the rar into a zip",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "convertArchive"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Documents\nSelected: contract.pdf\nRequest: which program is locking this",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "whoLocks"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Documents\nSelected: thesis.docx\nRequest: bring back the version from yesterday",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "restoreVersion"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: how do i make dogfile my default file manager",
+    "expect": [
+      {
+        "do": "help"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: where are the settings for keyboard shortcuts",
+    "expect": [
+      {
+        "do": "help"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: what does the drop shelf do",
+    "expect": [
+      {
+        "do": "help"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: hey there",
+    "expect": [
+      {
+        "do": "say"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: thanks that worked",
+    "expect": [
+      {
+        "do": "say"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: write a short poem about my cat",
+    "expect": [
+      {
+        "do": "write"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Documents\nOpen in this tab: Notepad, editing cover letter.txt\nRequest: make this sound more professional",
+    "expect": [
+      {
+        "do": "app"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Pictures\nOpen in this tab: Photos, showing beach.jpg\nRequest: crop it to a square and make it brighter",
+    "expect": [
+      {
+        "do": "app"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Videos\nOpen in this tab: Player, playing talk.mp4\nRequest: skip to 12 minutes",
+    "expect": [
+      {
+        "do": "app"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: delete it",
+    "expect": [
+      {
+        "do": "ask"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: do the thing with the stuff",
+    "expect": [
+      {
+        "do": "ask"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Music\nRequest: take me to my downloads",
+    "expect": [
+      {
+        "do": "go",
+        "place": "downloads"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: open D:\\Backups\\2024",
+    "expect": [
+      {
+        "do": "go",
+        "place": "D:\\Backups\\2024"
+      }
+    ],
+    "alt": [
+      [
+        {
+          "do": "files",
+          "action": "open"
+        }
+      ]
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Desktop\nIn this folder: a.txt, b.txt, Screenshot 2026-01-02.png, Screenshot 2026-01-03.png\nRequest: put the screenshots in a new folder called Shots",
+    "expect": [
+      {
+        "do": "files",
+        "action": "new_folder",
+        "to": "Shots"
+      },
+      {
+        "do": "files",
+        "action": "move",
+        "to": "Shots"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Desktop\nRequest: organize my desktop by file type",
+    "expect": [
+      {
+        "do": "files",
+        "action": "group"
+      }
+    ],
+    "alt": [
+      [
+        {
+          "do": "feature",
+          "id": "declutter"
+        }
+      ]
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Documents\nRequest: how many word documents do i have in here",
+    "expect": [
+      {
+        "do": "files",
+        "action": "count"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Videos\nRequest: how much space do my videos take",
+    "expect": [
+      {
+        "do": "files",
+        "action": "size"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: find the 10 biggest files on my pc",
+    "expect": [
+      {
+        "do": "files",
+        "action": "find",
+        "where": "everywhere"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: find photos taken with my iphone in paris last summer",
+    "expect": [
+      {
+        "do": "files",
+        "action": "find"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: find word docs that mention invoice 2291",
+    "expect": [
+      {
+        "do": "files",
+        "action": "find"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Downloads\nRequest: find empty folders in here and delete them",
+    "expect": [
+      {
+        "do": "files",
+        "action": "find"
+      },
+      {
+        "do": "files",
+        "action": "delete",
+        "where": "previous"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Downloads\nRequest: find installers older than a year, zip them into old-installers.zip and then delete the originals",
+    "expect": [
+      {
+        "do": "files",
+        "action": "find"
+      },
+      {
+        "do": "files",
+        "action": "zip",
+        "where": "previous"
+      },
+      {
+        "do": "files",
+        "action": "delete",
+        "where": "previous"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Documents\nIn this folder: Q3 Report.docx, Q3 Report (1).docx, Q3 Report final.docx\nRequest: keep the final one and delete the other two reports",
+    "expect": [
+      {
+        "do": "files",
+        "action": "delete",
+        "names": [
+          "Q3 Report.docx",
+          "Q3 Report (1).docx"
+        ]
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Documents\nIn this folder: budget 2025.xlsx, budget 2026.xlsx\nRequest: rename budget 2025 to budget-archive",
+    "expect": [
+      {
+        "do": "files",
+        "action": "rename",
+        "names": [
+          "budget 2025.xlsx"
+        ],
+        "to": "budget-archive"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Documents\nSelected: notes.txt, todo.txt\nRequest: send these to my usb drive E",
+    "expect": [
+      {
+        "do": "files",
+        "where": "selection",
+        "to": "E:"
+      }
+    ],
+    "alt": [
+      [
+        {
+          "do": "files",
+          "to": "E:",
+          "names": [
+            "notes.txt",
+            "todo.txt"
+          ]
+        }
+      ]
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Pictures\nRequest: put my favorite photos on the shelf",
+    "expect": [
+      {
+        "do": "files",
+        "action": "shelf"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: copy the paths of the selected files",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "copyPaths"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Music\nRequest: fix the artist and album on these songs",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "songDetails"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Documents\nRequest: make sha256 checksums for everything here",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "makeChecksums"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Documents\nRequest: give the selected files 5 stars",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "rate"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Projects\nRequest: add a note to this folder saying ship by friday",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "folderNote"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\nRequest: write me a dogfile feature that adds today's date to file names",
+    "expect": [
+      {
+        "do": "feature",
+        "id": "writeFeature"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Downloads\nRequest: pls mov evry jpg n png into pictures",
+    "expect": [
+      {
+        "do": "files",
+        "action": "move",
+        "to": "pictures"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Downloads\nRequest: can u delet the file called history",
+    "expect": [
+      {
+        "do": "files",
+        "action": "delete",
+        "names": [
+          "history"
+        ]
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Downloads\nRequest: mueve los pdf a documentos",
+    "expect": [
+      {
+        "do": "files",
+        "action": "move",
+        "to": "documents"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Downloads\nRequest: i keep losing stuff, can you sort this mess into folders by year",
+    "expect": [
+      {
+        "do": "files",
+        "action": "group",
+        "to": "year"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Pictures\nPrevious result: 42 photos from 2023\nRequest: now tag them all as 2023 and zip them",
+    "expect": [
+      {
+        "do": "files",
+        "action": "tag",
+        "where": "previous"
+      },
+      {
+        "do": "files",
+        "action": "zip",
+        "where": "previous"
+      }
+    ]
+  },
+  {
+    "ctx": "Folder: C:\\Users\\Sam\\Downloads\nRequest: find movies, move them to D:\\Movies, then open that folder and switch to gallery view",
+    "expect": [
+      {
+        "do": "files",
+        "action": "find"
+      },
+      {
+        "do": "files",
+        "action": "move",
+        "to": "D:\\Movies"
+      },
+      {
+        "do": "go"
+      },
+      {
+        "do": "feature",
+        "id": "view"
+      }
+    ]
+  }
+]

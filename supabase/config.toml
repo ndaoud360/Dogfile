@@ -1,0 +1,6 @@
+# Dogfile's licence server (Supabase). Deployed by .github/workflows/license-server.yml.
+project_id = "dogfile"
+
+[functions.license]
+# the app and Stripe call it without a Supabase key; every route checks what it needs itself
+verify_jwt = false

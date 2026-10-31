@@ -1,0 +1,548 @@
+# (The Windows jobs run on the self-hosted PC runner when the repository variable RUNNER is "pc".)
+# Builds Dogfile (Tauri + Rust) for Windows, runs the engine's tests, starts the app once on the runner to
+# check that it draws and to measure its memory, and publishes Dogfile.exe on the app-bin branch.
+# The interface (src/renderer) is minified and packed into the program (build/pack-ui.mjs): nothing else ships.
+# Publishing a finished build is the separate publish workflow (.github/workflows/publish.yml).
+# Results go into annotations (readable through the API).
+# Where it runs: set the repository variable RUNNER to "pc" (Settings > Secrets and variables > Actions > Variables)
+# and the Windows builds run on your own PC's self-hosted runner, free; the Linux/Mac/licence jobs and the tests that
+# open windows, kill processes, or install Dogfile are skipped there (they'd disturb your PC). Delete the variable
+# (or set it to "github") to go back to GitHub's machines. The Linux, Mac and licence-server jobs only run when the
+# workflow is started by hand (Actions > app > Run workflow) or the variable BUILD_ALL is "yes": Mac minutes cost the most.
+name: app
+on:
+  push:
+    branches: [main]
+    paths: ['core/**', 'backend/**', 'app/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/app.yml', 'src/renderer/**', 'supabase/**']
+  workflow_dispatch:
+permissions:
+  contents: write
+# a newer push replaces a build still running
+concurrency:
+  group: app-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows:
+    runs-on: ${{ vars.RUNNER == 'pc' && fromJSON('["self-hosted","Windows","X64"]') || 'windows-latest' }}
+    env:
+      ON_PC: ${{ vars.RUNNER == 'pc' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Git's bash on the path (self-hosted Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin", "$env:ProgramFiles\LLVM\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
+      - name: Rust toolchain
+        run: rustup toolchain install stable --profile minimal && rustup default stable
+      - uses: actions/cache@v4
+        if: vars.RUNNER != 'pc'
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: app-${{ hashFiles('Cargo.lock') }}
+          restore-keys: app-
+      - name: Pack the interface into the program
+        shell: bash
+        run: |
+          npm install --prefix "$RUNNER_TEMP/esbuild" --no-audit --no-fund --silent esbuild@0.24.2
+          ESBUILD_DIR="$RUNNER_TEMP/esbuild" node build/pack-ui.mjs
+      - name: llama.cpp's server program (the assistant's fast engine)
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          # the newest official Windows CPU build (clang + OpenMP, picks the best code for the processor at start);
+          # shipped in Dogfile's llama/ folder, and its address and checksum go into the program so a copy updated
+          # without the folder can download the same files
+          $ProgressPreference = 'SilentlyContinue'
+          $dl = "$env:RUNNER_TEMP/dl"; New-Item -ItemType Directory -Force $dl | Out-Null
+          $h = @{ 'User-Agent' = 'Dogfile-CI'; 'Authorization' = "Bearer $env:GITHUB_TOKEN" }
+          $asset = $null; $tag = $null
+          foreach ($r in (Invoke-RestMethod 'https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=10' -Headers $h)) {
+            $a = $r.assets | Where-Object { $_.name -match '^llama-.*-bin-win-cpu-x64\.zip$' } | Select-Object -First 1
+            if ($a) { $asset = $a; $tag = $r.tag_name; break }
+          }
+          if (-not $asset) { Write-Output "::warning title=llama-server::no Windows CPU build in the last 10 llama.cpp releases"; exit 0 }
+          Invoke-WebRequest $asset.browser_download_url -OutFile "$dl/llama.zip"
+          $sha = (Get-FileHash "$dl/llama.zip" -Algorithm SHA256).Hash.ToLower()
+          "DOGFILE_LLAMA_URL=$($asset.browser_download_url)" >> $env:GITHUB_ENV
+          "DOGFILE_LLAMA_SHA256=$sha" >> $env:GITHUB_ENV
+          "DOGFILE_LLAMA_ZIP=$dl/llama.zip" >> $env:GITHUB_ENV
+          Write-Output "::notice title=llama-server::$tag $($asset.name) $sha"
+      - name: Build
+        shell: pwsh
+        run: |
+          # rebuild llama.cpp when its build flags (.cargo/config.toml) change: cargo doesn't notice by itself
+          $h = (Get-FileHash .cargo/config.toml).Hash.Substring(0,16)
+          if ((Get-Content target/.ggml-flags -ErrorAction SilentlyContinue) -ne $h) { cargo clean --release -p llama-cpp-sys-2; New-Item -ItemType Directory -Force target | Out-Null; Set-Content target/.ggml-flags $h }
+          cargo build --release -p dogfile --message-format=short 2>&1 | Tee-Object -FilePath build.log
+          $code = $LASTEXITCODE
+          if ($code -ne 0) {
+            $errs = (Get-Content build.log | Select-String -Pattern '(^|: )error' | Select-Object -First 80) -join '%0A'
+            Write-Output "::error title=build::$errs"
+            $tail = (Get-Content build.log | Select-Object -Last 40) -join '%0A'
+            Write-Output "::error title=build-tail::$tail"
+          } else {
+            $warn = (Get-Content build.log | Select-String -Pattern 'warning' | Select-Object -First 40) -join '%0A'
+            Write-Output "::notice title=build-warnings::$warn"
+          }
+          exit $code
+      - name: Engine tests
+        shell: pwsh
+        run: |
+          # the engine, and the file operations (copy, move, replace, save) on a real Windows file system
+          cargo test --release -p dogfile-core -p dogfile-backend 2>&1 | Tee-Object -FilePath test.log
+          $code = $LASTEXITCODE
+          $tail = (Get-Content test.log | Select-Object -Last 40) -join '%0A'
+          if ($code -ne 0) { Write-Output "::error title=tests::$tail" } else { Write-Output "::notice title=tests::$((Get-Content test.log | Select-String 'test result') -join '%0A')" }
+          exit $code
+      - name: Start the app, take screenshots, measure memory
+        if: vars.RUNNER != 'pc'
+        shell: pwsh
+        continue-on-error: true
+        timeout-minutes: 12
+        run: |
+          trap { Write-Output "::error title=smoke::$($_.InvocationInfo.PositionMessage -replace "`n",'%0A') $_"; continue }
+          Remove-Item -Recurse -Force target/release/renderer, target/release/data, target/release/portable.txt -ErrorAction SilentlyContinue
+          $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
+          $files = "$env:RUNNER_TEMP\files"; New-Item -ItemType Directory -Force $files | Out-Null
+          1..300 | ForEach-Object { Set-Content "$files/file $_.txt" "hello $_" }
+          New-Item -ItemType File -Force target/release/portable.txt | Out-Null
+          $noIndex = '{"indexEnabled":false,"welcomed":true,"uiMode":"simple"}'
+          # Dogfile 2 without the index
+          New-Item -ItemType Directory -Force target/release/data | Out-Null
+          Set-Content target/release/data/settings.json $noIndex
+          ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$files`"" -Label tauri-noindex -Out $out -Shot
+          # Dogfile 2 with the index (the default)
+          Remove-Item -Recurse -Force target/release/data
+          ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$files`"" -Label tauri-index -Out $out -Seconds 40
+          # ...and after a couple of quiet minutes (the index sleeps when nobody searches)
+          ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$files`"" -Label tauri-index-idle -Out $out -Seconds 150 -Shot
+      - name: Startup time (first run, then warm starts)
+        if: vars.RUNNER != 'pc'
+        shell: pwsh
+        continue-on-error: true
+        timeout-minutes: 8
+        run: |
+          $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
+          New-Item -ItemType File -Force target/release/portable.txt | Out-Null
+          New-Item -ItemType Directory -Force target/release/data | Out-Null
+          Set-Content target/release/data/settings.json '{"welcomed":true}'
+          $env:ATLAS_TEST = '1'
+          $env:DOGFILE_TEST_LOG = "$out/startup.log"
+          $env:ATLAS_SHOT_DELAY = '2500'
+          $env:ATLAS_STEPS = '[{"js":"1","wait":200}]'
+          foreach ($i in 1..4) {
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            $p = Start-Process -FilePath target/release/dogfile.exe -PassThru
+            if (-not $p.WaitForExit(60000)) { Stop-Process -Id $p.Id -Force }
+            Get-Process msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force
+            Start-Sleep -Seconds 2
+          }
+          $log = if (Test-Path "$out/startup.log") { Get-Content "$out/startup.log" | Where-Object { $_ -like 'startup*' } } else { @('no log') }
+          Write-Output "::notice title=startup::$($log -join '%0A')"
+          $log | Set-Content "$out/startup.txt"
+          Remove-Item Env:ATLAS_TEST, Env:DOGFILE_TEST_LOG, Env:ATLAS_STEPS, Env:ATLAS_SHOT_DELAY
+      - name: Windows checks inside the app (shell, recycle bin, clipboard, thumbnails, 7-Zip, terminal…)
+        if: vars.RUNNER != 'pc'
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          trap { Write-Output "::error title=wintest::$_"; continue }
+          $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
+          Remove-Item -Recurse -Force target/release/data -ErrorAction SilentlyContinue
+          New-Item -ItemType File -Force target/release/portable.txt | Out-Null
+          New-Item -ItemType Directory -Force target/release/data, target/release/7zip | Out-Null
+          Copy-Item vendor/7zip/win32/7za.exe target/release/7zip/
+          Set-Content target/release/data/settings.json '{"welcomed":true}'
+          $js = Get-Content -Raw build/ci/wintest.js
+          $env:ATLAS_TEST = '1'
+          $env:DOGFILE_TEST_LOG = "$out/wintest.log"
+          $env:ATLAS_STEPS = (ConvertTo-Json -Compress -Depth 3 @(@{ js = $js; wait = 200000; shot = "$out/wintest.png" }))
+          $p = Start-Process -FilePath target/release/dogfile.exe -PassThru
+          if (-not $p.WaitForExit(260000)) { Stop-Process -Id $p.Id -Force; Write-Output "::warning title=wintest::timed out" }
+          Get-Process msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force
+          $log = if (Test-Path "$out/wintest.log") { Get-Content "$out/wintest.log" } else { @('no log') }
+          Write-Output "::notice title=wintest::$($log -join '%0A')"
+          Remove-Item Env:ATLAS_TEST, Env:DOGFILE_TEST_LOG, Env:ATLAS_STEPS
+      # the checks that protect people's files decide whether this build may go out: the step above may fail for
+      # reasons of the machine (no display, a slow runner); a file-safety check that ran and failed stops the job
+      - name: Safety gate (file-safety checks must pass)
+        if: vars.RUNNER != 'pc'
+        shell: pwsh
+        run: |
+          $f = "$env:RUNNER_TEMP/smoke/wintest.log"
+          if (-not (Test-Path $f)) { Write-Output "::warning title=safety::the Windows checks didn't run, so the file-safety checks are unknown"; exit 0 }
+          $bad = Get-Content $f | Where-Object { $_ -like 'UNSAFE*' }
+          $ok = (Get-Content $f | Where-Object { $_ -like 'safe *' }).Count
+          if ($bad) { Write-Output "::error title=safety::$($bad -join '%0A')"; exit 1 }
+          # every check has to have run: a check that never ran proves nothing
+          $want = 6
+          if ($ok -lt $want) { Write-Output "::error title=safety::only $ok of $want file-safety checks ran (the Windows checks stopped early?)"; exit 1 }
+          Write-Output "::notice title=safety::$ok file-safety checks passed"
+      - name: Copy speed (Dogfile next to robocopy, Copy-Item and File Explorer)
+        if: vars.RUNNER != 'pc'
+        shell: pwsh
+        continue-on-error: true
+        timeout-minutes: 40
+        run: ./build/ci/copybench.ps1 -Exe target/release/dogfile.exe -Out "$env:RUNNER_TEMP/smoke"
+      - name: Notepad writing helper (download the model, write on the processor and graphics card)
+        if: vars.RUNNER != 'pc'
+        shell: pwsh
+        continue-on-error: true
+        timeout-minutes: 30
+        run: |
+          trap { Write-Output "::error title=writertest::$_"; continue }
+          $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
+          $js = Get-Content -Raw build/ci/writertest.js
+          $env:ATLAS_TEST = '1'
+          $env:DOGFILE_TEST_LOG = "$out/writertest.log"
+          $env:ATLAS_STEPS = (ConvertTo-Json -Compress -Depth 3 @(@{ js = $js; wait = 1500000 }))
+          $p = Start-Process -FilePath target/release/dogfile.exe -PassThru
+          if (-not $p.WaitForExit(1560000)) { Stop-Process -Id $p.Id -Force; Write-Output "::warning title=writertest::timed out" }
+          Get-Process msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force
+          $log = if (Test-Path "$out/writertest.log") { Get-Content "$out/writertest.log" } else { @('no log') }
+          Write-Output "::notice title=writertest::$($log -join '%0A')"
+          Remove-Item Env:ATLAS_TEST, Env:DOGFILE_TEST_LOG, Env:ATLAS_STEPS
+      - name: Auto-update end to end (check, download, install, restart)
+        if: vars.RUNNER != 'pc'
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          trap { Write-Output "::error title=updtest::$_"; continue }
+          $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
+          $srv = "$env:RUNNER_TEMP/updsrv"; New-Item -ItemType Directory -Force "$srv/pkg" | Out-Null
+          # the "new version": this build plus a marker file (a real update holds only Dogfile.exe)
+          Copy-Item target/release/dogfile.exe "$srv/pkg/Dogfile.exe"
+          Set-Content "$srv/pkg/updated.txt" 'updated'
+          Compress-Archive -Path "$srv/pkg/*" -DestinationPath "$srv/Dogfile-9.9.9-app.zip" -Force
+          $hash = (Get-FileHash "$srv/Dogfile-9.9.9-app.zip" -Algorithm SHA256).Hash.ToLower()
+          $size = (Get-Item "$srv/Dogfile-9.9.9-app.zip").Length
+          $m = @{ version = '9.9.9'; date = '2026-10-22'; notes = "- test"; packages = @(@{ id = 'app'; version = '9.9.9'; url = 'http://127.0.0.1:47961/Dogfile-9.9.9-app.zip'; sha256 = $hash; size = $size }) }
+          $m | ConvertTo-Json -Depth 4 | Set-Content "$srv/latest.json"
+          $py = Start-Process python -ArgumentList '-m', 'http.server', '47961', '--directory', $srv -PassThru -WindowStyle Hidden
+          Start-Sleep -Seconds 2
+          Remove-Item -Recurse -Force target/release/data, target/release/updated.txt -ErrorAction SilentlyContinue
+          New-Item -ItemType File -Force target/release/portable.txt | Out-Null
+          New-Item -ItemType Directory -Force target/release/data | Out-Null
+          Set-Content target/release/data/settings.json '{"welcomed":true}'
+          $env:ATLAS_TEST = '1'
+          $env:DOGFILE_TEST_LOG = "$out/updtest.log"
+          $env:DOGFILE_UPDATE_URL = 'http://127.0.0.1:47961/latest.json'
+          $env:ATLAS_STEPS = (ConvertTo-Json -Compress -Depth 3 @(@{ js = (Get-Content -Raw build/ci/updtest.js); wait = 20000 }))
+          Start-Process -FilePath target/release/dogfile.exe | Out-Null
+          Start-Sleep -Seconds 75
+          Get-Process dogfile, msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force
+          Stop-Process -Id $py.Id -Force -ErrorAction SilentlyContinue
+          $log = if (Test-Path "$out/updtest.log") { Get-Content "$out/updtest.log" } else { @('no log') }
+          $inst = if (Test-Path "$env:TEMP/dogfile-update/install.log") { (Get-Content "$env:TEMP/dogfile-update/install.log" | Select-Object -Last 15) } else { @('no install log') }
+          Write-Output "::notice title=updtest::$(($log + '--- install.log ---' + $inst) -join '%0A')"
+          Remove-Item Env:ATLAS_TEST, Env:DOGFILE_TEST_LOG, Env:ATLAS_STEPS, Env:DOGFILE_UPDATE_URL
+          Remove-Item -Force target/release/updated.txt, target/release/Dogfile.exe.bak -ErrorAction SilentlyContinue
+      - name: Package, setup program and Store package (signed when a certificate is set up)
+        shell: pwsh
+        continue-on-error: true
+        env:
+          SIGN_PFX_BASE64: ${{ secrets.SIGN_PFX_BASE64 }}
+          SIGN_PFX_PASSWORD: ${{ secrets.SIGN_PFX_PASSWORD }}
+          STORE_IDENTITY_NAME: ${{ vars.STORE_IDENTITY_NAME }}
+          STORE_PUBLISHER: ${{ vars.STORE_PUBLISHER }}
+          STORE_PUBLISHER_NAME: ${{ vars.STORE_PUBLISHER_NAME }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          trap { Write-Output "::error title=package::$_ %0A$($_.InvocationInfo.PositionMessage -replace "[`r`n]+",'%0A')"; continue }
+          $dl = "$env:RUNNER_TEMP/dl"; New-Item -ItemType Directory -Force $dl | Out-Null
+          $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
+          $ProgressPreference = 'SilentlyContinue'
+          # the full 7-Zip (7z.exe + 7z.dll) for x64 and ARM64
+          foreach ($v in @('25.01', '24.09')) {
+            $n = $v -replace '\.', ''
+            try {
+              Invoke-WebRequest "https://github.com/ip7z/7zip/releases/download/$v/7z$n-x64.exe" -OutFile "$dl/7z-x64.exe"
+              Invoke-WebRequest "https://github.com/ip7z/7zip/releases/download/$v/7z$n-arm64.exe" -OutFile "$dl/7z-arm64.exe"
+              Write-Output "::notice title=7zip::7-Zip $v"; break
+            } catch { Write-Output "::warning title=7zip::$v not found" }
+          }
+          vendor/7zip/win32/7za.exe x "$dl/7z-x64.exe" "-o$dl/7zfull" 7z.exe 7z.dll License.txt -y | Out-Null
+          vendor/7zip/win32/7za.exe x "$dl/7z-arm64.exe" "-o$dl/7zfull-arm64" 7z.exe 7z.dll License.txt -y | Out-Null
+          New-Item -ItemType Directory -Force "$out/7zfull", "$out/7zfull-arm64" | Out-Null
+          Copy-Item "$dl/7zfull/*" "$out/7zfull/"; Copy-Item "$dl/7zfull-arm64/*" "$out/7zfull-arm64/"
+          # the media engine
+          # the newest stable shared build listed in the release (names change with each FFmpeg version), master as a fallback
+          $ffRel = Invoke-RestMethod 'https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/latest' -Headers @{ 'User-Agent' = 'Dogfile-CI'; 'Authorization' = "Bearer $env:GITHUB_TOKEN" }
+          $ffAsset = $ffRel.assets | Where-Object { $_.name -match '^ffmpeg-n[\d.]+-latest-win64-gpl-shared-[\d.]+\.zip$' } | Sort-Object { [version](($_.name -replace '^ffmpeg-n([\d.]+)-.*','$1') + '.0') } -Descending | Select-Object -First 1
+          if (-not $ffAsset) { $ffAsset = $ffRel.assets | Where-Object { $_.name -eq 'ffmpeg-master-latest-win64-gpl-shared.zip' } | Select-Object -First 1 }
+          if (-not $ffAsset) { Write-Output "::error title=ffmpeg::No FFmpeg build found"; exit 1 }
+          Invoke-WebRequest $ffAsset.browser_download_url -OutFile "$dl/ff.zip"
+          Write-Output "::notice title=ffmpeg::$($ffAsset.name)"
+          Copy-Item target/release/dogfile.exe "$dl/Dogfile.exe"
+          $env:DOGFILE_7Z_FULL = "$dl/7zfull"
+          $pk = node build/package-win.mjs "$dl/Dogfile.exe" "$dl/ff.zip" 2>&1
+          Write-Output "::notice title=package-win::$(($pk | Out-String) -replace "[`r`n]+",'%0A')"
+          $ver = (Get-Content app/tauri.conf.json -Raw | ConvertFrom-Json).version
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe | Where-Object { $_.FullName -like '*\x64\*' } | Select-Object -First 1
+          function Sign($file) {
+            if (-not $env:SIGN_PFX_BASE64) { return }
+            $pfx = "$env:RUNNER_TEMP/sign.pfx"
+            if (-not (Test-Path $pfx)) { [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_PFX_BASE64)) }
+            & $signtool.FullName sign /f $pfx /p $env:SIGN_PFX_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 $file
+            Write-Output "::notice title=signing::signed $(Split-Path $file -Leaf)"
+          }
+          Sign dist/Dogfile/Dogfile.exe
+          # the setup program (NSIS)
+          $nsis = @("C:\Program Files (x86)\NSIS\makensis.exe", "C:\Program Files\NSIS\makensis.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $nsis) { choco install nsis -y --no-progress | Out-Null; $nsis = "C:\Program Files (x86)\NSIS\makensis.exe" }
+          & $nsis /V2 "/DVERSION=$ver" "/DSRC=..\..\dist\Dogfile" "/DOUT=..\..\dist\Dogfile-Setup-$ver.exe" build\win\setup.nsi
+          Sign "dist/Dogfile-Setup-$ver.exe"
+          Copy-Item "dist/Dogfile-Setup-$ver.exe" "$out/"
+          # silent install + uninstall check (not on your own PC: it would replace the Dogfile you use)
+          if ($env:ON_PC -ne 'true') {
+          $p = Start-Process "dist/Dogfile-Setup-$ver.exe" -ArgumentList '/S' -PassThru -Wait
+          $inst = Test-Path "$env:LOCALAPPDATA\Programs\Dogfile\Dogfile.exe"
+          $reg = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Dogfile' -ErrorAction SilentlyContinue).DisplayVersion
+          $u = Start-Process "$env:LOCALAPPDATA\Programs\Dogfile\Uninstall Dogfile.exe" -ArgumentList '/S' -PassThru -Wait
+          Start-Sleep -Seconds 3
+          $gone = -not (Test-Path "$env:LOCALAPPDATA\Programs\Dogfile\Dogfile.exe")
+          Write-Output "::notice title=setup::Dogfile-Setup-$ver.exe $([math]::Round((Get-Item "dist/Dogfile-Setup-$ver.exe").Length/1MB,1)) MB; installed=$inst version=$reg uninstalled=$gone"
+          }
+          # the Microsoft Store package (MSIX); Partner Center signs it when it's submitted
+          $st = "$env:RUNNER_TEMP/store"; Remove-Item -Recurse -Force $st -ErrorAction SilentlyContinue
+          Copy-Item -Recurse dist/Dogfile $st
+          Remove-Item "$st/Install Dogfile.cmd", "$st/Uninstall Dogfile.cmd", "$st/installer.ps1", "$st/portable.txt" -ErrorAction SilentlyContinue
+          Set-Content "$st/store.txt" 'Installed from the Microsoft Store: the Store keeps Dogfile up to date.'
+          New-Item -ItemType Directory -Force "$st/assets" | Out-Null
+          Add-Type -AssemblyName System.Drawing
+          $src = [System.Drawing.Image]::FromFile((Resolve-Path app/icons/icon.png))
+          foreach ($l in @(@('StoreLogo', 50, 50), @('Square150x150Logo', 150, 150), @('Square44x44Logo', 44, 44), @('Wide310x150Logo', 310, 150))) {
+            $bmp = New-Object System.Drawing.Bitmap $l[1], $l[2]; $g = [System.Drawing.Graphics]::FromImage($bmp); $g.InterpolationMode = 'HighQualityBicubic'
+            $sz = [math]::Min($l[1], $l[2]); $g.DrawImage($src, [int](($l[1] - $sz) / 2), [int](($l[2] - $sz) / 2), $sz, $sz); $bmp.Save("$st/assets/$($l[0]).png"); $g.Dispose(); $bmp.Dispose()
+          }
+          $src.Dispose()
+          $idn = if ($env:STORE_IDENTITY_NAME) { $env:STORE_IDENTITY_NAME } else { 'Dogfile.Dogfile' }
+          $pub = if ($env:STORE_PUBLISHER) { $env:STORE_PUBLISHER } else { 'CN=Dogfile' }
+          $pubn = if ($env:STORE_PUBLISHER_NAME) { $env:STORE_PUBLISHER_NAME } else { 'Dogfile' }
+          (Get-Content build/store/AppxManifest.xml -Raw).Replace('{IDENTITY_NAME}', $idn).Replace('{PUBLISHER}', $pub).Replace('{PUBLISHER_NAME}', $pubn).Replace('{VERSION}', $ver).Replace('{ARCH}', 'x64') | Set-Content "$st/AppxManifest.xml" -Encoding utf8
+          $makeappx = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter makeappx.exe | Where-Object { $_.FullName -like '*\x64\*' } | Select-Object -First 1
+          & $makeappx.FullName pack /o /d $st /p "dist/Dogfile-$ver-x64.msix" | Select-Object -Last 3
+          Write-Output "::notice title=store::$(if (Test-Path "dist/Dogfile-$ver-x64.msix") { "Dogfile-$ver-x64.msix $([math]::Round((Get-Item "dist/Dogfile-$ver-x64.msix").Length/1MB,1)) MB (identity $idn, publisher $pub)" } else { 'no msix' })"
+      - uses: actions/upload-artifact@v4
+        if: vars.RUNNER != 'pc'
+        continue-on-error: true
+        with:
+          name: windows-x64
+          path: |
+            dist/Dogfile-Setup-*.exe
+            dist/Dogfile/Dogfile.exe
+            dist/*.msix
+          if-no-files-found: warn
+      - name: Publish to the app-bin branch (readable with git)
+        shell: pwsh
+        run: |
+          $d = "$env:RUNNER_TEMP/binbranch"
+          New-Item -ItemType Directory -Force $d | Out-Null
+          # the signed program from the package step when there is one
+          if (Test-Path dist/Dogfile/Dogfile.exe) { Copy-Item dist/Dogfile/Dogfile.exe $d/Dogfile.exe } else { Copy-Item target/release/dogfile.exe $d/Dogfile.exe }
+          if (Test-Path "$env:RUNNER_TEMP/smoke") { Copy-Item -Recurse "$env:RUNNER_TEMP/smoke/*" $d/ }
+          Set-Location $d
+          git init -q -b app-bin
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          git add -A
+          git commit -q -m "Dogfile.exe from ${{ github.sha }}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" app-bin
+      - name: Tidy the cache
+        if: always()
+        shell: pwsh
+        run: Remove-Item -Recurse -Force target/release/renderer, target/release/data, target/release/portable.txt -ErrorAction SilentlyContinue
+  windows-arm64:
+    runs-on: ${{ vars.RUNNER == 'pc' && fromJSON('["self-hosted","Windows","X64"]') || 'windows-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Git's bash on the path (self-hosted Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin", "$env:ProgramFiles\LLVM\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
+      - name: Rust toolchain for Windows on ARM
+        run: rustup toolchain install stable --profile minimal && rustup default stable && rustup target add aarch64-pc-windows-msvc
+      - uses: actions/cache@v4
+        if: vars.RUNNER != 'pc'
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: arm64-${{ hashFiles('Cargo.lock') }}
+          restore-keys: arm64-
+      - name: Pack the interface into the program
+        shell: bash
+        run: |
+          npm install --prefix "$RUNNER_TEMP/esbuild" --no-audit --no-fund --silent esbuild@0.24.2
+          ESBUILD_DIR="$RUNNER_TEMP/esbuild" node build/pack-ui.mjs
+      - name: Build (ARM64)
+        shell: pwsh
+        run: |
+          # without the assistant's model for now: llama.cpp needs clang for ARM, which the cmake crate's VS generator won't take
+          cargo build --release -p dogfile --target aarch64-pc-windows-msvc --no-default-features --features custom-protocol --message-format=short 2>&1 | Tee-Object -FilePath build.log
+          $code = $LASTEXITCODE
+          if ($code -ne 0) { Write-Output "::error title=arm64-build::$((Get-Content build.log | Select-String -Pattern '(^|: )error|CMake Error|fatal error|failed' | Select-Object -First 60) -join '%0A')" }
+          else { Write-Output "::notice title=arm64-build::$([math]::Round((Get-Item target/aarch64-pc-windows-msvc/release/dogfile.exe).Length/1MB,1)) MB" }
+          exit $code
+      - uses: actions/upload-artifact@v4
+        if: vars.RUNNER != 'pc'
+        with:
+          name: windows-arm64
+          path: target/aarch64-pc-windows-msvc/release/dogfile.exe
+      - name: Publish to the app-bin-arm64 branch (readable with git)
+        shell: pwsh
+        run: |
+          $d = "$env:RUNNER_TEMP/binbranch"
+          New-Item -ItemType Directory -Force $d | Out-Null
+          Copy-Item target/aarch64-pc-windows-msvc/release/dogfile.exe $d/Dogfile.exe
+          Set-Location $d
+          git init -q -b app-bin-arm64
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          git add -A
+          git commit -q -m "Dogfile.exe (ARM64) from ${{ github.sha }}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" app-bin-arm64
+  linux:
+    runs-on: ubuntu-22.04
+    if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Git's bash on the path (self-hosted Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin", "$env:ProgramFiles\LLVM\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
+      - name: Interface checks (names that don't exist, the assistant's grammar)
+        run: |
+          npx -y eslint@8.57.0 --no-eslintrc -c build/eslint-undef.json src/renderer/js/*.js
+          node build/test-assistant-apps.mjs
+          node build/test-assistant-files.mjs
+      - name: System libraries
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev patchelf > /dev/null
+      - uses: actions/cache@v4
+        if: vars.RUNNER != 'pc'
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: linux-${{ hashFiles('Cargo.lock') }}
+          restore-keys: linux-
+      - name: Pack the interface into the program
+        shell: bash
+        run: |
+          npm install --prefix "$RUNNER_TEMP/esbuild" --no-audit --no-fund --silent esbuild@0.24.2
+          ESBUILD_DIR="$RUNNER_TEMP/esbuild" node build/pack-ui.mjs
+      - name: Build and package (Linux x64)
+        run: |
+          set -o pipefail
+          cargo build --release -p dogfile > build.log 2>&1 || { echo "::error title=linux-build::$(grep -E '^error' -A12 build.log | head -120 | tr '\n' '~' | sed 's/~/%0A/g')"; exit 1; }
+          v=$(node -p "require('./app/tauri.conf.json').version")
+          d=dist/Dogfile-$v-linux-x64; mkdir -p $d
+          cp target/release/dogfile $d/dogfile; mkdir -p $d/7zip && cp vendor/7zip/linux/* $d/7zip/ 2>/dev/null || true
+          cp app/icons/icon.png $d/dogfile.png
+          cat > $d/install.sh <<'SH'
+          #!/bin/sh
+          # adds Dogfile to your applications menu
+          HERE="$(cd "$(dirname "$0")" && pwd)"
+          mkdir -p "$HOME/.local/share/applications"
+          printf '[Desktop Entry]\nName=Dogfile\nComment=File manager\nExec=%s/dogfile %%U\nIcon=%s/dogfile.png\nType=Application\nCategories=System;FileManager;\nMimeType=inode/directory;\n' "$HERE" "$HERE" > "$HOME/.local/share/applications/dogfile.desktop"
+          echo "Dogfile was added to your applications menu."
+          SH
+          chmod +x $d/install.sh
+          tar -C dist -czf dist/Dogfile-$v-linux-x64.tar.gz Dogfile-$v-linux-x64
+          echo "::notice title=linux::$(ls -la dist/*.tar.gz | awk '{print $5, $9}')"
+      - uses: actions/upload-artifact@v4
+        if: vars.RUNNER != 'pc'
+        with:
+          name: linux-x64
+          path: dist/*.tar.gz
+  macos:
+    runs-on: macos-14
+    if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Git's bash on the path (self-hosted Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin", "$env:ProgramFiles\LLVM\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
+      - uses: actions/cache@v4
+        if: vars.RUNNER != 'pc'
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: mac-${{ hashFiles('Cargo.lock') }}
+          restore-keys: mac-
+      - name: Pack the interface into the program
+        shell: bash
+        run: |
+          npm install --prefix "$RUNNER_TEMP/esbuild" --no-audit --no-fund --silent esbuild@0.24.2
+          ESBUILD_DIR="$RUNNER_TEMP/esbuild" node build/pack-ui.mjs
+      - name: Build and package (Mac, Apple silicon)
+        run: |
+          set -o pipefail
+          cargo build --release -p dogfile > build.log 2>&1 || { echo "::error title=mac-build::$(grep -E '^error' -A12 build.log | head -120 | tr '\n' '~' | sed 's/~/%0A/g')"; exit 1; }
+          v=$(node -p "require('./app/tauri.conf.json').version")
+          a=dist/Dogfile.app/Contents; mkdir -p $a/MacOS $a/Resources
+          cp target/release/dogfile $a/MacOS/dogfile
+          mkdir -p icon.iconset && for s in 16 32 128 256 512; do sips -z $s $s app/icons/icon.png --out icon.iconset/icon_${s}x${s}.png > /dev/null; done
+          iconutil -c icns icon.iconset -o $a/Resources/dogfile.icns || true
+          cat > $a/Info.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+          <key>CFBundleName</key><string>Dogfile</string><key>CFBundleDisplayName</key><string>Dogfile</string>
+          <key>CFBundleIdentifier</key><string>app.dogfile</string><key>CFBundleVersion</key><string>$v</string>
+          <key>CFBundleShortVersionString</key><string>$v</string><key>CFBundleExecutable</key><string>dogfile</string>
+          <key>CFBundleIconFile</key><string>dogfile</string><key>CFBundlePackageType</key><string>APPL</string>
+          <key>LSMinimumSystemVersion</key><string>11.0</string><key>NSHighResolutionCapable</key><true/>
+          </dict></plist>
+          PLIST
+          codesign --force --deep -s - dist/Dogfile.app || true
+          (cd dist && ditto -c -k --keepParent Dogfile.app Dogfile-$v-mac-arm64.zip)
+          echo "::notice title=mac::$(ls -la dist/*.zip | awk '{print $5, $9}')"
+      - uses: actions/upload-artifact@v4
+        if: vars.RUNNER != 'pc'
+        with:
+          name: mac-arm64
+          path: dist/*.zip
+  # the licence server (supabase/functions/license) against a real Postgres, with Stripe and email faked
+  license-server:
+    runs-on: ubuntu-latest
+    if: vars.RUNNER != 'pc' && (github.event_name == 'workflow_dispatch' || vars.BUILD_ALL == 'yes')
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: pg
+          POSTGRES_DB: lic
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Git's bash on the path (self-hosted Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin", "$env:ProgramFiles\LLVM\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
+      - name: Licence server tests
+        env:
+          PGPASSWORD: pg
+        run: |
+          set -o pipefail
+          psql -h 127.0.0.1 -U postgres -d lic -qc "create role anon" -c "create role authenticated"
+          psql -h 127.0.0.1 -U postgres -d lic -q -v ON_ERROR_STOP=1 -f supabase/migrations/20261022000000_licensing.sql
+          npm install --prefix "$RUNNER_TEMP/deno" --no-audit --no-fund --silent deno@2.5.6
+          cd supabase/functions/license
+          if ! DB_URL=postgres://postgres:pg@127.0.0.1:5432/lic NO_COLOR=1 "$RUNNER_TEMP/deno/node_modules/.bin/deno" test -A --no-check test.ts > "$RUNNER_TEMP/t.log" 2>&1; then
+            echo "::error title=license-server::$(grep -vE '^\s+at ' "$RUNNER_TEMP/t.log" | tail -30 | tr '\n' '~' | sed 's/~/%0A/g')"; exit 1
+          fi
+          echo "::notice title=license-server::$(grep -E 'ok \||passed|failed' "$RUNNER_TEMP/t.log" | tail -3 | tr '\n' ' ')"

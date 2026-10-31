@@ -1,0 +1,54 @@
+# Publishes the latest finished build to the public updates repository (ndaoud360/dogfile-updates):
+# Actions > publish > Run workflow. It takes Dogfile.exe and the setup program that the app workflow left on the
+# app-bin branches (wait for that run to finish), makes the update (the program zips hold only Dogfile.exe) and
+# creates release v<version>, marked latest. Nothing else is pushed to the public repository: no commits, no source.
+# Needs the secret DOGFILE_UPDATES_TOKEN: a fine-grained token with "Contents: Read and write" on that repository.
+# The version comes from app/tauri.conf.json and the notes from release-notes/<version>.md.
+name: publish
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      REPO: ndaoud360/dogfile-updates
+      GH_TOKEN: ${{ secrets.DOGFILE_UPDATES_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Get the finished build
+        run: |
+          set -e
+          git fetch -q --depth 1 origin +refs/heads/app-bin:refs/remotes/origin/app-bin +refs/heads/app-bin-arm64:refs/remotes/origin/app-bin-arm64
+          mkdir -p bin/x64 bin/arm64
+          git --work-tree=bin/x64 checkout origin/app-bin -- Dogfile.exe
+          git --work-tree=bin/arm64 checkout origin/app-bin-arm64 -- Dogfile.exe
+          git log -1 --format='x64 build: %s (%cd)' origin/app-bin
+          git log -1 --format='arm64 build: %s (%cd)' origin/app-bin-arm64
+      - name: Check the version, the notes, the files and the token
+        id: check
+        run: |
+          ver=$(node -p "require('./app/tauri.conf.json').version")
+          node -e "const c=require('./backend/license.json'); if(!c.api||!c.pubkey){console.error('backend/license.json is empty'); process.exit(1)}" || { echo "::error title=publish::licensing isn't set up in backend/license.json, so this build would unlock Pro for everyone"; exit 1; }
+          [ -f "release-notes/$ver.md" ] || { echo "::error title=publish::write release-notes/$ver.md first"; exit 1; }
+          git --work-tree=bin/x64 checkout origin/app-bin -- "Dogfile-Setup-$ver.exe" 2>/dev/null || { echo "::error title=publish::the app-bin branch has no Dogfile-Setup-$ver.exe: wait for the app workflow to finish building $ver"; exit 1; }
+          [ -n "$GH_TOKEN" ] || { echo "::error title=publish::add the secret DOGFILE_UPDATES_TOKEN (Settings > Secrets and variables > Actions)"; exit 1; }
+          perm=$(gh api repos/$REPO --jq '.permissions.push' 2>&1) || true
+          [ "$perm" = "true" ] || { echo "::error title=publish::the token in DOGFILE_UPDATES_TOKEN can't write to $REPO (GitHub said: $(echo $perm | head -c 300)). Give it access to that repository with Contents: Read and write."; exit 1; }
+          echo "ver=$ver" >> $GITHUB_OUTPUT
+      - name: Make the update
+        run: node build/make-update.mjs ${{ steps.check.outputs.ver }} release-notes/${{ steps.check.outputs.ver }}.md --x64 bin/x64/Dogfile.exe --arm64 bin/arm64/Dogfile.exe --setup bin/x64/Dogfile-Setup-${{ steps.check.outputs.ver }}.exe
+      - name: Publish
+        run: |
+          set +e
+          node build/publish-update.mjs > "$RUNNER_TEMP/pub.log" 2>&1
+          code=$?
+          cat "$RUNNER_TEMP/pub.log"
+          if [ $code -ne 0 ] && grep -q "not accessible by personal access token" "$RUNNER_TEMP/pub.log"; then
+            echo "::error title=publish::The token can see $REPO but isn't allowed to make releases. Edit it (GitHub > Settings > Developer settings > Fine-grained tokens): Repository permissions > Contents > Read and write, with $REPO selected. Then run publish again."; exit 1
+          fi
+          if [ $code -ne 0 ]; then echo "::error title=publish::$(tail -25 "$RUNNER_TEMP/pub.log" | tr '\n' '~' | sed 's/~/%0A/g')"; exit $code; fi
+          echo "::notice title=published::$(tail -8 "$RUNNER_TEMP/pub.log" | tr '\n' '~' | sed 's/~/%0A/g')"

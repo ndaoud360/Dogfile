@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:*; img-src 'self' http://127.0.0.1:* data: blob:; connect-src 'self' http://127.0.0.1:* data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' http://127.0.0.1:* data:; script-src 'self' http://127.0.0.1:* 'wasm-unsafe-eval'; worker-src 'self' http://127.0.0.1:* blob:">
+  <title>Dogfile Office</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="office.css">
+</head>
+<body class="tool office-app">
+  <header id="of-title">
+    <span class="of-logo"></span>
+    <span id="of-name">Dogfile Office</span>
+    <div class="tab-drag"></div>
+    <div id="win-ctl"></div>
+  </header>
+  <div id="of-tabs"></div>
+  <div id="of-bar"></div>
+  <div id="of-main">
+    <aside id="of-side"></aside>
+    <div id="of-stage">
+      <div id="of-doc"></div>
+      <div id="of-empty"><div class="of-big"></div><div class="em-title">Dogfile Office</div><div class="em-sub">Word, Excel, PowerPoint and PDF files: read them, make quick changes and save.</div><button class="btn" id="of-open">Open a document…</button></div>
+      <div id="of-busy"><div class="spin"></div><div class="msg">Opening…</div></div>
+    </div>
+  </div>
+  <footer id="of-status"></footer>
+  <div id="toasts"></div>
+  <script type="module" src="js/office.js"></script>
+</body>
+</html>

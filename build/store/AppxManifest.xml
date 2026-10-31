@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dogfile for the Microsoft Store. CI fills in the identity from Partner Center (repository variables
+     STORE_IDENTITY_NAME, STORE_PUBLISHER, STORE_PUBLISHER_NAME) and the version, then packs it with makeappx. -->
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+         xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+         xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+         IgnorableNamespaces="uap uap3 desktop rescap">
+  <Identity Name="{IDENTITY_NAME}" Publisher="{PUBLISHER}" Version="{VERSION}.0" ProcessorArchitecture="{ARCH}" />
+  <Properties>
+    <DisplayName>Dogfile</DisplayName>
+    <PublisherDisplayName>{PUBLISHER_NAME}</PublisherDisplayName>
+    <Logo>assets\StoreLogo.png</Logo>
+    <Description>A fast file manager with tabs, split panes, instant search, and built-in Notepad, Photos and Player.</Description>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+  <Applications>
+    <Application Id="Dogfile" Executable="Dogfile.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="Dogfile" Description="Dogfile file manager" BackgroundColor="transparent"
+                          Square150x150Logo="assets\Square150x150Logo.png" Square44x44Logo="assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="assets\Wide310x150Logo.png" />
+      </uap:VisualElements>
+      <Extensions>
+        <uap3:Extension Category="windows.appExecutionAlias" Executable="Dogfile.exe" EntryPoint="Windows.FullTrustApplication">
+          <uap3:AppExecutionAlias>
+            <desktop:ExecutionAlias Alias="dogfile.exe" />
+          </uap3:AppExecutionAlias>
+        </uap3:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+    <rescap:Capability Name="broadFileSystemAccess" />
+  </Capabilities>
+</Package>

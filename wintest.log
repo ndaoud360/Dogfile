@@ -1,0 +1,53 @@
+startup: window ready 953 ms after the program started (page 491 ms)
+platform win32 temp C:\Users\RUNNER~1\AppData\Local\Temp\ 7z true ffmpeg false
+ok   drives 18ms C:\ fixed Windows 32GB free | D:\ fixed Temporary Storage 150GB free
+ok   list C:\Windows (attributes) 3ms 111 items, hidden 4, system 5, 3 ms
+ok   list System32 (big folder) 26ms 4665 items in 26 ms
+ok   mkdir + files 83ms a.txt,b.txt,out
+ok   rename case only 6ms a.txt,B.txt,out
+ok   hash 3ms 
+ok   copy job 24ms done
+ok   copy again (keep both) 33ms done a (2).txt,a.txt,B.txt
+ok   move job 24ms done true
+ok   recycle + list + restore 1295ms done restored=true
+ok   attributes hidden 7ms {"archive":true,"compressed":false,"created":"2026-10-31T18:16:02.974Z","encrypted":false,"hidden":true,"readonly":false,"system":false}
+ok   shortcut 14ms C:\Users\RUNNER~1\AppData\Local\Temp\dogtest\a.txt
+ok   clipboard files 5ms {"cut":false,"paths":["C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\\\dogtest\\a.txt"]}
+ok   clipboard text 7ms 
+ok   icon for .txt and notepad.exe 28ms null | data:image/png;base64,iVBORw0K
+ok   thumbnail (shell) 21ms no thumbnail
+ok   shell verbs 5ms 
+ok   zip (7za) + list + extract 592ms done ["a.txt","pic.png"] extract done made
+safe   rename never replaces an existing file
+safe   saving over a file keeps its creation date and leaves no work file
+safe   moving a folder onto one with the same files, answering skip, keeps the skipped originals
+safe   copy with replace swaps the whole file in and leaves no work file
+safe   extracting never overwrites a file that is already there
+safe   a folder name with & in it is never run as a command (terminal and commands)
+ok   folder size job 3ms 346 files 429 MB
+ok   search job (walk) 3ms 
+ok   index status 2ms {"admin":true,"available":true,"roots":[{"asleep":false,"builtAt":1793470563418,"count":472432,"method":"mft","ms":3723,"root":"C:\\","scanned":472432,"state":"ready"},{"asleep":false,"builtAt":1793470559970,"count":15323,"method":"mft","ms":87,"root":"D:\\","scanned":15285,"state":"ready"}]}
+ok   pty (powershell) 5023ms "\u001b[6n"
+ok   watch folder 565ms {"dir":"C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\\\dogtest","key":"pane0"}
+ERR  versions: PRO_REQUIRED: This is a Dogfile Pro feature
+ok   secret (DPAPI) 7ms 
+FAIL default file manager? 2ms 
+ok   who locks 11ms []
+ok   git status 336ms {"branch":"main","files":{"D:\\a\\Dogfile\\Dogfile\\app/gen/schemas/desktop-schema.json":"M","D:\\a\\Dogfile\\Dogfile\\a
+ok   everything status 9ms {"es":null,"exe":null,"running":false}
+ok   find editor 2ms null
+ok   cloud detect 3ms []
+ok   mapped drives 48ms []
+ok   recent (Windows) 4ms 2
+ok   doc text (txt) 3ms hello
+ok   photo edit save (canvas to file) 198ms sent 1204 KB; one request: ok 903 KB; in pieces: 903 KB
+FAIL window maximized? 2ms 
+ok   long paths (over 260 characters) 112ms len 364 list=deep file.txt copy=done renamed=true delete=done gone=true
+ok   keywords into a file (System.Keywords) 130ms {"w":{"how":"properties","ok":true},"r":["Red","Holiday"],"png":{"how":"properties","ok":true}}
+FAIL dialog jump (another program's Open dialog goes to a folder) 40001ms TIMEOUT
+ok   sidebar fold: busy time and what covers the panes afterwards 6537ms close: gaps none; long tasks none; covered never | open: gaps none; long tasks none; covered never | settings event 1 ms
+ok   sidebar fold: rapid presses in a big folder 7978ms click handler ms 0,0,0,0,0,0,0,0; gaps none; long tasks none; collapsed=false
+ERR  sidebar fold: main thread lateness: Unknown channel diag:lag
+ok   window buttons drawn 0ms 
+DONE
+

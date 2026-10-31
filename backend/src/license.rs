@@ -352,9 +352,19 @@ fn mode_of(s: &mut Saved) -> (Mode, u64) {
     }
     (if s.trial_over { Mode::Expired } else { Mode::None }, 0)
 }
-/// Pro features are allowed: a licence, the trial, or a build without licensing
+/// Does this state allow Pro features? A build without licensing is for development only: a release build that
+/// somehow lost its key (a mistyped one decodes to nothing) must not give everything away.
+fn allows_pro(m: Mode) -> bool {
+    match m {
+        Mode::Licensed | Mode::Trial => true,
+        Mode::Unconfigured => cfg!(debug_assertions),
+        Mode::Expired | Mode::None => false,
+    }
+}
+/// Pro features are allowed: a licence, the trial, or (development builds only) a build without licensing.
+/// Worked out again from the signed token on every call, never remembered as a yes.
 pub fn pro() -> bool {
-    matches!(with(|s| mode_of(s).0), Mode::Licensed | Mode::Trial | Mode::Unconfigured)
+    with(|s| allows_pro(mode_of(s).0))
 }
 fn status_json() -> Value {
     with(|s| {
@@ -362,8 +372,8 @@ fn status_json() -> Value {
         let now = trusted_now(s);
         let m = machine_text();
         json!({
-            "mode": match mode { Mode::Unconfigured => "unconfigured", Mode::Licensed => "licensed", Mode::Trial => "trial", Mode::Expired => "expired", Mode::None => "none" },
-            "pro": matches!(mode, Mode::Licensed | Mode::Trial | Mode::Unconfigured),
+            "mode": match mode { Mode::Unconfigured => if cfg!(debug_assertions) { "unconfigured" } else { "none" }, Mode::Licensed => "licensed", Mode::Trial => "trial", Mode::Expired => "expired", Mode::None => "none" },
+            "pro": allows_pro(mode),
             "trialEnd": end,
             "daysLeft": if mode == Mode::Trial { (end.saturating_sub(now) + 86399) / 86400 } else { 0 },
             "serial": if mode == Mode::Licensed { s.serial.as_deref().map(mask_serial) } else { None },
@@ -600,6 +610,23 @@ mod tests {
         let d = std::env::temp_dir().join(format!("dogfile-license-{label}-{}-{}", std::process::id(), crate::util::now_ms() as u64));
         std::fs::create_dir_all(&d).unwrap();
         d
+    }
+    #[test]
+    fn the_shipped_config_turns_licensing_on() {
+        // an empty or mistyped key makes a build "unconfigured": the release must never go out that way
+        let c: Value = serde_json::from_str(CONFIG).expect("backend/license.json is not valid JSON");
+        assert!(c["api"].as_str().is_some_and(|a| a.starts_with("https://")), "license.json needs an https api address");
+        use base64::Engine;
+        let b = base64::engine::general_purpose::STANDARD.decode(c["pubkey"].as_str().unwrap_or("").trim()).expect("pubkey is not base64");
+        let b = <[u8; 32]>::try_from(b.as_slice()).expect("pubkey is not 32 bytes");
+        assert!(ed25519_dalek::VerifyingKey::from_bytes(&b).is_ok(), "pubkey is not a valid key");
+    }
+    #[test]
+    fn only_a_licence_or_the_trial_unlocks_pro_in_a_release_build() {
+        assert!(allows_pro(Mode::Licensed) && allows_pro(Mode::Trial));
+        assert!(!allows_pro(Mode::Expired) && !allows_pro(Mode::None));
+        // "no licensing set up" is a development convenience only
+        assert_eq!(allows_pro(Mode::Unconfigured), cfg!(debug_assertions));
     }
     #[test]
     fn a_failed_save_is_an_error_not_a_success() {

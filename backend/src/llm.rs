@@ -533,3 +533,14 @@ pub fn stop_call(_a: &Args) -> R {
     stop();
     Ok(json!(true))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn the_bundled_brain_file_loads_and_builds_the_answer_schema() {
+        // both stop the assistant for good if brain.json is damaged, so a broken file must fail here, not for a customer
+        assert!(brain()["features"].as_object().is_some_and(|f| !f.is_empty()), "brain.json has no features");
+        assert!(schema().is_object());
+    }
+}

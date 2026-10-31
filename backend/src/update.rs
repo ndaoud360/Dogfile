@@ -121,6 +121,52 @@ fn needed(m: &Value, comps: &Value) -> Vec<Value> {
 pub fn from_store() -> bool {
     crate::st().res_dir.join("store.txt").is_file()
 }
+/// The keys Dogfile trusts to sign its updates (base64, one per entry): paste the public key printed by
+/// `node build/sign-update.mjs keygen`. A second entry lets a key be replaced without stranding installed copies.
+/// While this is empty a release build uses no update at all, rather than trusting an unsigned one.
+const UPDATE_PUBKEYS: &[&str] = &[];
+
+fn update_keys() -> Vec<ed25519_dalek::VerifyingKey> {
+    use base64::Engine;
+    UPDATE_PUBKEYS
+        .iter()
+        .filter_map(|k| {
+            let b: [u8; 32] = base64::engine::general_purpose::STANDARD.decode(k).ok()?.try_into().ok()?;
+            ed25519_dalek::VerifyingKey::from_bytes(&b).ok()
+        })
+        .collect()
+}
+/// the update information is believed only if one of the trusted keys signed exactly these bytes
+fn verify_signed(body: &[u8], sig_b64: &str, keys: &[ed25519_dalek::VerifyingKey]) -> Result<(), String> {
+    use base64::Engine;
+    let sig = base64::engine::general_purpose::STANDARD
+        .decode(sig_b64.trim())
+        .ok()
+        .and_then(|b| ed25519_dalek::Signature::from_slice(&b).ok())
+        .ok_or("The update's signature couldn't be read")?;
+    if keys.iter().any(|k| k.verify_strict(body, &sig).is_ok()) {
+        Ok(())
+    } else {
+        Err("The update information isn't signed by Dogfile, so it wasn't used".to_string())
+    }
+}
+/// Fetches <manifest>.sig and checks it. The only unsigned source is a stand-in server on this PC (automated tests).
+async fn verify_manifest(url: &str, body: &[u8]) -> Result<(), String> {
+    if url.starts_with("http://127.0.0.1") {
+        return Ok(());
+    }
+    let keys = update_keys();
+    if keys.is_empty() {
+        return Err("Updates aren't set up in this build".into());
+    }
+    let resp = util::http().get(format!("{url}.sig")).header("Cache-Control", "no-cache").timeout(std::time::Duration::from_secs(20)).send().await.map_err(|e| short_err(&e.to_string()))?;
+    if !resp.status().is_success() {
+        return Err("The update information isn't signed, so it wasn't used".into());
+    }
+    let sig = resp.text().await.map_err(|_| "The update's signature couldn't be read".to_string())?;
+    verify_signed(body, &sig, &keys)
+}
+
 pub async fn check(_a: &Args) -> R {
     if from_store() {
         return Ok(json!({ "current": current_version(), "available": false, "checked": util::now_ms(), "store": true, "canInstall": false }));
@@ -131,7 +177,9 @@ pub async fn check(_a: &Args) -> R {
         if !resp.status().is_success() {
             return Err(if resp.status().as_u16() == 404 { "No updates have been published yet".to_string() } else { format!("The update server answered {}", resp.status()) });
         }
-        let m: Value = resp.json().await.map_err(|_| "The update information couldn't be read".to_string())?;
+        let body = resp.bytes().await.map_err(|e| short_err(&e.to_string()))?;
+        verify_manifest(&url, &body).await?;
+        let m: Value = serde_json::from_slice(&body).map_err(|_| "The update information couldn't be read".to_string())?;
         if m["version"].as_str().is_none() {
             return Err("The update information couldn't be read".into());
         }
@@ -449,6 +497,39 @@ mod tests {
         if std::env::var("DOGFILE_UPDATE_URL").is_err() {
             assert!(!allowed("http://127.0.0.1:8080/a.zip"));
         }
+    }
+    // made with `node build/sign-update.mjs` (a throwaway key, only for this test): the Node signer and this check agree
+    const TEST_KEY: &str = "EcrZ5no7AS7KXwBiw7Skj4JmoYNK6mleESeGqqBbu5s=";
+    const TEST_BODY: &[u8] = br#"{"version":"9.9.9","packages":[]}"#;
+    const TEST_SIG: &str = "Oc/FwO1GOC1dgbr/SyOapXkJ1urXVSE/KHr4vhXlypWgds4sLSwDlkTOgNG+sw6BN0946BAGBLeuj6V3FGwQAA==";
+    fn key(k: &str) -> ed25519_dalek::VerifyingKey {
+        use base64::Engine;
+        let b: [u8; 32] = base64::engine::general_purpose::STANDARD.decode(k).unwrap().try_into().unwrap();
+        ed25519_dalek::VerifyingKey::from_bytes(&b).unwrap()
+    }
+    #[test]
+    fn an_update_signed_with_a_trusted_key_is_accepted() {
+        assert!(verify_signed(TEST_BODY, TEST_SIG, &[key(TEST_KEY)]).is_ok());
+        assert!(verify_signed(TEST_BODY, &format!("{TEST_SIG}\n"), &[key(TEST_KEY)]).is_ok());
+    }
+    #[test]
+    fn a_changed_unsigned_or_wrongly_signed_update_is_refused() {
+        // one changed byte in the update information (a different package, a different checksum)
+        assert!(verify_signed(br#"{"version":"9.9.8","packages":[]}"#, TEST_SIG, &[key(TEST_KEY)]).is_err());
+        // signed by a key Dogfile doesn't trust
+        let other = ed25519_dalek::SigningKey::from_bytes(&[7u8; 32]).verifying_key();
+        assert!(verify_signed(TEST_BODY, TEST_SIG, &[other]).is_err());
+        // no trusted keys at all, or a signature that isn't one
+        assert!(verify_signed(TEST_BODY, TEST_SIG, &[]).is_err());
+        assert!(verify_signed(TEST_BODY, "not a signature", &[key(TEST_KEY)]).is_err());
+        assert!(verify_signed(TEST_BODY, "", &[key(TEST_KEY)]).is_err());
+        // any one of several trusted keys is enough (a replaced key keeps working)
+        assert!(verify_signed(TEST_BODY, TEST_SIG, &[other, key(TEST_KEY)]).is_ok());
+    }
+    #[test]
+    fn the_pinned_keys_are_valid_or_the_build_refuses_updates() {
+        // a mistyped key is dropped, never trusted: every entry must decode, so a typo shows up here, not in the field
+        assert_eq!(update_keys().len(), UPDATE_PUBKEYS.len(), "an entry in UPDATE_PUBKEYS isn't a valid key");
     }
     #[test]
     fn versions_compare_like_people_expect() {

@@ -40,7 +40,7 @@ filetime = "0.2"
 russh = { version = "0.60", default-features = false, features = ["ring", "flate2"] }
 russh-sftp = "2"
 async-trait = "0.1"
-suppaftp = { version = "6", features = ["rustls"] }
+suppaftp = { version = "10", features = ["rustls-ring"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
 webpki-roots = "1"
 # the assistant's language model (llama.cpp, built in; no GPU backend yet)

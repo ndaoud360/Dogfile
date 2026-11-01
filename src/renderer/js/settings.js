@@ -1,6 +1,6 @@
 // Settings: general, appearance, behavior, views, tools, keyboard shortcuts (remappable), custom commands, tags, data.
 import { FOLDER_ANIMS } from './folderanim.js';
-import { setNativeDialogs } from './core.js';
+import { setNativeDialogs, openDefault } from './core.js';
 import { api, state, bus, h, saveSettings, saveTags, toast, IS_WIN, DEFAULT_SETTINGS, sys, onMain, debounce } from './core.js';
 import { icon } from './icons.js';
 import { modal, confirm, prompt } from './dialogs.js';
@@ -470,7 +470,7 @@ export async function openSettings(section = 'general', opts = {}) {
     data: ['Data & reset', 'workspace', async (el) => {
       const dir = await api('store:path');
       _append(el,
-        row('Settings folder', h('div', { class: 'stack' }, h('code', {}, dir), h('button', { class: 'btn small', onclick: () => api('shell:open', dir) }, 'Open folder')), 'Copy this folder to back up your setup. Add portable.txt next to Dogfile.exe to run it portable.'),
+        row('Settings folder', h('div', { class: 'stack' }, h('code', {}, dir), h('button', { class: 'btn small', onclick: () => openDefault(dir) }, 'Open folder')), 'Copy this folder to back up your setup. Add portable.txt next to Dogfile.exe to run it portable.'),
         row('Export settings', h('button', { class: 'btn small', onclick: () => import('./settingsync.js').then((m) => m.exportSettings()) }, 'Export…'), 'Saves your settings, colors, tags and pins to a file.'),
         row('Import settings', h('button', { class: 'btn small', onclick: () => import('./settingsync.js').then((m) => m.importSettings()) }, 'Import from file…')),
         row('Forget per-folder views', h('button', { class: 'btn small', onclick: async () => { state.folderViews = {}; (await import('./core.js')).saveLibrary(); toast('Folder views reset'); } }, 'Reset')),

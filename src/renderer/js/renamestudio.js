@@ -2,7 +2,8 @@
 // numbering / dates / photo, music and document details, case, add / remove text, extension) with a live
 // before → after preview, problem checks, saved presets, "describe it in words", and one-step undo.
 import { api, state, h, esc, toast, natCmp, extname, stem, basename, dirname, pjoin, saveSettings, IS_WIN } from './core.js';
-import { modal, prompt, interpretRename } from './dialogs.js';
+import { modal, prompt } from './dialogs.js';
+import { interpretRename } from './rename-words.js';
 import { icon } from './icons.js';
 import * as A from './actions.js';
 import * as MM from './mediameta.js';

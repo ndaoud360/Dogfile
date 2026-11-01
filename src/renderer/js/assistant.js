@@ -3,7 +3,7 @@
 // request and what it found, previews any change, and asks before doing anything big or destructive.
 // Everything runs on this PC: a request grammar, name & content matching, and (optionally) the local AI models.
 import { animatePanel } from './panelanim.js';
-import { api, state, sys, bus, h, esc, toast, fmtSize, fmtDate, basename, dirname, pjoin, KINDS, TEXT_EXTS, uid, setTags, isVirtual } from './core.js';
+import { api, state, sys, bus, h, esc, toast, fmtSize, fmtDate, basename, dirname, pjoin, KINDS, TEXT_EXTS, uid, setTags, isVirtual, jobProblem } from './core.js';
 import { icon, fileArt } from './icons.js';
 import { confirm } from './dialogs.js';
 import { activeTab, navigate, selectedItems, openTab, loadTab } from './pane.js';
@@ -350,7 +350,7 @@ function showInTab(items, title, { view, mf } = {}) {
 const btn = (label, run, cls = '') => h('button', { class: 'btn small ' + cls, onclick: run }, label);
 
 // a folder named in the request ("my projects folder"): look in the user folders and one level below them
-async function resolveNamedFolder(name) {
+export async function resolveNamedFolder(name) {
   const k = sys.known || {};
   const want = name.toLowerCase().replace(/^(my|the)\s+/, '');
   const bases = [k.home, k.documents, k.desktop, k.downloads, k.pictures, k.videos, k.music, k.onedrive, ...(state.pinned || [])].filter(Boolean);
@@ -384,7 +384,7 @@ async function execute(plan, card, { t, sel }) {
     const checks = { off: new Set() };
     card.append(h('p', {}, `${dirs.length} empty folder${dirs.length === 1 ? '' : 's'}:`), fileRows(dirs, new Map(dirs.map((d) => [d, basename(dirname(d.path))])), { checks, limit: 300 }));
     const acts = h('div', { class: 'as-acts' }); card.append(acts);
-    if (plan.action === 'delete') acts.append(btn('Move to Recycle Bin…', async (e) => { const go = dirs.filter((d) => !checks.off.has(d)); if (!(await confirm(`Recycle ${go.length} empty folder${go.length === 1 ? '' : 's'}?`, 'They have nothing in them. You can restore them from the Recycle Bin.', { ok: 'Recycle', danger: true }))) return; e.target.disabled = true; const j = await A.runJob({ type: 'trash', sources: go.map((d) => d.path) }); card.append(h('p', { class: 'as-done' }, j.status === 'done' ? `Done. Recycled ${go.length}. Ctrl+Z restores them.` : `Finished with problems: ${j.errors?.[0] || ''}`)); }, 'primary danger'));
+    if (plan.action === 'delete') acts.append(btn('Move to Recycle Bin…', async (e) => { const go = dirs.filter((d) => !checks.off.has(d)); if (!(await confirm(`Recycle ${go.length} empty folder${go.length === 1 ? '' : 's'}?`, 'They have nothing in them. You can restore them from the Recycle Bin.', { ok: 'Recycle', danger: true }))) return; e.target.disabled = true; const j = await A.runJob({ type: 'trash', sources: go.map((d) => d.path) }); card.append(h('p', { class: 'as-done' }, j.status === 'done' ? `Done. Recycled ${go.length}. Ctrl+Z restores them.` : `Finished with problems: ${jobProblem(j)}`)); }, 'primary danger'));
     acts.append(btn('Show all in a tab', () => showInTab(dirs, plan.raw)));
     C.items = dirs; C.plan = plan;
     return;
@@ -393,7 +393,7 @@ async function execute(plan, card, { t, sel }) {
   if (plan.action === 'group') {
     let folder, files;
     if (plan.scope === 'selection') { files = sel.filter((i) => !i.isDir); folder = dirname(files[0]?.path || ''); }
-    else { folder = where.roots[0]; const r = await api('fs:list', folder); files = (r.items || []).filter((i) => !i.isDir && !i.hidden); }
+    else { folder = where.roots[0]; const r = await api('fs:list', folder); if (r.error) return card.append(h('p', {}, `I couldn’t read ${folder}: ${r.error}`)); files = (r.items || []).filter((i) => !i.isDir && !i.hidden); }
     if (plan.exts.length) files = files.filter((f) => plan.exts.includes((f.ext || '').toLowerCase()));
     if (!files?.length) return card.append(h('p', {}, 'There are no loose files there to sort.'));
     // each file into a folder of its own, named after it
@@ -514,7 +514,7 @@ async function execute(plan, card, { t, sel }) {
     acts.append(btn('Show all in a tab', () => showInTab(items, plan.raw), 'primary'));
     if (plan.action === 'open' || items.length === 1) acts.append(btn(items.length === 1 ? 'Open it' : `Open ${Math.min(items.length, 10)}`, () => A.openItems(items.slice(0, 10).map((f) => ({ ...f, isDir: false })))));
     if (items.length === 1) acts.append(btn('Show in folder', () => navigate(activeTab(), dirname(items[0].path), { select: items[0].path })));
-    if (plan.oldVersions) acts.append(btn('Move these to the Recycle Bin…', async (e) => { if (!(await confirm(`Recycle ${items.length} older version${items.length === 1 ? '' : 's'}?`, 'The newest copy of each document stays. You can restore them from the Recycle Bin.', { ok: 'Recycle', danger: true }))) return; e.target.disabled = true; const j = await A.runJob({ type: 'trash', sources: items.map((f) => f.path) }); done(j.status === 'done' ? `Done. Ctrl+Z restores them.` : `Finished with problems: ${j.errors?.[0] || ''}`); }, 'danger'));
+    if (plan.oldVersions) acts.append(btn('Move these to the Recycle Bin…', async (e) => { if (!(await confirm(`Recycle ${items.length} older version${items.length === 1 ? '' : 's'}?`, 'The newest copy of each document stays. You can restore them from the Recycle Bin.', { ok: 'Recycle', danger: true }))) return; e.target.disabled = true; const j = await A.runJob({ type: 'trash', sources: items.map((f) => f.path) }); done(j.status === 'done' ? `Done. Ctrl+Z restores them.` : `Finished with problems: ${jobProblem(j)}`); }, 'danger'));
     acts.append(h('span', { class: 'hint' }, 'Then you can say “move them to…”, “zip them”, “only the PDFs”…'));
     return;
   }
@@ -542,7 +542,7 @@ async function execute(plan, card, { t, sel }) {
       if (!(await confirm(`Move ${go.length} file${go.length === 1 ? '' : 's'} to the Recycle Bin?`, `${fmtSize(go.reduce((a, f) => a + (f.size || 0), 0))}. You can restore them from the Recycle Bin.`, { ok: 'Recycle', danger: true }))) return;
       e.target.disabled = true;
       const j = await A.runJob({ type: 'trash', sources: go.map((f) => f.path) });
-      done(j.status === 'done' ? `Done. Recycled ${go.length}. Ctrl+Z restores them.` : `Finished with problems: ${j.errors?.[0] || j.error || ''}`);
+      done(j.status === 'done' ? `Done. Recycled ${go.length}. Ctrl+Z restores them.` : `Finished with problems: ${jobProblem(j)}`);
     }, 'primary danger'), h('span', { class: 'hint' }, 'Untick anything you want to keep.'));
     return;
   }
@@ -555,7 +555,7 @@ async function execute(plan, card, { t, sel }) {
         const fmt = /\.7z$/i.test(plan.zipName) ? '7z' : /\.(tar\.gz|tgz)$/i.test(plan.zipName) ? 'tar.gz' : /\.tar$/i.test(plan.zipName) ? 'tar' : 'zip';
         const dest = await api('fs:uniqueName', dir, plan.zipName, 'number');
         const j = await A.runJob({ type: 'compress', sources: go.map((f) => f.path), dest: dir, opts: { output: dest, format: fmt } });
-        done(j.status === 'done' ? `Zipped into ${basename(dest)}.` : `Couldn’t zip: ${j.errors?.[0] || j.error || ''}`);
+        done(j.status === 'done' ? `Zipped into ${basename(dest)}.` : `Couldn’t zip: ${jobProblem(j)}`);
       } else { await A.quickZip(go.map((f) => ({ ...f, isDir: !!f.isDir }))); done('Zipped.'); }
     }, 'primary'));
     return;
@@ -593,7 +593,6 @@ const HELP_Q = /^\s*(what|what's|whats|how|why|where|can i|could i|is there|are 
 const hasTarget = (p) => !!(p.kinds.length || p.topic.length || p.exts.length || p.quoted.length || (p.scope && p.scope !== 'selection') || p.after || p.before || p.createdAfter || p.minSize || p.maxSize || p.notOpenedBefore || p.duplicates || p.latest || p.oldVersions || p.emptyDirs || p.regex || p.folderName || p.top || hasMeta(p) || p.color);
 
 function ask(text) { return askAssistant(text); }
-export const resolveNamedFolderPublic = (name) => resolveNamedFolder(name);
 // an action the assistant recognised (settings, tools, history, archives…): see assistant-actions.js
 async function runIntent(intent, text, into = null) {
   const card = into || startCard(text);
@@ -688,7 +687,6 @@ export async function askAssistant(text) {
   // "only the PDFs", "just the big ones": narrow what was found last
   if (refine) {
     const card = startCard(text);
-    plan.action = plan.action === 'find' ? 'find' : plan.action;
     plan.scope = 'selection';
     return runPlan(plan, card, { t, sel: C.items.map((f) => ({ ...f, isDir: !!f.isDir })) });
   }

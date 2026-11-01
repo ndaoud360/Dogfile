@@ -1,6 +1,6 @@
 // File actions: open, copy/cut/paste, delete, rename, new items, undo/redo, archives, shortcuts,
 // virtual locations (Home, This PC, Recent, Recycle Bin, Network, Tags), and context menus.
-import { api, state, sys, bus, h, isVirtual, isRemote, remoteParts, onMain, pjoin, dirname, basename, normalize, samePath, extname, stem, fmtSize, toast, onWorkMsgFor, IS_WIN, isMtp, isTextFile, isMediaFile, isImageFile, isModelFile, isOfficeFile, addRecentFile, tagsOf, setTags, moveTags, saveLibrary, kindOf, KINDS, setDriveNames, uid, errText } from './core.js';
+import { api, state, sys, bus, h, isVirtual, isRemote, remoteParts, onMain, pjoin, dirname, basename, normalize, samePath, extname, stem, fmtSize, toast, onWorkMsgFor, IS_WIN, isMtp, isTextFile, isMediaFile, isImageFile, isModelFile, isOfficeFile, addRecentFile, tagsOf, setTags, moveTags, saveLibrary, kindOf, KINDS, setDriveNames, uid, errText, openDefault } from './core.js';
 import { activeTab, paneTab, navigate, openTab, loadTab, renderTabPanes, selectedItems, startRename, selectOnly, otherPaneTab, paneCount, clearThumbCache, invalidateArchive } from './pane.js';
 import { showMenu } from './menu.js';
 import { prompt, confirm, propertiesDialog, compressDialog, archivePasswordDialog, alertBox } from './dialogs.js';
@@ -82,8 +82,7 @@ export async function openItems(items, { pane = state.activePane, newTab = false
       const target = await api('fs:readLink', f.path);
       if (target && (await api('fs:isDir', target))) { navigate(t, target); continue; }
     }
-    const r = await api('shell:open', f.path);
-    if (r !== true && r) toast(r, { error: true });
+    await openDefault(f.path);
     addRecentFile(f.path);
   }
 }
@@ -102,7 +101,7 @@ async function openArchiveEntry(f) {
     if (isTextFile(lf) && state.settings.useAtlasEditor !== false) openTool('editor', [p]);
     else if (isMediaFile(lf) && state.settings.useAtlasPlayer !== false) openTool('player', [p], { play: true });
     else if (isImageFile(lf) && state.settings.useAtlasViewer !== false) openTool('viewer', [p]);
-    else api('shell:open', p);
+    else openDefault(p);
   }, 300);
 }
 
@@ -382,7 +381,7 @@ export async function copyContents(it) {
 // ======================================================================
 // Delete / restore
 // ======================================================================
-const cleanErr = (e) => String(e?.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+const cleanErr = errText;
 export async function remove(items, permanent = false) {
   if (activeTab().path === 'atlas:recycle') return recycleDelete(items);
   const rem = items.filter((i) => i.remote);
@@ -453,7 +452,7 @@ export async function renameOne(it, newName) {
     await loadTab(t, { soft: true });
     selectOnly(t, normalize(to));
     renderTabPanes(t, true);
-  } catch (e) { toast(e.message.replace(/^Error invoking remote method 'invoke': (Error: )?/, ''), { error: true }); }
+  } catch (e) { toast(errText(e), { error: true }); }
 }
 
 export async function rename(items) {

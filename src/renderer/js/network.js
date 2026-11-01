@@ -1,7 +1,7 @@
 // Network & cloud: saved server connections (Windows shares, SFTP, FTP/FTPS, WebDAV) with status lights,
 // reconnecting shares that dropped, and cloud storage folders (OneDrive, Google Drive, Dropbox, iCloud, Box…)
 // that are synced to this PC, all in the sidebar.
-import { api, state, bus, h, esc, toast, saveSettings, uid } from './core.js';
+import { api, state, bus, h, esc, toast, saveSettings, uid, errText } from './core.js';
 import { modal, confirm } from './dialogs.js';
 import { icon } from './icons.js';
 import { activeTab, navigate } from './pane.js';
@@ -35,12 +35,12 @@ export async function openConnection(c) {
   const t = activeTab();
   if (BROWSED.has(c.type)) return navigate(t, `atlas:remote|${c.id}|${c.path || '/'}`);
   try { toast(`Connecting to ${c.name || c.host}…`, { ms: 2000 }); const unc = await api('net:connectShare', c.id); status.set(c.id, true); bus.emit('connections'); navigate(t, unc); }
-  catch (e) { status.set(c.id, false); bus.emit('connections'); toast(String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, ''), { error: true, ms: 8000 }); }
+  catch (e) { status.set(c.id, false); bus.emit('connections'); toast(errText(e), { error: true, ms: 8000 }); }
 }
 export async function reconnect(path) {
   const host = (/^\\\\([^\\@]+)/.exec(path || '') || [])[1]?.toLowerCase();
   const c = conns().find((x) => (x.type === 'smb' || x.type === 'webdav') && host && x.host.replace(/^\\\\/, '').toLowerCase().startsWith(host));
-  if (c) { try { await api('net:connectShare', c.id); toast('Reconnected'); return true; } catch (e) { toast(String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, ''), { error: true }); return false; } }
+  if (c) { try { await api('net:connectShare', c.id); toast('Reconnected'); return true; } catch (e) { toast(errText(e), { error: true }); return false; } }
   const r = await editConnection({ type: 'smb', host: host || '', share: (/^\\\\[^\\]+\\([^\\]+)/.exec(path || '') || [])[1] || '' });
   return !!r;
 }
@@ -115,7 +115,7 @@ export async function editConnection(c0) {
   const list = conns().filter((x) => x.id !== c.id); list.push(c);
   state.settings.connections = list; saveSettings();
   if (!OAUTH[c.type] && (pw || isNew)) {
-    try { await api('remote:setSecret', c.id, pw); } catch (e) { toast(`The connection was saved, but its password wasn’t: ${String(e?.message || e).replace(/^Error:\s*/, '')}`, { error: true }); }
+    try { await api('remote:setSecret', c.id, pw); } catch (e) { toast(`The connection was saved, but its password wasn’t: ${errText(e)}`, { error: true }); }
   }
   // saving an SFTP connection again trusts the server's current key (it's remembered on first connect)
   if (!isNew && c.type === 'sftp') { await api('remote:disconnect', c.id); await api('remote:forgetHostKey', c.id); }
@@ -160,7 +160,7 @@ export async function connectionsDialog() {
       list.append(h('div', { class: 'ws-row' }, h('span', { class: 'cn-dot ' + (st === true ? 'up' : st === false ? 'down' : ''), title: st === true ? 'Answering' : st === false ? 'Not answering' : 'Checking…' }),
         h('div', { class: 'hi-main' }, h('b', {}, c.name || c.host), h('span', { class: 'hint' }, OAUTH[c.type] ? `${OAUTH[c.type]}${c.who ? ` · ${c.who}` : ''}` : c.type === 's3' ? `${s3Label(c)} · ${c.bucket || 'all buckets'}` : `${TYPES.find((x) => x[0] === c.type)?.[1]} · ${c.host}${c.share ? '\\' + c.share : ''}${c.user ? ` · ${c.user}` : ''}`)),
         h('div', { class: 'hi-acts' }, h('button', { class: 'btn small primary', onclick: () => { closeIt(); openConnection(c); } }, 'Open'), h('button', { class: 'btn small', onclick: async () => { await editConnection(c); draw(); } }, 'Edit'),
-          h('button', { class: 'icon-btn small', title: 'Remove', html: icon('trash'), onclick: async () => { if (await confirm('Remove connection?', `“${esc(c.name || c.host)}” and its saved password will be removed.`, { ok: 'Remove', danger: true })) { state.settings.connections = conns().filter((x) => x.id !== c.id); saveSettings(); api('remote:setSecret', c.id, '').catch((e) => toast(`Couldn’t delete the saved password: ${String(e?.message || e).replace(/^Error:\s*/, '')}`, { error: true })); api('remote:disconnect', c.id); bus.emit('connections'); draw(); } } }))));
+          h('button', { class: 'icon-btn small', title: 'Remove', html: icon('trash'), onclick: async () => { if (await confirm('Remove connection?', `“${esc(c.name || c.host)}” and its saved password will be removed.`, { ok: 'Remove', danger: true })) { state.settings.connections = conns().filter((x) => x.id !== c.id); saveSettings(); api('remote:setSecret', c.id, '').catch((e) => toast(`Couldn’t delete the saved password: ${errText(e)}`, { error: true })); api('remote:disconnect', c.id); bus.emit('connections'); draw(); } } }))));
     }
   };
   draw();

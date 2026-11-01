@@ -1,6 +1,6 @@
 // Dogfile Photos: fast photo viewer with a queue, slideshow and fullscreen, plus a basic editor
 // (adjustments, filter presets, crop, rotate/flip, draw & text, resize) that saves as a copy or overwrites.
-import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce, KINDS, natCmp, fileUrl, DECODED_IMG, decodedUrl, fmtSize, fmtDate } from './core.js';
+import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce, KINDS, natCmp, fileUrl, DECODED_IMG, decodedUrl, fmtSize, fmtDate, openDefault } from './core.js';
 import { icon } from './icons.js';
 import { showMenu } from './menu.js';
 import { modal, confirm, prompt } from './dialogs.js';
@@ -708,7 +708,7 @@ function wire() {
   $('q-add').onclick = async () => { const f = await api('dialog:openFiles', { title: 'Add photos' }); if (f.length) setQueue(f, { append: true }); };
   $('vw-open').onclick = async () => { const f = await api('dialog:openFiles', { title: 'Open photos' }); if (f.length) setQueue(f, { autoPlaylist: f.length === 1 }); };
   const st = $('vw-stage');
-  st.addEventListener('wheel', (e) => { if (E) { if (!e.target.closest('#vw-tools')) { e.preventDefault(); setEditZoom((E.zoom || 1) * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY); } return; } e.preventDefault(); if (e.ctrlKey || V.zoom !== 'fit' || true) setZoom(V.scale * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY); }, { passive: false });
+  st.addEventListener('wheel', (e) => { if (E) { if (!e.target.closest('#vw-tools')) { e.preventDefault(); setEditZoom((E.zoom || 1) * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY); } return; } e.preventDefault(); setZoom(V.scale * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY); }, { passive: false });
   // two fingers: pinch to zoom (viewing and editing)
   const touches = new Map();
   let pinch = null;
@@ -768,7 +768,7 @@ function wire() {
       { label: 'Copy image', icon: 'copy', run: async () => { try { const c = document.createElement('canvas'); c.width = V.nat.w; c.height = V.nat.h; c.getContext('2d').drawImage(curImg(), 0, 0); const blob = await new Promise((r) => c.toBlob(r)); await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); toast('Image copied'); } catch { toast('Couldn’t copy this image', { error: true }); } } },
       { label: 'Copy path', icon: 'link', run: () => api('clip:writeText', it.path) },
       { label: 'Show in Dogfile', icon: 'folder', run: () => showInFiles(it.path) },
-      { label: 'Open with Windows default app', run: () => api('shell:open', it.path) },
+      { label: 'Open with Windows default app', run: () => openDefault(it.path) },
       { label: 'Info', icon: 'info', keys: 'I', run: () => { V.showInfo = !V.showInfo; renderInfo(); } },
       { separator: true },
       { label: 'Delete', icon: 'trash', danger: true, keys: 'Del', run: del },

@@ -1,7 +1,7 @@
 // Dogfile Pro: the 14-day trial, buying, serial numbers (online and offline), the Free vs Pro list, the stars on
 // Pro features and the popup when one is used without Pro. The checks that matter happen in the program
 // (backend/src/license.rs); this is the interface to them.
-import { api, onMain, state, bus, h, esc, saveSettings, toast } from './core.js';
+import { api, onMain, state, bus, h, esc, saveSettings, toast, errText } from './core.js';
 import { icon } from './icons.js';
 import { modal } from './dialogs.js';
 
@@ -80,7 +80,7 @@ function renderPill() {
 // ---------- pieces ----------
 const isOpen = () => !!document.querySelector('.lic-modal');
 const errBox = () => h('div', { class: 'lic-err', role: 'alert' });
-const showErr = (el, e) => { el.textContent = String(e?.message || e || '').replace(/^Error:\s*/, '').replace(/^PRO_REQUIRED:\s*/, ''); el.style.display = el.textContent ? '' : 'none'; };
+const showErr = (el, e) => { el.textContent = (e ? errText(e) : ''); el.style.display = el.textContent ? '' : 'none'; };
 const busy = async (btn, label, fn) => {
   const old = btn.textContent; btn.disabled = true; btn.textContent = label;
   try { return await fn(); } finally { btn.disabled = false; btn.textContent = old; }

@@ -2,7 +2,7 @@
 // GitHub repository with the topic "dogfile-mod" and an dogmod.json file. Browsing needs no
 // account; sharing needs a GitHub account and a token, which is stored encrypted on this PC and only ever sent to
 // GitHub. Before anything installs you see exactly what it may do and its full code.
-import { api, state, bus, h, toast, saveSettings, fmtDate } from './core.js';
+import { api, state, bus, h, toast, saveSettings, fmtDate, errText } from './core.js';
 import { modal } from './dialogs.js';
 import { icon } from './icons.js';
 import * as X from './extensions.js';
@@ -28,7 +28,7 @@ export async function signIn() {
     buttons: [{ label: 'Cancel', value: null }, { label: 'Sign in', primary: true, run: async (close) => {
       const tok = tokenIn.value.trim(); if (!tok) return false;
       res.textContent = 'Checking…';
-      try { await api('secret:set', 'github', tok); } catch (e) { res.textContent = `The token couldn’t be saved: ${String(e?.message || e).replace(/^Error:\s*/, '')}`; return false; }
+      try { await api('secret:set', 'github', tok); } catch (e) { res.textContent = `The token couldn’t be saved: ${errText(e)}`; return false; }
       const r = await gh('GET', '/user');
       if (!r.ok) { await api('secret:set', 'github', ''); res.textContent = r.status === 401 ? 'GitHub didn’t accept that token.' : `GitHub said: ${r.json?.message || r.status}`; return false; }
       state.settings.githubUser = r.json.login; saveSettings();
@@ -38,7 +38,7 @@ export async function signIn() {
   return ok;
 }
 export async function signOut() {
-  try { await api('secret:set', 'github', ''); } catch (e) { return toast(`Couldn’t delete the token from this PC: ${String(e?.message || e).replace(/^Error:\s*/, '')}`, { error: true }); }
+  try { await api('secret:set', 'github', ''); } catch (e) { return toast(`Couldn’t delete the token from this PC: ${errText(e)}`, { error: true }); }
   state.settings.githubUser = null; saveSettings(); toast('Signed out. The token was deleted from this PC.');
 }
 

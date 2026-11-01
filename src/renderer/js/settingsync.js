@@ -1,6 +1,6 @@
 // Your settings on every PC: export them to a file and import them elsewhere, or keep them in a folder that
 // syncs (OneDrive, Dropbox, Google Drive, a USB stick…) so every Dogfile using that folder shares them.
-import { api, state, bus, sys, toast, saveSettings, saveLibrary, saveTags, fmtDate } from './core.js';
+import { api, state, bus, sys, toast, saveSettings, saveLibrary, saveTags, fmtDate, errText } from './core.js';
 
 const FILE = 'Dogfile settings.json';
 // things that belong to this PC only
@@ -115,7 +115,7 @@ async function tick() {
     if (syncWarned) { syncWarned = false; toast('Settings are syncing again', { ok: true }); }
   } catch (e) {
     // said once while it keeps failing (a sync folder that's gone, a full or read-only drive), not every tick
-    if (!syncWarned) { syncWarned = true; toast(`Settings couldn’t sync with ${syncPath()}: ${String(e?.message || e).replace(/^Error:\s*/, '')}`, { error: true }); }
+    if (!syncWarned) { syncWarned = true; toast(`Settings couldn’t sync with ${syncPath()}: ${errText(e)}`, { error: true }); }
   } finally { busy = false; }
 }
 export function startSync() {

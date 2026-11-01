@@ -4,7 +4,7 @@ import { playFolderAnim, directionOf } from './folderanim.js';
 import { shownPath, demoRealPath,
   api, state, sys, bus, h, esc, isVirtual, isMtp, isRemote, remoteParts, pjoin, dirname, basename, normalize, samePath, isInside, splitPath, virtualTitle,
   fmtSize, fmtDate, dateBucket, sizeBucket, kindOf, typeLabel, natCmp, debounce, fileUrl, DECODED_IMG, decodedUrl, uid, IS_WIN, addRecent, tagsOf,
-  saveLibrary, saveSettings, expandUserPath, toast, extname, KINDS, defaultSort,
+  saveLibrary, saveSettings, expandUserPath, toast, extname, KINDS, defaultSort, errText,
 } from './core.js';
 import { icon, folderArt, fileArt } from './icons.js';
 import { showMenu } from './menu.js';
@@ -364,7 +364,7 @@ export async function loadTab(t, { soft = false } = {}) {
         items = r.items;
       }
     }
-  } catch (e) { error = e.netdown ? 'netdown' : String(e.message || e).replace(/^Error invoking remote method '[^']+': (Error: )?/, ''); }
+  } catch (e) { error = e.netdown ? 'netdown' : errText(e); }
   if (t._seq !== seq || t.path !== p) return;
   t.items = items;
   t.error = error;
@@ -624,13 +624,13 @@ export function buildPanes(host) {
   else if (state.layout === '2v') { host.append(mk(0), splitter('v'), mk(1)); host.style.gridTemplateColumns = `${v}fr 1px ${1 - v}fr`; host.style.gridTemplateRows = ''; }
   else if (state.layout === '2h') { host.append(mk(0), splitter('h'), mk(1)); host.style.gridTemplateRows = `${hh}fr 1px ${1 - hh}fr`; host.style.gridTemplateColumns = ''; }
   else if (state.layout === '3') {
-    const right = h('div', { class: 'stack-col' }, mk(1), splitter('h', true), mk(2));
+    const right = h('div', { class: 'stack-col' }, mk(1), splitter('h'), mk(2));
     right.style.gridTemplateRows = `${hh}fr 1px ${1 - hh}fr`;
     host.append(mk(0), splitter('v'), right);
     host.style.gridTemplateColumns = `${v}fr 1px ${1 - v}fr`; host.style.gridTemplateRows = '';
   } else if (state.layout === '4') {
-    const c1 = h('div', { class: 'stack-col' }, mk(0), splitter('h', true), mk(2));
-    const c2 = h('div', { class: 'stack-col' }, mk(1), splitter('h', true), mk(3));
+    const c1 = h('div', { class: 'stack-col' }, mk(0), splitter('h'), mk(2));
+    const c2 = h('div', { class: 'stack-col' }, mk(1), splitter('h'), mk(3));
     c1.style.gridTemplateRows = c2.style.gridTemplateRows = `${hh}fr 1px ${1 - hh}fr`;
     host.append(c1, splitter('v'), c2);
     host.style.gridTemplateColumns = `${v}fr 1px ${1 - v}fr`; host.style.gridTemplateRows = '';
@@ -668,11 +668,11 @@ export function buildPanes(host) {
   bus.emit('panesBuilt');
 }
 
-function splitter(dir, nested) {
+function splitter(dir) {
   const s = h('div', { class: `splitter ${dir}` });
   s.addEventListener('mousedown', (e) => {
     e.preventDefault();
-    const host = nested ? s.parentElement : s.parentElement;
+    const host = s.parentElement;
     const r = host.getBoundingClientRect();
     const move = (ev) => {
       if (dir === 'v') state.paneSizes.v = Math.min(0.85, Math.max(0.15, (ev.clientX - r.left) / r.width));

@@ -1,6 +1,6 @@
 // What the assistant does for each action it recognises (assistant-intents.js says which one). Each handler
 // writes into the conversation card: what it did, or what it would do with a button to go ahead.
-import { api, state, sys, bus, h, esc, toast, fmtSize, fmtDate, basename, dirname, pjoin, KINDS, isVirtual, saveSettings, saveTags, saveLibrary } from './core.js';
+import { api, state, sys, bus, h, esc, toast, fmtSize, fmtDate, basename, dirname, pjoin, KINDS, isVirtual, saveSettings, saveTags, saveLibrary, jobProblem } from './core.js';
 import { icon } from './icons.js';
 import { confirm } from './dialogs.js';
 import { activeTab, navigate, selectedItems, otherPaneTab, recompute, renderTabPanes, setView, renderAll } from './pane.js';
@@ -141,8 +141,8 @@ export const HANDLERS = {
     let folderTrig = null;
     if (trig?.folder || trig?.folderName) {
       const name = trig.folder || trig.folderName;
-      const { resolveNamedFolderPublic } = await import('./assistant.js');
-      const p = await resolveNamedFolderPublic(name);
+      const { resolveNamedFolder } = await import('./assistant.js');
+      const p = await resolveNamedFolder(name);
       folderTrig = p ? { type: 'folder', folder: p } : null;
       if (trig.type === 'folder') trig = folderTrig;
     }
@@ -157,7 +157,7 @@ export const HANDLERS = {
     const plan = parseRequest(text, { hasSelection: false });
     const k = sys.known || {};
     let folder = plan.scope && k[plan.scope] ? k[plan.scope] : null;
-    if (!folder && plan.folderName) { const { resolveNamedFolderPublic } = await import('./assistant.js'); folder = await resolveNamedFolderPublic(plan.folderName); }
+    if (!folder && plan.folderName) { const { resolveNamedFolder } = await import('./assistant.js'); folder = await resolveNamedFolder(plan.folderName); }
     if (!folder) { const t = activeTab(); folder = t?.path && !isVirtual(t.path) ? t.path : null; }
     if (!folder) return say('Open the folder you want to automate (or name it: “for my Downloads folder”), then ask again.');
     const { describeRule } = await import('./organize.js');
@@ -264,7 +264,7 @@ export const HANDLERS = {
       e.target.disabled = true;
       const j = await A.runJob({ type: 'archiveDelete', sources: [], dest: arc, opts: { entries: hits.map((h2) => h2.path || h2.name) } });
       A.invalidateArchiveCache?.(arc);
-      say(j.status === 'done' ? `Removed from ${basename(arc)}.` : `Couldn’t remove it: ${j.errors?.[0] || j.error || ''}`);
+      say(j.status === 'done' ? `Removed from ${basename(arc)}.` : `Couldn’t remove it: ${jobProblem(j)}`);
     }, 'primary danger'));
   },
   async convertArchive(x, { say }) {
@@ -483,7 +483,7 @@ export const HANDLERS = {
     acts(btn(`${x.mode === 'move' ? 'Move' : 'Copy'} ${plural(items.length, 'item')}`, async (e) => {
       e.target.disabled = true;
       const j = await A.transfer(items.map((i) => i.path), o.path, x.mode, x.conflict ? { conflict: x.conflict } : {});
-      if (j?.status) say(j.status === 'done' ? `Done${j.skipped ? ` (${j.skipped} skipped)` : ''}.${x.conflict === 'replace' ? '' : ' Ctrl+Z undoes it.'}` : `Finished: ${j.status}${j.errors?.[0] ? `, ${j.errors[0]}` : ''}`);
+      if (j?.status) say(j.status === 'done' ? `Done${j.skipped ? ` (${j.skipped} skipped)` : ''}.${x.conflict === 'replace' ? '' : ' Ctrl+Z undoes it.'}` : `Finished: ${j.status}${jobProblem(j) ? `, ${jobProblem(j)}` : ''}`);
     }, x.conflict === 'replace' ? 'primary danger' : 'primary'));
   },
   async symlink(x, { say }) {

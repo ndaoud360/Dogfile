@@ -1,5 +1,5 @@
 // Modal dialogs: prompt, confirm, conflict resolution, batch rename, properties, select-by-pattern, compress.
-import { api, h, esc, fmtSize, fmtDate, basename, dirname, extname, stem, pjoin, typeLabel, state, IS_WIN, toast, natCmp, tagsOf, setTags, errText } from './core.js';
+import { api, h, fmtSize, fmtDate, basename, dirname, pjoin, typeLabel, state, IS_WIN, toast, tagsOf, setTags, errText } from './core.js';
 import { icon } from './icons.js';
 import { closeMenus } from './menu.js';
 
@@ -95,113 +95,6 @@ export function conflictDialog(info) {
       { label: 'Replace', primary: true, run: (c) => c({ action: 'replace', applyAll: all.checked }) },
     ],
   }).then((v) => v || { action: 'skip' });
-}
-
-// ---------- batch rename ----------
-export async function batchRenameDialog(items, doRename) {
-  const f = {
-    find: h('input', { class: 'input', placeholder: 'Find (text or regex)' }),
-    replace: h('input', { class: 'input', placeholder: 'Replace with ($1, $2 … for regex groups)' }),
-    regex: h('input', { type: 'checkbox' }), cs: h('input', { type: 'checkbox' }), ext: h('input', { type: 'checkbox' }),
-    template: h('input', { class: 'input', placeholder: 'e.g. Holiday_{n:3}_{date}{ext}   (leave blank to keep names)' }),
-    start: h('input', { class: 'input small', type: 'number', value: '1' }), step: h('input', { class: 'input small', type: 'number', value: '1' }),
-    caseMode: h('select', { class: 'input' }, ...['Keep case', 'lowercase', 'UPPERCASE', 'Title Case', 'Sentence case', 'camelCase', 'kebab-case', 'snake_case'].map((c) => h('option', {}, c))),
-    prefix: h('input', { class: 'input', placeholder: 'Prefix' }), suffix: h('input', { class: 'input', placeholder: 'Suffix (before extension)' }),
-    trim: h('input', { type: 'checkbox' }), spaces: h('input', { type: 'checkbox' }),
-  };
-  const sorted = [...items].sort((a, b) => natCmp(a.name, b.name));
-  const table = h('div', { class: 'br-table' });
-  const status = h('div', { class: 'hint' });
-  const compute = () => {
-    let re = null;
-    if (f.find.value) {
-      try { re = f.regex.checked ? new RegExp(f.find.value, f.cs.checked ? 'g' : 'gi') : new RegExp(f.find.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), f.cs.checked ? 'g' : 'gi'); }
-      catch { status.textContent = 'Invalid regular expression'; return null; }
-    }
-    const start = +f.start.value || 0, step = +f.step.value || 1;
-    const out = sorted.map((it, i) => {
-      const ext = it.isDir ? '' : extname(it.name);
-      const dotExt = ext ? '.' + it.name.slice(it.name.lastIndexOf('.') + 1) : '';
-      let base = it.isDir || f.ext.checked ? it.name : stem(it.name);
-      if (f.template.value) {
-        const d = new Date(it.mtime || Date.now());
-        const z = (x) => String(x).padStart(2, '0');
-        base = f.template.value
-          .replace(/\{n(?::(\d+))?\}/g, (m, w) => String(start + i * step).padStart(+w || 0, '0'))
-          .replace(/\{name\}/g, base)
-          .replace(/\{date\}/g, `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`)
-          .replace(/\{yyyy\}/g, d.getFullYear()).replace(/\{yy\}/g, String(d.getFullYear()).slice(2)).replace(/\{mm\}/g, z(d.getMonth() + 1)).replace(/\{dd\}/g, z(d.getDate()))
-          .replace(/\{hh\}/g, z(d.getHours())).replace(/\{min\}/g, z(d.getMinutes())).replace(/\{ss\}/g, z(d.getSeconds()))
-          .replace(/\{time\}/g, `${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`)
-          .replace(/\{parent\}/g, basename(dirname(it.path)))
-          .replace(/\{ext\}/g, '');
-      }
-      if (re) base = base.replace(re, f.replace.value);
-      if (f.trim.checked) base = base.trim();
-      if (f.spaces.checked) base = base.replace(/\s+/g, '_');
-      const cm = f.caseMode.value;
-      const words = () => base.replace(/([a-z])([A-Z])/g, '$1 $2').split(/[\s_\-]+/).filter(Boolean);
-      if (cm === 'lowercase') base = base.toLowerCase();
-      else if (cm === 'UPPERCASE') base = base.toUpperCase();
-      else if (cm === 'Title Case') base = base.replace(/\w\S*/g, (w) => w[0].toUpperCase() + w.slice(1).toLowerCase());
-      else if (cm === 'Sentence case') base = base.charAt(0).toUpperCase() + base.slice(1).toLowerCase();
-      else if (cm === 'camelCase') base = words().map((w, k) => (k ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w.toLowerCase())).join('');
-      else if (cm === 'kebab-case') base = words().join('-').toLowerCase();
-      else if (cm === 'snake_case') base = words().join('_').toLowerCase();
-      base = f.prefix.value + base + f.suffix.value;
-      const name = it.isDir || f.ext.checked ? base : base + dotExt;
-      return { it, name };
-    });
-    const seen = new Map();
-    let conflicts = 0, changes = 0;
-    for (const o of out) { const k = o.name.toLowerCase(); seen.set(k, (seen.get(k) || 0) + 1); }
-    for (const o of out) {
-      o.dup = seen.get(o.name.toLowerCase()) > 1;
-      o.bad = !o.name || /[<>:"/\\|?*\x00-\x1f]/.test(o.name) || /[. ]$/.test(o.name);
-      if (o.dup || o.bad) conflicts++;
-      if (o.name !== o.it.name) changes++;
-    }
-    status.textContent = `${changes} of ${out.length} will change${conflicts ? ` · ${conflicts} problem${conflicts > 1 ? 's' : ''}` : ''}`;
-    status.classList.toggle('err', !!conflicts);
-    table.innerHTML = '<div class="br-row br-head"><div>Current name</div><div>New name</div></div>' + out.slice(0, 500).map((o) => `<div class="br-row ${o.name !== o.it.name ? 'chg' : ''} ${o.dup || o.bad ? 'bad' : ''}"><div>${esc(o.it.name)}</div><div>${esc(o.name)}</div></div>`).join('');
-    return conflicts ? null : out;
-  };
-  Object.values(f).forEach((el) => el.addEventListener('input', compute));
-  // "Describe it": plain-English instructions fill in the options below (live preview)
-  const describe = h('input', { class: 'input br-describe', placeholder: 'Describe it, e.g. “format as YYYY-MM-DD_Invoice and lowercase everything”', spellcheck: 'false' });
-  const understood = h('div', { class: 'hint br-understood' });
-  describe.addEventListener('input', () => { const r = interpretRename(describe.value); applyInterpretation(f, r); understood.textContent = r.notes.length ? 'Understood: ' + r.notes.join(' · ') : describe.value.trim() ? 'Try words like: lowercase, replace X with Y, remove X, add X at the start, number them from 1 with 3 digits, format as YYYY-MM-DD_{name}' : ''; compute(); });
-  const row = (...c) => h('div', { class: 'br-line' }, ...c);
-  const body = h('div', { class: 'batch-rename' },
-    h('div', { class: 'br-ask' }, describe, understood),
-    row(f.find, f.replace),
-    row(h('label', { class: 'check' }, f.regex, ' Regex'), h('label', { class: 'check' }, f.cs, ' Match case'), h('label', { class: 'check' }, f.ext, ' Include extension'), h('label', { class: 'check' }, f.trim, ' Trim'), h('label', { class: 'check' }, f.spaces, ' Spaces → _')),
-    row(f.template, h('span', { class: 'hint' }, 'Start'), f.start, h('span', { class: 'hint' }, 'Step'), f.step),
-    row(f.prefix, f.suffix, f.caseMode),
-    h('div', { class: 'hint' }, 'Tokens: {n} {n:3} {name} {date} {yyyy} {mm} {dd} {time} {parent}'),
-    table, status);
-  compute();
-  return modal({
-    title: `Rename ${items.length} items`, body, width: 760,
-    buttons: [{ label: 'Cancel', value: null }, {
-      label: 'Rename', primary: true, run: async (close) => {
-        const out = compute();
-        if (!out) return false;
-        await doRename(out.filter((o) => o.name !== o.it.name).map((o) => ({ from: o.it.path, to: pjoin(dirname(o.it.path), o.name) })));
-        close(true);
-      },
-    }],
-  });
-}
-
-// plain-English rename instructions -> batch rename options
-export { interpretRename } from './rename-words.js';
-import { interpretRename } from './rename-words.js';
-function applyInterpretation(f, r) {
-  f.find.value = r.find ?? ''; f.replace.value = r.replace ?? ''; f.regex.checked = !!r.regex;
-  f.template.value = r.template ?? ''; f.start.value = String(r.start ?? 1); f.step.value = String(r.step ?? 1);
-  f.caseMode.value = r.caseMode || 'Keep case'; f.prefix.value = r.prefix ?? ''; f.suffix.value = r.suffix ?? '';
-  f.trim.checked = !!r.trim; f.spaces.checked = !!r.spaces;
 }
 
 // ---------- select by pattern ----------

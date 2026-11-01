@@ -1,7 +1,7 @@
 // File history & recovery: a log of what happened to your files (copies, moves, renames, deletes, automations),
 // with Undo on anything that can still be undone, plus versions of chosen files and folders, and checksum files
 // to prove nothing changed or got corrupted. The log is capped (Settings) so it never slows Dogfile down.
-import { api, state, bus, h, esc, toast, fmtSize, fmtDate, basename, dirname, debounce, IS_WIN, pjoin, uid, saveSettings } from './core.js';
+import { api, state, bus, h, esc, toast, fmtSize, fmtDate, basename, dirname, debounce, IS_WIN, pjoin, uid, saveSettings, openDefault } from './core.js';
 import { modal, confirm, prompt } from './dialogs.js';
 import { icon } from './icons.js';
 import { activeTab, navigate, selectedItems } from './pane.js';
@@ -12,7 +12,9 @@ import { requirePro } from './license.js';
 let log = null; // newest first
 const limit = () => Math.max(50, +state.settings.historyLimit || 1000);
 const save = debounce(() => api('store:set', 'history', log.slice(0, limit())), 1500);
-async function ensure() { if (!log) log = (await api('store:get', 'history').catch(() => null)) || []; return log; }
+// one read shared by every early caller: entries added while it is loading are kept, not replaced by the saved list
+let loading = null;
+function ensure() { return (loading ||= api('store:get', 'history').catch(() => null).then((saved) => (log = saved || []))); }
 const KIND = { renamed: ['rename', 'Renamed'], moved: ['cut', 'Moved'], created: ['copy', 'Created / copied'], trashed: ['trash', 'Recycled'], copy: ['copy', 'Copied'], move: ['cut', 'Moved'], delete: ['trash', 'Deleted'], trash: ['trash', 'Recycled'], extract: ['extract', 'Extracted'], compress: ['zip', 'Compressed'], automation: ['automation', 'Automation'], version: ['history', 'Version saved'], restore: ['history', 'Version restored'] };
 async function add(e) {
   await ensure();
@@ -27,7 +29,7 @@ bus.on('historyAdd', (rec) => {
 });
 bus.on('jobDone', (j) => {
   if (j.status === 'cancelled' && !j.done) return;
-  add({ kind: j.type, title: j.title, count: j.sourceCount || 0, status: j.status, errors: (j.errors || []).slice(0, 20), dest: j.dest, failed: j.failed });
+  add({ kind: j.type, title: j.title, count: j.sourceCount || 0, status: j.status, errors: (j.errors?.length ? j.errors : j.error ? [j.error] : []).slice(0, 20), dest: j.dest, failed: j.failed });
 });
 bus.on('history', (e) => add(e));
 // for the assistant: the log (newest first), and undoing one entry
@@ -130,7 +132,7 @@ export async function versionsDialog(p) {
       list.append(h('div', { class: 'vs-row' }, h('span', { class: 'hi-ic', html: icon(v.auto ? 'history' : 'save') }),
         h('div', { class: 'hi-main' }, h('b', {}, fmtDate(v.at)), h('span', { class: 'hint' }, [fmtSize(v.size || 0), v.note, v.auto ? 'automatic' : ''].filter(Boolean).join(' · '))),
         h('div', { class: 'hi-acts' },
-          !v.isDir ? h('button', { class: 'btn small', onclick: () => api('shell:open', v.file) }, 'Open') : h('button', { class: 'btn small', onclick: () => { closeIt(); navigate(activeTab(), v.file); } }, 'Browse'),
+          !v.isDir ? h('button', { class: 'btn small', onclick: () => openDefault(v.file) }, 'Open') : h('button', { class: 'btn small', onclick: () => { closeIt(); navigate(activeTab(), v.file); } }, 'Browse'),
           !v.isDir ? h('button', { class: 'btn small', title: 'Compare with the current file', onclick: () => import('./apptabs.js').then((m) => m.openTool('editor', [v.file, p], { compare: true })) }, 'Compare') : null,
           h('button', { class: 'btn small', onclick: async () => { const out = await api('versions:restore', p, v.id, { asCopy: true }); toast(`Saved as “${basename(out)}”`); bus.emit('refreshPanes'); } }, 'Restore as copy'),
           h('button', { class: 'btn small primary', onclick: async () => { if (!(await confirm('Restore this version?', `The current ${isDir ? 'folder' : 'file'} is saved as a version first, so you can come back to it.`, { ok: 'Restore' }))) return; await api('versions:restore', p, v.id); bus.emit('history', { kind: 'restore', title: `Restored an older version of ${basename(p)}`, paths: [[p]] }); toast('Restored'); bus.emit('refreshPanes'); draw(); } }, 'Restore'),

@@ -12,6 +12,8 @@ export const api = (name, ...args) => {
 };
 export const onMain = (ch, fn) => window.atlas.on(ch, fn);
 /** The text of an error from the program, for showing to people (no "Error:" or internal code in front). */
+// the first thing that went wrong in a finished job: per-item problems are in errors[], a failure of the whole job in error
+export const jobProblem = (j) => j?.errors?.[0] || j?.error || '';
 export const errText = (e) => String(e?.message || e || 'unknown error').replace(/^Error:\s*/, '').replace(/^Error invoking remote method '[^']+':\s*(Error:\s*)?/, '').replace(/^[A-Z]+_[A-Z_]+:\s*/, ''); // internal codes like PRO_REQUIRED, never a drive letter or a word
 /**
  * Before a file is changed in place: a copy goes into its version history. Without Pro there is no history, so the
@@ -80,8 +82,7 @@ export function dirname(p) {
   let d = p.slice(0, i);
   if (IS_WIN() && /^[a-zA-Z]:$/.test(d)) d += '\\';
   if (!IS_WIN() && d === '') d = '/';
-  if (IS_WIN() && /^\\\\[^\\]+$/.test(d)) return d;
-  return d;
+  return d; // for \\server\share this is \\server, the computer's own view
 }
 export function basename(p) {
   if (!p) return '';
@@ -167,7 +168,6 @@ export function virtualTitle(p) {
   if (p.startsWith('atlas:zip|')) { const [, arc, inner] = p.split('|'); return inner ? inner.split('/').pop() : basename(arc); }
   if (isMtp(p)) { const { dev, rest } = mtpParts(p); return rest ? rest.split('/').filter(Boolean).pop() : dev; }
   if (isRemote(p)) { const { id, path } = remoteParts(p); return path.split('/').filter(Boolean).pop() || remoteConn(id)?.name || 'Server'; }
-  if (p.startsWith('atlas:search')) return 'Search';
   return p;
 }
 
@@ -386,7 +386,7 @@ export function persist(name, getter, ms = 400) {
     setTimeout(() => api('store:set', name, getter()).catch(() => {
       if (saveWarned[name] && Date.now() - saveWarned[name] < 60000) return;
       saveWarned[name] = Date.now();
-      toast(`Couldn’t save your ${name === 'settings' ? 'settings' : name}: ${String(e?.message || e).replace(/^Error:\s*/, '')}. Changes made now may be lost when Dogfile closes.`, { error: true });
+      toast(`Couldn’t save your ${name === 'settings' ? 'settings' : name}: ${errText(e)}. Changes made now may be lost when Dogfile closes.`, { error: true });
     }), 4000);
   }), ms);
 }
@@ -442,6 +442,8 @@ export function moveTags(from, to) {
 }
 
 // ---------------- toasts ----------------
+// open a file or folder with its Windows default app; a failure is said instead of being lost
+export const openDefault = (p) => api('shell:open', p).then(() => true, (e) => { toast(`Couldn’t open ${basename(p) || p}: ${errText(e)}`, { error: true }); return false; });
 export function toast(msg, opts = {}) {
   const host = document.getElementById('toasts');
   if (!host) return;

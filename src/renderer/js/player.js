@@ -1,7 +1,7 @@
 // Dogfile Player: VLC-style media player.
 // Plays natively with GPU decoding whenever Chromium can (H.264, HEVC*, VP9, AV1, AAC, MP3, Opus, FLAC…); otherwise
 // the bundled ffmpeg remuxes (video copied, audio → AAC) or transcodes (GPU encoder when available) on the fly.
-import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce, isMediaFile, KINDS, natCmp, fileUrl } from './core.js';
+import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce, isMediaFile, KINDS, natCmp, fileUrl, errText, openDefault } from './core.js';
 import { icon } from './icons.js';
 import { initLicense } from './license.js';
 import { showMenu } from './menu.js';
@@ -47,8 +47,7 @@ function videoOk(s) {
   if (c === 'vp9') return can.vp9;
   if (c === 'vp8' || c === 'theora') return true;
   if (c === 'av1') return can.av1;
-  if (c === 'mjpeg' || c === 'png') return false;
-  return false;
+  return false; // anything else (mjpeg, png, …) goes through ffmpeg
 }
 const audioOk = (s, fmt) => !s || DIRECT_AUDIO.has(s.codec_name) || (/^pcm_(s16le|s24le|f32le|u8)$/.test(s.codec_name) && /wav/.test(fmt));
 
@@ -463,7 +462,7 @@ function showError(msg) {
   setBusy(false);
   const e = $('err'); e.innerHTML = '';
   e.append(h('div', { class: 'err-title' }, 'Can’t play this file'), h('div', { class: 'err-msg' }, msg || ''), sys.ffmpeg ? null : h('div', { class: 'err-msg' }, 'The ffmpeg component is missing, so only natively supported formats can play.'),
-    h('div', { class: 'row-inline' }, h('button', { class: 'btn small', onclick: () => api('shell:open', P.item.path) }, 'Open with Windows default app'), P.list.length > 1 ? h('button', { class: 'btn small', onclick: () => { const n = nextIndex(); if (n != null) load(n); } }, 'Skip to next') : null));
+    h('div', { class: 'row-inline' }, h('button', { class: 'btn small', onclick: () => openDefault(P.item.path) }, 'Open with Windows default app'), P.list.length > 1 ? h('button', { class: 'btn small', onclick: () => { const n = nextIndex(); if (n != null) load(n); } }, 'Skip to next') : null));
   e.classList.add('show');
 }
 function showResumeBanner(t) {
@@ -525,7 +524,7 @@ async function expandPlaylists(files) {
         }
       } catch (e) {
         // a playlist that can't be read: say so, instead of starting with nothing to play
-        toast(`Couldn’t open the playlist ${f.replace(/^.*[\\/]/, '')}: ${String(e?.message || e).replace(/^Error:\s*/, '')}`, { error: true });
+        toast(`Couldn’t open the playlist ${f.replace(/^.*[\\/]/, '')}: ${errText(e)}`, { error: true });
       }
     } else out.push(f);
   }
@@ -655,7 +654,7 @@ function moreMenu(x, y) {
     { label: 'Media information', icon: 'info', keys: 'I', run: mediaInfo },
     { separator: true },
     { label: 'Resume playback', submenu: [['ask', 'Ask'], ['always', 'Always'], ['never', 'Never']].map(([k, l]) => ({ label: l, radio: true, selected: prefs.autoResume === k, run: () => { prefs.autoResume = k; savePrefs(); } })) },
-    { label: 'Open with Windows default app', run: () => P.item && api('shell:open', P.item.path) },
+    { label: 'Open with Windows default app', run: () => P.item && openDefault(P.item.path) },
     { label: 'Show in Dogfile', icon: 'folder', run: () => P.item && showInFiles(P.item.path) },
     { label: 'Keyboard shortcuts', icon: 'keyboard', keys: 'F1', run: shortcutsHelp },
   ], x, y, { alignRight: true });

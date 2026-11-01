@@ -2,7 +2,7 @@
 // column editing, bookmarks, encodings (UTF-8/BOM, UTF-16 LE/BE, ANSI), EOL conversion, session restore with
 // unsaved-change backup, external-change detection, Markdown preview, and a toolbox of text operations.
 import * as CM from '../vendor/cm.js';
-import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce } from './core.js';
+import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce, errText } from './core.js';
 import { icon } from './icons.js';
 import { initLicense } from './license.js';
 import { showMenu } from './menu.js';
@@ -201,7 +201,7 @@ async function openPaths(paths, { activate = true } = {}) {
       api('fs:watchFile', p, true);
       addRecent(p);
       last = doc;
-    } catch (e) { toast(`Couldn't open ${basename(p)}: ${String(e.message).replace(/^Error invoking remote method 'invoke': (Error: )?/, '')}`, { error: true }); }
+    } catch (e) { toast(`Couldn't open ${basename(p)}: ${errText(e)}`, { error: true }); }
   }
   if (last && activate) activate_(last);
   renderTabs(); saveSessionSoon();

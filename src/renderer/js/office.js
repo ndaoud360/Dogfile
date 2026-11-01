@@ -6,7 +6,7 @@
 //   OneNote (.one): the text found in the notebook page, read-only (its format isn't published in full).
 // Saving keeps the original layout where it can; a note says when complex parts (tracked changes, charts…) are
 // simplified, and Save a copy is always there.
-import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, fileUrl, debounce } from './core.js';
+import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, fileUrl, debounce, openDefault } from './core.js';
 import { icon } from './icons.js';
 import { confirm, modal } from './dialogs.js';
 import { applyColors } from './theme.js';
@@ -130,7 +130,7 @@ async function show(d) {
 }
 function errorBox(d, e) {
   return h('div', { class: 'of-err' }, h('div', { class: 'err-title' }, `Couldn’t open ${d.name}`), h('div', { class: 'err-msg' }, String(e?.message || e)),
-    h('button', { class: 'btn', onclick: () => api('shell:open', d.path) }, 'Open with the Windows default app'));
+    h('button', { class: 'btn', onclick: () => openDefault(d.path) }, 'Open with the Windows default app'));
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -156,7 +156,7 @@ function renderBar() {
     ...(TOOLS[cur.kind]?.(cur) || []),
     h('span', { class: 'of-grow' }),
     tb('folderOpen', '', () => showInFiles(cur.path), { title: 'Show in folder' }),
-    tb('open', '', () => api('shell:open', cur.path), { title: 'Open with the Windows default app' }));
+    tb('open', '', () => openDefault(cur.path), { title: 'Open with the Windows default app' }));
   // in a tab the ribbon has the buttons (the bar above is hidden there); the tips move down here
   const tip = EMBED ? ({ xlsx: ' · Double-click or type to edit a cell, formulas start with =', pptx: ' · Click any text on a slide to change it' }[cur.kind] || '') : '';
   $('of-status').textContent = `${KIND_NAME[cur.kind]} · ${cur.view.status?.() || ''}${tip}`;
@@ -1117,14 +1117,14 @@ LOADERS.one = async (bytes) => {
 };
 RENDER.one = (d) => {
   const box = h('div', { class: 'doc-scroll' }, h('div', { class: 'doc-page one' },
-    h('div', { class: 'one-note' }, 'OneNote pages keep their content in a format Microsoft hasn’t fully published, so this shows the text found in the page, for reading and copying.', h('button', { class: 'btn small', onclick: () => api('shell:open', d.path) }, 'Open in OneNote')),
+    h('div', { class: 'one-note' }, 'OneNote pages keep their content in a format Microsoft hasn’t fully published, so this shows the text found in the page, for reading and copying.', h('button', { class: 'btn small', onclick: () => openDefault(d.path) }, 'Open in OneNote')),
     ...(d.view.lines.length ? d.view.lines.map((l) => h('p', {}, l)) : [h('p', { class: 'muted' }, 'No text was found in this page.')])));
   $('of-doc').append(box);
 };
 
 // older formats Dogfile can't edit
 LOADERS.legacy = async () => ({ readonly: true, status: () => 'older format' });
-RENDER.legacy = (d) => { $('of-doc').append(h('div', { class: 'of-err' }, h('div', { class: 'err-title' }, `${d.name} is in an older Office format`), h('div', { class: 'err-msg' }, 'Dogfile Office opens .docx, .xlsx (and .xls), .pptx and PDF files. Open this one in its own program, or save it there in the newer format.'), h('button', { class: 'btn', onclick: () => api('shell:open', d.path) }, 'Open with the Windows default app'))); };
+RENDER.legacy = (d) => { $('of-doc').append(h('div', { class: 'of-err' }, h('div', { class: 'err-title' }, `${d.name} is in an older Office format`), h('div', { class: 'err-msg' }, 'Dogfile Office opens .docx, .xlsx (and .xls), .pptx and PDF files. Open this one in its own program, or save it there in the newer format.'), h('button', { class: 'btn', onclick: () => openDefault(d.path) }, 'Open with the Windows default app'))); };
 LOADERS.other = LOADERS.legacy; RENDER.other = RENDER.legacy;
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -1173,7 +1173,7 @@ onMain('settings:changed', (s) => { settings = { ...settings, ...s }; applyColor
 // what the ribbon's buttons ask for when Dogfile Office is a tab
 const CMD = {
   save: () => save(false), saveCopy: () => save(true), print: () => cur && print(), summarize: () => summarize(), open: () => openDialog(),
-  showFolder: () => cur && showInFiles(cur.path), openDefault: () => cur && api('shell:open', cur.path), close: () => cur && closeDoc(cur),
+  showFolder: () => cur && showInFiles(cur.path), openDefault: () => cur && openDefault(cur.path), close: () => cur && closeDoc(cur),
   bold: () => exec('bold'), italic: () => exec('italic'), underline: () => exec('underline'), strike: () => exec('strikeThrough'),
   title: () => exec('formatBlock', 'h1'), heading: () => exec('formatBlock', 'h2'), subheading: () => exec('formatBlock', 'h3'), text: () => exec('formatBlock', 'p'),
   bullets: () => exec('insertUnorderedList'), numbers: () => exec('insertOrderedList'), indent: () => exec('indent'), outdent: () => exec('outdent'),

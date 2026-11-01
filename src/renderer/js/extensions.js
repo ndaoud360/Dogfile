@@ -14,6 +14,7 @@ export const PERMS = {
   run: ['Run commands', 'Run programs and scripts in the built-in terminal (you see them run)'],
   hooks: ['Watch and change file operations', 'See copies, moves, deletes and renames before they happen, and change where they go or stop them'],
 };
+let storageWrites = Promise.resolve(); // features' saved values: see storage.set
 const NEEDS = { 'files.list': 'read', 'files.stat': 'read', 'files.readText': 'read', 'files.writeText': 'write', 'files.rename': 'write', 'files.copy': 'write', 'files.move': 'write', 'files.mkdir': 'write', 'files.trash': 'write', 'net.fetch': 'network', run: 'run', runPowerShell: 'run' };
 
 // "// @name Screenplay formatter" style headers at the top of a feature's code
@@ -166,7 +167,7 @@ export function startFeatures({ target, getSettings, provide = {}, onChange }) {
       case 'ui.confirm': return confirm(a[0] || f.name, esc(a[1]));
       case 'ui.choose': return modal({ title: a[0] || f.name, width: 420, body: h('div', { class: 'stack' }), buttons: [...a[1].map((o) => ({ label: o, value: o })), { label: 'Cancel', value: null }] });
       case 'ui.showText': return modal({ title: a[0] || f.name, width: 640, body: h('pre', { class: 'ext-pre' }, a[1]), buttons: [{ label: 'Close', primary: true, value: true }] }).then(() => null);
-      case 'files.list': return (await api('fs:list', a[0])).items?.map((i) => ({ name: i.name, path: i.path, isDir: i.isDir, size: i.size, mtime: i.mtime }));
+      case 'files.list': { const r = await api('fs:list', a[0]); if (r.error) throw new Error(r.error); return r.items?.map((i) => ({ name: i.name, path: i.path, isDir: i.isDir, size: i.size, mtime: i.mtime })); }
       case 'files.stat': return api('fs:stat', a[0]);
       case 'files.readText': { const r2 = await api('fs:readText', a[0], 20 * 1048576); if (r2.binary) throw new Error('Not a text file'); return r2.text; }
       case 'files.writeText': await api('fs:writeText', a[0], a[1]); return true;
@@ -175,15 +176,28 @@ export function startFeatures({ target, getSettings, provide = {}, onChange }) {
       case 'files.copy': case 'files.move': case 'files.trash': {
         const spec = m.method === 'files.trash' ? { type: 'trash', sources: [].concat(a[0]) } : { type: m.method === 'files.copy' ? 'copy' : 'move', sources: [].concat(a[0]), dest: a[1] };
         if (provide.runJob) return provide.runJob(spec).then((j) => j.status);
-        const id = await api('ops:start', spec); return id;
+        // outside the file browser nothing else tracks the job: wait for it here, so the call resolves to its
+        // status ('done', 'error' or 'cancelled') in every window, as the feature API documents
+        const id = await api('ops:start', spec);
+        for (;;) {
+          await new Promise((r) => setTimeout(r, 400));
+          const j = (await api('ops:list').catch(() => null))?.find((x) => x.id === id);
+          if (!j) return 'cancelled'; // dismissed from the list before it could be read
+          if (j.status === 'done' || j.status === 'error' || j.status === 'cancelled') return j.status;
+        }
       }
       case 'files.open': return provide.open ? provide.open(a[0]) : api('shell:open', a[0]);
       case 'net.fetch': return api('ext:fetch', a[0], a[1] || {});
       case 'run': if (provide.run) return provide.run(a[0], a[1]); return api('shell:runCommand', a[0], a[1]);
       case 'runPowerShell': if (provide.runPowerShell) return provide.runPowerShell(a[0], a[1]); throw new Error('dogfile.runPowerShell() works in the file browser');
       case 'clipboard.writeText': await api('clip:writeText', a[0]); return true;
-      case 'storage.get': { const all = (await api('store:get', 'ext-storage')) || {}; const v = all[f.id]?.[a[0]]; return v !== undefined ? v : ((getSettings().extStorage || {})[f.id]?.[a[0]] ?? null); }
-      case 'storage.set': { const all = (await api('store:get', 'ext-storage')) || {}; all[f.id] = { ...(all[f.id] || {}), [a[0]]: a[1] }; await api('store:set', 'ext-storage', all); return true; }
+      // ext-storage is read, changed and written whole: one write at a time, so two quick set() calls don't drop one
+      case 'storage.get': { await storageWrites; const all = (await api('store:get', 'ext-storage')) || {}; const v = all[f.id]?.[a[0]]; return v !== undefined ? v : (/* values saved by older versions, read-only */ (getSettings().extStorage || {})[f.id]?.[a[0]] ?? null); }
+      case 'storage.set': {
+        const run = storageWrites.then(async () => { const all = (await api('store:get', 'ext-storage')) || {}; all[f.id] = { ...(all[f.id] || {}), [a[0]]: a[1] }; await api('store:set', 'ext-storage', all); });
+        storageWrites = run.catch(() => {}); // the next write waits for this one, whatever happened to it
+        await run; return true;
+      }
       default:
         if (provide[m.method]) return provide[m.method](...a);
         throw new Error(`dogfile.${m.method}() doesn’t work in ${TARGETS[target]}. Check the feature’s // @target line.`);

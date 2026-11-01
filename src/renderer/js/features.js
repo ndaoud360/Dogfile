@@ -34,7 +34,6 @@ function start() {
       // a PowerShell script, run inside the terminal's own PowerShell (no second PowerShell is started, which security
       // software often blocks, and no script policy gets in the way)
       runPowerShell: async (script, cwd) => { const ex = await import('./extras.js'); await ex.runPowerShellScript(script, cwd || activeTab()?.path); return true; },
-      storageSet: (fid, k, v) => { const st = (state.settings.extStorage ||= {}); st[fid] = { ...(st[fid] || {}), [k]: v }; saveSettings(); return true; },
     },
   });
   // features' file-event listeners (dogfile.on) hear copies, moves, deletes, renames, drops…

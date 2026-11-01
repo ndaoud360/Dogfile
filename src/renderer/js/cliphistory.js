@@ -10,7 +10,8 @@ import * as A from './actions.js';
 let items = [];
 const mode = () => state.settings.clipHistory || 'paths'; // off | paths | all
 const MAX = 60;
-function save() { if (state.settings.clipRemember) api('store:set', 'cliphistory', items.filter((x) => !x.secret).slice(0, MAX)); }
+let loaded = false; // the remembered list is read once at start; saving before that would replace it
+function save() { if (state.settings.clipRemember && loaded) api('store:set', 'cliphistory', items.filter((x) => !x.secret).slice(0, MAX)); }
 export function add(entry) {
   if (mode() === 'off') return;
   const key = entry.kind === 'files' ? 'f:' + entry.paths.join('|') + (entry.cut ? ':cut' : '') : 't:' + entry.text;
@@ -20,7 +21,13 @@ export function add(entry) {
   save();
 }
 export async function init() {
-  if (state.settings.clipRemember) items = (await api('store:get', 'cliphistory').catch(() => null)) || [];
+  if (state.settings.clipRemember) {
+    const saved = (await api('store:get', 'cliphistory').catch(() => null)) || [];
+    // things copied while it was loading come first; the remembered ones follow
+    items = [...items, ...saved.filter((x) => !items.some((y) => y.key === x.key))];
+  }
+  const early = !loaded && items.length; loaded = true;
+  if (early) save();
   api('clip:watch', mode());
 }
 onMain('clip:changed', (x) => add({ kind: x.isPath ? 'paths' : 'text', text: x.text, paths: x.isPath ? x.text.split(/\r?\n/).map((l) => l.trim().replace(/^"|"$/g, '')).filter(Boolean) : null }));

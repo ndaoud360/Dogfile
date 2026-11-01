@@ -1,10 +1,10 @@
 // Power tools: search (name/regex/wildcards/content/size/date + Everything integration), compare folders,
 // duplicate finder, storage analyzer, workspaces, and the operations "status center".
 import { animatePanel } from './panelanim.js';
-import { api, state, sys, bus, h, esc, fmtSize, fmtDate, basename, dirname, isVirtual, toast, IS_WIN, natCmp, saveLibrary } from './core.js';
+import { api, state, sys, bus, h, esc, fmtSize, fmtDate, basename, dirname, isVirtual, toast, IS_WIN, natCmp, errText } from './core.js';
 import { icon } from './icons.js';
 import { activeTab, navigate, paneTab, paneCount, recompute, renderTabPanes, setLayout, newTabState, focusPane, selectedItems } from './pane.js';
-import { modal, prompt, confirm, conflictDialog } from './dialogs.js';
+import { modal, confirm, conflictDialog } from './dialogs.js';
 import * as A from './actions.js';
 import { showMenu } from './menu.js';
 import { runAiSearch, looksLikeAiQuery } from './ai.js';
@@ -241,6 +241,9 @@ export async function compareFolders() {
   const a = paneTab(0), b = paneTab(1);
   if (!a || !b || isVirtual(a.path) || isVirtual(b.path)) { if (restoreLayout) setLayout(restoreLayout); return toast('Show a folder in each of the first two panes'); }
   const [la, lb] = await Promise.all([api('fs:list', a.path), api('fs:list', b.path)]);
+  // an unreadable folder lists as empty: comparing against it would show every file as missing there
+  const unread = la.error ? a.path : lb.error ? b.path : null;
+  if (unread) { if (restoreLayout) setLayout(restoreLayout); return toast(`Couldn’t read ${unread}: ${errText(la.error || lb.error)}`, { error: true }); }
   const key = (n) => (IS_WIN() ? n.toLowerCase() : n);
   const mb = new Map(lb.items.map((i) => [key(i.name), i]));
   const ma = new Map(la.items.map((i) => [key(i.name), i]));
@@ -506,23 +509,6 @@ export function restoreSnapshot(s) {
   while (state.panes.length < n) { const free = state.tabs.find((t) => !state.panes.includes(t.id)); if (free) state.panes.push(free.id); else { const t = newTabState(); t.path = 'atlas:home'; t.history = ['atlas:home']; t.hi = 0; state.tabs.push(t); state.panes.push(t.id); } }
   state.activePane = Math.min(s.activePane || 0, n - 1);
   return true;
-}
-
-export async function workspacesMenu(x, y) {
-  const names = Object.keys(state.workspaces);
-  showMenu([
-    { label: 'Save current workspace…', icon: 'plus', run: async () => {
-      const n = await prompt('Save workspace', '', { label: 'Name', placeholder: 'e.g. Photo editing' });
-      if (!n) return;
-      state.workspaces[n] = snapshot(); saveLibrary(); toast(`Workspace “${n}” saved`);
-    } },
-    names.length && { separator: true },
-    ...names.map((n) => ({ label: n, icon: 'workspace', submenu: [
-      { label: 'Open', run: () => { restoreSnapshot(state.workspaces[n]); bus.emit('rebuild'); } },
-      { label: 'Overwrite with current', run: () => { state.workspaces[n] = snapshot(); saveLibrary(); toast('Updated'); } },
-      { label: 'Delete', danger: true, run: () => { delete state.workspaces[n]; saveLibrary(); } },
-    ] })),
-  ], x, y);
 }
 
 // ======================================================================

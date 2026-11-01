@@ -37,7 +37,7 @@ parking_lot = "0.12"
 once_cell = "1"
 urlencoding = "2"
 filetime = "0.2"
-russh = { version = "0.60", default-features = false, features = ["ring", "flate2"] }
+russh = { version = "0.65", default-features = false, features = ["ring", "flate2"] }
 russh-sftp = "2"
 async-trait = "0.1"
 suppaftp = { version = "10", features = ["rustls-ring"] }

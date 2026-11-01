@@ -4,11 +4,11 @@
 import { api, onMain, state, bus, h, esc, saveSettings, toast, errText } from './core.js';
 import { icon } from './icons.js';
 import { modal } from './dialogs.js';
+import { FEATURES, PLURAL, PRO_COMMANDS, proForLabel, starHtml } from './pro-marks.js';
 
 export const L = { status: null };
 const PRICE = () => L.status?.price || '$19.99';
 
-import { FEATURES, PLURAL, PRO_COMMANDS, proForLabel, starHtml } from './pro-marks.js';
 export { FEATURES, PRO_COMMANDS, proForLabel, starHtml };
 
 // backend calls refused without Pro, for the popup's wording

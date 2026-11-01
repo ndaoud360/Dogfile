@@ -1,20 +1,20 @@
 // Dogfile Player: VLC-style media player.
 // Plays natively with GPU decoding whenever Chromium can (H.264, HEVC*, VP9, AV1, AAC, MP3, Opus, FLAC…); otherwise
 // the bundled ffmpeg remuxes (video copied, audio → AAC) or transcodes (GPU encoder when available) on the fly.
-import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce, isMediaFile, KINDS, natCmp, fileUrl, errText, openDefault } from './core.js';
+import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce, isMediaFile, KINDS, natCmp, fileUrl, errText, openDefault, droppedPaths } from './core.js';
 import { icon } from './icons.js';
 import { initLicense } from './license.js';
 import { showMenu } from './menu.js';
 import { modal } from './dialogs.js';
 import { applyColors, mediaSettings } from './theme.js';
+import { EMBED, pendingFiles, onHost, tellHost, showInFiles, setTitle, onWindowClose, onAsk } from './embed.js';
+import { analyzeAudio, cachedAnalysis } from './audio-analysis.js';
 function applyMediaTheme() {
   const dark = applyColors(mediaSettings(settings));
   if (!EMBED && sys?.platform === 'win32') api('win:overlay', dark ? { color: '#101012', symbolColor: '#c9cacc' } : { color: getComputedStyle(document.documentElement).getPropertyValue('--tabbar').trim() || '#efeff0', symbolColor: '#3a3a3a' });
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyMediaTheme());
-import { EMBED, pendingFiles, onHost, tellHost, showInFiles, setTitle, onWindowClose, onAsk } from './embed.js';
 onWindowClose(async () => true);
-import { analyzeAudio, cachedAnalysis } from './audio-analysis.js';
 
 const $ = (id) => document.getElementById(id);
 const v = $('v');
@@ -1041,7 +1041,7 @@ function wire() {
   window.addEventListener('dragleave', (e) => { if (!e.relatedTarget) document.body.classList.remove('drop'); });
   window.addEventListener('drop', (e) => {
     e.preventDefault(); document.body.classList.remove('drop');
-    const paths = [...e.dataTransfer.files].map((f) => window.atlas.pathForFile(f)).filter(Boolean);
+    const paths = droppedPaths(e);
     if (!paths.length) return;
     const subs = paths.filter((p) => /\.(srt|vtt|ass|ssa)$/i.test(p));
     if (subs.length && P.item) { P.item.sidecars = [...(P.item.sidecars || []), ...subs.map((f) => ({ file: f, label: f.split(/[\\/]/).pop() }))]; setSub(P.item.sidecars[P.item.sidecars.length - 1]); }

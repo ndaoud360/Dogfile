@@ -1,6 +1,6 @@
 // Dogfile Photos: fast photo viewer with a queue, slideshow and fullscreen, plus a basic editor
 // (adjustments, filter presets, crop, rotate/flip, draw & text, resize) that saves as a copy or overwrites.
-import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce, KINDS, natCmp, fileUrl, DECODED_IMG, decodedUrl, fmtSize, fmtDate, openDefault } from './core.js';
+import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce, KINDS, natCmp, fileUrl, DECODED_IMG, decodedUrl, fmtSize, fmtDate, openDefault, droppedPaths } from './core.js';
 import { icon } from './icons.js';
 import { showMenu } from './menu.js';
 import { modal, confirm, prompt } from './dialogs.js';
@@ -815,7 +815,7 @@ function wire() {
   window.addEventListener('dragover', (e) => { e.preventDefault(); });
   window.addEventListener('drop', (e) => {
     e.preventDefault();
-    const paths = [...e.dataTransfer.files].map((f) => window.atlas.pathForFile(f)).filter(Boolean);
+    const paths = droppedPaths(e);
     if (paths.length) setQueue(paths, { append: !!e.target.closest('#vw-queue'), autoPlaylist: paths.length === 1 && !e.target.closest('#vw-queue') });
   });
 }

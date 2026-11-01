@@ -1,6 +1,6 @@
 // Sidebar: quick-access list (exactly like the design), pinned folders, devices with an expandable
 // folder tree, network, recycle bin and color tags. Every entry is a drop target.
-import { shownPath, api, state, sys, bus, h, esc, debounce, basename, pjoin, samePath, IS_WIN, saveLibrary, saveSettings, toast, isVirtual } from './core.js';
+import { shownPath, api, state, sys, bus, h, esc, debounce, basename, pjoin, samePath, IS_WIN, saveLibrary, saveSettings, toast, isVirtual, droppedPaths } from './core.js';
 import { icon } from './icons.js';
 import { activeTab, navigate, openTab, attachDropTarget, registerDropTarget, currentDrag, selectedItems, selectNone } from './pane.js';
 import { showMenu } from './menu.js';
@@ -210,7 +210,7 @@ export function render() {
   top.addEventListener('drop', async (e) => {
     if (e.target !== top) return;
     e.preventDefault(); top.classList.remove('pin-zone');
-    let paths = [...e.dataTransfer.files].map((f) => window.atlas.pathForFile(f)).filter(Boolean);
+    let paths = droppedPaths(e);
     if (!paths.length) paths = currentDrag()?.paths || [];
     const dirs = []; for (const p of paths) if (await api('fs:isDir', p)) dirs.push(p);
     if (dirs.length) A.pin(dirs);
@@ -227,7 +227,7 @@ export function render() {
       registerDropTarget(dot, { hover: () => dot, op: () => 'Tag ' + d.name, drop: async (e, paths) => { const { setTags } = await import('./core.js'); setTags(paths, d.id, true); toast(`Tagged ${paths.length} item${paths.length > 1 ? 's' : ''} ${d.name}`); } });
       dot.addEventListener('drop', async (e) => {
         e.preventDefault(); dot.classList.remove('drop-on');
-        let paths = [...e.dataTransfer.files].map((f) => window.atlas.pathForFile(f)).filter(Boolean);
+        let paths = droppedPaths(e);
         if (!paths.length) paths = currentDrag()?.paths || [];
         const { setTags } = await import('./core.js');
         setTags(paths, d.id, true);

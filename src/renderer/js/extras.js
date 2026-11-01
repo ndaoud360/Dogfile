@@ -1,7 +1,7 @@
 // Extras: Drop Shelf (temporary file basket), embedded terminal drawer (ConPTY + xterm.js, synced with the active
 // pane in both directions), and the "who is locking this file?" helper.
 import { animatePanel } from './panelanim.js';
-import { api, onMain, state, sys, bus, h, esc, isVirtual, isMtp, basename, dirname, samePath, toast, saveSettings, IS_WIN, debounce } from './core.js';
+import { api, onMain, state, sys, bus, h, esc, isVirtual, isMtp, basename, dirname, samePath, toast, saveSettings, IS_WIN, debounce, droppedPaths } from './core.js';
 import { icon } from './icons.js';
 import { activeTab, navigate, paneEls, currentDrag } from './pane.js';
 import { showMenu } from './menu.js';
@@ -31,7 +31,7 @@ export function initExtras() {
   sb.addEventListener('dragleave', () => sb.classList.remove('drop-on'));
   sb.addEventListener('drop', (e) => {
     e.preventDefault(); e.stopPropagation(); sb.classList.remove('drop-on');
-    let paths = [...(e.dataTransfer.files || [])].map((f) => window.atlas.pathForFile(f)).filter(Boolean);
+    let paths = droppedPaths(e);
     if (!paths.length) paths = currentDrag()?.paths || [];
     if (paths.length) addToShelf(paths); else toggleShelf(true);
   });
@@ -118,7 +118,7 @@ function drawShelf() {
   el.ondragleave = (e) => { if (!el.contains(e.relatedTarget)) el.classList.remove('drop-on'); };
   el.ondrop = (e) => {
     e.preventDefault(); e.stopPropagation(); el.classList.remove('drop-on');
-    let paths = [...(e.dataTransfer.files || [])].map((f) => window.atlas.pathForFile(f)).filter(Boolean);
+    let paths = droppedPaths(e);
     if (!paths.length) paths = currentDrag()?.paths || [];
     addToShelf(paths);
   };

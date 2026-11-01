@@ -4,7 +4,7 @@ import { playFolderAnim, directionOf } from './folderanim.js';
 import { shownPath, demoRealPath,
   api, state, sys, bus, h, esc, isVirtual, isMtp, isRemote, remoteParts, pjoin, dirname, basename, normalize, samePath, isInside, splitPath, virtualTitle,
   fmtSize, fmtDate, dateBucket, sizeBucket, kindOf, typeLabel, natCmp, debounce, fileUrl, DECODED_IMG, decodedUrl, uid, IS_WIN, addRecent, tagsOf,
-  saveLibrary, saveSettings, expandUserPath, toast, extname, KINDS, defaultSort, errText,
+  saveLibrary, saveSettings, expandUserPath, toast, extname, KINDS, defaultSort, errText, droppedPaths,
 } from './core.js';
 import { icon, folderArt, fileArt } from './icons.js';
 import { showMenu } from './menu.js';
@@ -1987,7 +1987,7 @@ export function attachDropTarget(node, resolveDir, hiliteFn, opts = {}) {
     clear();
     if (!dir) return;
     e.preventDefault(); e.stopPropagation();
-    let paths = [...(e.dataTransfer.files || [])].map((f) => window.atlas.pathForFile(f)).filter(Boolean);
+    let paths = droppedPaths(e);
     if (!paths.length && dragPaths) paths = dragPaths.paths;
     dragPaths = null;
     if (!paths.length) {

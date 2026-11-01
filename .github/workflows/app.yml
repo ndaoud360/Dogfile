@@ -346,6 +346,8 @@ jobs:
             dist/*.msix
           if-no-files-found: warn
       - name: Publish to the app-bin branch (readable with git)
+        # only builds of main are published: a branch started by hand mustn't replace them
+        if: github.ref == 'refs/heads/main'
         shell: pwsh
         run: |
           $d = "$env:RUNNER_TEMP/binbranch"
@@ -403,6 +405,8 @@ jobs:
           name: windows-arm64
           path: target/aarch64-pc-windows-msvc/release/dogfile.exe
       - name: Publish to the app-bin-arm64 branch (readable with git)
+        # only builds of main are published: a branch started by hand mustn't replace them
+        if: github.ref == 'refs/heads/main'
         shell: pwsh
         run: |
           $d = "$env:RUNNER_TEMP/binbranch"

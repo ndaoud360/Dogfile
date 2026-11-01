@@ -442,6 +442,8 @@ export function moveTags(from, to) {
 }
 
 // ---------------- toasts ----------------
+// the paths of files dropped from outside Dogfile (empty when they aren't files on disk)
+export const droppedPaths = (e) => [...(e.dataTransfer?.files || [])].map((f) => window.atlas.pathForFile(f)).filter(Boolean);
 // open a file or folder with its Windows default app; a failure is said instead of being lost
 export const openDefault = (p) => api('shell:open', p).then(() => true, (e) => { toast(`Couldn’t open ${basename(p) || p}: ${errText(e)}`, { error: true }); return false; });
 export function toast(msg, opts = {}) {

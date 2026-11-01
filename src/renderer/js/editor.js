@@ -2,7 +2,7 @@
 // column editing, bookmarks, encodings (UTF-8/BOM, UTF-16 LE/BE, ANSI), EOL conversion, session restore with
 // unsaved-change backup, external-change detection, Markdown preview, and a toolbox of text operations.
 import * as CM from '../vendor/cm.js';
-import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce, errText } from './core.js';
+import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce, errText, droppedPaths } from './core.js';
 import { icon } from './icons.js';
 import { initLicense } from './license.js';
 import { showMenu } from './menu.js';
@@ -10,6 +10,8 @@ import { prompt, modal } from './dialogs.js';
 import { applyColors } from './theme.js';
 import { markdown } from './md.js';
 import * as FR from './featureref.js';
+import { hlStyle } from './cmtheme.js';
+import { EMBED, pendingFiles, onHost, showInFiles, setTitle, closeApp, tellHost, onLeave, onWindowClose, exposeMenus, onAsk } from './embed.js';
 
 const $ = (id) => document.getElementById(id);
 let settings = { ...DEFAULT_SETTINGS };
@@ -22,8 +24,6 @@ let recent = [];
 let seq = 1;
 
 // ---------------- CodeMirror setup ----------------
-import { hlStyle } from './cmtheme.js';
-import { EMBED, pendingFiles, onHost, showInFiles, setTitle, closeApp, tellHost, onLeave, onWindowClose, exposeMenus, onAsk } from './embed.js';
 
 // bookmarks (Ctrl+F2 toggle, F2 / Shift+F2 next / previous): like Notepad++
 const toggleBm = CM.StateEffect.define();
@@ -885,7 +885,7 @@ async function fileChanged(p) {
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyColors(settings));
 window.addEventListener('beforeunload', () => { if (!EMBED) api('store:set', 'editor-session', snapshot()); });
 window.addEventListener('dragover', (e) => e.preventDefault());
-window.addEventListener('drop', (e) => { e.preventDefault(); const paths = [...e.dataTransfer.files].map((f) => window.atlas.pathForFile(f)).filter(Boolean); if (paths.length) openPaths(paths); });
+window.addEventListener('drop', (e) => { e.preventDefault(); const paths = droppedPaths(e); if (paths.length) openPaths(paths); });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'F1' && !e.ctrlKey && !e.altKey && !document.activeElement.closest('.cm-editor')) { e.preventDefault(); toggleRef(); }
   // shortcuts that must work even when the editor isn't focused

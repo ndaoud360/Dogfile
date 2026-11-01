@@ -3,7 +3,7 @@
 // or bring your own picture for any map (or just a color); a background color, picture or 360° panorama;
 // animations with a scrubber and speed. Light on slow computers: it draws only when something changes, lowers
 // its resolution while you move the model if frames get slow, and has a low-quality mode (auto-detected).
-import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, natCmp, fileUrl, decodedUrl, fmtSize, debounce } from './core.js';
+import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, natCmp, fileUrl, decodedUrl, fmtSize, debounce, droppedPaths } from './core.js';
 import { icon } from './icons.js';
 import './menu.js'; // its listeners close open menus on click, blur and resize in this window
 import { applyColors, mediaSettings } from './theme.js';
@@ -729,7 +729,7 @@ function wire() {
   window.addEventListener('dragover', (e) => e.preventDefault());
   window.addEventListener('drop', (e) => {
     e.preventDefault();
-    const paths = [...e.dataTransfer.files].map((f) => window.atlas?.pathForFile?.(f)).filter(Boolean);
+    const paths = droppedPaths(e);
     if (!paths.length) return;
     // a picture dropped on the model: use it as the base color; elsewhere it's ignored
     const pics = paths.filter((p) => /\.(png|jpe?g|webp|bmp|tga|dds|psd|tiff?|exr|hdr)$/i.test(p));

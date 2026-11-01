@@ -10,7 +10,6 @@ pub mod util;
 pub mod walk;
 
 use serde_json::{json, Value};
-use std::io::BufRead;
 
 pub fn handle(id: u64, cmd: &str, args: Value) {
     match cmd {

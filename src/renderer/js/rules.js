@@ -2,7 +2,7 @@
 // (by extension, type, size, name, age; move/copy into a subfolder, tag, recycle, or sort by type / topic / month).
 // Dogfile watches the folders while it is running and applies the rules to new files once they finish downloading
 // or copying. "Run now" previews what would happen to the files already there.
-import { api, onMain, state, bus, h, esc, toast, pjoin, basename, isVirtual, saveSettings, uid, fmtSize, setTags, sys } from './core.js';
+import { api, onMain, state, bus, h, toast, pjoin, basename, isVirtual, saveSettings, uid, fmtSize, setTags } from './core.js';
 import { modal, confirm } from './dialogs.js';
 import { icon } from './icons.js';
 import { activeTab, loadTab } from './pane.js';

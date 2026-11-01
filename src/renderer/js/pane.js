@@ -7,7 +7,7 @@ import { shownPath, demoRealPath,
   saveLibrary, saveSettings, expandUserPath, toast, extname, KINDS, defaultSort,
 } from './core.js';
 import { icon, folderArt, fileArt } from './icons.js';
-import { showMenu, closeMenus } from './menu.js';
+import { showMenu } from './menu.js';
 import * as MM from './mediameta.js';
 import { requirePro } from './license.js';
 
@@ -1576,11 +1576,9 @@ function itemFromEvent(el, e) {
   const cell = e.target.closest('.cell');
   if (!cell || !el.inner.contains(cell)) return null;
   // the gaps around a thumbnail count as empty space, so clicking them clears the selection
-  if (true) {
-    if (cell.classList.contains('grid-cell') && !e.target.closest('.tile, .label, .sub, .cbox, .rename-box')) return null;
-    // list view: the blank part of a cell after the name; details: the blank area right of the last column
-    if (e.target === cell && (cell.classList.contains('list-cell') || cell.classList.contains('drow') || cell.classList.contains('details-row'))) return null;
-  }
+  if (cell.classList.contains('grid-cell') && !e.target.closest('.tile, .label, .sub, .cbox, .rename-box')) return null;
+  // list view: the blank part of a cell after the name; details: the blank area right of the last column
+  if (e.target === cell && (cell.classList.contains('list-cell') || cell.classList.contains('drow') || cell.classList.contains('details-row'))) return null;
   const t = paneTab(el.idx);
   const ix = +cell.dataset.ix;
   return { t, ix, it: t.shown[ix], cell };
@@ -1843,7 +1841,6 @@ function refreshSel(el, t) {
   const sel = el.inner.querySelectorAll('.cell');
   for (const c of sel) { const it = t.shown[+c.dataset.ix]; if (!it) continue; const on = t.sel.has(it.path); c.classList.toggle('selected', on); c.setAttribute('aria-selected', String(on)); c.classList.toggle('focused', t.focus === it.path); }
 }
-function paintRowsOrColumns(el, t) { if (t.view === 'columns') { el.inner.querySelectorAll('.mcol.current .mitem').forEach((m) => { const it = t.shown[+m.dataset.ix]; m.classList.toggle('selected', t.sel.has(it.path)); m.classList.toggle('focused', t.focus === it.path); }); } else paintRows(el, t); }
 
 // Generic drop target for any element (pane bodies, sidebar entries, crumbs, tabs)
 // ---- dragging inside Dogfile ----

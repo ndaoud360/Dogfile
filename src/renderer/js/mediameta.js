@@ -1,7 +1,7 @@
 // Media details for gallery mode and media filters: picture size / date taken / camera (from file headers),
 // video & song length, dominant colour and a tiny perceptual hash (from thumbnails), BPM / key (from audio
 // analysis). Cached on disk so a library is only read once.
-import { api, state, bus, KINDS, debounce, IS_WIN, sys } from './core.js';
+import { api, bus, KINDS, debounce, IS_WIN, sys } from './core.js';
 
 const meta = new Map(); // key -> {...}
 let loaded = false;

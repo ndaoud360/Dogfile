@@ -41,7 +41,7 @@ function snapshot(el, w, h) {
   Object.assign(c.style, { width: w + 'px', height: h + 'px', position: 'absolute', left: '0', top: '0', margin: '0', display: getComputedStyle(el).display === 'none' ? 'block' : getComputedStyle(el).display, visibility: 'visible', transform: 'none', animation: 'none' });
   // canvases (terminal, charts) come out blank in a copy: show what they hold
   const src = el.querySelectorAll('canvas'), dst = c.querySelectorAll('canvas');
-  src.forEach((cv, i) => { try { const d = dst[i]; d.width = cv.width; d.height = cv.height; d.getContext('2d')?.drawImage(cv, 0, 0); } catch {} });
+  src.forEach((cv, i) => { try { const d = dst[i]; d.width = cv.width; d.height = cv.height; d.getContext('2d')?.drawImage(cv, 0, 0); } catch { /* a canvas that can't be copied stays blank during the animation */ } });
   return c;
 }
 

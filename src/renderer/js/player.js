@@ -372,7 +372,7 @@ function rebuildCues() {
   for (const c of P.subCues) {
     const s = c.s - off, e = c.e - off;
     if (e <= 0) continue;
-    try { const cue = new VTTCue(Math.max(0, s), e, c.t); cue.line = document.body.classList.contains('idle') ? -2 : -5; track.addCue(cue); } catch {}
+    try { const cue = new VTTCue(Math.max(0, s), e, c.t); cue.line = document.body.classList.contains('idle') ? -2 : -5; track.addCue(cue); } catch { /* a caption the browser rejects is left out; the rest show */ }
   }
   track.mode = 'showing';
 }
@@ -523,7 +523,10 @@ async function expandPlaylists(files) {
           else if (!line || line.startsWith('#') || /^\[|^\w+=/.test(line)) continue;
           out.push(/^([a-z]:[\\/]|\/|\\\\)/i.test(line) ? line : dir + (sys.sep || '\\') + line.replace(/[\\/]/g, sys.sep || '\\'));
         }
-      } catch {}
+      } catch (e) {
+        // a playlist that can't be read: say so, instead of starting with nothing to play
+        toast(`Couldn’t open the playlist ${f.replace(/^.*[\\/]/, '')}: ${String(e?.message || e).replace(/^Error:\s*/, '')}`, { error: true });
+      }
     } else out.push(f);
   }
   return out;
@@ -834,7 +837,7 @@ async function openTranscript() {
   const st = await api('fs:stat', it.path).catch(() => null);
   const key = `${it.path}|${st?.size || 0}|${Math.round(st?.mtime || 0)}`;
   const cached = (await api('ai:cacheGet', 'whisper', [key]))[key];
-  if (cached) { try { Object.assign(TX, { path: it.path, chunks: JSON.parse(cached) }); return renderTranscript(); } catch {} }
+  if (cached) { try { Object.assign(TX, { path: it.path, chunks: JSON.parse(cached) }); return renderTranscript(); } catch { /* damaged saved transcript: made again below */ } }
   renderTranscript('Getting ready…');
   if (!(await ai.ensureModels(['whisper']))) { renderTranscript('Transcripts need the free Whisper model.'); return; }
   TX.busy = true; TX.stop = false; TX.path = it.path; TX.chunks = [];
@@ -866,7 +869,7 @@ async function openTranscript() {
 // browser's audio path keeps the delay it built up. Jumping to the same moment empties it and puts them back together.
 function resyncAV() {
   if (!P.item || v.paused || P.mode !== 'direct' || !v.duration) return;
-  try { v.currentTime = v.currentTime; } catch {}
+  try { v.currentTime = v.currentTime; } catch { /* nudging the frame is cosmetic */ }
 }
 function renderTranscript(msg) {
   const panel = $('tx-panel');

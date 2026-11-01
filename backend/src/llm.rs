@@ -12,7 +12,8 @@ use serde_json::{json, Value};
 use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::{Mutex, OnceLock};
+use parking_lot::Mutex;
+use std::sync::OnceLock;
 use std::time::Instant;
 
 use llama_cpp_2::context::params::LlamaContextParams;
@@ -336,9 +337,9 @@ fn now() -> u64 {
 
 /// start the worker for `model` (no-op when it's already running with it)
 pub fn ensure(model: &Path, state_dir: &Path) -> Sender<Job> {
-    let mut w = worker().lock().unwrap();
+    let mut w = worker().lock();
     if let Some(x) = w.as_ref() {
-        if x.model == model && state().lock().unwrap().0 != "off" {
+        if x.model == model && state().lock().0 != "off" {
             return x.tx.clone();
         }
     }
@@ -346,14 +347,14 @@ pub fn ensure(model: &Path, state_dir: &Path) -> Sender<Job> {
     let m = model.to_path_buf();
     let sd = state_dir.to_path_buf();
     {
-        let mut s = state().lock().unwrap();
+        let mut s = state().lock();
         *s = ("loading".into(), None, now());
     }
     std::thread::Builder::new()
         .name("dogfile-brain".into())
         .stack_size(8 << 20)
         .spawn(move || {
-            let set = |st: &str| state().lock().unwrap().0 = st.to_string();
+            let set = |st: &str| state().lock().0 = st.to_string();
             // llama.cpp's own server program when it's there (much faster), else the engine built into Dogfile
             let mut r = Err(String::new());
             let mut fall_back = true;
@@ -366,14 +367,14 @@ pub fn ensure(model: &Path, state_dir: &Path) -> Sender<Job> {
                     set(st)
                 });
                 if let Err(e) = &r {
-                    eprintln!("assistant: llama-server: {e}");
+                    crate::errlog(&format!("assistant: llama-server: {e}"));
                 }
                 fall_back = r.is_err() && !ready.get();
             }
             if fall_back {
                 r = serve(&m, &sd, rx, &set);
             }
-            let mut s = state().lock().unwrap();
+            let mut s = state().lock();
             s.0 = "off".into();
             if let Err(e) = r {
                 s.1 = Some(e);
@@ -384,18 +385,18 @@ pub fn ensure(model: &Path, state_dir: &Path) -> Sender<Job> {
     tx
 }
 pub fn stop() {
-    *worker().lock().unwrap() = None; // the channel closes; the thread finishes and frees the model
+    *worker().lock() = None; // the channel closes; the thread finishes and frees the model
 }
 pub fn status_json() -> Value {
-    let s = state().lock().unwrap().clone();
+    let s = state().lock().clone();
     json!({ "state": s.0, "error": s.1, "lastUsed": s.2 })
 }
 pub fn touch() {
-    state().lock().unwrap().2 = now();
+    state().lock().2 = now();
 }
 /// unload after `secs` without requests (it's a few GB of memory)
 pub fn idle_check(secs: u64) {
-    let (st, _, last) = state().lock().unwrap().clone();
+    let (st, _, last) = state().lock().clone();
     if st == "ready" && now().saturating_sub(last) > secs {
         stop();
     }
@@ -495,7 +496,7 @@ pub async fn plan(a: &Args) -> R {
         .map_err(|_| {
             // a stuck or crashed worker is replaced on the next request
             stop();
-            state().lock().unwrap().1.clone().unwrap_or_else(|| "The assistant took too long to answer".into())
+            state().lock().1.clone().unwrap_or_else(|| "The assistant took too long to answer".into())
         })?;
     touch();
     r

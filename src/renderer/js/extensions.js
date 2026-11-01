@@ -260,7 +260,7 @@ export function featureFile(f) {
   return JSON.stringify({ dogmod: 1, id: f.id, name: f.name, description: f.description || '', version: f.version || '1.0', author: f.author || '', target: f.target, permissions: f.permissions || [], code: f.code }, null, 2);
 }
 export function readFeatureFile(text) {
-  try { const j = JSON.parse(text); if ((j.dogmod || j.atlasFeature) && j.code) return j; } catch {}
+  try { const j = JSON.parse(text); if ((j.dogmod || j.atlasFeature) && j.code) return j; } catch { /* not a feature file: handled as plain code below */ }
   return { code: text, ...parseFeature(text) };
 }
 

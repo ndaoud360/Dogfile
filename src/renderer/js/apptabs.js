@@ -141,11 +141,15 @@ window.addEventListener('message', (e) => {
 // file watching for Dogfile Notepad tabs is delivered to the main frame: pass it on
 onMain('file:changed', (p) => { for (const id of frames.keys()) { const t = tabById(id); if (t?.app === 'editor') post(t, { type: 'fileChanged', path: p }); } });
 
+// the id an app tab's answer must carry: unguessable, so no other page can answer in its place (for example to
+// skip the "save your changes?" question when a tab closes)
+const newToken = () => Array.from(crypto.getRandomValues(new Uint32Array(4)), (n) => n.toString(36)).join('');
+
 // the assistant asking an app tab to do something; resolves with the app's { ok, msg }
 const askWaits = new Map();
 export function appAsk(op, arg, t = activeAppTab(), ms = 120000) {
   if (!t || !frames.has(t.id)) return Promise.resolve({ ok: false, msg: 'The app isn’t open' });
-  const token = Math.random().toString(36).slice(2);
+  const token = newToken();
   return new Promise((resolve) => {
     const giveUp = setTimeout(() => { askWaits.delete(token); resolve({ ok: false, msg: 'The app didn’t answer' }); }, ms);
     askWaits.set(token, (r) => { clearTimeout(giveUp); resolve(r || { ok: true }); });
@@ -157,7 +161,7 @@ const menuWaits = new Map();
 export function appMenu(name) {
   const t = activeAppTab();
   if (!t) return Promise.resolve([]);
-  const token = Math.random().toString(36).slice(2);
+  const token = newToken();
   const conv = (items) => items.map((it) => ({ ...it, submenu: it.submenu ? conv(it.submenu) : undefined, run: it.id ? () => post(t, { type: 'menuRun', id: it.id }) : undefined }));
   return new Promise((resolve) => {
     const giveUp = setTimeout(() => { menuWaits.delete(token); resolve([]); }, 3000);
@@ -171,7 +175,7 @@ const leaveWaits = new Map();
 setLeaveHandler((t) => {
   const f = frames.get(t.id);
   if (!f?.contentWindow) return Promise.resolve(true);
-  const token = Math.random().toString(36).slice(2);
+  const token = newToken();
   return new Promise((resolve) => {
     leaveWaits.set(token, resolve);
     // an app that never answers (still loading, or crashed) doesn't hold the tab hostage

@@ -5,18 +5,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 pub const IS_WIN: bool = cfg!(windows);
 
-pub fn ms(t: std::io::Result<SystemTime>) -> f64 {
-    match t {
-        Ok(t) => match t.duration_since(UNIX_EPOCH) {
-            Ok(d) => d.as_millis() as f64,
-            Err(e) => -(e.duration().as_millis() as f64),
-        },
-        Err(_) => 0.0,
-    }
-}
-pub fn now_ms() -> f64 {
-    ms(Ok(SystemTime::now()))
-}
+// file times as milliseconds since 1970, as the window uses them: one definition, in the engine crate
+pub use dogfile_core::util::{ms, now_ms};
 pub fn time_from_ms(v: f64) -> SystemTime {
     if v >= 0.0 { UNIX_EPOCH + Duration::from_millis(v as u64) } else { UNIX_EPOCH }
 }

@@ -47,6 +47,16 @@ pub fn set_in(dir: &Path, name: &str, v: &Value) -> Result<(), String> {
     }
     std::fs::rename(&tmp, &f).map_err(|e| crate::fsx::friendly(&e))
 }
+/// Save where the caller has no one to hand an error to (a background task, a cache): a failure is written to the
+/// error log, and with `tell` the window also says what couldn't be saved.
+pub fn set_or_log(name: &str, v: &Value, tell: Option<&str>) {
+    if let Err(e) = set(name, v) {
+        crate::errlog(&format!("store: couldn't save {name}: {e}"));
+        if let Some(what) = tell {
+            crate::events::broadcast("secrets:saveFailed", serde_json::json!({ "what": what, "error": e }));
+        }
+    }
+}
 pub fn get_or(name: &str, d: Value) -> Value {
     get(name).unwrap_or(d)
 }
@@ -100,7 +110,14 @@ pub fn adopt_previous(now: &Path) {
     if now.join("settings.json").exists() {
         return;
     }
-    let newest = other_data_dirs(now)
+    adopt_from(now, other_data_dirs(now));
+}
+/// `adopt_previous` with the candidate folders given (the tests pass their own, without touching the environment)
+fn adopt_from(now: &Path, candidates: Vec<std::path::PathBuf>) {
+    if now.join("settings.json").exists() {
+        return;
+    }
+    let newest = candidates
         .into_iter()
         .filter_map(|d| std::fs::metadata(d.join("settings.json")).and_then(|m| m.modified()).ok().map(|t| (t, d)))
         .max_by_key(|(t, _)| *t);
@@ -129,24 +146,25 @@ mod tests {
     fn a_new_data_folder_takes_over_the_previous_installs_data() {
         let base = std::env::temp_dir().join(format!("dogfile-adopt-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
-        let roaming = base.join("Roaming");
         // the old install: settings, tags, a model (left where it is: models are moved by ai::adopt_models)
-        let old = roaming.join("Dogfile");
+        let old = base.join("Roaming").join("Dogfile");
+        let older = base.join("Roaming").join("Atlas Files");
         std::fs::create_dir_all(old.join("models").join("unsloth")).unwrap();
+        std::fs::create_dir_all(&older).unwrap();
+        std::fs::write(older.join("settings.json"), br#"{"language":"es"}"#).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(20));
         std::fs::write(old.join("settings.json"), br#"{"language":"de","welcomed":true}"#).unwrap();
         std::fs::write(old.join("tags.json"), br#"{"a":["red"]}"#).unwrap();
         std::fs::write(old.join("models").join("unsloth").join("big.gguf"), b"x").unwrap();
-        // SAFETY: only this test reads APPDATA
-        unsafe { std::env::set_var("APPDATA", &roaming) };
         // the new install's folder (say, the Store package's)
         let now = base.join("Packages").join("Dogfile").join("LocalCache").join("Roaming").join("Dogfile");
-        super::adopt_previous(&now);
-        assert!(std::fs::read_to_string(now.join("settings.json")).unwrap().contains("\"de\""));
+        super::adopt_from(&now, vec![older.clone(), old.clone()]);
+        assert!(std::fs::read_to_string(now.join("settings.json")).unwrap().contains("\"de\""), "the most recently used copy wins");
         assert!(now.join("tags.json").exists());
         assert!(!now.join("models").exists(), "models aren't copied");
         // a folder that already has settings is never overwritten
         std::fs::write(now.join("settings.json"), br#"{"language":"fr"}"#).unwrap();
-        super::adopt_previous(&now);
+        super::adopt_from(&now, vec![old]);
         assert!(std::fs::read_to_string(now.join("settings.json")).unwrap().contains("\"fr\""));
         std::fs::remove_dir_all(&base).ok();
     }

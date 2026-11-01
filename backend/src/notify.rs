@@ -53,6 +53,6 @@ mod win {
             if a.len() > 20 { a.remove(0); }
             Ok(())
         })();
-        if let Err(e) = r { eprintln!("notification: {e}"); }
+        if let Err(e) = r { crate::errlog(&format!("notification: {e}")); }
     }
 }

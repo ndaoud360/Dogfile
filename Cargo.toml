@@ -8,7 +8,9 @@ opt-level = 3
 lto = "thin"
 codegen-units = 4
 strip = true
-panic = "abort"
+# unwind, not abort: a bug that panics inside one command or background job is caught (http.rs, ops.rs) and reported
+# as an error, instead of closing the whole app with every window and copy in it; crash.log still records it
+panic = "unwind"
 
 [profile.dev.package."*"]
 opt-level = 2

@@ -2,7 +2,7 @@
 // that already exist when their names fit, then to topics found in their names (organize.js), optionally to
 // groups a small local AI model finds, and the rest by kind. The preview shows why each file goes where it goes,
 // and every file can be sent to another folder or left alone before anything moves. Every move can be undone.
-import { api, state, h, toast, pjoin, basename, isVirtual, fmtSize, bus } from './core.js';
+import { api, h, toast, pjoin, basename, isVirtual, fmtSize, bus } from './core.js';
 import { modal } from './dialogs.js';
 import { icon } from './icons.js';
 import { activeTab, loadTab } from './pane.js';

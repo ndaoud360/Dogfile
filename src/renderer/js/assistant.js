@@ -3,9 +3,9 @@
 // request and what it found, previews any change, and asks before doing anything big or destructive.
 // Everything runs on this PC: a request grammar, name & content matching, and (optionally) the local AI models.
 import { animatePanel } from './panelanim.js';
-import { api, state, sys, bus, h, esc, toast, fmtSize, fmtDate, basename, dirname, pjoin, IS_WIN, KINDS, TEXT_EXTS, uid, setTags, isVirtual } from './core.js';
+import { api, state, sys, bus, h, esc, toast, fmtSize, fmtDate, basename, dirname, pjoin, KINDS, TEXT_EXTS, uid, setTags, isVirtual } from './core.js';
 import { icon, fileArt } from './icons.js';
-import { modal, confirm } from './dialogs.js';
+import { confirm } from './dialogs.js';
 import { activeTab, navigate, selectedItems, openTab, loadTab } from './pane.js';
 import * as A from './actions.js';
 import { parseRequest, expandTopic, describePlan } from './assistant-parse.js';
@@ -261,7 +261,7 @@ async function findFiles(plan, where, card) {
     if (plan.minBpm || plan.maxBpm || plan.key) {
       // songs not analysed yet: analyse up to 300 now (BPM / key)
       const todo = pool.filter((f) => MM.isAud(f) && !(MM.metaOf(f)?.bpm)).slice(0, 300);
-      if (todo.length) { const { analyzeAudio } = await import('./audio-analysis.js'); let k = 0; for (const f of todo) { if (busy?.stop) break; label.textContent = `Finding tempo and key… ${++k} of ${todo.length}`; try { const a = await analyzeAudio(f.path); MM.setMeta(f, { bpm: a.bpm, key: a.keyLabel, camelot: a.camelot }); } catch {} } }
+      if (todo.length) { const { analyzeAudio } = await import('./audio-analysis.js'); let k = 0; for (const f of todo) { if (busy?.stop) break; label.textContent = `Finding tempo and key… ${++k} of ${todo.length}`; try { const a = await analyzeAudio(f.path); MM.setMeta(f, { bpm: a.bpm, key: a.keyLabel, camelot: a.camelot }); } catch { /* no tempo or key for this file; the others still get theirs */ } } }
     }
     const { compatibleKeys } = MM;
     const cams = (plan.cameras || []).map((c) => c.toLowerCase().replace(/^apple\s+/, ''));
@@ -992,9 +992,9 @@ const toks = (s) => String(s || '').toLowerCase().replace(/[’']/g, '').split(/
 async function loadHelp() {
   if (HELP) return HELP;
   let list = [];
-  try { list = await (await fetch(new URL('../assets/help.json', import.meta.url))).json(); } catch {}
+  try { list = await (await fetch(new URL('../assets/help.json', import.meta.url))).json(); } catch { /* help topics unavailable: the assistant answers without them */ }
   let cmds = new Map();
-  try { cmds = (await import('./commands.js')).commands; } catch {}
+  try { cmds = (await import('./commands.js')).commands; } catch { /* command list unavailable: the assistant answers without it */ }
   const entries = list.map((e) => ({ ...e, N: toks(e.n + ' ' + (e.q || '')), H: toks(e.h), A: toks(e.a) }));
   for (const c of cmds.values()) if (!c.hidden && c.title && c.run) entries.push({ cmd: c, n: c.title, a: c.cat || 'Commands', h: c.keys?.length ? `Shortcut: ${c.keys[0]}. Also in the command palette (Ctrl+Shift+P).` : 'In the command palette (Ctrl+Shift+P).', N: toks(c.title), H: [], A: toks(c.cat) });
   return (HELP = entries);

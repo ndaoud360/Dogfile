@@ -21,7 +21,7 @@
   if (window.atlas) return;
   const qs = new URLSearchParams(location.search);
   let top = window;
-  try { while (top.parent && top.parent !== top && top.parent.__dogWin) top = top.parent; } catch {}
+  try { while (top.parent && top.parent !== top && top.parent.__dogWin) top = top.parent; } catch { /* a frame from another origin above: this one is the top Dogfile window */ }
   const isTop = top === window;
   const page = (location.pathname.split('/').pop() || 'index.html').replace(/\.html$/, '');
   const win = isTop ? (qs.get('w') || (page === 'index' ? 'main-1' : page + '-1')) : top.__dogWin;
@@ -75,7 +75,8 @@
     window.__dogEvent = dispatch;
     if (!inApp) {
       const es = new EventSource('/events?w=' + encodeURIComponent(win));
-      es.onmessage = (e) => { try { const m = JSON.parse(e.data); dispatch(m.c, m.d); } catch {} };
+      // only a garbled message is skipped; an error in a handler is not hidden here (it reaches the error log)
+      es.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch { return; } dispatch(m.c, m.d); };
     }
   }
 

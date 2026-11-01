@@ -205,7 +205,8 @@ export async function remindAbout(item) {
 // from the back end: a reminder is due (also shown by Windows), the list changed, a notification was clicked
 onMain('reminders:due', (r) => toast(`${r.title}: ${r.body}`, { action: { label: 'Open', run: () => openReminders(r.id) }, ms: 12000 }));
 onMain('reminders:changed', () => bus.emit('remindersChanged'));
-// the back end couldn't encrypt or write something private (reminders, a renewed cloud sign-in): nothing was saved unencrypted
+// the back end couldn't save something of yours (reminders, a renewed cloud sign-in, paired phones); private data is
+// never written unencrypted instead
 onMain('secrets:saveFailed', (d) => toast(`Couldn’t save your ${d?.what || 'private data'}: ${d?.error || 'unknown error'}`, { error: true }));
 onMain('reminders:scan', () => bus.emit('remindersChanged'));
 onMain('reminders:open', (r) => openReminders(r?.id));

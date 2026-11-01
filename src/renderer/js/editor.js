@@ -5,7 +5,7 @@ import * as CM from '../vendor/cm.js';
 import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, debounce } from './core.js';
 import { icon } from './icons.js';
 import { initLicense } from './license.js';
-import { showMenu, closeMenus } from './menu.js';
+import { showMenu } from './menu.js';
 import { prompt, modal } from './dialogs.js';
 import { applyColors } from './theme.js';
 import { markdown } from './md.js';
@@ -167,7 +167,7 @@ function sniffName(text) {
   if (/^#!.*\bnode/.test(head)) return 'x.js';
   if (/^<\?xml/i.test(head)) return 'x.xml';
   if (/^<!doctype html|^<html/i.test(head)) return 'x.html';
-  if (/^[{[]/.test(head)) { try { JSON.parse(text); return 'x.json'; } catch {} }
+  if (/^[{[]/.test(head)) { try { JSON.parse(text); return 'x.json'; } catch { /* not JSON: the next guess decides the type */ } }
   return 'x.txt';
 }
 
@@ -817,7 +817,7 @@ async function restoreSession(s) {
         try { const r = await api('fs:readBuffer', x.path); const dec = decode(b64ToBytes(r.data), x.enc); text = dec.text; enc = dec.enc; mtime = r.mtime; } catch { if (x.backup == null) continue; }
         const d = makeDoc({ path: x.path, text, enc, eol: x.eol, mtime, langId: x.langId, dirtyText: x.backup });
         docs.push(d); api('fs:watchFile', x.path, true);
-        try { d.view.dispatch({ selection: { anchor: Math.min(x.cursor || 0, d.view.state.doc.length) }, scrollIntoView: true }); } catch {}
+        try { d.view.dispatch({ selection: { anchor: Math.min(x.cursor || 0, d.view.state.doc.length) }, scrollIntoView: true }); } catch { /* the saved cursor is past the end of a changed file: start at the top */ }
       } else if (x.backup) {
         const d = makeDoc({ text: '', name: x.name, langId: x.langId, dirtyText: x.backup });
         docs.push(d);
@@ -1026,7 +1026,7 @@ async function assistantOp(op, a = {}) {
       let other = /^([a-z]:[\\/]|\\\\|\/)/i.test(name) ? name : dirname(active.path) + (sys.platform === 'win32' ? '\\' : '/') + name;
       if (!name || !(await api('fs:stat', other).catch(() => null))) { const [f] = await api('dialog:openFiles', { title: `Compare with${name ? ` (couldn’t find ${name})` : ''}…`, defaultPath: dirname(active.path) }) || []; if (!f) return { ok: false, msg: name ? `I couldn’t find “${name}” next to this file` : 'Pick a file to compare with' }; other = f; }
       await openCompare(active.path, other);
-      if (a.jump !== false && compareView) setTimeout(() => { try { CM.goToNextChunk(compareView.b); } catch {} }, 150);
+      if (a.jump !== false && compareView) setTimeout(() => { try { CM.goToNextChunk(compareView.b); } catch { /* no differences to jump to */ } }, 150);
       return { ok: true, msg: `Comparing with ${basename(other)}. F7 jumps to the next difference.` };
     }
     case 'case': { if (a.scope === 'headings') { let n = 0; opLines(v, { ...a, scope: 'all' }, (l) => l.map((x) => (/^\s{0,3}#{1,6}\s/.test(x) || /^[A-Z0-9][^.!?]{0,60}$/.test(x.trim()) && x.trim().split(/\s+/).length <= 10 && x === x.trim() && !/[.,;:]$/.test(x) ? (n++, x.replace(/^(\s*#*\s*)(.*)$/, (m, p, t) => p + CASES[a.to](t))) : x))); return { ok: true, msg: `Changed ${plural(n, 'heading')} to ${{ title: 'Title Case', upper: 'UPPERCASE', lower: 'lowercase', sentence: 'Sentence case' }[a.to] || a.to}` }; }

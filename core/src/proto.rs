@@ -6,7 +6,8 @@ use serde_json::{json, Map, Value};
 use std::collections::HashMap;
 use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, OnceLock};
+use parking_lot::Mutex;
+use std::sync::{Arc, OnceLock};
 
 type Sink = Box<dyn Fn(Value) + Send + Sync>;
 static SINK: OnceLock<Sink> = OnceLock::new();
@@ -41,12 +42,10 @@ pub fn send(id: u64, kind: &str, body: Value) {
         return;
     }
     let line = serde_json::to_string(&Value::Object(m)).unwrap_or_else(|_| "{}".into());
-    let lock = out().lock();
-    if let Ok(mut o) = lock {
-        let _ = o.write_all(line.as_bytes());
-        let _ = o.write_all(b"\n");
-        let _ = o.flush();
-    }
+    let mut o = out().lock();
+    let _ = o.write_all(line.as_bytes());
+    let _ = o.write_all(b"\n");
+    let _ = o.flush();
 }
 /// An event not tied to a request (index status changes…): id 0.
 pub fn event(kind: &str, body: Value) {
@@ -59,14 +58,14 @@ fn cancels() -> &'static Mutex<HashMap<u64, Arc<AtomicBool>>> {
 }
 pub fn register(id: u64) -> Arc<AtomicBool> {
     let f = Arc::new(AtomicBool::new(false));
-    cancels().lock().unwrap().insert(id, f.clone());
+    cancels().lock().insert(id, f.clone());
     f
 }
 pub fn unregister(id: u64) {
-    cancels().lock().unwrap().remove(&id);
+    cancels().lock().remove(&id);
 }
 pub fn cancel(id: u64) -> bool {
-    if let Some(f) = cancels().lock().unwrap().get(&id) {
+    if let Some(f) = cancels().lock().get(&id) {
         f.store(true, Ordering::Relaxed);
         true
     } else {
@@ -84,7 +83,7 @@ impl Batcher {
         Batcher { id, inner: Mutex::new((Vec::new(), std::time::Instant::now(), 0)) }
     }
     pub fn push(&self, v: Value, scanned: u64) {
-        let mut g = self.inner.lock().unwrap();
+        let mut g = self.inner.lock();
         g.0.push(v);
         g.2 = scanned;
         if g.0.len() >= 200 || g.1.elapsed().as_millis() >= 200 {
@@ -95,7 +94,7 @@ impl Batcher {
         }
     }
     pub fn tick(&self, scanned: u64) {
-        let mut g = self.inner.lock().unwrap();
+        let mut g = self.inner.lock();
         g.2 = scanned;
         if g.1.elapsed().as_millis() >= 250 {
             let items = std::mem::take(&mut g.0);
@@ -105,7 +104,7 @@ impl Batcher {
         }
     }
     pub fn flush(&self, scanned: u64) {
-        let mut g = self.inner.lock().unwrap();
+        let mut g = self.inner.lock();
         let items = std::mem::take(&mut g.0);
         g.1 = std::time::Instant::now();
         drop(g);
@@ -124,7 +123,7 @@ impl Progress {
         Progress { id, last: Mutex::new(std::time::Instant::now()), every_ms }
     }
     pub fn due(&self) -> bool {
-        let mut l = self.last.lock().unwrap();
+        let mut l = self.last.lock();
         if l.elapsed().as_millis() >= self.every_ms {
             *l = std::time::Instant::now();
             true

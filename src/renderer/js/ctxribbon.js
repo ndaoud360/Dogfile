@@ -1,6 +1,6 @@
 // Contextual ribbon tab next to View: Zip inside/for archives, Audio / Video / Pictures for selected media,
 // and Editor / Audio for a built-in app open in a tab.
-import { state, KINDS, dirname, basename } from './core.js';
+import { KINDS, dirname, basename } from './core.js';
 import { activeTab, selectedItems, navigate } from './pane.js';
 import * as A from './actions.js';
 import { activeAppTab, appCmd, appMenu } from './apptabs.js';

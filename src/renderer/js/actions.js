@@ -1,15 +1,9 @@
 // File actions: open, copy/cut/paste, delete, rename, new items, undo/redo, archives, shortcuts,
 // virtual locations (Home, This PC, Recent, Recycle Bin, Network, Tags), and context menus.
-import {
-  api, state, sys, bus, h, isVirtual, isRemote, remoteParts, onMain, pjoin, dirname, basename, normalize, samePath, isInside, extname, stem,
-  fmtSize, toast, onWorkMsgFor, IS_WIN, isMtp, isTextFile, isMediaFile, isImageFile, isModelFile, isOfficeFile, addRecentFile, tagsOf, setTags, moveTags, saveLibrary, saveSettings, kindOf, KINDS, virtualTitle, setDriveNames, uid,
-} from './core.js';
-import {
-  activeTab, paneTab, navigate, openTab, loadTab, renderTabPanes, selectedItems, startRename, selectOnly, otherPaneTab,
-  renderAll, paneCount, recompute, clearThumbCache, focusPane, invalidateArchive,
-} from './pane.js';
+import { api, state, sys, bus, h, isVirtual, isRemote, remoteParts, onMain, pjoin, dirname, basename, normalize, samePath, extname, stem, fmtSize, toast, onWorkMsgFor, IS_WIN, isMtp, isTextFile, isMediaFile, isImageFile, isModelFile, isOfficeFile, addRecentFile, tagsOf, setTags, moveTags, saveLibrary, kindOf, KINDS, setDriveNames, uid } from './core.js';
+import { activeTab, paneTab, navigate, openTab, loadTab, renderTabPanes, selectedItems, startRename, selectOnly, otherPaneTab, paneCount, clearThumbCache, invalidateArchive } from './pane.js';
 import { showMenu } from './menu.js';
-import { prompt, confirm, batchRenameDialog, propertiesDialog, compressDialog, archivePasswordDialog, alertBox } from './dialogs.js';
+import { prompt, confirm, propertiesDialog, compressDialog, archivePasswordDialog, alertBox } from './dialogs.js';
 import { openTool } from './apptabs.js';
 import { icon } from './icons.js';
 import { featureMenuItems } from './features.js';
@@ -174,7 +168,7 @@ async function mtpTransfer(paths, dest, mode) {
     if (fromDev) {
       for (const dir of new Set(paths.map((p) => p.replace(/\/[^/]*$/, '').replace(/\|[^|/]*$/, '|')))) for (const it of await api('mtp:list', dir).catch(() => [])) sizes.set(it.path, it.isDir ? 0 : it.size || 0);
     } else (await api('fs:statMany', paths).catch(() => [])).forEach((x, i) => sizes.set(paths[i], x?.isDir ? 0 : x?.size || 0));
-  } catch {}
+  } catch { /* sizes only make the progress bar exact; the copy runs without them */ }
   const total = paths.reduce((a, p) => a + (sizes.get(p) || 0), 0);
   const { clientJob } = await import('./tools.js');
   const job = clientJob(`${toDev ? 'Copying to the phone' : 'Copying from the phone'}: ${what}`);
@@ -655,7 +649,7 @@ export async function reverseRecord(r) {
     else if (r.type === 'moved') {
       const failed = [];
       for (const [a, b] of [...r.pairs].reverse()) {
-        try { await api('fs:rename', b, a); moveTags(b, a); continue; } catch {}
+        try { await api('fs:rename', b, a); moveTags(b, a); continue; } catch { /* not a plain rename (another drive, or the name is taken): a full move below */ }
         // another drive, or the old name is taken again: a normal move (which asks about name clashes)
         const j = await runJob({ type: 'move', sources: [b], dest: dirname(a) });
         if (j?.status === 'done' && !j.errors?.length) moveTags(b, a); else failed.push(b);

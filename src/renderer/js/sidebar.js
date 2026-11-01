@@ -1,6 +1,6 @@
 // Sidebar: quick-access list (exactly like the design), pinned folders, devices with an expandable
 // folder tree, network, recycle bin and color tags. Every entry is a drop target.
-import { shownPath, api, state, sys, bus, h, esc, debounce, basename, pjoin, samePath, isInside, IS_WIN, saveLibrary, saveSettings, toast, isVirtual } from './core.js';
+import { shownPath, api, state, sys, bus, h, esc, debounce, basename, pjoin, samePath, IS_WIN, saveLibrary, saveSettings, toast, isVirtual } from './core.js';
 import { icon } from './icons.js';
 import { activeTab, navigate, openTab, attachDropTarget, registerDropTarget, currentDrag, selectedItems, selectNone } from './pane.js';
 import { showMenu } from './menu.js';
@@ -252,7 +252,6 @@ export function render() {
   }
   // smart collections (collections.js)
   if (sec.collections !== false) {
-    const colls = state.settings.collections || [];
     const box = h('div', { class: 'device' });
     const head = entry({ label: 'Collections', ic: 'collection', cls: 'device-head', onclick: () => { secOpen.collections = !secOpen.collections; render(); }, extra: `<button class="si-action" title="New smart collection">${icon('plus')}</button>` });
     head.querySelector('.si-action').addEventListener('click', (e) => { e.stopPropagation(); bus.emit('newCollection'); });

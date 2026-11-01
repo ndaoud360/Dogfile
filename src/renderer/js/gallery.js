@@ -1,7 +1,6 @@
 // Gallery & media tools: the media filter panel (kind, colour, "looks like this", length, BPM, key), BPM/key
 // analysis of a whole folder, video contact sheets, and finding similar videos / songs.
-import { api, state, bus, h, esc, toast, fmtSize, basename, dirname } from './core.js';
-import { icon } from './icons.js';
+import { api, bus, h, toast, fmtSize, basename, dirname } from './core.js';
 import { modal, confirm } from './dialogs.js';
 import { activeTab, recompute, renderTabPanes, selectedItems, navigate } from './pane.js';
 import * as MM from './mediameta.js';
@@ -82,7 +81,7 @@ export async function analyzeFolder(t = activeTab()) {
   host?.append(el);
   for (const it of songs) {
     if (stop) break;
-    try { const a = await analyzeAudio(it.path); MM.setMeta(it, { bpm: a.bpm, key: a.keyLabel, camelot: a.camelot }); } catch {}
+    try { const a = await analyzeAudio(it.path); MM.setMeta(it, { bpm: a.bpm, key: a.keyLabel, camelot: a.camelot }); } catch { /* no tempo or key for this file; the others still get theirs */ }
     done++;
     txt.textContent = `Analyzing BPM & key… ${done} of ${songs.length}`;
     fill.style.width = (done / songs.length) * 100 + '%';

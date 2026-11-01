@@ -1,9 +1,9 @@
 // What the assistant does for each action it recognises (assistant-intents.js says which one). Each handler
 // writes into the conversation card: what it did, or what it would do with a button to go ahead.
-import { api, state, sys, bus, h, esc, toast, fmtSize, fmtDate, basename, dirname, pjoin, IS_WIN, KINDS, isVirtual, saveSettings, saveTags, saveLibrary } from './core.js';
+import { api, state, sys, bus, h, esc, toast, fmtSize, fmtDate, basename, dirname, pjoin, KINDS, isVirtual, saveSettings, saveTags, saveLibrary } from './core.js';
 import { icon } from './icons.js';
 import { confirm } from './dialogs.js';
-import { activeTab, navigate, selectedItems, loadTab, otherPaneTab, recompute, renderTabPanes, setView, renderAll } from './pane.js';
+import { activeTab, navigate, selectedItems, otherPaneTab, recompute, renderTabPanes, setView, renderAll } from './pane.js';
 import * as A from './actions.js';
 import { parseRequest } from './assistant-parse.js';
 import { openTool, appAsk, activeAppTab } from './apptabs.js';

@@ -1,7 +1,7 @@
 // Rename studio: a stack of rename steps (find & replace with regular expressions, a name pattern with
 // numbering / dates / photo, music and document details, case, add / remove text, extension) with a live
 // before → after preview, problem checks, saved presets, "describe it in words", and one-step undo.
-import { api, state, bus, h, esc, toast, natCmp, extname, stem, basename, dirname, pjoin, saveSettings, IS_WIN } from './core.js';
+import { api, state, h, esc, toast, natCmp, extname, stem, basename, dirname, pjoin, saveSettings, IS_WIN } from './core.js';
 import { modal, prompt, interpretRename } from './dialogs.js';
 import { icon } from './icons.js';
 import * as A from './actions.js';
@@ -117,10 +117,8 @@ export async function renameStudio(items, initial = {}) {
   for (const d of new Set(items.map((i) => dirname(i.path)))) { const r = await api('fs:list', d).catch(() => null); for (const x of r?.items || []) extra.existing.add(IS_WIN() ? x.path.toLowerCase() : x.path); }
   const table = h('div', { class: 'rs-table' });
   const status = h('div', { class: 'rs-status' });
-  let last = null;
   const run = () => {
     const { out, err } = computeNames(list, R, extra);
-    last = out;
     const changes = out.filter((o) => o.name !== o.it.name).length, probs = out.filter((o) => o.problem).length;
     status.className = 'rs-status' + (probs || err ? ' bad' : '');
     status.textContent = err || `${changes} of ${out.length} will change${probs ? ` · ${probs} problem${probs > 1 ? 's' : ''} to fix first` : ''}`;

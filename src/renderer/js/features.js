@@ -1,7 +1,7 @@
 // Features in the file browser: runs file-browser features, adds their commands to the palette and their
 // items to the right-click menu, installs features (from Notepad, files or the feature browser) after showing
 // what they may do, and the Features manager (turn on/off, edit, export, update, remove).
-import { api, onMain, state, bus, h, esc, toast, saveSettings, basename, dirname, sys, uid } from './core.js';
+import { api, onMain, state, bus, h, esc, toast, saveSettings, basename, dirname, sys } from './core.js';
 import { modal, confirm } from './dialogs.js';
 import { icon } from './icons.js';
 import { activeTab, selectedItems, navigate, loadTab } from './pane.js';

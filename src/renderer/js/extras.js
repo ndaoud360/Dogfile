@@ -3,7 +3,7 @@
 import { animatePanel } from './panelanim.js';
 import { api, onMain, state, sys, bus, h, esc, isVirtual, isMtp, basename, dirname, samePath, toast, saveSettings, IS_WIN, debounce } from './core.js';
 import { icon } from './icons.js';
-import { activeTab, navigate, paneEls, attachDropTarget, currentDrag, selectedItems } from './pane.js';
+import { activeTab, navigate, paneEls, currentDrag } from './pane.js';
 import { showMenu } from './menu.js';
 import { modal } from './dialogs.js';
 import * as A from './actions.js';
@@ -193,7 +193,7 @@ async function toggleTerminal(force) {
   if (termOpen) { await ensureTerminal(); setTimeout(() => { fitTerm(); term?.focus(); }, 30); }
   else paneEls[state.activePane]?.body.focus();
 }
-const fitTerm = () => { try { fit?.fit(); if (ptyId && term) api('pty:resize', ptyId, term.cols, term.rows); } catch {} };
+const fitTerm = () => { try { fit?.fit(); if (ptyId && term) api('pty:resize', ptyId, term.cols, term.rows); } catch { /* the terminal isn't laid out yet: fitted on the next resize */ } };
 
 async function ensureTerminal() {
   const drawer = $('term-drawer');
@@ -346,7 +346,6 @@ function lockedToast(j) {
 export async function showLocks(paths, job) {
   if (!IS_WIN()) return toast('Lock detection is available on Windows');
   const body = h('div', { class: 'stack' }, h('div', { class: 'hint' }, 'Checking which programs have these files open…'));
-  let close;
   const draw = async () => {
     const list = await api('locks:who', paths).catch(() => []);
     body.innerHTML = '';

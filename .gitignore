@@ -7,5 +7,7 @@ vendor/ffmpeg/
 target/
 app/gen/ui.pak
 
-# Desloppify local state
+# Desloppify: local scan state, its agent guide and scorecard images
 .desloppify/
+.claude/
+scorecard.png

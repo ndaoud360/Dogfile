@@ -3,9 +3,9 @@
 // or bring your own picture for any map (or just a color); a background color, picture or 360° panorama;
 // animations with a scrubber and speed. Light on slow computers: it draws only when something changes, lowers
 // its resolution while you move the model if frames get slow, and has a low-quality mode (auto-detected).
-import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, natCmp, fileUrl, decodedUrl, DECODED_IMG, fmtSize, debounce } from './core.js';
+import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, natCmp, fileUrl, decodedUrl, fmtSize, debounce } from './core.js';
 import { icon } from './icons.js';
-import { showMenu } from './menu.js';
+import './menu.js'; // its listeners close open menus on click, blur and resize in this window
 import { applyColors, mediaSettings } from './theme.js';
 import { requirePro, initLicense } from './license.js';
 import { EMBED, pendingFiles, onHost, setTitle, onAsk, showInFiles } from './embed.js';
@@ -46,7 +46,7 @@ function detectLow() {
   return weakGpu || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
 }
 function probeGpu() {
-  try { const c = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl'); const d = c?.getExtension('WEBGL_debug_renderer_info'); gpuName = d ? c.getParameter(d.UNMASKED_RENDERER_WEBGL) : ''; c?.getExtension('WEBGL_lose_context')?.loseContext(); } catch {}
+  try { const c = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl'); const d = c?.getExtension('WEBGL_debug_renderer_info'); gpuName = d ? c.getParameter(d.UNMASKED_RENDERER_WEBGL) : ''; c?.getExtension('WEBGL_lose_context')?.loseContext(); } catch { /* no WebGL details: the graphics name is left blank */ }
 }
 const maxTex = () => (lowEnd ? 2048 : 4096);
 
@@ -528,7 +528,7 @@ function renderSide() {
       const picked = tg.some((e) => ch in (M.cur.picks[e.mat.uuid] || {}));
       const t = here[0];
       const thumb = h('span', { class: 'md-thumb' + (t ? '' : ' none'), title: t?.userData?.path || t?.name || (any ? 'Off' : 'No picture') });
-      if (t?.image) { try { const cv = document.createElement('canvas'); cv.width = cv.height = 40; cv.getContext('2d').drawImage(t.image, 0, 0, 40, 40); thumb.style.backgroundImage = `url(${cv.toDataURL()})`; } catch {} }
+      if (t?.image) { try { const cv = document.createElement('canvas'); cv.width = cv.height = 40; cv.getContext('2d').drawImage(t.image, 0, 0, 40, 40); thumb.style.backgroundImage = `url(${cv.toDataURL()})`; } catch { /* no thumbnail for this texture; the material still shows */ } }
       const on = h('input', { type: 'checkbox', checked: chanOn[ch], title: 'Show this map' });
       on.onchange = () => { chanOn[ch] = on.checked; resetPreviews(); applyMaterials(); renderSide(); };
       const kids = [on, thumb, h('span', { class: 'md-chname', title: CH.find((x) => x[0] === ch)[3] || label }, label)];
@@ -594,7 +594,7 @@ async function pickBackground() {
   if (!f?.length) return;
   P.bg.path = f[0]; P.bg.kind = 'image';
   if (['hdr', 'exr'].includes(extOf(f[0]))) P.bg.pano = true;
-  else { try { const s = await new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im.naturalWidth / im.naturalHeight); im.onerror = no; im.src = texUrl(f[0]); }); if (Math.abs(s - 2) < 0.05) P.bg.pano = true; } catch {} }
+  else { try { const s = await new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im.naturalWidth / im.naturalHeight); im.onerror = no; im.src = texUrl(f[0]); }); if (Math.abs(s - 2) < 0.05) P.bg.pano = true; } catch { /* image size unknown: shown as a flat background */ } }
   savePrefs(); await applyBackground(); renderSide();
 }
 
@@ -635,7 +635,7 @@ async function snapshot() {
       const im = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = texUrl(P.bg.path); });
       const k = Math.max(out.width / im.naturalWidth, out.height / im.naturalHeight);
       g.drawImage(im, (out.width - im.naturalWidth * k) / 2, (out.height - im.naturalHeight * k) / 2, im.naturalWidth * k, im.naturalHeight * k);
-    } catch {}
+    } catch { /* background image didn't load: the snapshot keeps the plain background */ }
     draw();
   } else if (P.bg.kind === 'default') { g.fillStyle = getComputedStyle(bgEl).backgroundColor || '#1a1b1f'; g.fillRect(0, 0, out.width, out.height); }
   g.drawImage(cv, 0, 0);
@@ -782,7 +782,7 @@ window.addEventListener('pagehide', () => {
     R?.env?.dispose(); R?.pano?.dispose();
     R?.renderer?.dispose(); R?.renderer?.forceContextLoss?.();
     import('./model-load.js').then((m) => m.stopCad?.()).catch(() => {});
-  } catch {}
+  } catch { /* the window is closing: nothing left to clean up for */ }
 });
 window.__m3d = { M, get P() { return P; }, get R() { return R; }, show, setQueue, frame, importMap, loadTexture, targets, applyMaterials, chanOn, setMap: (v) => { mapView = v; resetPreviews(); applyMapView(); renderBar(); need(); }, applyBackground, snapshot, draw };
 boot().then(() => initLicense({ test: true })).catch((e) => { console.error(e); document.body.innerHTML = `<pre style="padding:20px;color:#f66">${esc(e.stack || e.message)}</pre>`; });

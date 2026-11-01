@@ -940,7 +940,7 @@ pub(crate) mod toast {
             Ok(())
         })();
         if let Err(e) = r {
-            eprintln!("notification: {e}");
+            crate::errlog(&format!("notification: {e}"));
         }
     }
 }

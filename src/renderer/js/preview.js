@@ -1,6 +1,6 @@
 // Preview pane + Quick Look (Space): images, video, audio, PDF, text/code with line numbers,
 // Markdown, CSV tables, JSON, fonts, archive contents, folder summaries and a hex view for binaries.
-import { shownPath, api, state, bus, h, esc, fmtSize, fmtDate, typeLabel, kindOf, fileUrl, DECODED_IMG, decodedUrl, KINDS, basename, dirname, isVirtual, tagsOf, toast } from './core.js';
+import { shownPath, api, state, bus, h, esc, fmtSize, fmtDate, typeLabel, kindOf, fileUrl, DECODED_IMG, decodedUrl, KINDS, dirname, isVirtual, toast } from './core.js';
 import { openTool } from './apptabs.js';
 import { icon, fileArt, folderArt } from './icons.js';
 import { markdown } from './md.js';
@@ -130,7 +130,7 @@ export async function renderPreview(box, it, { large = false } = {}) {
       if (r.binary) return hexView(stage, it);
       if (it.ext === 'md' || it.ext === 'markdown') stage.append(h('div', { class: 'pv-md', html: markdown(r.text) }));
       else if (it.ext === 'csv' || it.ext === 'tsv') stage.append(csvTable(r.text, it.ext === 'tsv' ? '\t' : null));
-      else if (it.ext === 'json') { let t = r.text; try { t = JSON.stringify(JSON.parse(r.text), null, 2); } catch {} stage.append(await codeViewHL(t, it.name)); }
+      else if (it.ext === 'json') { let t = r.text; try { t = JSON.stringify(JSON.parse(r.text), null, 2); } catch { /* not valid JSON: shown as it is */ } stage.append(await codeViewHL(t, it.name)); }
       else stage.append(await codeViewHL(r.text, it.name));
       if (my !== seq) return;
       const editBtn = () => { if (!large) meta.append(h('div', { class: 'pv-actions' }, h('button', { class: 'btn small', onclick: () => openTool('editor', [it.path]) }, 'Edit in Dogfile Notepad'))); };

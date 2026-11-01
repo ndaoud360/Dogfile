@@ -3,10 +3,10 @@
 // open Notepad documents, the terminal and its folder, the sidebar and preview pane, and pinned project files.
 // A profile (Work, Gaming, Music production, Development…) is a bigger switch: its own look and settings, its own
 // pinned folders, and the workspace it was left in. Switching profiles brings all of that back.
-import { api, state, sys, bus, h, esc, toast, saveSettings, saveLibrary, basename, dirname, IS_WIN, fmtDate, uid } from './core.js';
+import { api, state, sys, bus, h, esc, toast, saveSettings, saveLibrary, basename, IS_WIN, fmtDate } from './core.js';
 import { modal, prompt, confirm } from './dialogs.js';
 import { icon } from './icons.js';
-import { activeTab, navigate, selectedItems, recompute, renderTabPanes, tabById } from './pane.js';
+import { recompute } from './pane.js';
 import { snapshot, restoreSnapshot } from './tools.js';
 import { showMenu } from './menu.js';
 

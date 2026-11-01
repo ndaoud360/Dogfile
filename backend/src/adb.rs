@@ -422,14 +422,14 @@ fn remember_addr(addr: &str) {
     v.insert(0, json!(addr));
     v.truncate(4);
     s["phoneAdbAddrs"] = json!(v);
-    let _ = crate::store::set("settings", &s);
+    crate::store::set_or_log("settings", &s, None);
     st().settings.write()["phoneAdbAddrs"] = json!(v);
 }
 fn remember() {
     let mut s = crate::store::get("settings").unwrap_or_else(|| json!({}));
     if s["phoneAdb"] != json!(true) {
         s["phoneAdb"] = json!(true);
-        let _ = crate::store::set("settings", &s);
+        crate::store::set_or_log("settings", &s, None);
         st().settings.write()["phoneAdb"] = json!(true);
     }
 }

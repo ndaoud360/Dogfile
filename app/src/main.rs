@@ -874,7 +874,8 @@ fn start_heartbeat(app: AppHandle) {
         std::thread::sleep(std::time::Duration::from_secs(5));
     });
 }
-/// what went wrong, kept for next time (data folder > crash.log)
+/// what went wrong, kept for next time (data folder > crash.log); every panic is written, including the ones that
+/// are caught and reported to the window as errors
 fn crash_log() {
     let prev = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {

@@ -3,11 +3,7 @@
 import { api, state, bus, h, esc, isVirtual, saveSettings, toast, IS_WIN, sys, debounce, isModelFile } from './core.js';
 import { openTool } from './apptabs.js';
 import { icon } from './icons.js';
-import {
-  activeTab, paneTab, paneCount, navigate, goBack, goForward, goUp, openTab, closeTab, reopenClosedTab, duplicateTab, setLayout,
-  focusPane, splitPane, closePane, selectedItems, selectAll, selectNone, invertSelection, setView, loadTab, otherPaneTab, startPathEdit, paneEls,
-  renderAll, recompute, renderTabPanes, clearThumbCache, touchView, showTabInPane, selectOnly, confirmLeaveAll,
-} from './pane.js';
+import { activeTab, paneCount, navigate, goBack, goForward, goUp, openTab, closeTab, reopenClosedTab, duplicateTab, setLayout, focusPane, splitPane, closePane, selectedItems, selectAll, selectNone, invertSelection, setView, loadTab, otherPaneTab, startPathEdit, paneEls, renderAll, recompute, renderTabPanes, clearThumbCache, touchView, showTabInPane, confirmLeaveAll } from './pane.js';
 import * as A from './actions.js';
 import * as T from './tools.js';
 import { quickLook } from './preview.js';

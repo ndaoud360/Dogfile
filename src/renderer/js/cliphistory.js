@@ -1,7 +1,7 @@
 // Clipboard history (Ctrl+Shift+V): files and folders you copied or cut in Dogfile, and paths / text you copied
 // anywhere. Private by default: only paths are kept, nothing is kept after Dogfile closes unless you ask for it,
 // and anything a password manager marks as private is never recorded. Settings > Privacy.
-import { api, state, bus, h, esc, toast, basename, onMain, fmtDate, saveSettings } from './core.js';
+import { api, state, bus, h, toast, basename, onMain, fmtDate, saveSettings } from './core.js';
 import { icon } from './icons.js';
 import { modal } from './dialogs.js';
 import { activeTab, navigate } from './pane.js';

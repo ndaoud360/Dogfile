@@ -1,7 +1,7 @@
 // Smart drop: look at what was dropped and where, and suggest the most useful action (extract archives, sort
 // with the folder's automation, put files into subfolders whose names match, sort a mixed pile by type…).
 // With nothing special to suggest, the drop just happens as usual (Settings > Files > Smart drop).
-import { api, state, h, toast, basename, dirname, pjoin, KINDS, extname, saveSettings } from './core.js';
+import { api, state, toast, basename, pjoin, KINDS, extname, saveSettings } from './core.js';
 import { showMenu } from './menu.js';
 import * as A from './actions.js';
 

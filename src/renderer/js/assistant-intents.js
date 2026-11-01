@@ -55,7 +55,6 @@ export function parseAutomation(text) {
   return rules;
 }
 
-const R = (re) => (t) => re.exec(t);
 // [id, test (text, lower) → args or null]; first match wins, so the specific ones come first
 const INTENTS = [
   // ---------- questions about Dogfile itself go to the help, even when they name a feature ----------

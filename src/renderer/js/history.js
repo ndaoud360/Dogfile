@@ -4,7 +4,7 @@
 import { api, state, bus, h, esc, toast, fmtSize, fmtDate, basename, dirname, debounce, IS_WIN, pjoin, uid, saveSettings } from './core.js';
 import { modal, confirm, prompt } from './dialogs.js';
 import { icon } from './icons.js';
-import { activeTab, navigate, selectedItems, loadTab } from './pane.js';
+import { activeTab, navigate, selectedItems } from './pane.js';
 import * as A from './actions.js';
 import { onWorkMsgFor } from './tools.js';
 import { requirePro } from './license.js';

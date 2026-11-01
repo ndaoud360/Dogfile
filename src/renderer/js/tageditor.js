@@ -1,7 +1,7 @@
 // Music tag editor (MP3 / FLAC / M4A / WAV / OGG…): edit one or many files, cover art, BPM & key from analysis,
 // and Auto mode that looks the song up online by its title (iTunes + MusicBrainz, free) or by its sound
 // (AcoustID fingerprint, free key) and fills in everything including the album cover.
-import { api, h, esc, toast, state, bus } from './core.js';
+import { api, h, toast, state, bus } from './core.js';
 import { icon } from './icons.js';
 import { modal } from './dialogs.js';
 import { analyzeAudio } from './audio-analysis.js';
@@ -192,7 +192,7 @@ async function autoTagMany(infos) {
     const c = r.match;
     const ch = {}; for (const k of ['title', 'artist', 'album', 'album_artist', 'date', 'genre', 'track', 'disc']) if (c[k]) ch[k] = c[k];
     let cover;
-    if (withArt.checked && c.art && r.i.coverSupported) { try { cover = await api('tags:fetchArt', c.art); } catch {} }
+    if (withArt.checked && c.art && r.i.coverSupported) { try { cover = await api('tags:fetchArt', c.art); } catch { /* no cover found: tags are saved without one */ } }
     try { await api('tags:write', r.i.p, ch, cover); ok++; } catch (e) { toast(`${base(r.i.p)}: ${e.message}`, { error: true }); }
   }
   toast(`Tagged ${ok} song${ok === 1 ? '' : 's'}`);

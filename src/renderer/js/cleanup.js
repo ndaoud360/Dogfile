@@ -2,7 +2,7 @@
 // that is usually safe to remove: exact duplicates (hash-checked), near-duplicate photos, versions of the same
 // document, installers that were already run, temporary files, empty folders, large files nobody touched for a
 // year, and the Recycle Bin. Every list shows how much space it frees; nothing is removed until the review step.
-import { api, state, sys, bus, h, esc, toast, fmtSize, fmtDate, basename, dirname, IS_WIN, extname } from './core.js';
+import { api, state, sys, bus, h, toast, fmtSize, fmtDate, basename, dirname, IS_WIN, extname } from './core.js';
 import { modal, confirm } from './dialogs.js';
 import { icon } from './icons.js';
 import { activeTab, navigate } from './pane.js';

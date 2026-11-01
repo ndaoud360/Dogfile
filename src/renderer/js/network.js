@@ -1,7 +1,7 @@
 // Network & cloud: saved server connections (Windows shares, SFTP, FTP/FTPS, WebDAV) with status lights,
 // reconnecting shares that dropped, and cloud storage folders (OneDrive, Google Drive, Dropbox, iCloud, Box…)
 // that are synced to this PC, all in the sidebar.
-import { api, state, sys, bus, h, esc, toast, saveSettings, uid, IS_WIN, basename } from './core.js';
+import { api, state, bus, h, esc, toast, saveSettings, uid } from './core.js';
 import { modal, confirm } from './dialogs.js';
 import { icon } from './icons.js';
 import { activeTab, navigate } from './pane.js';

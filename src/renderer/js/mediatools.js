@@ -1,6 +1,6 @@
 // Media helpers for the main window: batch audio/video conversion (ffmpeg), BPM/key results,
 // image format conversion and desktop background.
-import { api, h, esc, toast, basename, dirname, stem, bus, IS_WIN, fileUrl } from './core.js';
+import { api, h, toast, basename, dirname, stem, bus, IS_WIN, fileUrl } from './core.js';
 import { modal } from './dialogs.js';
 import { analyzeAudio, fmtAnalysis } from './audio-analysis.js';
 import { requirePro } from './license.js';

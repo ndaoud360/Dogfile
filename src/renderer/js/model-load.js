@@ -54,7 +54,7 @@ async function managerFor(path, { maxTex = 4096 } = {}) {
   mgr.setURLModifier((u) => {
     if (!u || /^(data|blob):/.test(u) || u.startsWith('/f/?') || u.startsWith('/img?') || /^https?:/.test(u)) return u;
     let rel = u.startsWith('/f/') ? u.slice(3) : u;
-    try { rel = decodeURIComponent(rel); } catch {}
+    try { rel = decodeURIComponent(rel); } catch { /* not URL-encoded: used as it is */ }
     const norm = rel.replace(/[\\/]+/g, sep);
     const abs = /^([a-z]:|[\\/])/i.test(norm);
     const joined = abs ? norm : dir + sep + norm.replace(/^\.[\\/]/, '');
@@ -298,7 +298,7 @@ export async function loadModel(path, opts = {}) {
       const names = [...text.matchAll(/^\s*mtllib\s+(.+?)\s*$/gm)].map((m) => m[1]);
       const cands = [...names, baseOf(path).replace(/\.obj$/i, '.mtl')];
       for (const n of cands) {
-        try { const mtl = await new T.MTLLoader(mgr).loadAsync('/f/' + encodeURIComponent(n).replace(/%2F/gi, '/')); mtl.preload(); L.setMaterials(mtl); break; } catch {}
+        try { const mtl = await new T.MTLLoader(mgr).loadAsync('/f/' + encodeURIComponent(n).replace(/%2F/gi, '/')); mtl.preload(); L.setMaterials(mtl); break; } catch { /* this material file didn't load: the next candidate is tried */ }
       }
       object = L.parse(text);
     } else if (ext === 'stl' || ext === 'ply') {

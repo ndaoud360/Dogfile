@@ -15,7 +15,7 @@ function languagePicker(getMode) {
   import('./i18n.js').then((m) => { for (const [v, l] of m.LANGS) sel.append(h('option', { value: v, 'data-raw': '1' }, l)); sel.value = S.language || 'auto'; });
   sel.onchange = () => {
     S.language = sel.value; saveSettings();
-    try { sessionStorage.setItem(AGAIN, JSON.stringify({ mode: getMode() })); } catch {}
+    try { sessionStorage.setItem(AGAIN, JSON.stringify({ mode: getMode() })); } catch { /* storage unavailable: the welcome screen doesn't reopen after the language switch */ }
     setTimeout(() => location.reload(), 150);
   };
   return h('label', { class: 'wl-lang' }, h('span', { class: 'wl-lang-ic', html: icon('globe') }), h('span', {}, 'Language'), sel);

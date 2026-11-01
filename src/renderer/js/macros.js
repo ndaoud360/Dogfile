@@ -2,7 +2,7 @@
 // moves, renames…), edit the steps, and play them back from the palette, a shortcut, at startup, on a schedule,
 // or whenever new files land in a folder. Steps can also be added by hand, including your own features.
 import { api, state, bus, h, esc, toast, saveSettings, uid, basename, dirname, pjoin, isVirtual, sys } from './core.js';
-import { modal, confirm, prompt } from './dialogs.js';
+import { modal, confirm } from './dialogs.js';
 import { icon } from './icons.js';
 import { activeTab, navigate, selectedItems, renderTabPanes, recompute, loadTab, otherPaneTab, setView } from './pane.js';
 import * as A from './actions.js';

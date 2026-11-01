@@ -598,3 +598,21 @@ async fn gh_request(a: &Args) -> R {
     let j: Option<Value> = serde_json::from_str(&text).ok();
     Ok(json!({ "status": status, "ok": (200..300).contains(&status), "text": if j.is_some() { Value::Null } else { json!(text.chars().take(2 * 1048576).collect::<String>()) }, "json": j }))
 }
+
+#[cfg(test)]
+mod names_tests {
+    /// NAMES is what the Pro gate and its tests trust: it must be exactly the calls the match in `call` handles,
+    /// so a call added, renamed or removed in one place but not the other fails here
+    #[test]
+    fn names_list_matches_the_calls_handled() {
+        let src = include_str!("dispatch.rs");
+        let body = &src[src.find("fn dialog_opts(").unwrap()..src.find("mod names_tests").unwrap()];
+        let arm = regex::Regex::new(r#""([a-zA-Z0-9]+:[a-zA-Z0-9]+)"\s*(?:\||=>)"#).unwrap();
+        let handled: std::collections::BTreeSet<&str> = arm.captures_iter(body).map(|c| c.get(1).unwrap().as_str()).collect();
+        let listed: std::collections::BTreeSet<&str> = super::NAMES.iter().copied().collect();
+        assert_eq!(listed.len(), super::NAMES.len(), "a name is listed twice in NAMES");
+        let missing: Vec<_> = handled.difference(&listed).collect();
+        let extra: Vec<_> = listed.difference(&handled).collect();
+        assert!(missing.is_empty() && extra.is_empty(), "handled but not in NAMES: {missing:?}; in NAMES but not handled: {extra:?}");
+    }
+}

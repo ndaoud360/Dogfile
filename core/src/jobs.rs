@@ -11,7 +11,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
-use std::sync::Mutex;
+use parking_lot::Mutex;
 
 fn roots_of(j: &Value) -> Vec<PathBuf> {
     j["roots"].as_array().map(|a| a.iter().filter_map(|x| x.as_str()).map(PathBuf::from).collect()).unwrap_or_default()
@@ -90,27 +90,27 @@ pub fn size(id: u64, j: &Value, cancel: &AtomicBool) -> Result<Value, String> {
     walk::walk(std::slice::from_ref(&root), &opts, |parent, e| {
         if e.is_dir {
             if !e.is_link { dirs.fetch_add(1, Ordering::Relaxed); }
-            if with_children && parent == root { children.lock().unwrap().entry(e.path.clone()).or_insert((true, 0, 0)); }
+            if with_children && parent == root { children.lock().entry(e.path.clone()).or_insert((true, 0, 0)); }
         } else if !e.is_link {
             total.fetch_add(e.size, Ordering::Relaxed);
             files.fetch_add(1, Ordering::Relaxed);
             if with_children {
                 let key = if parent == root { e.path.clone() } else { top_of(parent).unwrap_or_else(|| e.path.clone()) };
-                let mut c = children.lock().unwrap();
+                let mut c = children.lock();
                 let ent = c.entry(key).or_insert((parent != root, 0, 0));
                 ent.1 += e.size;
                 ent.2 += 1;
             }
         }
         if prog.due() {
-            let ch: Option<Vec<Value>> = if with_children { Some(children_json(&children.lock().unwrap())) } else { None };
+            let ch: Option<Vec<Value>> = if with_children { Some(children_json(&children.lock())) } else { None };
             prog.send(json!({ "total": total.load(Ordering::Relaxed), "files": files.load(Ordering::Relaxed), "dirs": dirs.load(Ordering::Relaxed), "current": util::path_str(parent), "children": ch }));
         }
         Visit::Continue
     }, |_, _| {});
     let mut out = json!({ "total": total.load(Ordering::Relaxed), "files": files.load(Ordering::Relaxed), "dirs": dirs.load(Ordering::Relaxed) });
     if with_children {
-        let mut ch = children_json(&children.lock().unwrap());
+        let mut ch = children_json(&children.lock());
         ch.sort_by(|a, b| b["size"].as_u64().cmp(&a["size"].as_u64()));
         out["children"] = Value::Array(ch);
     }
@@ -146,12 +146,12 @@ pub fn dupes(id: u64, j: &Value, cancel: &AtomicBool) -> Result<Value, String> {
     walk::walk(&roots, &opts, |parent, e| {
         let n = scanned.fetch_add(1, Ordering::Relaxed);
         if !e.is_dir && !e.is_link && e.size >= min && !util::online_only(&e.path) {
-            by_size.lock().unwrap().entry(e.size).or_default().push(e.clone());
+            by_size.lock().entry(e.size).or_default().push(e.clone());
         }
         if prog.due() { prog.send(json!({ "phase": "Scanning", "scanned": n, "current": util::path_str(parent) })); }
         Visit::Continue
     }, |_, _| {});
-    let cands: Vec<Vec<Ent>> = by_size.into_inner().unwrap().into_values().filter(|v| v.len() > 1).collect();
+    let cands: Vec<Vec<Ent>> = by_size.into_inner().into_values().filter(|v| v.len() > 1).collect();
     let total = cands.len();
     let done = AtomicUsize::new(0);
     let groups: Mutex<Vec<(u64, Vec<Ent>)>> = Mutex::new(Vec::new());
@@ -163,15 +163,15 @@ pub fn dupes(id: u64, j: &Value, cancel: &AtomicBool) -> Result<Value, String> {
         for f in arr { if let Some(h) = hash_xxh(&f.path, Some(65536)) { by_head.entry(h).or_default().push(f) } }
         for (_, a) in by_head {
             if a.len() < 2 { continue }
-            if size <= 65536 { groups.lock().unwrap().push((size, a)); continue }
+            if size <= 65536 { groups.lock().push((size, a)); continue }
             let mut by_full: HashMap<u128, Vec<Ent>> = HashMap::new();
             for f in a { if let Some(h) = hash_xxh(&f.path, None) { by_full.entry(h).or_default().push(f) } }
-            for (_, b) in by_full { if b.len() > 1 { groups.lock().unwrap().push((size, b)) } }
+            for (_, b) in by_full { if b.len() > 1 { groups.lock().push((size, b)) } }
         }
         let d = done.fetch_add(1, Ordering::Relaxed) + 1;
-        if prog.due() { prog.send(json!({ "phase": "Comparing", "scanned": d, "of": total, "groups": groups.lock().unwrap().len() })); }
+        if prog.due() { prog.send(json!({ "phase": "Comparing", "scanned": d, "of": total, "groups": groups.lock().len() })); }
     });
-    let mut g = groups.into_inner().unwrap();
+    let mut g = groups.into_inner();
     g.sort_by(|a, b| (b.0 * b.1.len() as u64).cmp(&(a.0 * a.1.len() as u64)));
     let out: Vec<Value> = g.iter().map(|(s, files)| json!({ "size": s, "files": files.iter().map(|f| json!({ "path": util::path_str(&f.path), "name": f.name, "size": f.size, "mtime": f.mtime })).collect::<Vec<_>>() })).collect();
     Ok(json!({ "groups": out }))
@@ -229,7 +229,7 @@ pub fn inventory(id: u64, j: &Value, cancel: &AtomicBool) -> Result<Value, Strin
         let is_root_parent = roots.iter().any(|r| r == parent);
         if e.is_dir {
             if e.is_link || util::is_skip_dir(&e.name) || skip.contains(&e.name) { return Visit::SkipChildren }
-            let mut a = acc.lock().unwrap();
+            let mut a = acc.lock();
             a.dirs += 1;
             a.parents.insert(e.path.clone(), parent.to_path_buf());
             if is_root_parent { a.by_folder.entry(util::path_str(&e.path)).or_insert(0); }
@@ -243,7 +243,7 @@ pub fn inventory(id: u64, j: &Value, cancel: &AtomicBool) -> Result<Value, Strin
         let low = util::path_str(&e.path).to_lowercase();
         let in_temp = temp_roots.iter().any(|r| low.starts_with(r));
         let folder_key = if is_root_parent { "(files here)".to_string() } else { top_of(parent).unwrap_or_else(|| "(files here)".into()) };
-        let mut a = acc.lock().unwrap();
+        let mut a = acc.lock();
         a.total += e.size;
         a.files += 1;
         *a.by_type.entry(cat).or_insert(0) += e.size;
@@ -266,10 +266,10 @@ pub fn inventory(id: u64, j: &Value, cancel: &AtomicBool) -> Result<Value, Strin
         if cat == "Documents" && e.size > 0 { lim(&mut a.docs, item, 20000) }
         else if cat == "Pictures" && e.size > 10240 && matches!(ext.as_str(), "jpg" | "jpeg" | "jfif" | "png" | "webp" | "bmp" | "gif" | "heic" | "avif" | "tif" | "tiff") { lim(&mut a.images, item, 20000) }
         drop(a);
-        if prog.due() { let a = acc.lock().unwrap(); prog.send(json!({ "scanned": sc, "files": a.files, "total": a.total, "current": util::path_str(parent) })); }
+        if prog.due() { let a = acc.lock(); prog.send(json!({ "scanned": sc, "files": a.files, "total": a.total, "current": util::path_str(parent) })); }
         Visit::Continue
-    }, |dir, n| { acc.lock().unwrap().counts.insert(dir.to_path_buf(), if n == usize::MAX { 1 } else { n }); });
-    let mut a = acc.into_inner().unwrap();
+    }, |dir, n| { acc.lock().counts.insert(dir.to_path_buf(), if n == usize::MAX { 1 } else { n }); });
+    let mut a = acc.into_inner();
     // empty folders (and folders holding only empty folders): deepest first
     let mut dirs: Vec<PathBuf> = a.counts.keys().cloned().collect();
     dirs.sort_by_key(|d| std::cmp::Reverse(d.components().count()));
@@ -334,12 +334,12 @@ pub fn hashfiles(id: u64, j: &Value, cancel: &AtomicBool) -> Result<Value, Strin
                         if ![".sha256", ".sha1", ".md5", ".sfv"].iter().any(|s| lname.ends_with(s)) {
                             let r = e.path.strip_prefix(&abs).map(|p| p.to_string_lossy().replace('\\', "/")).unwrap_or_default();
                             let r = if rel.is_empty() { r } else { format!("{rel}/{r}") };
-                            found.lock().unwrap().push((e.path.clone(), r, Some(e.size)));
+                            found.lock().push((e.path.clone(), r, Some(e.size)));
                         }
                     }
                     Visit::Continue
                 }, |_, _| {});
-                let mut v = found.into_inner().unwrap();
+                let mut v = found.into_inner();
                 v.sort_by(|a, b| a.1.cmp(&b.1));
                 list.extend(v);
             }

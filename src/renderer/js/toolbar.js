@@ -1,6 +1,6 @@
 // Your own toolbar: any command as a button next to the search box, in the order you like.
 // Right-click the bar (or a ribbon button) to add, remove or rearrange; the built-in buttons can be hidden too.
-import { state, bus, h, esc, saveSettings } from './core.js';
+import { state, bus, h, saveSettings } from './core.js';
 import { icon } from './icons.js';
 import { commands, keysFor } from './commands.js';
 import { modal } from './dialogs.js';

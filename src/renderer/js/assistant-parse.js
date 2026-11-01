@@ -48,7 +48,6 @@ export function camelotOf(note, mode = 'major') {
   const m = /^(m|min|minor)$/i.test(mode) ? 'minor' : 'major';
   return CAMELOT[`${n} ${m}`] || null;
 }
-const CAMERA_WORDS = /^(?:sony|canon|nikon|fuji(?:film)?|olympus|panasonic|lumix|leica|pentax|ricoh|gopro|dji|samsung|google|pixel|iphone|apple|huawei|xiaomi|oneplus|motorola|nokia|lg|oppo|vivo|hasselblad)/i;
 const CODECS = { hevc: 'hevc', 'h.265': 'hevc', h265: 'hevc', x265: 'hevc', 'h.264': 'h264', h264: 'h264', avc: 'h264', x264: 'h264', av1: 'av1', vp9: 'vp9', vp8: 'vp8', prores: 'prores', 'mpeg-2': 'mpeg2video', mpeg2: 'mpeg2video', xvid: 'mpeg4', divx: 'mpeg4', 'mpeg-4': 'mpeg4' };
 
 export function parseRequest(text, { hasSelection = false, now = Date.now() } = {}) {

@@ -1367,7 +1367,6 @@ name = "dogfile-backend"
 version = "2.2.0"
 dependencies = [
  "arboard",
- "async-trait",
  "axum",
  "base64 0.22.1",
  "bytes",
@@ -1387,7 +1386,6 @@ dependencies = [
  "llama-cpp-sys-2",
  "md-5 0.10.6",
  "notify",
- "once_cell",
  "parking_lot",
  "portable-pty",
  "psd",
@@ -1417,10 +1415,10 @@ dependencies = [
 name = "dogfile-core"
 version = "0.1.0"
 dependencies = [
- "crossbeam-channel",
  "md-5 0.11.0",
  "memchr",
  "notify",
+ "parking_lot",
  "rayon",
  "regex",
  "serde",

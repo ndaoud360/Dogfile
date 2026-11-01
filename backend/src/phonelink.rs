@@ -51,7 +51,7 @@ fn load(g: &mut S) {
     g.loaded = true;
 }
 fn save(g: &S) {
-    let _ = crate::store::set("phonelink", &json!({ "devices": g.devices, "outbox": g.outbox }));
+    crate::store::set_or_log("phonelink", &json!({ "devices": g.devices, "outbox": g.outbox }), Some("paired phones"));
 }
 fn hash(k: &str) -> String {
     Sha256::digest(k.as_bytes()).iter().map(|b| format!("{b:02x}")).collect()

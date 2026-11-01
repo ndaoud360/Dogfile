@@ -1,9 +1,9 @@
 // Power tools: search (name/regex/wildcards/content/size/date + Everything integration), compare folders,
 // duplicate finder, storage analyzer, workspaces, and the operations "status center".
 import { animatePanel } from './panelanim.js';
-import { api, state, sys, bus, h, esc, fmtSize, fmtDate, basename, dirname, isVirtual, samePath, toast, IS_WIN, natCmp, saveLibrary, extname } from './core.js';
+import { api, state, sys, bus, h, esc, fmtSize, fmtDate, basename, dirname, isVirtual, toast, IS_WIN, natCmp, saveLibrary } from './core.js';
 import { icon } from './icons.js';
-import { activeTab, navigate, openTab, paneTab, paneCount, recompute, renderTabPanes, setLayout, showTabInPane, newTabState, focusPane, otherPaneTab, selectedItems } from './pane.js';
+import { activeTab, navigate, paneTab, paneCount, recompute, renderTabPanes, setLayout, newTabState, focusPane, selectedItems } from './pane.js';
 import { modal, prompt, confirm, conflictDialog } from './dialogs.js';
 import * as A from './actions.js';
 import { showMenu } from './menu.js';
@@ -579,7 +579,7 @@ const expanded = new Set();
 const popSeen = new Set();
 let popMin = false;
 onMainSafe('ops:removed', ({ id }) => { jobs.delete(id); drawOps(); });
-function onMainSafe(ch, fn) { try { window.atlas?.on(ch, fn); } catch {} }
+function onMainSafe(ch, fn) { try { window.atlas?.on(ch, fn); } catch { /* not inside Dogfile (a plain page): no events to listen to */ } }
 // the same progress on Dogfile's taskbar button, so it's visible while working in another program
 let tbLast = '';
 function taskbarProgress(active, total, done, list) {

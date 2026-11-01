@@ -1,7 +1,7 @@
 // AI search: "photos of a dog running on grass", "songs with piano", "find the video where I'm riding a bicycle".
 // Free and private: open models run on this PC. Pictures and video frames use CLIP, music and sounds use CLAP.
 // Embeddings are cached, so a folder is only analyzed once.
-import { api, state, bus, h, esc, toast, KINDS, IS_WIN, fileUrl, basename } from './core.js';
+import { api, bus, h, esc, toast, KINDS, IS_WIN, fileUrl } from './core.js';
 import { confirm, modal } from './dialogs.js';
 import { requirePro } from './license.js';
 

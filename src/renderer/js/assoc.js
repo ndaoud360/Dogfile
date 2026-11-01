@@ -1,7 +1,7 @@
 // File types: choose what opens each extension inside Dogfile (Dogfile Notepad / Player / Photos, the Windows
 // default, or any program), with extra "Open with" choices per type. Windows' own defaults are untouched, and
 // "Set the Windows default…" opens Windows' chooser for that type.
-import { api, state, bus, h, esc, toast, saveSettings, extname, basename, IS_WIN } from './core.js';
+import { api, state, bus, h, toast, saveSettings, extname, basename, IS_WIN } from './core.js';
 import { modal, prompt } from './dialogs.js';
 import { icon } from './icons.js';
 

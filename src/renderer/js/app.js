@@ -1,28 +1,22 @@
 // App shell: boot, theme, tab strip, File/Home/Organize/Tools/View ribbon, split-layout picker, status bar,
 // session restore, IPC events and global keyboard handling.
 import { panelClass, animatePanel } from './panelanim.js';
-import { shownPath,
-  api, onMain, sys, state, bus, h, esc, DEFAULT_SETTINGS, DEFAULT_TAGS, defaultSort, saveSettings, saveLibrary, fmtSize, isVirtual, basename, virtualTitle,
-  dirname, samePath, toast, isMtp, IS_WIN, debounce, persist, setNativeDialogs,
-} from './core.js';
+import { shownPath, api, onMain, sys, state, bus, h, esc, DEFAULT_SETTINGS, DEFAULT_TAGS, defaultSort, saveSettings, fmtSize, isVirtual, basename, virtualTitle, toast, isMtp, IS_WIN, debounce, setNativeDialogs } from './core.js';
 import { icon } from './icons.js';
-import {
-  bindActions, buildPanes, activeTab, paneTab, paneCount, openTab, closeTab, showTabInPane, setLayout, loadTab, navigate, focusPane,
-  selectedItems, renderAll, onWatchChanged, duplicateTab, tabById, attachDropTarget, registerDropTarget, paneEls, renderTabPanes, sortMenu, newTabState, recompute, confirmLeaveAll,
-} from './pane.js';
+import { bindActions, buildPanes, activeTab, paneTab, paneCount, openTab, closeTab, showTabInPane, setLayout, loadTab, navigate, focusPane, selectedItems, renderAll, onWatchChanged, duplicateTab, attachDropTarget, registerDropTarget, sortMenu, newTabState, recompute, confirmLeaveAll } from './pane.js';
 import * as A from './actions.js';
 import * as T from './tools.js';
 import { initSidebar } from './sidebar.js';
 import { initPreview, quickLookOpen } from './preview.js';
-import { commands, handleKey, keysFor, palette, rebuildKeymap } from './commands.js';
+import { commands, handleKey, keysFor } from './commands.js';
 import { initLicense, starHtml } from './license.js';
-import { showMenu, closeMenus } from './menu.js';
+import { showMenu } from './menu.js';
 import { openSettings } from './settings.js';
 import { anyModalOpen } from './dialogs.js';
 import { applyColors } from './theme.js';
 import { initFold } from './fold.js';
 import { initExtras } from './extras.js';
-import { APPS, syncFrames, activeAppTab } from './apptabs.js';
+import { APPS, syncFrames } from './apptabs.js';
 import { contextRibbon } from './ctxribbon.js';
 import './mediatools.js';
 import './foldernotes.js';
@@ -47,7 +41,6 @@ const $ = (id) => document.getElementById(id);
 // ======================================================================
 // Theme
 // ======================================================================
-let systemDark = matchMedia('(prefers-color-scheme: dark)').matches;
 let lastThemeSig = '';
 function applyTheme() {
   const s = state.settings;
@@ -87,7 +80,7 @@ function applyGlass(on) {
     if (on && !r.seeThrough && !first) toast('Glass is on. To see your desktop through the sidebar, open a new window (Ctrl+N) or restart Dogfile.');
   }).catch(() => {});
 }
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => { systemDark = e.matches; applyTheme(); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyTheme());
 bus.on('theme', applyTheme);
 bus.on('settings', () => { applyTheme(); renderStatus(); renderRibbon(); document.body.classList.toggle('ui-simple', state.settings.uiMode === 'simple'); });
 
@@ -649,7 +642,6 @@ onMain('ops:conflict', T.onConflict);
 const fillItem = (it) => { if (it && !it.isDir && it.ext == null) { const n = it.name || ''; const i = n.lastIndexOf('.'); it.ext = i > 0 ? n.slice(i + 1).toLowerCase() : ''; } if (it && it.isDir && it.ext == null) it.ext = ''; return it; };
 onMain('work:msg', (m) => { if (Array.isArray(m.items)) m.items.forEach(fillItem); T.onWorkMsg(m); });
 onMain('watch:changed', onWatchChanged);
-onMain('theme:changed', ({ dark }) => { systemDark = dark; applyTheme(); });
 onMain('app:beforeHide', (d) => {
   saveSession();
   // the window closed while files were still being copied: say that the work carries on and Dogfile closes after

@@ -1,5 +1,6 @@
 // The window's web requests: interface files, local files (with byte ranges for video), media made by ffmpeg,
 // AI model files, and `invoke` calls. Shared by the app's custom scheme and the development server.
+use crate::args::R;
 use crate::{dispatch, st};
 use bytes::Bytes;
 use serde_json::{json, Value};
@@ -156,6 +157,8 @@ async fn invoke(req: Req) -> Resp {
             if !demo && (!dir.starts_with("\\\\") || dir.trim_end_matches('\\').matches('\\').count() > 2) {
                 let d2 = dir.clone();
                 if let Ok(Ok(raw)) = tokio::task::spawn_blocking(move || dogfile_core::jobs::list_raw(&d2)).await {
+                    // time travel records this folder too (the slow path in dispatch does it from the parsed items)
+                    crate::timeline::observe_dir_later(dir);
                     let mut b = Vec::with_capacity(raw.len() + 16);
                     b.extend_from_slice(b"{\"ok\":true,\"v\":");
                     b.extend_from_slice(raw.as_bytes());
@@ -165,16 +168,21 @@ async fn invoke(req: Req) -> Resp {
             }
         }
     }
-    // a bug that panics inside a call still gets an answer (an error the window can show), instead of leaving the
-    // window waiting forever with no sign that anything went wrong
+    Resp::json(&guarded(&name, dispatch::call(&win, &name, args)).await)
+}
+
+/// A call's answer for the window. A bug that panics inside the call still gets an answer (an error the window can
+/// show) instead of leaving the window waiting forever with no sign that anything went wrong; the panic is logged.
+/// This needs the release build to unwind on panic (Cargo.toml), not abort.
+async fn guarded(name: &str, call: impl std::future::Future<Output = R>) -> Value {
     use futures_util::FutureExt;
-    match std::panic::AssertUnwindSafe(dispatch::call(&win, &name, args)).catch_unwind().await {
-        Ok(Ok(v)) => Resp::json(&json!({ "ok": true, "v": v })),
-        Ok(Err(e)) => Resp::json(&json!({ "ok": false, "error": e })),
+    match std::panic::AssertUnwindSafe(call).catch_unwind().await {
+        Ok(Ok(v)) => json!({ "ok": true, "v": v }),
+        Ok(Err(e)) => json!({ "ok": false, "error": e }),
         Err(p) => {
             let why = p.downcast_ref::<&str>().map(|s| s.to_string()).or_else(|| p.downcast_ref::<String>().cloned()).unwrap_or_default();
             crate::errlog(&format!("{name} stopped unexpectedly: {why}"));
-            Resp::json(&json!({ "ok": false, "error": "Something went wrong inside Dogfile. It’s been noted, and Report a bug will include it." }))
+            json!({ "ok": false, "error": "Something went wrong inside Dogfile. It’s been noted, and Report a bug will include it." })
         }
     }
 }
@@ -304,4 +312,23 @@ pub fn serve_file(file: &Path, range: Option<&str>, app: bool, cache: &str) -> R
         return Resp::text(500, "Read error");
     }
     base(200, buf)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[tokio::test]
+    async fn a_call_that_panics_answers_with_an_error() {
+        let ok = guarded("test:ok", async { Ok(json!(5)) }).await;
+        assert_eq!(ok, json!({ "ok": true, "v": 5 }));
+        let err = guarded("test:err", async { Err::<Value, String>("nope".into()) }).await;
+        assert_eq!(err, json!({ "ok": false, "error": "nope" }));
+        let boom = guarded("test:panic", async {
+            let v: Vec<u8> = vec![];
+            Ok(json!(v[3])) // index out of range: panics
+        })
+        .await;
+        assert_eq!(boom["ok"], json!(false));
+        assert!(boom["error"].as_str().unwrap().contains("Something went wrong"));
+    }
 }

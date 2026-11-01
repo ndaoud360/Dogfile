@@ -1,7 +1,7 @@
 // Settings: general, appearance, behavior, views, tools, keyboard shortcuts (remappable), custom commands, tags, data.
 import { FOLDER_ANIMS } from './folderanim.js';
 import { setNativeDialogs } from './core.js';
-import { api, state, bus, h, esc, saveSettings, saveTags, toast, IS_WIN, DEFAULT_SETTINGS, sys, onMain, debounce } from './core.js';
+import { api, state, bus, h, saveSettings, saveTags, toast, IS_WIN, DEFAULT_SETTINGS, sys, onMain, debounce } from './core.js';
 import { icon } from './icons.js';
 import { modal, confirm, prompt } from './dialogs.js';
 import { showMenu } from './menu.js';

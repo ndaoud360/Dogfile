@@ -2,8 +2,8 @@
 // GitHub repository with the topic "dogfile-mod" and an dogmod.json file. Browsing needs no
 // account; sharing needs a GitHub account and a token, which is stored encrypted on this PC and only ever sent to
 // GitHub. Before anything installs you see exactly what it may do and its full code.
-import { api, state, bus, h, esc, toast, saveSettings, fmtDate } from './core.js';
-import { modal, prompt, confirm } from './dialogs.js';
+import { api, state, bus, h, toast, saveSettings, fmtDate } from './core.js';
+import { modal } from './dialogs.js';
 import { icon } from './icons.js';
 import * as X from './extensions.js';
 import { requirePro } from './license.js';
@@ -47,7 +47,7 @@ async function manifestOf(repo) {
   if (r.json?.code) return r.json;
   // fall back to the API (private mirrors, renamed branches)
   const c = await gh('GET', `/repos/${repo.full_name}/contents/dogmod.json`);
-  if (c.ok && c.json?.content) { try { return JSON.parse(unb64(c.json.content)); } catch {} }
+  if (c.ok && c.json?.content) { try { return JSON.parse(unb64(c.json.content)); } catch { /* not valid JSON: treated as no saved list */ } }
   return null;
 }
 

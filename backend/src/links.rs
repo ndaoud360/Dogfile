@@ -268,7 +268,7 @@ fn save(m: &mut Map) {
     for (s, (mt, t)) in &m.sources {
         o.insert(s.clone(), json!({ "m": mt, "t": t }));
     }
-    let _ = crate::store::set("links", &json!({ "version": 1, "lastScan": m.last_scan, "sources": o }));
+    crate::store::set_or_log("links", &json!({ "version": 1, "lastScan": m.last_scan, "sources": o }), None);
     m.dirty = false;
 }
 fn mtime(p: &Path) -> f64 {

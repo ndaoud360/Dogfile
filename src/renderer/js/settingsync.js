@@ -10,7 +10,9 @@ const EXTRA = ['editor-prefs', 'player-prefs', 'filenotes'];
 async function bundle() {
   const settings = Object.fromEntries(Object.entries(state.settings).filter(([k]) => !LOCAL.has(k)));
   const extra = {};
-  for (const k of EXTRA) { try { const v = await api('store:get', k); if (v != null) extra[k] = v; } catch {} }
+  // a part that can't be read stops the sync (and is reported), instead of being left out and then missing on
+  // every other PC once this bundle replaces the shared file
+  for (const k of EXTRA) { const v = await api('store:get', k); if (v != null) extra[k] = v; }
   return { dogfile: 'settings', version: sys.version || '', from: state.hostname || '', saved: Date.now(), settings, library: { pinned: state.pinned, workspaces: state.workspaces, folderViews: state.folderViews }, tags: state.tags, extra };
 }
 async function apply(b, { quiet = false } = {}) {
@@ -61,8 +63,9 @@ async function push(force) {
   const b = await bundle();
   const sig = sigOf(b);
   if (!force && sig === lastSig) return;
-  lastSig = sig;
   await api('fs:writeText', p, JSON.stringify(b, null, 2));
+  // only once it's written: a failed write is tried again on the next tick
+  lastSig = sig;
   state.settings.settingsSync = { ...state.settings.settingsSync, applied: b.saved };
   saveSettings();
 }
@@ -78,10 +81,17 @@ async function pull(force) {
   if (!force) toast(`Settings updated from ${b.from || 'another PC'}`);
   return true;
 }
+let syncWarned = false;
 async function tick() {
   if (busy || !syncPath()) return;
   busy = true;
-  try { if (!(await pull(false))) await push(false); } catch {} finally { busy = false; }
+  try {
+    if (!(await pull(false))) await push(false);
+    if (syncWarned) { syncWarned = false; toast('Settings are syncing again', { ok: true }); }
+  } catch (e) {
+    // said once while it keeps failing (a sync folder that's gone, a full or read-only drive), not every tick
+    if (!syncWarned) { syncWarned = true; toast(`Settings couldn’t sync with ${syncPath()}: ${String(e?.message || e).replace(/^Error:\s*/, '')}`, { error: true }); }
+  } finally { busy = false; }
 }
 export function startSync() {
   if (!state.settings.settingsSync?.folder) return;

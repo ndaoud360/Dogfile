@@ -1,7 +1,6 @@
 // Office / OpenDocument / RTF previews without Office (Word, Excel, PowerPoint and LibreOffice files), document
 // properties you can edit, and personal notes / rating / colour label on any file ("annotations"), kept by Dogfile.
-import { api, state, bus, h, esc, toast, debounce, IS_WIN, saveSettings } from './core.js';
-import { icon } from './icons.js';
+import { api, state, bus, h, toast, debounce, IS_WIN, saveSettings } from './core.js';
 import { modal } from './dialogs.js';
 
 export const OFFICE = new Set(['docx', 'docm', 'dotx', 'odt', 'ott', 'rtf', 'xlsx', 'xlsm', 'xltx', 'ods', 'pptx', 'pptm', 'potx', 'odp']);

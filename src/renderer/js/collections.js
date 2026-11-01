@@ -1,9 +1,8 @@
 // Smart collections: virtual folders that gather files by rules (type, size, dates, words in the name, not opened
 // for a while, not watched yet) from any folders or drives, without moving anything. They open like a search, so
 // everything you can do to files (copy, move, tag, open, delete…) works on them.
-import { api, state, bus, h, toast, sys, saveSettings, uid, KINDS, basename } from './core.js';
+import { api, state, bus, h, sys, saveSettings, uid, KINDS, basename } from './core.js';
 import { modal, confirm } from './dialogs.js';
-import { icon } from './icons.js';
 import { activeTab, navigate } from './pane.js';
 import { KIND_FOLDERS } from './organize.js';
 

@@ -10,7 +10,7 @@ let info = null;
 const sysInfo = async () => (info ||= await invoke('sys:info'));
 const LAST_KEY = 'atlas-picker-last';
 const lastDir = (mode) => { try { return JSON.parse(localStorage.getItem(LAST_KEY) || '{}')[mode] || null; } catch { return null; } };
-const rememberDir = (mode, dir) => { try { const o = JSON.parse(localStorage.getItem(LAST_KEY) || '{}'); o[mode] = dir; localStorage.setItem(LAST_KEY, JSON.stringify(o)); } catch {} };
+const rememberDir = (mode, dir) => { try { const o = JSON.parse(localStorage.getItem(LAST_KEY) || '{}'); o[mode] = dir; localStorage.setItem(LAST_KEY, JSON.stringify(o)); } catch { /* storage unavailable: the last folder just isn't remembered */ } };
 const ROOT = 'atlas:pc';
 
 function parentOf(p, win) {
@@ -181,7 +181,7 @@ async function picker(mode, opts = {}) {
     const add = (pl) => { const r = h('div', { class: 'pk-place', title: pl.p, 'data-p': pl.p, html: `${icon(pl.ic)}<span>${esc(pl.label)}</span>` }); r.onclick = () => go(pl.p); places.append(r); };
     sec('Quick access'); quick.forEach(add);
     let pinned = [];
-    try { pinned = JSON.parse(localStorage.getItem('atlas-picker-pins') || '[]'); } catch {}
+    try { pinned = JSON.parse(localStorage.getItem('atlas-picker-pins') || '[]'); } catch { /* storage unavailable or unreadable: no pinned folders */ }
     if (opts.pinned?.length) pinned = opts.pinned;
     if (pinned.length) { sec('Pinned'); pinned.forEach((p) => add({ label: baseOf(p), ic: 'pin', p })); }
     sec(win ? 'This PC' : 'Devices');
@@ -262,7 +262,7 @@ async function picker(mode, opts = {}) {
 
 // the sort picked in the header, shared by every Dogfile window
 const pkSort = () => { try { return { key: 'name', dir: 1, ...JSON.parse(localStorage.getItem('pickerSort') || '{}') }; } catch { return { key: 'name', dir: 1 }; } };
-const setPkSort = (v) => { try { localStorage.setItem('pickerSort', JSON.stringify(v)); } catch {} };
+const setPkSort = (v) => { try { localStorage.setItem('pickerSort', JSON.stringify(v)); } catch { /* storage unavailable: the sort order just isn't remembered */ } };
 export const pickFolder = (title, opts = {}) => picker('folder', { ...opts, title });
 export const openFiles = (opts = {}) => picker('open', opts);
 export const saveFile = (opts = {}) => picker('save', opts);

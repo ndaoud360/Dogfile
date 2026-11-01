@@ -34,12 +34,10 @@ portable-pty = "0.9"
 dirs = "6"
 rand = "0.9"
 parking_lot = "0.12"
-once_cell = "1"
 urlencoding = "2"
 filetime = "0.2"
 russh = { version = "0.54", default-features = false, features = ["ring", "flate2"] }
 russh-sftp = "2"
-async-trait = "0.1"
 suppaftp = { version = "6", features = ["rustls"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
 webpki-roots = "1"

@@ -44,7 +44,6 @@ const WHOLE_FIRST = new Set(['count', 'compareWith', 'table', 'trim', 'ab', 'sub
 const clean = (s) => s.replace(/^(?:(?:please|can you|could you|would you|kindly|i want (?:you )?to|i'?d like (?:you )?to|let'?s|go ahead and|now|just|ok(?:ay)?|hey|also|and)\b[\s,]*)+/i, '').replace(/[\s!?.]+$/, '').replace(/\s+please$/i, '').trim();
 
 // ---------------- Notepad ----------------
-const IT = String.raw`(?:it|this|that|everything|all|the (?:whole )?(?:text|document|doc|file|note|page|content|contents|selection|selected text|lines?))`;
 function notepad(s, q) {
   const S = s.toLowerCase();
   const U = (x) => unquote(x, q);

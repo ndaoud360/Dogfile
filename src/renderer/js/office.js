@@ -292,6 +292,7 @@ SAVE.docx = async (d) => {
   const H = { H1: HeadingLevel.HEADING_1, H2: HeadingLevel.HEADING_2, H3: HeadingLevel.HEADING_3, H4: HeadingLevel.HEADING_4, H5: HeadingLevel.HEADING_5, H6: HeadingLevel.HEADING_6 };
   const align = (el) => { const a = (el.style?.textAlign || el.getAttribute?.('align') || '').toLowerCase(); return a === 'center' ? AlignmentType.CENTER : a === 'right' ? AlignmentType.RIGHT : a === 'justify' ? AlignmentType.JUSTIFIED : undefined; };
   const dataBytes = (src) => { const b = atob(src.split(',')[1] || ''); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; };
+  let lostPictures = 0; // pictures Word's format couldn't take (said after saving, not dropped quietly)
   // the words and pictures inside a block, with their formatting
   const runs = (node, fmt = {}) => {
     const out = [];
@@ -303,7 +304,7 @@ SAVE.docx = async (d) => {
       if (tag === 'IMG' && c.src.startsWith('data:')) {
         const w = Math.min(600, c.naturalWidth || c.width || 300), hh = Math.round(w * ((c.naturalHeight || c.height || 200) / (c.naturalWidth || c.width || 300)));
         const type = /image\/png/.test(c.src) ? 'png' : /image\/gif/.test(c.src) ? 'gif' : /image\/bmp/.test(c.src) ? 'bmp' : 'jpg';
-        try { out.push(new ImageRun({ type, data: dataBytes(c.src), transformation: { width: w, height: hh } })); } catch {}
+        try { out.push(new ImageRun({ type, data: dataBytes(c.src), transformation: { width: w, height: hh } })); } catch { lostPictures++; }
         continue;
       }
       const f = { ...fmt };
@@ -352,7 +353,9 @@ SAVE.docx = async (d) => {
     numbering: { config: [{ reference: 'nums', levels: [0, 1, 2, 3].map((level) => ({ level, format: LevelFormat.DECIMAL, text: `%${level + 1}.`, alignment: AlignmentType.START, style: { paragraph: { indent: { left: 720 * (level + 1), hanging: 360 } } } })) }] },
     sections: [{ children: children.length ? children : [new Paragraph('')] }],
   });
-  return new Uint8Array(await (await Packer.toBlob(doc)).arrayBuffer());
+  const bytes = new Uint8Array(await (await Packer.toBlob(doc)).arrayBuffer());
+  if (lostPictures) toast(`${lostPictures === 1 ? 'One picture' : `${lostPictures} pictures`} couldn’t be saved in the Word file. Keep the original file so ${lostPictures === 1 ? 'it isn’t' : 'they aren’t'} lost.`, { error: true });
+  return bytes;
 };
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -915,7 +918,7 @@ async function slideshow(d) {
   const box = h('div', { class: 'sl-slide' });
   shade.append(box);
   document.body.append(shade);
-  try { await shade.requestFullscreen(); } catch {}
+  try { await shade.requestFullscreen(); } catch { /* fullscreen refused: the slideshow runs in the window */ }
   let i = v.idx;
   const fit = () => { const ratio = v.W / v.H; let w = innerWidth, hh = w / ratio; if (hh > innerHeight) { hh = innerHeight; w = hh * ratio; } Object.assign(box.style, { width: w + 'px', height: hh + 'px' }); box.style.setProperty('--u', (w / (v.W / EMU)) + 'px'); };
   const draw = async () => { fit(); await drawSlide(v, v.slides[i], box); };
@@ -991,7 +994,7 @@ RENDER.pdf = async (d) => {
       const render = async () => {
         if (wrap.__drawn) return; wrap.__drawn = true;
         await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp, transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null }).promise.catch(() => {});
-        try { await new pj.TextLayer({ textContentSource: await page.getTextContent(), container: text, viewport: vp }).render(); } catch {}
+        try { await new pj.TextLayer({ textContentSource: await page.getTextContent(), container: text, viewport: vp }).render(); } catch { /* no selectable text on this page; the page itself still shows */ }
       };
       new IntersectionObserver((es, ob) => { if (es.some((e) => e.isIntersecting)) { ob.disconnect(); render(); } }, { root: scroll, rootMargin: '600px' }).observe(wrap);
       drawMarks(v, pg, marks, vp);

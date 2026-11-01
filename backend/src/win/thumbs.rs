@@ -30,7 +30,9 @@ fn worker() {
         let job = queue().jobs.lock().pop_back(); // newest first: what's on screen now
         match job {
             Some((p, size, tx)) => {
-                let r = make(&p, size);
+                // a file that crashes Windows' thumbnail code gets no thumbnail; the worker carries on (it would
+                // otherwise end, and after four such files no thumbnails would show until Dogfile restarts)
+                let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| make(&p, size))).unwrap_or(None);
                 let _ = tx.send(r);
             }
             None => {

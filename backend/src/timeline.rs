@@ -165,6 +165,18 @@ pub fn observe(dir: &str, now_state: State) {
     drop(c);
     remember_recent(dir);
 }
+/// a folder was just listed by the fast path (which hands the window raw JSON and has no parsed items): the folder
+/// is read again in the background, only when it's one that gets recorded
+pub fn observe_dir_later(dir: String) {
+    std::thread::spawn(move || {
+        if !recorded(&dir) || !crate::setting_bool("timeTravel", true) {
+            return;
+        }
+        if let Some(st) = read_state(&dir) {
+            observe(&dir, st);
+        }
+    });
+}
 /// from a listing's items
 pub fn observe_listing(dir: String, v: &Value) {
     let Some(items) = v["items"].as_array() else { return };
@@ -217,7 +229,7 @@ pub fn start() {
             tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
             let dirs: Vec<String> = {
                 let r = recent().lock();
-                let _ = crate::store::set("timeline", &json!({ "recent": r.iter().map(|x| json!([x.0, x.1])).collect::<Vec<_>>() }));
+                crate::store::set_or_log("timeline", &json!({ "recent": r.iter().map(|x| json!([x.0, x.1])).collect::<Vec<_>>() }), None);
                 r.iter().map(|x| x.0.clone()).collect()
             };
             let _ = tokio::task::spawn_blocking(move || {
@@ -234,7 +246,7 @@ pub fn start() {
 }
 pub fn save_recent() {
     let r = recent().lock();
-    let _ = crate::store::set("timeline", &json!({ "recent": r.iter().map(|x| json!([x.0, x.1])).collect::<Vec<_>>() }));
+    crate::store::set_or_log("timeline", &json!({ "recent": r.iter().map(|x| json!([x.0, x.1])).collect::<Vec<_>>() }), None);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -358,5 +370,17 @@ mod tests {
         assert_eq!(r.state_at(15.0).unwrap(), st(&[("a", 1, 1.0), ("b", 2, 1.0)]));
         assert_eq!(r.state_at(25.0).unwrap(), st(&[("a", 5, 9.0), ("b", 2, 1.0), ("c", 3, 9.0)]));
         assert_eq!(r.latest().unwrap(), st(&[("c", 3, 9.0)]));
+    }
+    #[test]
+    fn reads_a_folder_the_way_a_listing_reports_it() {
+        let d = std::env::temp_dir().join(format!("dogfile-timeline-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(d.join("sub")).unwrap();
+        std::fs::write(d.join("a.txt"), b"hello").unwrap();
+        let s = read_state(d.to_str().unwrap()).unwrap();
+        assert_eq!(s.len(), 2);
+        assert_eq!(s["a.txt"].0, 5);
+        assert!(!s["a.txt"].2 && s["sub"].2, "files and folders told apart");
+        std::fs::remove_dir_all(&d).ok();
     }
 }

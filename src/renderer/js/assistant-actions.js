@@ -184,9 +184,12 @@ export const HANDLERS = {
     if (!items.length) return say('Select the files first (JPG, PNG, Word, Excel, PowerPoint, PDF, MP3…), then ask again.');
     const { writeTagsIntoFiles } = await import('./core.js');
     const r = await writeTagsIntoFiles(items.filter((i) => !i.isDir).map((i) => i.path));
-    if (!state.settings.tagsInFiles) say(`Wrote the tags into ${plural(items.length, 'file')}. To do this every time you tag something, turn on Settings > Files > “Write tags into the files”.`);
-    else say(`Wrote the tags into ${plural(items.length, 'file')}. Explorer shows them in Properties > Details > Tags.`);
-    if (r && r.failed) say(`${r.failed} couldn’t take tags: ${r.last || 'that kind of file has no place for them'}.`);
+    // only what really took them is reported as written
+    if (r.written) {
+      if (!state.settings.tagsInFiles) say(`Wrote the tags into ${plural(r.written, 'file')}. To do this every time you tag something, turn on Settings > Files > “Write tags into the files”.`);
+      else say(`Wrote the tags into ${plural(r.written, 'file')}. Explorer shows them in Properties > Details > Tags.`);
+    }
+    if (r.failed) say(`${plural(r.failed, 'file')} couldn’t take tags: ${r.last || 'that kind of file has no place for them'}.`);
   },
   async autoTag(x, { say }) {
     const t = activeTab();

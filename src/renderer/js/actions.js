@@ -234,8 +234,11 @@ async function remoteTransfer(paths, dest, mode) {
       toast(`Downloaded ${made.length} item${made.length === 1 ? '' : 's'}`);
     }
     job.finish('done');
-  } catch (e) { job.finish('error', cleanErr(e)); toast(cleanErr(e), { error: true }); }
-  finally { remoteProg.delete(token); refreshAffected(); }
+  } catch (e) {
+    job.finish('error', cleanErr(e)); toast(cleanErr(e), { error: true });
+    // a failed transfer says so: a cut isn't treated as done (the clipboard keeps the files), and callers can tell
+    return { status: 'error', error: cleanErr(e) };
+  } finally { remoteProg.delete(token); refreshAffected(); }
   return { status: 'done' };
 }
 
@@ -557,12 +560,23 @@ export async function newFileNamed(t = activeTab()) {
   const name = await prompt('New file', '', { label: 'File name (include an extension, or a path like src/app/index.ts)', placeholder: 'notes.md' });
   if (!name) return;
   const parts = name.split(/[\\/]/).filter(Boolean);
-  let dir = t.path;
-  for (const part of parts.slice(0, -1)) { dir = pjoin(dir, part); if (!(await api('fs:exists', dir))) await api('fs:mkdir', dir); }
-  const p = pjoin(dir, parts[parts.length - 1]);
-  if (name.endsWith('/') || name.endsWith('\\')) { await api('fs:mkdir', p).catch(() => {}); }
-  else await api('fs:newFile', p, '').catch((e) => toast(e.message, { error: true }));
-  pushUndo({ type: 'created', paths: [pjoin(t.path, parts[0])] }, 'New file');
+  // only names inside this folder: "." and ".." would lead somewhere else
+  if (!parts.length || parts.some((x) => x === '.' || x === '..')) return toast('Use a name inside this folder (no “.” or “..” in the path)', { error: true });
+  // Undo removes only what this made: the first folder of the path that didn't exist yet, or else the file itself,
+  // never a folder that was already there with other things in it
+  let dir = t.path, made = null;
+  try {
+    for (const part of parts.slice(0, -1)) { dir = pjoin(dir, part); if (!(await api('fs:exists', dir))) { await api('fs:mkdir', dir); made ??= dir; } }
+    const p = pjoin(dir, parts[parts.length - 1]);
+    if (name.endsWith('/') || name.endsWith('\\')) await api('fs:mkdir', p);
+    else await api('fs:newFile', p, '');
+    made ??= p;
+  } catch (e) {
+    toast(errText(e), { error: true });
+    // folders it did make stay (they're empty and shown); nothing else to undo
+    if (!made) return;
+  }
+  pushUndo({ type: 'created', paths: [made] }, 'New file');
   await afterCreate(t, pjoin(t.path, parts[0]), false);
 }
 
@@ -704,6 +718,10 @@ export async function redo() {
       const res = await api('recycle:restoreOriginal', r.paths);
       if (res?.problems?.length) throw new Error(`${res.problems.length} of ${r.paths.length} couldn’t come back. ${res.problems[0].split(': ').slice(1).join(': ')}`);
     }
+    // photo details: written again as they were after the edit
+    else if (r.type === 'metadata' && r.after && r.paths) await api('meta:write', r.paths, r.after, {});
+    // anything else can't be redone: said plainly (not "Redid"), and taken off the list so Redo isn't stuck on it
+    else throw new Error(`“${r.title || r.type}” can’t be redone`);
     state.undo.push(r);
     r.undone = false; bus.emit('historyUndone', r);
     toast(`Redid: ${r.title || r.type}`);

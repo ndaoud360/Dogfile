@@ -15,12 +15,37 @@ async function bundle() {
   for (const k of EXTRA) { const v = await api('store:get', k); if (v != null) extra[k] = v; }
   return { dogfile: 'settings', version: sys.version || '', from: state.hostname || '', saved: Date.now(), settings, library: { pinned: state.pinned, workspaces: state.workspaces, folderViews: state.folderViews }, tags: state.tags, extra };
 }
+/**
+ * Things in a settings file that run by themselves (feature code, macros, folder automations that move or delete
+ * files) arrive switched off when they're new or changed, so a settings file or a shared sync folder can't start code
+ * on this PC without you looking first. What you already have, unchanged, keeps its on/off state. Returns how many
+ * were held back.
+ */
+export function holdForReview(incoming, current) {
+  const kinds = [['extensions', 'enabled', (x) => x.id], ['macros', 'enabled', (x) => x.id], ['automations', 'on', (x) => x.folder]];
+  let held = 0;
+  for (const [key, flag, idOf] of kinds) {
+    if (!Array.isArray(incoming?.[key])) continue;
+    const mine = new Map((current?.[key] || []).map((x) => [idOf(x), x]));
+    const same = (a, b) => { const strip = ({ [flag]: _f, updated: _u, ...rest }) => JSON.stringify(rest); return strip(a) === strip(b); };
+    incoming[key] = incoming[key].map((x) => {
+      const had = mine.get(idOf(x));
+      if (had && same(x, had)) return { ...x, [flag]: had[flag] };
+      if (x[flag] === false) return x;
+      held++;
+      return { ...x, [flag]: false };
+    });
+  }
+  return held;
+}
 async function apply(b, { quiet = false } = {}) {
   // files exported by older versions
   if (b && b.type === 'atlas-settings') b = { dogfile: 'settings', settings: b.settings, tags: b.tags, library: { pinned: b.pinned, workspaces: b.workspaces } };
   if (!b || b.dogfile !== 'settings' || typeof b.settings !== 'object') throw new Error('This isn’t a Dogfile settings file');
   const keep = Object.fromEntries(Object.entries(state.settings).filter(([k]) => LOCAL.has(k)));
+  const held = holdForReview(b.settings, state.settings);
   state.settings = { ...state.settings, ...b.settings, ...keep };
+  if (held) toast(`${held} feature${held === 1 ? '' : 's'}, macro${held === 1 ? '' : 's'} or folder automation${held === 1 ? '' : 's'} came with these settings and ${held === 1 ? 'is' : 'are'} switched off until you look at ${held === 1 ? 'it' : 'them'} (Settings › Features, Macros, Automations)`, { error: true });
   saveSettings();
   if (b.library) { if (Array.isArray(b.library.pinned)) state.pinned = b.library.pinned; if (b.library.workspaces) state.workspaces = b.library.workspaces; if (b.library.folderViews) state.folderViews = b.library.folderViews; saveLibrary(); }
   if (b.tags?.defs) { state.tags = { defs: b.tags.defs, map: { ...(state.tags.map || {}), ...(b.tags.map || {}) } }; saveTags(); }

@@ -146,7 +146,7 @@ export async function editPhotoDetails(items) {
     const names = Object.keys(map);
     const before = tags.map((t) => ({ path: t.SourceFile, values: Object.fromEntries(names.map((n) => [n, t[n] ?? null])) }));
     const r = await api('meta:write', items.map((i) => i.path), map, {});
-    pushUndo({ type: 'metadata', files: before }, `Edit details of ${many ? `${items.length} photos` : items[0].name}`);
+    pushUndo({ type: 'metadata', files: before, paths: items.map((i) => i.path), after: map }, `Edit details of ${many ? `${items.length} photos` : items[0].name}`);
     return r;
   };
   modal({

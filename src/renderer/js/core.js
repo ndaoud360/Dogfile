@@ -429,6 +429,7 @@ export async function writeTagsIntoFiles(paths) {
     if (!r?.ok) { failed++; last = r?.error || ''; }
   }
   if (failed) toast(`${failed === paths.length ? 'Couldn’t' : `${failed} of ${paths.length}: couldn’t`} save the tags inside the file${failed > 1 ? 's' : ''}${last ? ` (${last})` : ''}`, { error: true });
+  return { written: paths.length - failed, failed, last };
 }
 export function moveTags(from, to) {
   const f = IS_WIN() ? from.toLowerCase() : from;

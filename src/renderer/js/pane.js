@@ -2175,7 +2175,8 @@ export function startRename(t, it, paneIdx = state.activePane) {
 // Watchers
 // ======================================================================
 export function watchPanes() {
-  for (let i = 0; i < 4; i++) {
+  // every pane there can be (closed ones get their watcher cleared), not just the first four
+  for (let i = 0; i < MAX_PANES; i++) {
     const t = i < paneCount() ? paneTab(i) : null;
     api('watch:set', 'pane' + i, t && !isVirtual(t.path) ? t.path : null);
   }

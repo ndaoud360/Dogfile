@@ -360,12 +360,14 @@ export async function propertiesDialog(items, helpers) {
     };
     renderTags();
     el.append(h('div', { class: 'field-label' }, 'Tags'), tagRow);
-    let total = 0, files = 0, dirs = 0;
+    // folder sizes from the search index come without a folder count (dirs: null): then no count is shown rather
+    // than a wrong "0 folders"; a folder that couldn't be measured is said, not counted as empty
+    let total = 0, files = 0, dirs = 0, dirsKnown = true, failed = 0;
     for (const it of items) {
-      if (it.isDir) { const r = await helpers.folderSize(it.path); total += r.total; files += r.files; dirs += r.dirs + 1; } else { total += it.size || 0; files++; }
+      if (it.isDir) { const r = await helpers.folderSize(it.path); if (r.failed) { failed++; continue; } total += r.total; files += r.files; if (r.dirs == null) dirsKnown = false; else dirs += r.dirs + 1; } else { total += it.size || 0; files++; }
     }
-    sizeEl.textContent = `${fmtSize(total)} (${total.toLocaleString()} bytes)`;
-    countEl.textContent = `${files.toLocaleString()} files, ${Math.max(0, dirs - (single?.isDir ? 1 : 0)).toLocaleString()} folders`;
+    sizeEl.textContent = `${fmtSize(total)} (${total.toLocaleString()} bytes)${failed ? ` · ${failed === 1 ? 'one folder' : `${failed} folders`} couldn’t be measured` : ''}`;
+    countEl.textContent = dirsKnown ? `${files.toLocaleString()} files, ${Math.max(0, dirs - (single?.isDir ? 1 : 0)).toLocaleString()} folders` : `${files.toLocaleString()} files`;
   });
 
   if (single && !single.isDir) {

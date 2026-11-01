@@ -884,7 +884,7 @@ export function folderSize(p, onProgress, children = false) {
     const id = await api('work:start', { type: 'size', root: p, children });
     onWorkMsgFor(id, (m) => {
       if (m.type === 'progress') onProgress?.(m);
-      else if (m.type === 'done' || m.type === 'error') resolve(m.type === 'done' ? m : { total: 0, files: 0, dirs: 0 });
+      else if (m.type === 'done' || m.type === 'error') resolve(m.type === 'done' ? m : { total: 0, files: 0, dirs: 0, failed: true });
     });
   })().catch(__reject); });
 }

@@ -1055,7 +1055,8 @@ function wire() {
     const k = e.key, c = e.ctrlKey || e.metaKey;
     const step = e.shiftKey ? 3 : c ? 60 : 10;
     let handled = true;
-    if (k === ' ' || k === 'MediaPlayPause' || k === 'k') togglePlay();
+    // plain letters only without Ctrl, so Ctrl+K (edit) and Ctrl+E (equalizer) below are reached
+    if (k === ' ' || k === 'MediaPlayPause' || (k === 'k' && !c)) togglePlay();
     else if (k === 'ArrowRight') { seek(pos() + step); osd(`+${step} s`); }
     else if (k === 'ArrowLeft') { seek(pos() - step); osd(`−${step} s`); }
     else if (k === 'ArrowUp') setVolume(prefs.volume + 0.05);
@@ -1070,8 +1071,8 @@ function wire() {
     else if (k === '[' || k === '-') setSpeed((prefs.speed || 1) - 0.1);
     else if (k === ']' || k === '+') setSpeed((prefs.speed || 1) + 0.1);
     else if (k === '=') setSpeed(1);
-    else if (k === 'e') frameStep(1);
-    else if (k === 'E') frameStep(-1);
+    else if (k === 'e' && !c) frameStep(1);
+    else if (k === 'E' && !c) frameStep(-1);
     else if (k === 'b') { if (P.aStreams.length > 1) setAudio((P.audioIdx + 1) % P.aStreams.length); else osd('Only one audio track'); }
     else if (k === 'v') cycleSubs();
     else if (k === 'y') toggleLyrics();

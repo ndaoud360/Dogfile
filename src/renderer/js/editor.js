@@ -235,7 +235,7 @@ function setLanguage(doc, id, silent) {
   if (!silent) { renderStatus(); saveSessionSoon(); }
 }
 
-function textOf(doc) { let t = doc.view.state.doc.toString(); if (ed.trimOnSave) t = t.replace(/[ \t]+$/gm, ''); return doc.eol === '\n' ? t : t.replace(/\n/g, doc.eol); }
+function textOf(doc, text = doc.view.state.doc) { let t = text.toString(); if (ed.trimOnSave) t = t.replace(/[ \t]+$/gm, ''); return doc.eol === '\n' ? t : t.replace(/\n/g, doc.eol); }
 
 async function save(doc) {
   if (!doc) return false;
@@ -244,8 +244,10 @@ async function save(doc) {
   try {
     if (ed.trimOnSave) { const cur = doc.view.state.doc.toString(); const trimmed = cur.replace(/[ \t]+$/gm, ''); if (trimmed !== cur) doc.view.dispatch({ changes: { from: 0, to: cur.length, insert: trimmed } }); }
     doc.saving = true;
-    const r = await api('fs:writeEncoded', doc.path, textOf(doc), doc.enc === 'ansi' ? 'cp1252' : doc.enc);
-    doc.mtime = r.mtime; doc.saved = doc.view.state.doc; doc.dirty = false; doc.externalChange = false;
+    // what is being written, taken before the write: typing during the save stays unsaved (and Close still asks)
+    const written = doc.view.state.doc;
+    const r = await api('fs:writeEncoded', doc.path, textOf(doc, written), doc.enc === 'ansi' ? 'cp1252' : doc.enc);
+    doc.mtime = r.mtime; doc.saved = written; doc.dirty = !doc.view.state.doc.eq(written); doc.externalChange = false;
     setTimeout(() => (doc.saving = false), 600);
     renderTabs(); renderNotice(); saveSessionSoon();
     toast(`Saved ${doc.name}`, { ms: 1400 });

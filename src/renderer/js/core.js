@@ -11,6 +11,19 @@ export const api = (name, ...args) => {
   return p;
 };
 export const onMain = (ch, fn) => window.atlas.on(ch, fn);
+/** The text of an error from the program, for showing to people (no "Error:" or internal code in front). */
+export const errText = (e) => String(e?.message || e || 'unknown error').replace(/^Error:\s*/, '').replace(/^Error invoking remote method '[^']+':\s*(Error:\s*)?/, '').replace(/^[A-Z]+_[A-Z_]+:\s*/, ''); // internal codes like PRO_REQUIRED, never a drive letter or a word
+/**
+ * Before a file is changed in place: a copy goes into its version history. Without Pro there is no history, so the
+ * change goes ahead as it always has (false). Any other failure (a full disk, a locked file) stops the change, with
+ * the original untouched, instead of overwriting it with no way back.
+ */
+export async function backupBeforeOverwrite(p, label) {
+  try { await window.atlas.invoke('versions:save', p, label); return true; } catch (e) {
+    if (String(e?.message || e).startsWith('PRO_REQUIRED')) return false;
+    throw new Error(`No backup copy could be made (${errText(e)}), so the original was left as it was`);
+  }
+}
 
 export const sys = { platform: 'win32', sep: '\\', known: {} };
 export const IS_WIN = () => sys.platform === 'win32';
@@ -431,6 +444,8 @@ export function moveTags(from, to) {
 export function toast(msg, opts = {}) {
   const host = document.getElementById('toasts');
   if (!host) return;
+  // an error passed straight through from the program shows without its internal code ("PRO_REQUIRED: …", "Error: …")
+  if (opts.error && typeof msg === 'string') msg = errText(msg);
   // the words can be selected and copied; an error also has a Copy button. It stays while the mouse is over it.
   const el = h('div', { class: 'toast' + (opts.error ? ' error' : '') }, h('span', { class: 'toast-msg' }, msg));
   if (opts.ok) el.classList.add('ok');

@@ -1,6 +1,6 @@
 // File actions: open, copy/cut/paste, delete, rename, new items, undo/redo, archives, shortcuts,
 // virtual locations (Home, This PC, Recent, Recycle Bin, Network, Tags), and context menus.
-import { api, state, sys, bus, h, isVirtual, isRemote, remoteParts, onMain, pjoin, dirname, basename, normalize, samePath, extname, stem, fmtSize, toast, onWorkMsgFor, IS_WIN, isMtp, isTextFile, isMediaFile, isImageFile, isModelFile, isOfficeFile, addRecentFile, tagsOf, setTags, moveTags, saveLibrary, kindOf, KINDS, setDriveNames, uid } from './core.js';
+import { api, state, sys, bus, h, isVirtual, isRemote, remoteParts, onMain, pjoin, dirname, basename, normalize, samePath, extname, stem, fmtSize, toast, onWorkMsgFor, IS_WIN, isMtp, isTextFile, isMediaFile, isImageFile, isModelFile, isOfficeFile, addRecentFile, tagsOf, setTags, moveTags, saveLibrary, kindOf, KINDS, setDriveNames, uid, errText } from './core.js';
 import { activeTab, paneTab, navigate, openTab, loadTab, renderTabPanes, selectedItems, startRename, selectOnly, otherPaneTab, paneCount, clearThumbCache, invalidateArchive } from './pane.js';
 import { showMenu } from './menu.js';
 import { prompt, confirm, propertiesDialog, compressDialog, archivePasswordDialog, alertBox } from './dialogs.js';
@@ -123,7 +123,7 @@ let undoing = false;
 const HOOKED = { copy: 'Copy', move: 'Move', trash: 'Delete', delete: 'Delete', compress: 'Compress', extract: 'Extract' };
 export function runJob(spec) {
   if (spec.network == null) { const net = (p) => p && (/^\\\\/.test(p) || (state.drives || []).some((d) => d.type === 'network' && d.path && String(p).toUpperCase().startsWith(d.path.toUpperCase().slice(0, 2)))); spec = { ...spec, network: net(spec.dest) || (spec.sources || []).some(net) }; }
-  return new Promise(async (resolve0) => {
+  return new Promise((resolve0) => { (async () => {
     const kind = HOOKED[spec.type];
     const H = kind && !undoing && !spec.noHooks ? await import('./hooks.js') : null;
     let resolve = resolve0;
@@ -138,7 +138,12 @@ export function runJob(spec) {
     // a quick job can finish before its id arrives here (events and answers travel separately)
     if (finishedEarly.has(id)) { const j = finishedEarly.get(id); finishedEarly.delete(id); resolve(j); return; }
     jobWaiters.set(id, resolve);
-  });
+  })().catch((e) => {
+    // the job couldn't start (a bad path, a feature's hook failing): said, and answered as a failed job like any
+    // other, so nothing waits for it forever
+    toast(errText(e), { error: true });
+    resolve0({ status: 'error', title: spec.type, error: errText(e), errors: [errText(e)] });
+  }); });
 }
 const finishedEarly = new Map();
 const asking = { password: 0 };
@@ -480,12 +485,16 @@ export async function renamePairs(pairs, title) {
   if (!undoing && pairs.length && !(await (await import('./links.js')).linkGuard(pairs.map((p) => p.from), 'rename'))) return [];
   const tmp = pairs.map((p) => [p.from, p.from + '.atlas-' + uid()]);
   const done = [];
+  let parked = 0; // how many are under their temporary name
   try {
-    for (const [a, b] of tmp) await api('fs:rename', a, b);
+    for (const [a, b] of tmp) { await api('fs:rename', a, b); parked++; }
     for (let k = 0; k < pairs.length; k++) { await api('fs:rename', tmp[k][1], pairs[k].to); done.push([pairs[k].from, pairs[k].to]); moveTags(pairs[k].from, pairs[k].to); }
   } catch (e) {
-    toast(e.message, { error: true });
-    for (let k = done.length; k < pairs.length; k++) await api('fs:rename', tmp[k][1], pairs[k].from).catch(() => {});
+    toast(errText(e), { error: true });
+    // put back what is still under a temporary name; anything that can't go back is named, not left hidden
+    const stuck = [];
+    for (let k = done.length; k < parked; k++) await api('fs:rename', tmp[k][1], pairs[k].from).catch(() => stuck.push(tmp[k][1]));
+    if (stuck.length) toast(`${stuck.length === 1 ? 'One file' : `${stuck.length} files`} couldn’t get ${stuck.length === 1 ? 'its' : 'their'} name back and ${stuck.length === 1 ? 'is' : 'are'} now called ${stuck.slice(0, 3).map((x) => `“${basename(x)}”`).join(', ')}${stuck.length > 3 ? '…' : ''}. Rename ${stuck.length === 1 ? 'it' : 'them'} back by hand.`, { error: true });
   }
   if (done.length) pushUndo({ type: 'renamed', pairs: done }, title || `Rename ${done.length} items`);
   for (const [from, to] of done) H.after('afterRename', { from, to });
@@ -851,7 +860,7 @@ export async function properties(items) {
 }
 
 export function folderSize(p, onProgress, children = false) {
-  return new Promise(async (resolve) => {
+  return new Promise((resolve, __reject) => { (async () => {
     // the instant index already knows every folder's size
     if (!children && !onProgress) { const r = (await api('index:sizes', [p]).catch(() => ({})))[p]; if (r) return resolve({ total: r.size, files: r.files, dirs: null, indexed: true }); }
     const id = await api('work:start', { type: 'size', root: p, children });
@@ -859,7 +868,7 @@ export function folderSize(p, onProgress, children = false) {
       if (m.type === 'progress') onProgress?.(m);
       else if (m.type === 'done' || m.type === 'error') resolve(m.type === 'done' ? m : { total: 0, files: 0, dirs: 0 });
     });
-  });
+  })().catch(__reject); });
 }
 
 export async function openTerminal(t = activeTab(), kind, admin) {

@@ -379,11 +379,11 @@ export async function findSimilarImages() {
   const status = h('div', { class: 'hint' }, 'Finding pictures…');
   const list = h('div', { class: 'dupe-list' });
   let cancelled = false, groups = [];
-  const files = await new Promise(async (resolve) => {
+  const files = await new Promise((resolve, __reject) => { (async () => {
     const found = [];
     const id = await api('work:start', { type: 'search', roots: [t.path], query: '', kind: 'file', extensions: 'jpg,jpeg,jfif,png,webp,bmp,gif,heic,avif,tif,tiff', recursive: true, maxResults: 20000, skipDirs: ['node_modules', '.git'] });
     workHandlers.set(id, (m) => { if (m.type === 'results') found.push(...m.items); else if (m.type === 'done' || m.type === 'error') { workHandlers.delete(id); resolve(found); } });
-  });
+  })().catch(__reject); });
   const work = (async () => {
     groups = await similarImageGroups(files, { onProgress: (i, n) => { status.textContent = `Looking at pictures… ${i.toLocaleString()} of ${n.toLocaleString()}`; }, cancelled: () => cancelled });
     const wasted = groups.reduce((a, gg) => a + gg.slice(1).reduce((s2, x) => s2 + (x.f.size || 0), 0), 0);

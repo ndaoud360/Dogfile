@@ -149,11 +149,11 @@ export async function openCleanup(initialRoot) {
     drawNav(); drawMain();
     status.textContent = 'Scanning…';
     const started = Date.now();
-    const inv = await new Promise(async (resolve) => {
+    const inv = await new Promise((resolve, __reject) => { (async () => {
       const id = await api('work:start', { type: 'inventory', roots, tempRoots: [k.temp].filter(Boolean), downloads: [k.downloads].filter(Boolean), skipDirs: ['node_modules', '.git', 'Windows', 'Program Files', 'Program Files (x86)', 'ProgramData', '$Recycle.Bin'] });
       jobs.push(id);
       onWorkMsgFor(id, (m) => { if (m.type === 'progress') status.textContent = `Scanning… ${m.files.toLocaleString()} files · ${fmtSize(m.total)} · ${m.current}`; else resolve(m.type === 'error' ? null : m); });
-    });
+    })().catch(__reject); });
     if (!inv) { status.textContent = 'Scan failed'; S.scanning = false; drawNav(); return; }
     S.data = inv;
     status.textContent = `${fmtSize(inv.total)} · ${inv.files.toLocaleString()} files in ${((Date.now() - started) / 1000).toFixed(1)}s. Still checking duplicates and photos…`;
@@ -167,11 +167,11 @@ export async function openCleanup(initialRoot) {
     if (IS_WIN()) A.listRecycle().then((r) => { S.recycle = r; S.groups.recycle = r; S.checked.set('recycle', new Set()); updFoot(); if (S.cat === 'recycle') drawMain(); }).catch(() => { S.groups.recycle = []; });
     else S.groups.recycle = [];
     // exact duplicates
-    const dupes = new Promise(async (resolve) => {
+    const dupes = new Promise((resolve, __reject) => { (async () => {
       const id = await api('work:start', { type: 'dupes', roots, minSize: 64 * 1024 });
       jobs.push(id);
       onWorkMsgFor(id, (m) => { if (m.type === 'done' || m.type === 'error') resolve(m.groups || []); });
-    }).then((groups) => {
+    })().catch(__reject); }).then((groups) => {
       const gs = groups.map((g) => g.files.slice().sort((a, b) => a.path.length - b.path.length || a.mtime - b.mtime).map((f, i) => ({ ...f, why: i ? `same as ${g.files[0].name === f.name ? 'the copy in ' + basename(dirname(g.files.slice().sort((a, b) => a.path.length - b.path.length)[0].path)) : g.files[0].name}` : '' })));
       finish('dupes', null, { groups: gs });
     });

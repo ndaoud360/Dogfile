@@ -1,6 +1,6 @@
 // Media helpers for the main window: batch audio/video conversion (ffmpeg), BPM/key results,
 // image format conversion and desktop background.
-import { api, h, toast, basename, dirname, stem, bus, IS_WIN, fileUrl } from './core.js';
+import { api, h, toast, basename, dirname, stem, bus, IS_WIN, fileUrl, backupBeforeOverwrite } from './core.js';
 import { modal } from './dialogs.js';
 import { analyzeAudio, fmtAnalysis } from './audio-analysis.js';
 import { requirePro } from './license.js';
@@ -127,7 +127,7 @@ export async function transformImages(paths, { rotate = 0, flipH = false, flipV 
       const g = c.getContext('2d');
       g.translate(c.width / 2, c.height / 2); g.rotate((r * Math.PI) / 180); g.scale(flipH ? -1 : 1, flipV ? -1 : 1);
       g.drawImage(img, -sw / 2, -sh / 2);
-      await api('versions:save', p, 'Before rotating').catch(() => {});
+      await backupBeforeOverwrite(p, 'Before rotating');
       await api('fs:writeDataUrl', p, c.toDataURL(mime, 0.95));
       ok++;
     } catch (e) { toast(`${basename(p)}: ${e.message}`, { error: true }); }

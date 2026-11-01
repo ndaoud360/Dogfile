@@ -192,13 +192,13 @@ async function findFiles(plan, where, card) {
   const status = h('div', { class: 'as-status' }, h('span', { class: 'as-spin' }), label, stopB);
   card.append(status);
   let items = [...(where.files || [])];
-  const runSearch = (spec) => new Promise(async (resolve) => {
+  const runSearch = (spec) => new Promise((resolve, __reject) => { (async () => {
     const acc = [];
     const id = await api('work:start', spec);
     busy?.jobs.add(id);
     if (busy) (busy.onStop ||= []).push(() => resolve(acc));
     onWorkMsgFor(id, (m) => { if (m.type === 'results') { acc.push(...m.items); label.textContent = `Looking… ${acc.length.toLocaleString()} candidates · ${(m.scanned || 0).toLocaleString()} checked`; } else resolve(acc); });
-  });
+  })().catch(__reject); });
   const skipDirs = ['node_modules', '.git', '__pycache__', '.venv', 'AppData', '$Recycle.Bin', 'Windows', 'Program Files', 'Program Files (x86)', 'ProgramData'];
   if (where.roots.length) {
     // a typed key or phrase inside code / settings files: let the search read the files (fast, case-insensitive)
@@ -303,12 +303,12 @@ async function findEmptyDirs(where, card) {
   const status = h('div', { class: 'as-status' }, h('span', { class: 'as-spin' }), label);
   card.append(status);
   const dirs = [];
-  await new Promise(async (resolve) => {
+  await new Promise((resolve, __reject) => { (async () => {
     const id = await api('work:start', { type: 'search', roots: where.roots, query: '', kind: 'dir', recursive: true, includeHidden: true, maxResults: 20000, skipDirs: ['node_modules', '.git', 'AppData', '$Recycle.Bin', 'Windows', 'Program Files', 'Program Files (x86)', 'ProgramData'] });
     busy?.jobs.add(id);
     if (busy) (busy.onStop ||= []).push(resolve);
     onWorkMsgFor(id, (m) => { if (m.type === 'results') dirs.push(...m.items); else resolve(); });
-  });
+  })().catch(__reject); });
   const empty = [];
   let k = 0;
   // deepest first, so a folder that only holds empty folders counts as empty too

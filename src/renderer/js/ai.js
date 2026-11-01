@@ -150,12 +150,12 @@ export async function runAiSearch(t, query, roots) {
   // 1. candidate files
   const exts = [...(P.kinds.has('image') ? KINDS.image : []), ...(P.kinds.has('video') ? [...KINDS.video, 'mkv', 'm2ts', 'mts', 'ts'] : []), ...(P.kinds.has('audio') ? KINDS.audio : [])];
   t.searchInfo = { running: true, text: 'Finding files…' }; bus.emit('aiSearchUpdate', t);
-  const files = await new Promise(async (resolve) => {
+  const files = await new Promise((resolve, __reject) => { (async () => {
     const found = [];
     const id = await api('work:start', { type: 'search', roots, query: '', kind: 'file', extensions: [...new Set(exts)].join(','), includeHidden: false, recursive: true, maxResults: 20000, skipDirs: ['node_modules', '.git', '__pycache__', '.venv', 'AppData', '$Recycle.Bin', 'Windows', 'Program Files', 'Program Files (x86)'] });
     t._aiStop = () => { t._aiSeq++; t._aiStop = null; api('work:cancel', id); t.items = []; t.searchInfo = { running: false, text: 'Stopped' }; bus.emit('aiSearchUpdate', t); resolve(found); };
     bus.emit('aiWorkStarted', { id, onMsg: (m) => { if (m.type === 'results') found.push(...m.items); else if (m.type === 'done' || m.type === 'error') resolve(found); } });
-  });
+  })().catch(__reject); });
   for (const f of files) if (!f.ext) f.ext = (f.name.includes('.') ? f.name.split('.').pop() : '').toLowerCase();
   if (!alive()) return;
   t._aiStop = () => { t._aiSeq++; t._aiStop = null; t.searchInfo = { running: false, text: 'Stopped' }; bus.emit('aiSearchUpdate', t); };

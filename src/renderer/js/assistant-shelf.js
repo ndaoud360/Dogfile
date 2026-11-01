@@ -1,7 +1,7 @@
 // The assistant and the Drop Shelf: with "Use the Drop Shelf" on, a request is about the files on the shelf, and one
 // request can treat each kind of file its own way: "reduce the photos to 50%, rename them in order, convert the
 // audio to FLAC and overwrite". The plan is shown first; nothing changes until "Do it".
-import { api, state, bus, h, basename, dirname, pjoin, stem, fileUrl, saveSettings, KINDS } from './core.js';
+import { api, state, bus, h, basename, dirname, pjoin, stem, fileUrl, saveSettings, KINDS, backupBeforeOverwrite } from './core.js';
 
 export function kindOf(p) {
   const ext = (p.split('.').pop() || '').toLowerCase();
@@ -113,7 +113,7 @@ async function resizeOne(p, st, overwrite) {
   const data = c.toDataURL({ jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[fmt], 0.9);
   const sameFormat = fmt === ext || (fmt === 'jpg' && ['jpg', 'jpeg', 'jfif'].includes(ext));
   if (overwrite && sameFormat) {
-    await api('versions:save', p, 'Before resizing').catch(() => {});
+    await backupBeforeOverwrite(p, 'Before resizing');
     await api('fs:writeDataUrl', p, data);
     return p;
   }

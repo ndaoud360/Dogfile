@@ -1,5 +1,5 @@
 // Modal dialogs: prompt, confirm, conflict resolution, batch rename, properties, select-by-pattern, compress.
-import { api, h, esc, fmtSize, fmtDate, basename, dirname, extname, stem, pjoin, typeLabel, state, IS_WIN, toast, natCmp, tagsOf, setTags } from './core.js';
+import { api, h, esc, fmtSize, fmtDate, basename, dirname, extname, stem, pjoin, typeLabel, state, IS_WIN, toast, natCmp, tagsOf, setTags, errText } from './core.js';
 import { icon } from './icons.js';
 import { closeMenus } from './menu.js';
 
@@ -429,9 +429,12 @@ export async function propertiesDialog(items, helpers) {
     el.append(h('div', { class: 'field-label' }, 'Timestamps'), kv([['Created', tc], ['Modified', tm], ['Accessed', ta]]));
     el.append(h('div', { class: 'row-end' }, h('button', { class: 'btn primary', onclick: async () => {
       const attrs = Object.fromEntries(Object.entries(boxes).map(([k, b]) => [k, b.checked]));
-      await api('fs:setAttributes', items.map((i) => i.path), attrs);
-      for (const it of items) await api('fs:setTimes', it.path, { ctime: tc.value ? Date.parse(tc.value) : null, mtime: tm.value ? Date.parse(tm.value) : null, atime: ta.value ? Date.parse(ta.value) : null }).catch(() => {});
-      toast('Attributes saved');
+      try { await api('fs:setAttributes', items.map((i) => i.path), attrs); } catch (e) { return toast(`Couldn’t change the attributes: ${errText(e)}`, { error: true }); }
+      // the dates are set file by file: say which ones didn't take, instead of "saved" either way
+      const failed = [];
+      for (const it of items) await api('fs:setTimes', it.path, { ctime: tc.value ? Date.parse(tc.value) : null, mtime: tm.value ? Date.parse(tm.value) : null, atime: ta.value ? Date.parse(ta.value) : null }).catch((e) => failed.push(`${basename(it.path)} (${errText(e)})`));
+      if (failed.length) toast(`Attributes saved, but the dates couldn’t be changed for ${failed.length === 1 ? failed[0] : `${failed.length} items: ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? '…' : ''}`}`, { error: true });
+      else toast('Attributes saved');
       helpers.refresh();
     } }, 'Apply')));
   });

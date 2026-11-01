@@ -185,11 +185,11 @@ async function hashWithProgress(files, algo, title) {
   const el = h('div', { class: 'toast show tprog' }, txt, h('div', { class: 'tp-bar' }, fill), h('button', { class: 'link', onclick: () => { api('work:cancel', id); el.remove(); res(null); } }, 'Stop'));
   host?.append(el);
   let res;
-  const r = await new Promise(async (resolve) => {
+  const r = await new Promise((resolve, __reject) => { (async () => {
     res = resolve;
     id = await api('work:start', { type: 'hashfiles', files, algo });
     onWorkMsgFor(id, (m) => { if (m.type === 'progress') { txt.textContent = `${title} ${m.done} of ${m.of} · ${fmtSize(m.bytes)}`; fill.style.width = (m.total ? (m.bytes / m.total) * 100 : (m.done / m.of) * 100) + '%'; } else resolve(m.type === 'done' ? m.files : null); });
-  });
+  })().catch(__reject); });
   el.remove();
   return r;
 }

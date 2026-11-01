@@ -3,7 +3,7 @@ use crate::args::{Args, R};
 use crate::events;
 use parking_lot::Mutex;
 use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
-use serde_json::{json, Value};
+use serde_json::json;
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -115,4 +115,3 @@ pub fn kill_all() {
         let _ = t.killer.kill();
     }
 }
-pub fn unused(_: Value) {}

@@ -203,10 +203,17 @@ fn read_state(dir: &str) -> Option<State> {
 // folders visited lately: looked at again every hour
 fn recent() -> &'static Mutex<Vec<(String, f64)>> {
     static R: OnceLock<Mutex<Vec<(String, f64)>>> = OnceLock::new();
-    R.get_or_init(|| {
-        let v = crate::store::get("timeline").unwrap_or(Value::Null);
-        Mutex::new(v["recent"].as_array().into_iter().flatten().filter_map(|x| Some((x[0].as_str()?.to_string(), x[1].as_f64()?))).collect())
-    })
+    R.get_or_init(|| Mutex::new(load_recent()))
+}
+fn load_recent() -> Vec<(String, f64)> {
+    let v = crate::store::get("timeline").unwrap_or(Value::Null);
+    v["recent"].as_array().into_iter().flatten().filter_map(|x| Some((x[0].as_str()?.to_string(), x[1].as_f64()?))).collect()
+}
+/// demo mode switched: the folders visited lately and the last look at each are read again from this side, so the
+/// demo's folders and your own never end up in each other's history
+pub fn reset() {
+    *recent().lock() = load_recent();
+    cache().lock().clear();
 }
 fn remember_recent(dir: &str) {
     // network folders aren't looked at in the background (a server that's away would hold the look-through up)

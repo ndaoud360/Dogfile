@@ -35,9 +35,6 @@ async fn host_blocking<T: Send + 'static>(f: impl FnOnce(&dyn Host) -> T + Send 
     tokio::task::spawn_blocking(move || f(st().host.as_ref())).await.map_err(|e| e.to_string())
 }
 
-pub fn now_ms() -> u64 {
-    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
-}
 pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
     let a = Args(args);
     let w = win.to_string();
@@ -416,7 +413,7 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
             Ok(json!(true))
         }
         "watched:get" => Ok(store::get_or("watched", json!({}))),
-        "store:get" => Ok(store::get(&a.s(0)?).unwrap_or(Value::Null)),
+        "store:get" => Ok(store::get(window_store_name(&a.s(0)?)?).unwrap_or(Value::Null)),
         "store:set" => store_set(win, &a).await,
         "store:path" => Ok(json!(st().data_dir.to_string_lossy())),
 
@@ -497,8 +494,19 @@ fn ext_logs() -> &'static parking_lot::Mutex<Vec<Value>> {
     L.get_or_init(|| parking_lot::Mutex::new(vec![]))
 }
 
+/// The data files a window may read and write by name: one plain name (no path, so nothing outside the data folder),
+/// and none the back end keeps to itself (encrypted secrets and reminders, phone pairing, the timeline, links)
+fn window_store_name(name: &str) -> Result<&str, String> {
+    const BACKEND_ONLY: &[&str] = &["secrets", "connection-secrets", "reminders", "phonelink", "timeline", "links", "watched"];
+    let plain = !name.is_empty() && name.len() <= 64 && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+    if !plain || BACKEND_ONLY.contains(&name) {
+        return Err(format!("“{name}” isn’t a data file windows can use"));
+    }
+    Ok(name)
+}
 async fn store_set(win: &str, a: &Args) -> R {
     let name = a.s(0)?;
+    window_store_name(&name)?;
     let v = a.v(1);
     if name == "settings" {
         let old = st().settings.read().clone();
@@ -572,7 +580,7 @@ async fn gh_request(a: &Args) -> R {
     let method = a.s_or(0, "GET");
     let p = a.s(1)?;
     let body = a.v(2);
-    let auth = a.0.get(3).map(|v| v.as_bool().unwrap_or(true)).unwrap_or(true);
+    let auth = a.b_or(3, true);
     let ok_host = |u: &str| u.starts_with("https://api.github.com/") || u.starts_with("https://raw.githubusercontent.com/");
     let url = if ok_host(&p) { p } else { format!("https://api.github.com{p}") };
     if !ok_host(&url) {
@@ -597,6 +605,19 @@ async fn gh_request(a: &Args) -> R {
     let text = r.text().await.map_err(|e| e.to_string())?;
     let j: Option<Value> = serde_json::from_str(&text).ok();
     Ok(json!({ "status": status, "ok": (200..300).contains(&status), "text": if j.is_some() { Value::Null } else { json!(text.chars().take(2 * 1048576).collect::<String>()) }, "json": j }))
+}
+
+#[cfg(test)]
+mod store_name_tests {
+    #[test]
+    fn windows_cannot_reach_outside_the_data_folder_or_the_back_ends_files() {
+        for ok in ["settings", "editor-prefs", "ext-storage", "player_resume", "audio-analysis"] {
+            assert!(super::window_store_name(ok).is_ok(), "{ok}");
+        }
+        for bad in ["", "../settings", "..\\x", "a/b", "C:\\x", "secrets", "connection-secrets", "reminders", "phonelink", "settings@demo", "x.json", &"a".repeat(65)] {
+            assert!(super::window_store_name(bad).is_err(), "{bad:?} must be refused");
+        }
+    }
 }
 
 #[cfg(test)]

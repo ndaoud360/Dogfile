@@ -17,7 +17,7 @@ export function modal({ title, body, buttons = [], width = 460, className = '', 
     const foot = h('div', { class: 'modal-foot' });
     for (const b of buttons) {
       if (b.el) { if (b.left) b.el.classList.add('left'); foot.append(b.el); continue; }
-      const btn = h('button', { class: 'btn' + (b.primary ? ' primary' : '') + (b.danger ? ' danger' : '') + (b.left ? ' left' : '') }, b.label);
+      const btn = h('button', { class: 'btn' + (b.primary ? ' primary' : '') + (b.danger ? ' danger' : '') + (b.left ? ' left' : ''), ...(b.title ? { title: b.title } : {}) }, b.label);
       btn.addEventListener('click', async () => { if (b.run) { const r = await b.run(close); if (r === false) return; } else close(b.value); });
       foot.append(btn);
     }
@@ -90,7 +90,7 @@ export function conflictDialog(info) {
       { label: 'Cancel job', left: true, run: (c) => c({ action: 'cancel' }) },
       { label: 'Skip', run: (c) => c({ action: 'skip', applyAll: all.checked }) },
       { label: 'Keep newer', run: (c) => c({ action: 'newer', applyAll: all.checked }) },
-      { label: 'Skip if identical', run: (c) => c({ action: 'skipIdentical', applyAll: all.checked }) },
+      { label: 'Replace unless identical', title: 'Files that are the same size and date are skipped; every other file is replaced', run: (c) => c({ action: 'skipIdentical', applyAll: all.checked }) },
       { label: 'Keep both', run: (c) => c({ action: 'keepBoth', applyAll: all.checked }) },
       { label: 'Replace', primary: true, run: (c) => c({ action: 'replace', applyAll: all.checked }) },
     ],

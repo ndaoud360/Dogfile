@@ -169,7 +169,7 @@ pub async fn pair(a: &Args) -> R {
     let (port, ip) = { let g = s().lock(); (g.running.as_ref().map(|r| r.0), lan_ip()) };
     let (Some(port), Some(ip)) = (port, ip) else { return Err("This PC isn’t on a network right now".into()) };
     // the code on screen stays good (several windows, a refresh) unless a new one is asked for
-    let fresh = a.0.first().and_then(|v| v.as_bool()).unwrap_or(false);
+    let fresh = a.b(0);
     let code = {
         let mut g = s().lock();
         match &g.pair {

@@ -721,8 +721,6 @@ pub fn copy_file_progress(j: &Job, src: &std::path::Path, dst: &std::path::Path,
     }
 }
 
-#[allow(dead_code)]
-fn unused(_: Option<IShellItem>) {}
 
 /// Let whatever Dogfile starts next take the foreground (so it opens on top of Dogfile, not under it).
 pub fn allow_foreground() {

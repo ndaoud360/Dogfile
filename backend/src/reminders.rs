@@ -444,6 +444,12 @@ fn db() -> &'static Mutex<Db> {
     static D: OnceLock<Mutex<Db>> = OnceLock::new();
     D.get_or_init(|| Mutex::new(Db::default()))
 }
+/// demo mode switched: forget what was read from the other side, so it's read again from this side's file (and the
+/// real reminders never show in, or get saved into, the demo)
+pub fn reset() {
+    *db().lock() = Db::default();
+    changed();
+}
 fn load(d: &mut Db) {
     if d.loaded {
         return;
@@ -635,8 +641,9 @@ fn lower_priority() {
         let _ = SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN);
     }
 }
+/// whole milliseconds (reminders store them as integers, which `as_u64` reads back)
 fn now_ms() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+    crate::util::now_ms() as u64
 }
 fn status_json() -> Value {
     let s = scan().lock();

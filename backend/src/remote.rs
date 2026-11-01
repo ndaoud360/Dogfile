@@ -6,7 +6,6 @@ use crate::util::{self, basename};
 use crate::{events, secrets, setting};
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
@@ -797,8 +796,6 @@ pub async fn status(a: &Args) -> R {
     let ok = matches!(tokio::time::timeout(Duration::from_secs(4), tokio::net::TcpStream::connect(addr)).await, Ok(Ok(_)));
     Ok(json!({ "ok": ok }))
 }
-#[allow(dead_code)]
-fn unused(_: &mut dyn Read, _: &mut dyn Write) {}
 
 /// sign in to Google Drive, Dropbox or OneDrive in the browser; the refresh token is saved for connection `id`
 pub async fn sign_in(a: &Args) -> R {

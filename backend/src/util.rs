@@ -81,7 +81,13 @@ pub fn unique_name(dir: &str, name: &str, style: &str) -> String {
             return c;
         }
     }
-    first
+    // every numbered name is taken: a random one, never the existing file (callers write to what this returns)
+    loop {
+        let c = join(dir, &format!("{base} ({:08x}){ext}", rand::random::<u32>()));
+        if !exists(Path::new(&c)) {
+            return c;
+        }
+    }
 }
 
 pub fn copy_tree(src: &Path, dst: &Path) -> std::io::Result<()> {

@@ -2,7 +2,7 @@
 // history of what you copy (skipping anything a password manager marks as private).
 use crate::args::{Args, R};
 use crate::events;
-use serde_json::{json, Value};
+use serde_json::json;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 pub fn image_png() -> Option<Vec<u8>> {
@@ -91,4 +91,3 @@ pub fn watch(win: &str, a: &Args) -> R {
     });
     Ok(json!(true))
 }
-pub fn unused(_: Value) {}

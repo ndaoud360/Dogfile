@@ -122,7 +122,7 @@ pub fn start(cfg: Config, host: Arc<dyn Host>) -> Result<(), String> {
     license::start_background();
     // AI models downloaded by another kind of install of Dogfile on this PC are taken over, not downloaded again
     std::thread::spawn(ai::adopt_models);
-    // the assistant's model gives its memory back after 10 minutes unused
+    // the assistant's model gives its memory back after 15 minutes unused
     tokio::spawn(async {
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(60)).await;

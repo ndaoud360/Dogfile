@@ -323,9 +323,6 @@ fn run(j: &Arc<Job>) {
                 d.error = Some(e);
             }
         }
-        if j.is_cancelled() && d.status == "done" {
-            d.status = "cancelled".into();
-        }
         d.current.clear();
         d.finished = Some(util::now_ms());
         if !d.errors.is_empty() || d.status == "error" || d.status == "cancelled" {
@@ -658,13 +655,14 @@ fn copy_bytes(j: &Job, src: &Path, dst: &Path, size: u64) -> JR {
             }
         }
     }
-    let _ = size;
+    let _ = size; // used only by the Windows copier above
     w.sync_all().map_err(|e| Err(crate::fsx::friendly(&e)))?;
     Ok(())
 }
 
-/// What each answer to "this name is already there" means. Only "replace" (and "newer" when the incoming file is
-/// newer) ever replaces anything; any other or unknown answer leaves the existing item alone.
+/// What each answer to "this name is already there" means. "replace" replaces, "newer" replaces an older file, and
+/// "skipIdentical" (the "Replace unless identical" button) replaces unless both have the same size and date; any
+/// other or unknown answer leaves the existing item alone.
 fn decide(a: &str, src_size: u64, src_mtime: f64, dst: &Path) -> Clash {
     let dmd = std::fs::metadata(dst).ok();
     let dm = dmd.as_ref().map(|m| util::ms(m.modified())).unwrap_or(0.0);

@@ -257,7 +257,7 @@ pub fn status(_a: &Args) -> R {
 }
 /// demo:set(on): switches, then every window reloads into (or out of) the demo
 pub fn set(a: &Args) -> R {
-    let on = a.0.first().and_then(|v| v.as_bool()).unwrap_or(false);
+    let on = a.b(0);
     if on {
         build()?;
         // demo settings: yours, without anything that points at your files or servers
@@ -293,6 +293,8 @@ pub fn set(a: &Args) -> R {
     *st().settings.write() = s;
     crate::ops::configure_from_settings();
     crate::phonelink::reset();
+    crate::reminders::reset();
+    crate::timeline::reset();
     events::broadcast("demo:changed", json!({ "on": on }));
     Ok(json!({ "on": on }))
 }

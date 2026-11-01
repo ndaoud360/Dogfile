@@ -468,7 +468,9 @@ fn sleep_idle() {
         let Some(t) = g.as_mut() else { continue };
         if r.dirty.swap(false, Ordering::Relaxed) || !index_file(&dir, &r.path).exists() {
             if t.deleted > t.entries.len() / 5 { t.compact() }
-            if t.save(&index_file(&dir, &r.path)).is_err() { continue }
+            // not saved: still unsaved, and the root stays awake with its changes rather than waking up later from
+            // the stale file
+            if t.save(&index_file(&dir, &r.path)).is_err() { r.dirty.store(true, Ordering::Relaxed); continue }
         }
         r.sleep_count.store(t.live() as u64, Ordering::Relaxed);
         r.asleep.store(true, Ordering::Relaxed);
@@ -571,13 +573,20 @@ pub fn rebuild(r: &Arc<Root>, mft: bool, file: &Path) {
         return;
     }
     loop {
-        r.rebuild_again.store(false, Ordering::SeqCst);
-        rebuild_once(r, mft, file);
-        if !r.rebuild_again.swap(false, Ordering::SeqCst) {
+        loop {
+            r.rebuild_again.store(false, Ordering::SeqCst);
+            rebuild_once(r, mft, file);
+            if !r.rebuild_again.swap(false, Ordering::SeqCst) {
+                break;
+            }
+        }
+        r.rebuilding.store(false, Ordering::SeqCst);
+        // a request that arrived after the last check saw "rebuilding" and only left a note: take it up here, unless
+        // another caller has already started its own rebuild
+        if !r.rebuild_again.load(Ordering::SeqCst) || r.rebuilding.swap(true, Ordering::SeqCst) {
             break;
         }
     }
-    r.rebuilding.store(false, Ordering::SeqCst);
 }
 fn rebuild_once(r: &Arc<Root>, mft: bool, file: &Path) {
     *r.state.lock() = if r.tree.read().is_some() { "refreshing".into() } else { "scanning".into() };
@@ -669,7 +678,10 @@ pub fn save_all() {
         let mut g = r.tree.write();
         if let Some(t) = g.as_mut() {
             if t.deleted > t.entries.len() / 5 { t.compact() }
-            let _ = t.save(&index_file(&dir, &r.path));
+            if t.save(&index_file(&dir, &r.path)).is_err() {
+                // tried again on the next round instead of being forgotten
+                r.dirty.store(true, Ordering::Relaxed);
+            }
         }
     }
 }

@@ -338,7 +338,7 @@ fn unzip(file: &Path, dest: &Path) -> Result<(), String> {
     let f = std::fs::File::open(file).map_err(|e| e.to_string())?;
     let mut z = zip::ZipArchive::new(f).map_err(|_| "The update package couldn't be opened".to_string())?;
     // packages may hold their files at the top or inside one folder ("Dogfile/…"): either works
-    let names: Vec<String> = (0..z.len()).filter_map(|i| z.by_index(i).ok().map(|e| e.name().to_string())).collect();
+    let names: Vec<String> = (0..z.len()).filter_map(|i| z.by_index(i).ok().and_then(|e| e.name().ok().map(|n| n.to_string()))).collect();
     let prefix = {
         let firsts: std::collections::HashSet<&str> = names.iter().map(|n| n.split('/').next().unwrap_or("")).collect();
         if firsts.len() == 1 && names.iter().all(|n| n.contains('/')) { format!("{}/", firsts.into_iter().next().unwrap_or("")) } else { String::new() }
@@ -359,7 +359,7 @@ fn unzip(file: &Path, dest: &Path) -> Result<(), String> {
         if let Some(p) = out.parent() {
             std::fs::create_dir_all(p).map_err(|e| e.to_string())?;
         }
-        let mut buf = Vec::with_capacity(e.size() as usize);
+        let mut buf = Vec::with_capacity((e.size() as usize).min(1 << 24));
         e.read_to_end(&mut buf).map_err(|e| e.to_string())?;
         std::fs::write(&out, buf).map_err(|e| e.to_string())?;
     }

@@ -51,7 +51,7 @@
     "tesseract.js": "^7.0.0",
     "tesseract.js-core": "^7.0.0",
     "three": "^0.186.1",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "private": true
 }

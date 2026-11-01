@@ -551,7 +551,8 @@ jobs:
         run: |
           set -o pipefail
           psql -h 127.0.0.1 -U postgres -d lic -qc "create role anon" -c "create role authenticated"
-          psql -h 127.0.0.1 -U postgres -d lic -q -v ON_ERROR_STOP=1 -f supabase/migrations/20261022000000_licensing.sql
+          # every migration, in order: the tests use tables that later ones add (messages)
+          for f in supabase/migrations/*.sql; do psql -h 127.0.0.1 -U postgres -d lic -q -v ON_ERROR_STOP=1 -f "$f"; done
           npm install --prefix "$RUNNER_TEMP/deno" --no-audit --no-fund --silent deno@2.5.6
           cd supabase/functions/license
           if ! DB_URL=postgres://postgres:pg@127.0.0.1:5432/lic NO_COLOR=1 "$RUNNER_TEMP/deno/node_modules/.bin/deno" test -A --no-check test.ts > "$RUNNER_TEMP/t.log" 2>&1; then

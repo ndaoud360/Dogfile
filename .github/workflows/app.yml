@@ -44,6 +44,13 @@ jobs:
             target
           key: app-${{ hashFiles('Cargo.lock') }}
           restore-keys: app-
+      - name: Interface checks (names and imports that don't exist, path helpers, the assistant's grammar)
+        shell: bash
+        run: |
+          ESLINT_USE_FLAT_CONFIG=false npx -y eslint@8.57.0 --no-eslintrc -c build/eslint-undef.json src/renderer/js/*.js
+          node build/test-renderer.mjs
+          node build/test-assistant-apps.mjs
+          node build/test-assistant-files.mjs
       - name: Pack the interface into the program
         shell: bash
         run: |
@@ -419,7 +426,8 @@ jobs:
           foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin", "$env:ProgramFiles\LLVM\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
       - name: Interface checks (names that don't exist, the assistant's grammar)
         run: |
-          npx -y eslint@8.57.0 --no-eslintrc -c build/eslint-undef.json src/renderer/js/*.js
+          ESLINT_USE_FLAT_CONFIG=false npx -y eslint@8.57.0 --no-eslintrc -c build/eslint-undef.json src/renderer/js/*.js
+          node build/test-renderer.mjs
           node build/test-assistant-apps.mjs
           node build/test-assistant-files.mjs
       - name: System libraries

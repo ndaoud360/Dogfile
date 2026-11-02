@@ -251,7 +251,7 @@ export async function fulfil(d: Deps, session: any) {
   // the email goes out once, by whoever inserted the row. If that send failed (email_sent_at stays empty), a later
   // visit to this function (Stripe retries the webhook for days) tries again, once the row is a few minutes old so
   // that two callers at the same moment don't both send it
-  const retry = !ins.length && !lic.email_sent_at && Date.now() - new Date(lic.created_at).getTime() > 5 * 60_000;
+  const retry = !ins.length && !lic.email_sent_at && d.now() - new Date(lic.created_at).getTime() > 5 * 60_000;
   if ((ins.length || retry) && email) await sendSerial(d, lic);
   return lic;
 }

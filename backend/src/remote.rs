@@ -136,8 +136,14 @@ pub fn forget_host_key(c: &Value) {
 }
 impl russh::client::Handler for Ssh {
     type Error = russh::Error;
-    async fn check_server_key(&mut self, k: &russh::keys::ssh_key::PublicKey) -> Result<bool, Self::Error> {
-        let fp = k.fingerprint(russh::keys::ssh_key::HashAlg::Sha256).to_string();
+    async fn check_server_key(&mut self, k: &russh::keys::PublicKeyOrCertificate) -> Result<bool, Self::Error> {
+        // a server certificate is pinned by the key inside it, exactly like a plain key (no certificate authority is trusted)
+        let alg = russh::keys::ssh_key::HashAlg::Sha256;
+        let fp = match k {
+            russh::keys::PublicKeyOrCertificate::PublicKey { key, .. } => key.fingerprint(alg),
+            russh::keys::PublicKeyOrCertificate::Certificate(c) => c.public_key().fingerprint(alg),
+        }
+        .to_string();
         match pin_host_key(&hosts_file(), &self.host, &fp) {
             Ok(Pin::Trusted | Pin::New) => Ok(true),
             Ok(Pin::Changed(known)) => {

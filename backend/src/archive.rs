@@ -590,5 +590,5 @@ pub fn zip_entry(file: &str, entry: &str, max: u64) -> Option<Vec<u8>> {
 pub fn zip_names(file: &str) -> Vec<String> {
     let Ok(f) = std::fs::File::open(file) else { return vec![] };
     let Ok(z) = zip::ZipArchive::new(f) else { return vec![] };
-    z.file_names().map(String::from).collect()
+    z.file_names().filter_map(Result::ok).map(String::from).collect()
 }

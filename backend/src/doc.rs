@@ -454,8 +454,8 @@ pub fn set_props(file: &str, props: &Value) -> Result<(), String> {
         let mut w = zip::ZipWriter::new(out);
         for i in 0..z.len() {
             let e = z.by_index_raw(i).map_err(|e| e.to_string())?;
-            if e.name() == "docProps/core.xml" {
-                let name = e.name().to_string();
+            let name = e.name().map_err(|e| e.to_string())?.into_owned();
+            if name == "docProps/core.xml" {
                 drop(e);
                 w.start_file(name, zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated)).map_err(|e| e.to_string())?;
                 w.write_all(core.as_bytes()).map_err(|e| e.to_string())?;

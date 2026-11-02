@@ -70,7 +70,7 @@ pub async fn fetch_if_missing() -> Result<bool, String> {
         let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes.to_vec())).map_err(|e| e.to_string())?;
         for i in 0..zip.len() {
             let mut f = zip.by_index(i).map_err(|e| e.to_string())?;
-            let name = f.name().rsplit(['/', '\\']).next().unwrap_or("").to_string();
+            let name = f.name().map_err(|e| e.to_string())?.rsplit(['/', '\\']).next().unwrap_or("").to_string();
             let lower = name.to_lowercase();
             if f.is_dir() || !(lower.ends_with(".dll") || lower == EXE) {
                 continue;

@@ -54,10 +54,14 @@ const note = async (d: Deps, kind: string, who: string) => {
   // the table only needs the last day or so; about one write in a hundred clears out the older rows
   if (Math.random() < 0.01) await d.sql`delete from dogfile.attempts where at < now() - interval '2 days'`;
 };
+/** one try counted against a limit: refused when too many came before it, else recorded */
+async function attempt(d: Deps, kind: string, who: string, max: number, minutes: number, msg: string) {
+  await limit(d, kind, who, max, minutes, msg);
+  await note(d, kind, who);
+}
 /** opening Stripe payment pages: plenty for real buyers, not enough to flood Stripe from one address */
 export async function checkoutLimit(d: Deps, ip: string) {
-  await limit(d, 'checkout', ip, 30, 60, 'Too many payment pages opened from here. Try again in an hour.');
-  await note(d, 'checkout', ip);
+  await attempt(d, 'checkout', ip, 30, 60, 'Too many payment pages opened from here. Try again in an hour.');
 }
 /** a constant-time comparison (no timing hint about how much of a secret was right) */
 function sameSecret(a: string, b: string) {
@@ -72,8 +76,7 @@ export async function trial(d: Deps, body: any, ip: string) {
   const m = parseMachine(body?.machine);
   if (!m) throw bad('Unrecognised PC ID');
   const mt = machineText(m);
-  await limit(d, 'trial', ip, 60, 60, 'Too many requests. Try again in an hour.');
-  await note(d, 'trial', ip);
+  await attempt(d, 'trial', ip, 60, 60, 'Too many requests. Try again in an hour.');
   // the first request for this PC fixes the start; later ones (reinstalls, new Windows user…) get the same dates
   await d.sql`insert into dogfile.trials (machine, app_version) values (${mt}, ${String(body?.version || '').slice(0, 20)}) on conflict (machine) do nothing`;
   const [t] = await d.sql`update dogfile.trials set last_seen = now() where machine = ${mt} returning started_at`;
@@ -148,8 +151,7 @@ async function licenseFromToken(d: Deps, token: unknown) {
   return c;
 }
 export async function deactivate(d: Deps, body: any, ip = 'unknown') {
-  await limit(d, 'token', ip, 600, 60, 'Too many requests. Try again in an hour.');
-  await note(d, 'token', ip);
+  await attempt(d, 'token', ip, 600, 60, 'Too many requests. Try again in an hour.');
   const c = await licenseFromToken(d, body?.token);
   const mt = machineText(c.machine);
   const [{ n }] = await d.sql`select count(*)::int as n from dogfile.deactivations where license_id = ${c.a} and at > now() - interval '30 days'`;
@@ -159,8 +161,7 @@ export async function deactivate(d: Deps, body: any, ip = 'unknown') {
   return { ok: true };
 }
 export async function validate(d: Deps, body: any, ip = 'unknown') {
-  await limit(d, 'token', ip, 600, 60, 'Too many requests. Try again in an hour.');
-  await note(d, 'token', ip);
+  await attempt(d, 'token', ip, 600, 60, 'Too many requests. Try again in an hour.');
   const c = await licenseFromToken(d, body?.token);
   const mt = machineText(c.machine);
   const [lic] = await d.sql`select status from dogfile.licenses where id = ${c.a}`;
@@ -260,8 +261,7 @@ async function sessionLicense(d: Deps, id: string | null, ip = 'unknown') {
   if (lic) return lic;
   // asking Stripe: the app checks every few seconds while the payment page is open, so this allows a long checkout
   // but not someone hammering Stripe through this server
-  await limit(d, 'stripe-lookup', ip, 900, 60, 'Too many requests. Try again in a few minutes.');
-  await note(d, 'stripe-lookup', ip);
+  await attempt(d, 'stripe-lookup', ip, 900, 60, 'Too many requests. Try again in a few minutes.');
   const s = await d.stripe('GET', `/v1/checkout/sessions/${id}`);
   // Stripe answered with an error (a key problem, an outage, an unknown session): that is not "not paid yet", which
   // would leave a buyer waiting forever without anyone seeing why
@@ -378,8 +378,7 @@ export async function contact(d: Deps, body: any, ip: string) {
   if (!name) throw bad('Please enter your name.', 'no_name');
   if (!EMAIL_RE.test(email)) throw bad('That email address doesn’t look right.', 'bad_email');
   if (message.length < 5) throw bad('Please write a message.', 'no_message');
-  await limit(d, 'contact', ip, 10, 60, 'You’ve sent several messages in the last hour. Please wait a bit, or email us directly.');
-  await note(d, 'contact', ip);
+  await attempt(d, 'contact', ip, 10, 60, 'You’ve sent several messages in the last hour. Please wait a bit, or email us directly.');
   const subject = str(body?.subject, 200) || (kind === 'bug' ? `Dogfile bug report from ${name}` : `Dogfile website: message from ${name}`);
   // a bug report's extras (app and Windows version, recent errors, the mod): at most 30 fields, each kept short
   const details = body?.details && typeof body.details === 'object' && !Array.isArray(body.details)

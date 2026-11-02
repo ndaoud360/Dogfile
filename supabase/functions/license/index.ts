@@ -4,8 +4,8 @@
 //   POST /activate   {serial, machine, name}            → signed licence token (2 PCs per serial)
 //   GET  /offline?k=<serial>&m=<PC ID>[&download=1]     → the same, as text to type in on an offline PC
 //   POST /deactivate {token}  ·  POST /validate {token}
-//   POST /checkout   {machine?, email?}                 → Stripe payment page
-//   GET  /buy                                           → redirects to a new Stripe payment page (the website)
+//   POST /checkout   {machine?, email?, site?}         → Stripe payment page (site: the website to come back to, if allowed)
+//   GET  /buy[?site=]                                   → redirects to a new Stripe payment page (the website; else the Referer)
 //   GET  /claim?session=cs_…  ·  GET /thanks?session_id=cs_…  ·  GET /cancelled
 //   POST /contact    {name, email, message, kind?, details?}  → saved in dogfile.messages, then forwarded by email
 //   POST /webhook                                       Stripe events (paid, refunded, disputed)
@@ -16,7 +16,9 @@ import postgres from 'npm:postgres@3.4.5';
 import * as core from './core.ts';
 
 const env = (k: string) => Deno.env.get(k);
-const sql = postgres(env('SUPABASE_DB_URL')!, { prepare: false, max: 3, idle_timeout: 20 });
+const dbUrl = env('SUPABASE_DB_URL');
+if (!dbUrl) throw new Error('SUPABASE_DB_URL is not set (Supabase provides it to edge functions)'); // not the database client's silent defaults
+const sql = postgres(dbUrl, { prepare: false, max: 3, idle_timeout: 20 });
 
 const stripe = async (method: string, path: string, form?: Record<string, string>) => {
   const key = env('STRIPE_SECRET_KEY');

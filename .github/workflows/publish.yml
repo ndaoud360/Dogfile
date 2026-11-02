@@ -41,6 +41,18 @@ jobs:
           echo "ver=$ver" >> $GITHUB_OUTPUT
       - name: Make the update
         run: node build/make-update.mjs ${{ steps.check.outputs.ver }} release-notes/${{ steps.check.outputs.ver }}.md --x64 bin/x64/Dogfile.exe --arm64 bin/arm64/Dogfile.exe --setup bin/x64/Dogfile-Setup-${{ steps.check.outputs.ver }}.exe
+      # installed copies only accept an update whose latest.json carries your signature (latest.json.sig, next to it):
+      # the private key lives in the secret DOGFILE_SIGN_KEY (the whole key file), and DOGFILE_SIGN_PASSPHRASE if it has one
+      - name: Sign the update
+        env:
+          DOGFILE_SIGN_KEY: ${{ secrets.DOGFILE_SIGN_KEY }}
+          DOGFILE_SIGN_PASSPHRASE: ${{ secrets.DOGFILE_SIGN_PASSPHRASE }}
+        run: |
+          [ -n "$DOGFILE_SIGN_KEY" ] || { echo "::error title=publish::add the secret DOGFILE_SIGN_KEY (the contents of your update key file); without a signature no installed Dogfile will accept this update"; exit 1; }
+          key="$RUNNER_TEMP/update-key.pem"
+          (umask 077; printf '%s\n' "$DOGFILE_SIGN_KEY" > "$key")
+          node build/sign-update.mjs sign "$key" dist/update/latest.json
+          rm -f "$key"
       - name: Publish
         run: |
           set +e

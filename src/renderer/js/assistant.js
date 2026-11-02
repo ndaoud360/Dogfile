@@ -613,6 +613,7 @@ const NOT_IN_APP = /^\s*(?:please\s+)?(?:find|show(?: me)?|search|list|where|loo
 const WRITE_NEW = /\b(email|e-mail|letter|message|note|memo|poem|story|post|tweet|paragraph|essay|reply|cover letter|bio|description|speech|toast|list of|outline|summary|report|invitation|apology|thank-you|thank you)\b/i;
 
 export async function askAssistant(text) {
+  if (!requirePro('assistant')) return; // the palette and the bus ask without opening the panel, which is where toggleAssistant checks
   if (busy) stopNow();
   const intent = matchIntent(text);
   const t = activeTab();

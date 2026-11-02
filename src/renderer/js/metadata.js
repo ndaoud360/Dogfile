@@ -178,6 +178,7 @@ export async function editPhotoDetails(items) {
 
 /** take the location out of photos, straight away */
 export async function removeLocation(items) {
+  if (!requirePro('metadata')) return; // taking the location out is editing photo details, like the rest of this file
   items = items.filter(isPhoto);
   if (!items.length) return toast('Select photos');
   if (!(await ensureTool())) return;

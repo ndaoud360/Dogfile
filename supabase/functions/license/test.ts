@@ -178,6 +178,17 @@ Deno.test('licence server', async (t) => {
     await throwsCode(core.claim(d, new URLSearchParams({ session: 'cs_test_' + 'x'.repeat(24) })), 'stripe');
   });
 
+  await t.step('the return address after paying: only the website itself, never a lookalike', async () => {
+    const site = (raw: string | null) => core.siteBase(d, raw);
+    eq(site('https://dogfileio.vercel.app/download.html?x=1#y'), 'https://dogfileio.vercel.app/', 'the website, cleaned to its folder');
+    eq(site('http://localhost:3000/a/b.html'), 'http://localhost:3000/a/', 'localhost for testing');
+    for (const bad of ['https://dogfile-evil.vercel.app/', 'https://dogfile.shop/', 'https://x.dogfile.xyz/', 'https://dogfileio.vercel.app.evil.com/', 'http://dogfileio.vercel.app/', 'javascript:alert(1)', 'not a url', '', null]) eq(site(bad), null, `refused: ${bad}`);
+    env.SITE_HOSTS = 'shop.example.com, www.example.com';
+    eq(site('https://www.example.com/page.html'), 'https://www.example.com/', 'a host listed in SITE_HOSTS');
+    eq(site('https://evil.example.com/'), null, 'a neighbour of a listed host is not listed');
+    delete env.SITE_HOSTS;
+  });
+
   await t.step('Managed Payments accounts: no invoice options, the serial goes in the description', async () => {
     managed = true;
     const co = await core.checkout(d, { machine: mid(50) });

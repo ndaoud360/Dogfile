@@ -35,6 +35,14 @@ for (const [f, s] of Object.entries(src)) {
   for (const m of s.matchAll(/(?:const|let)\s*\{([^}]*)\}\s*=\s*await\s+import\('\.\/([\w.-]+\.js)'\)/g)) check(m[1], m[2], /\s*:\s*/, 'loads');
 }
 
+// ---------- 1b. every Pro feature is checked somewhere ----------
+// (the engine refuses a list of calls on its own; this is the window's side: a feature that is on the Free vs Pro
+// page but is never asked about would simply be free)
+const { FEATURES } = await import('../src/renderer/js/pro-marks.js');
+const allSrc = Object.entries(src).filter(([f]) => f !== 'license.js').map(([, s]) => s).join('\n');
+for (const key of Object.keys(FEATURES)) ok(allSrc.includes(`requirePro('${key}')`), `Pro feature “${key}” is checked with requirePro('${key}') somewhere`, key);
+for (const [cmd, feat] of Object.entries((await import('../src/renderer/js/pro-marks.js')).PRO_COMMANDS)) ok(feat in FEATURES, `PRO_COMMANDS.${cmd} names a feature that exists`, feat);
+
 // ---------- 2. path helpers ----------
 const { sys, normalize, dirname, basename, extname, stem, samePath, isInside, pjoin, expandUserPath } = core;
 const asWindows = () => { sys.platform = 'win32'; sys.sep = '\\'; };

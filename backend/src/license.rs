@@ -585,7 +585,8 @@ const PRO_CALLS: &[&str] = &[
     "remote:signIn", "remote:get", "remote:put", "remote:mkdir", "remote:rename", "remote:copy", "remote:open", "remote:test",
     "ext:install", "ai:download", "media:export", "media:contactSheet", "llm:plan", "llm:warm",
     "reminders:analyze", "reminders:add", "reminders:scanNow",
-    "meta:write", "meta:stripAll",
+    "meta:write", "meta:stripAll", "meta:stripGps",
+    "timeline:points", "timeline:at", "timeline:heat",
 ];
 /// Background calls that quietly do nothing without Pro, instead of reporting an error.
 const QUIET_CALLS: &[&str] = &["versions:track", "rules:watch"];
@@ -629,6 +630,13 @@ mod tests {
         // a call renamed in the dispatcher but not in the list above would quietly become free
         for n in PRO_CALLS.iter().chain(QUIET_CALLS) {
             assert!(crate::dispatch::NAMES.contains(n), "{n} is gated but the dispatcher has no such call");
+        }
+    }
+    #[test]
+    fn every_edit_of_photo_details_is_gated() {
+        // taking the location out is editing photo details like the rest: it must not be the free way round the gate
+        for n in ["meta:write", "meta:stripAll", "meta:stripGps"] {
+            assert!(PRO_CALLS.contains(&n), "{n} edits photo details, which is Pro");
         }
     }
     #[test]

@@ -176,9 +176,11 @@ export async function validate(d: Deps, body: any, ip = 'unknown') {
 /**
  * Where the website is, so Stripe sends the buyer back to its thank-you page. The Buy link says which site it's on
  * (or the browser's Referer does); only Dogfile's own sites are accepted, so nobody can send paying buyers elsewhere:
- * the host of SUCCESS_URL, any listed in SITE_HOSTS (comma-separated), dogfile*.vercel.app, a dogfile.* domain, and
+ * the host of SUCCESS_URL, any listed in SITE_HOSTS (comma-separated), the site's own address (OWN_SITES), and
  * localhost for testing. Returns the site's base address ending in "/", or null.
  */
+/** the website itself; others (a custom domain) are added with the SITE_HOSTS secret */
+const OWN_SITES = ['dogfileio.vercel.app'];
 export function siteBase(d: Deps, raw: string | null | undefined): string | null {
   if (!raw) return null;
   let u: URL;
@@ -188,7 +190,9 @@ export function siteBase(d: Deps, raw: string | null | undefined): string | null
   if (u.protocol !== 'https:' && !(local && u.protocol === 'http:')) return null;
   const listed = (d.env('SITE_HOSTS') || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
   try { const s = d.env('SUCCESS_URL'); if (s) listed.push(new URL(s).hostname.toLowerCase()); } catch { /* not a URL */ }
-  const ok = local || listed.includes(host) || /^dogfile[a-z0-9-]*\.vercel\.app$/.test(host) || /(^|\.)dogfile\.[a-z]{2,}$/.test(host);
+  // exact hosts only: a pattern like dogfile*.vercel.app would let anyone register a lookalike and be sent the buyer
+  // (and the checkout session id in the return address) after paying
+  const ok = local || OWN_SITES.includes(host) || listed.includes(host);
   if (!ok) return null;
   u.search = ''; u.hash = '';
   u.pathname = u.pathname.replace(/[^/]*$/, '');

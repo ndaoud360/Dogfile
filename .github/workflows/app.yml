@@ -182,7 +182,8 @@ jobs:
         shell: pwsh
         run: |
           $f = "$env:RUNNER_TEMP/smoke/wintest.log"
-          if (-not (Test-Path $f)) { Write-Output "::warning title=safety::the Windows checks didn't run, so the file-safety checks are unknown"; exit 0 }
+          # no log means the checks never ran (the app didn't start, or timed out): that proves nothing, so it stops the build
+          if (-not (Test-Path $f)) { Write-Output "::error title=safety::the Windows checks didn't run, so nothing shows the file-safety checks pass"; exit 1 }
           $bad = Get-Content $f | Where-Object { $_ -like 'UNSAFE*' }
           $ok = (Get-Content $f | Where-Object { $_ -like 'safe *' }).Count
           if ($bad) { Write-Output "::error title=safety::$($bad -join '%0A')"; exit 1 }

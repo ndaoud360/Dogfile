@@ -6,7 +6,7 @@ import { modal, confirm } from './dialogs.js';
 import { icon } from './icons.js';
 import { activeTab, navigate, selectedItems, renderTabPanes, recompute, loadTab, otherPaneTab, setView } from './pane.js';
 import * as A from './actions.js';
-import { requirePro } from './license.js';
+import { requirePro, isPro } from './license.js';
 
 const macros = () => (state.settings.macros ||= []);
 export const STEP_TYPES = {
@@ -95,7 +95,9 @@ function drawChip() {
 // ---------------- playing ----------------
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function settle() { await sleep(120); }
-export async function runMacro(m, { newFiles } = {}) {
+export async function runMacro(m, { newFiles, auto = false } = {}) {
+  // macros are Pro. One started by hand says so; one that starts itself (timer, startup, folder event) just doesn't run
+  if (!isPro()) { if (!auto) requirePro('automation'); return; }
   const t0 = activeTab();
   let t = t0;
   toast(`Running “${m.name}”…`, { ms: 1500 });
@@ -284,16 +286,16 @@ export async function syncMacros() {
   timers.forEach(clearInterval); timers = [];
   for (const m of macros().filter((x) => x.enabled !== false && x.trigger?.type === 'schedule')) {
     const tr = m.trigger;
-    if (tr.mode === 'weekly') { let last = ''; timers.push(setInterval(() => { const d = new Date(); const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; const day = d.toDateString(); if (d.getDay() === +(tr.day ?? 5) && hm === (tr.at || '').padStart(5, '0') && last !== day) { last = day; runMacro(m); } }, 20000)); }
-    else if (tr.mode === 'daily') { let last = ''; timers.push(setInterval(() => { const d = new Date(); const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; const day = d.toDateString(); if (hm === (tr.at || '').padStart(5, '0') && last !== day) { last = day; runMacro(m); } }, 20000)); }
-    else { const min = Math.max(1, +tr.minutes || 60); timers.push(setInterval(() => runMacro(m), min * 60000)); }
+    if (tr.mode === 'weekly') { let last = ''; timers.push(setInterval(() => { const d = new Date(); const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; const day = d.toDateString(); if (d.getDay() === +(tr.day ?? 5) && hm === (tr.at || '').padStart(5, '0') && last !== day) { last = day; runMacro(m, { auto: true }); } }, 20000)); }
+    else if (tr.mode === 'daily') { let last = ''; timers.push(setInterval(() => { const d = new Date(); const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; const day = d.toDateString(); if (hm === (tr.at || '').padStart(5, '0') && last !== day) { last = day; runMacro(m, { auto: true }); } }, 20000)); }
+    else { const min = Math.max(1, +tr.minutes || 60); timers.push(setInterval(() => runMacro(m, { auto: true }), min * 60000)); }
   }
   bus.emit('automations:sync');
 }
 // new files in a watched folder (the folder automations' watcher reports them)
 bus.on('folderNewFiles', ({ dir, files }) => {
   for (const m of macros().filter((x) => x.enabled !== false && x.trigger?.type === 'folder' && x.trigger.folder && x.trigger.folder.toLowerCase() === dir.toLowerCase())) {
-    (async () => { await navigate(activeTab(), dir); await runMacro(m, { newFiles: files }); })();
+    (async () => { await navigate(activeTab(), dir); await runMacro(m, { newFiles: files, auto: true }); })();
   }
 });
 // file events (hooks.js): macros set to run after a copy, move, rename…; the files involved count as "just arrived"
@@ -305,9 +307,9 @@ bus.on('fileEvent', (e) => {
   for (const m of list) {
     const f = m.trigger.folder;
     if (f && !(where && (where.toLowerCase() === f.toLowerCase() || where.toLowerCase().startsWith(f.toLowerCase().replace(/[\\/]$/, '') + (where.includes('\\') ? '\\' : '/'))))) continue;
-    (async () => { if (where && e.event !== 'afterDelete') await navigate(activeTab(), where); await runMacro(m, { newFiles: files }); })();
+    (async () => { if (where && e.event !== 'afterDelete') await navigate(activeTab(), where); await runMacro(m, { newFiles: files, auto: true }); })();
   }
 });
 export const macroFolders = () => macros().filter((x) => x.enabled !== false && x.trigger?.type === 'folder' && x.trigger.folder).map((x) => x.trigger.folder);
-setTimeout(() => { syncMacros(); for (const m of macros().filter((x) => x.enabled !== false && x.trigger?.type === 'startup')) runMacro(m); }, 3500);
+setTimeout(() => { syncMacros(); for (const m of macros().filter((x) => x.enabled !== false && x.trigger?.type === 'startup')) runMacro(m, { auto: true }); }, 3500);
 bus.on('macros', macrosManager);

@@ -11,7 +11,7 @@ create table if not exists dogfile.messages (
   message    text not null,
   details    jsonb,                              -- a bug report's app version, Windows version, recent errors, mod
   ip         text,
-  forwarded  text                                -- how it reached the inbox: "resend", "formsubmit", or why it didn't
+  forwarded  text                                -- how it reached the inbox: "resend", or why it didn't
 );
 alter table dogfile.messages enable row level security;
 create index if not exists messages_at on dogfile.messages (at desc);

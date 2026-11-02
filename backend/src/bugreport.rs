@@ -1,15 +1,9 @@
 // Report a bug (Help > Report a bug): the person's name, email and message go to Dogfile's server (saved, then
-// emailed to the developer), or straight through FormSubmit if that server can't be reached. The address is fixed here, so nothing in a window can send a
-// report anywhere else.
+// emailed to the developer). The server's address is fixed in the app, so nothing in a window can send a report
+// anywhere else.
 use crate::args::{Args, R};
 use crate::util;
 use serde_json::{json, Value};
-
-/// where reports go. FormSubmit asks this address to confirm once (the first message ever sent to it, from the app
-/// or the website, triggers a one-time "activate" email); after that every report arrives normally.
-pub const TO: &str = "nd640dev@gmail.com";
-/// FormSubmit only takes forms sent from a web page, so reports say they come from Dogfile's contact page
-const FROM_PAGE: &str = "https://dogfileio.vercel.app/contact.html";
 
 /// "Windows 11 24H2 (build 26100.2605)", from the registry
 pub fn windows_version() -> String {
@@ -79,8 +73,7 @@ pub async fn send(a: &Args) -> R {
             body["Recent errors"] = json!(errs);
         }
     }
-    // to Dogfile's own server first: it saves every report (nothing is lost if email forwarding fails) and forwards it;
-    // straight to FormSubmit only when that server can't be reached
+    // Dogfile's own server saves every report (nothing is lost if email forwarding fails) and forwards it
     let api = crate::license::api_base();
     if !api.is_empty() {
         let fixed = ["name", "email", "message", "_subject", "_replyto", "_template", "_captcha"];
@@ -96,24 +89,8 @@ pub async fn send(a: &Args) -> R {
                     return Err(e.to_string());
                 }
             }
-            Err(e) => crate::errlog(&format!("bug report: the Dogfile server couldn't be reached ({e}); trying FormSubmit")),
+            Err(e) => crate::errlog(&format!("bug report: the Dogfile server couldn't be reached ({e})")),
         }
     }
-    let r = util::http()
-        .post(format!("https://formsubmit.co/ajax/{TO}"))
-        .header("accept", "application/json")
-        .header("content-type", "application/json")
-        .header("referer", FROM_PAGE)
-        .header("origin", "https://dogfileio.vercel.app")
-        .body(body.to_string())
-        .timeout(std::time::Duration::from_secs(30))
-        .send()
-        .await
-        .map_err(|_| "Dogfile couldn’t reach the internet. Check your connection and try again.".to_string())?;
-    let v: Value = r.json().await.unwrap_or(Value::Null);
-    if v["success"] == json!(true) || v["success"] == json!("true") {
-        Ok(json!(true))
-    } else {
-        Err(v["message"].as_str().filter(|m| !m.is_empty()).unwrap_or("The report couldn’t be sent just now. Try again in a minute.").to_string())
-    }
+    Err("The report couldn’t be sent just now. Check your connection and try again in a minute.".to_string())
 }

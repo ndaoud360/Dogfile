@@ -22,7 +22,6 @@ Crates
 - `app/` — the Tauri shell: frameless windows, events, dialogs, drag in/out, tray, single instance.
 - `devserver/` — the same back end over HTTP, for development and automated tests.
 
-`src/main/` is the old Electron version's main process. Nothing builds or ships it; it stays for reference only.
 `package.json` is not an app manifest: it lists the JavaScript libraries that are bundled into `src/renderer/vendor/`
 (for example `npm run vendor:office`).
 
@@ -45,14 +44,13 @@ File safety (backend)
   `collections.js` (smart collections), `cleanup.js` (storage cleanup center; worker job `inventory`),
   `gallery.js` + `mediameta.js` (gallery view, media filter, contact sheets, similar media; main `imgmeta.js`),
   `history.js` (file history, versions via main `versions.js`, checksums via worker job `hashfiles`),
-  `assistant.js` + `assistant-parse.js` (local file assistant; main `doctext.js` reads Office/PDF text),
+  `assistant.js` + `assistant-parse.js` (local file assistant; the back end reads Office/PDF text),
   `docpreview.js` (Office previews, file notes, preview panel options), `workspaces.js` (workspaces 2.0 + profiles),
-  `network.js` + main `remote.js` (saved SFTP/FTP/SMB/WebDAV connections; `src/main/vendor/remote-libs.js` is
-  ssh2 + basic-ftp bundled with esbuild from `build/vendor-src/remote.js`), `renamestudio.js`, `smartdrop.js`,
+  `network.js` (saved SFTP/FTP/SMB/WebDAV connections; the work is done in `backend/`), `renamestudio.js`, `smartdrop.js`,
   `cliphistory.js`, `assoc.js` (file types), `a11y.js`, `macros.js`, `extensions.js` + `ext-worker.js` (sandboxed
   features; the worker is served with a CSP that blocks network and script loading), `features.js`,
   `featurestore.js` (GitHub-backed feature browser; requests go through `gh:request`).
-- Where this list says "main X.js", the work is now done in Rust: `backend/src/` (`imgmeta` → `meta.rs`,
+- Where this list says "main X.js" (the old Electron main process, since removed), the work is done in Rust: `backend/src/` (`imgmeta` → `meta.rs`,
   `versions.js` → `versions.rs`, `doctext.js` → `doc.rs`, `remote.js` → `remote.rs`, worker jobs → `core/`).
 
 1.5.1

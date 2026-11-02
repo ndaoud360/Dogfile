@@ -47,9 +47,8 @@ works for looking, but the Buy and Download buttons need a real web address.)
   Free buttons there and on the thank-you page open `https://apps.microsoft.com/search?query=Dogfile` for now. When
   Dogfile's Store page is live, search the HTML files for `apps.microsoft.com` and replace each match with the real
   link. (Also set the same link as `STORE_URL` in Supabase's Edge Function secrets, for the server's plain fallback page.)
-- **Contact form**: messages go to nd640dev@gmail.com (the `data-email` in `contact.html`). The first message ever
-  sent makes FormSubmit email that address a one-time "activate your form" link; click it once. The app's
-  Help > Report a bug sends through the same address, so activating once covers both.
+- **Contact form**: messages go to Dogfile's license server (`/contact`), which saves them and emails them through
+  Resend to the address set as `CONTACT_TO` (default nd640dev@gmail.com). The app's Help > Report a bug uses the same route.
 - **Social preview image**: `og:image` in each page's `<head>` is a relative path. Once you know the domain, change it
   to the full address (`https://YOUR-DOMAIN/assets/img/og-image.jpg`) so link previews show the picture everywhere.
 - **Terms and refunds**: read `legal.html` and adjust it to what you want to promise (it says 30-day refunds).

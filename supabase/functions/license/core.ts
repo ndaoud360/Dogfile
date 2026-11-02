@@ -18,8 +18,6 @@ export interface Deps {
   email: (to: string, subject: string, html: string, text: string, replyTo?: string) => Promise<boolean>;
   now: () => number; // ms
   self: string; // this function's public URL, without a trailing slash
-  /** outgoing requests other than Stripe (forwarding messages); the tests pass a stand-in */
-  fetch?: typeof fetch;
 }
 
 export class HttpError extends Error { constructor(public status: number, message: string, public code = 'error') { super(message); } }
@@ -372,7 +370,7 @@ If Dogfile was open when you paid, it has already activated itself.</p>
 // ---------- messages (website contact form, the app's "Report a bug") ----------
 const CONTACT_TO = 'nd640dev@gmail.com';
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
-/** saved first (so it's never lost), then forwarded to the inbox: Resend when it's set up, else FormSubmit */
+/** saved first (so it's never lost), then forwarded to the inbox by Resend; why not, when it fails, is recorded with it */
 export async function contact(d: Deps, body: any, ip: string) {
   const str = (v: unknown, max: number) => String(v ?? '').trim().slice(0, max);
   // a bot filled the field people can't see: say thanks, keep nothing
@@ -395,24 +393,15 @@ export async function contact(d: Deps, body: any, ip: string) {
   return { ok: true, id: Number(row.id) };
 }
 async function forwardMessage(d: Deps, m: { kind: string; name: string; email: string; subject: string; message: string; details: any }) {
+  if (!d.env('RESEND_API_KEY')) throw new Error('RESEND_API_KEY is not configured');
   const to = d.env('CONTACT_TO') || CONTACT_TO;
   const lines = [`From: ${m.name} <${m.email}>`, '', m.message];
   if (m.details) lines.push('', '---', ...Object.entries(m.details).map(([k, v]) => `${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`));
   const text = lines.join('\n');
-  if (d.env('RESEND_API_KEY')) {
-    return (await d.email(to, m.subject, `<pre style="font:14px/1.5 Segoe UI,Arial,sans-serif;white-space:pre-wrap">${esc(text)}</pre>`, text, m.email)) ? 'resend' : 'failed: resend';
-  }
-  // FormSubmit takes forms "from a web page": the request says it comes from the site's contact page
-  const site = (d.env('SITE_URL') || 'https://dogfileio.vercel.app').replace(/\/+$/, '');
-  const f = d.fetch || fetch;
-  const r = await f(`https://formsubmit.co/ajax/${to}`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', accept: 'application/json', origin: site, referer: `${site}/contact.html` },
-    body: JSON.stringify({ name: m.name, email: m.email, message: m.message, ...(m.details || {}), _subject: m.subject, _replyto: m.email, _template: 'table', _captcha: 'false' }),
-  });
-  const j: any = await r.json().catch(() => ({}));
-  if (j?.success === true || j?.success === 'true') return 'formsubmit';
-  return `not forwarded: ${String(j?.message || r.status).slice(0, 300)}`;
+  // Reply goes to the person who wrote
+  const ok = await d.email(to, m.subject, `<pre style="font:14px/1.5 Segoe UI,Arial,sans-serif;white-space:pre-wrap">${esc(text)}</pre>`, text, m.email);
+  if (!ok) throw new Error('Resend failed to send email');
+  return 'resend';
 }
 
 // ---------- admin (header x-admin-secret) ----------

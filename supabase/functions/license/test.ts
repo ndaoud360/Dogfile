@@ -10,11 +10,8 @@ const sessions: Record<string, any> = {};
 const env: Record<string, string> = { ADMIN_SECRET: 'admin-secret-123456', STRIPE_SECRET_KEY: 'sk_test_x' };
 let managed = false; // pretend the Stripe account uses Managed Payments
 let lastForm: Record<string, string> = {};
-const forwards: { url: string; headers: any; body: any }[] = [];
-let formsubmitAnswer: any = { success: 'true' };
 const d: core.Deps = {
   sql, env: (k) => env[k], now: () => Date.now(), self: 'https://example.supabase.co/functions/v1/license',
-  fetch: (async (url: string, init: any) => { forwards.push({ url, headers: init.headers, body: JSON.parse(init.body) }); return new Response(JSON.stringify(formsubmitAnswer)); }) as any,
   email: async (to, _s, _h, text, replyTo) => { emails.push({ to, text, replyTo }); return true; },
   stripe: async (method, path, form) => {
     if (method === 'POST' && path === '/v1/checkout/sessions') {
@@ -238,22 +235,21 @@ Deno.test('licence server', async (t) => {
     // a bot: thanked, nothing kept or sent
     eq(await core.contact(d, { name: 'Bot', email: 'b@b.co', message: 'buy now buy now', _honey: 'x' }, 'ipc'), { ok: true }, 'honeypot');
     eq((await sql`select count(*)::int as n from dogfile.messages`)[0].n, 0, 'bot not saved');
-    // no Resend: forwarded through FormSubmit as if from the website's contact page
+    // saved even when Resend is not set up, and why it was not forwarded is recorded
     const r = await core.contact(d, { name: 'Ann', email: 'ann@example.com', message: 'Hello, a question about Pro.' }, 'ipc');
     ok(r.ok && r.id, 'saved');
-    eq(forwards.length, 1, 'forwarded once'); ok(forwards[0].url.endsWith('/nd640dev@gmail.com'), 'to the developer');
-    eq(forwards[0].headers.referer, 'https://dogfileio.vercel.app/contact.html', 'from the contact page');
-    eq(forwards[0].body._replyto, 'ann@example.com', 'reply goes to the sender');
-    eq((await sql`select forwarded from dogfile.messages where id = ${r.id}`)[0].forwarded, 'formsubmit', 'recorded how');
-    // forwarding fails (FormSubmit not activated): still saved, and why is recorded
-    formsubmitAnswer = { success: 'false', message: 'This form needs Activation.' };
+    ok((await sql`select forwarded from dogfile.messages where id = ${r.id}`)[0].forwarded.includes('RESEND_API_KEY'), 'recorded why not');
+    // Resend set up, but it refuses the email: still saved, and why is recorded
+    env.RESEND_API_KEY = 're_test'; const send = d.email; d.email = async () => false;
     const r2 = await core.contact(d, { kind: 'bug', name: 'Bo', email: 'bo@example.com', message: 'It crashed when copying.', details: { Dogfile: '2.2.0 (x86_64)', 'Recent errors': ['a', 'b'] } }, 'ipc');
+    d.email = send;
     const [m] = await sql`select * from dogfile.messages where id = ${r2.id}`;
-    eq(m.kind, 'bug', 'kind'); eq(m.details.Dogfile, '2.2.0 (x86_64)', 'details kept'); ok(m.forwarded.includes('Activation'), 'why not forwarded: ' + m.forwarded);
-    // with Resend set up, it goes by email instead
-    env.RESEND_API_KEY = 're_test'; const before = emails.length;
-    await core.contact(d, { name: 'Cy', email: 'cy@example.com', message: 'Another message here.' }, 'ipc');
+    eq(m.kind, 'bug', 'kind'); eq(m.details.Dogfile, '2.2.0 (x86_64)', 'details kept'); ok(m.forwarded.includes('Resend failed'), 'why not forwarded: ' + m.forwarded);
+    // working: it goes by email, and replies go to the sender
+    const before = emails.length;
+    const r3 = await core.contact(d, { name: 'Cy', email: 'cy@example.com', message: 'Another message here.' }, 'ipc');
     eq(emails.length, before + 1, 'emailed'); ok(emails.at(-1)!.text.includes('cy@example.com'), 'sender in the email'); eq(emails.at(-1)!.replyTo, 'cy@example.com', 'Reply goes to the sender');
+    eq((await sql`select forwarded from dogfile.messages where id = ${r3.id}`)[0].forwarded, 'resend', 'recorded how');
     delete env.RESEND_API_KEY;
     // ten an hour from one address
     for (let i = 0; i < 7; i++) await core.contact(d, { name: 'Flood', email: 'f@example.com', message: 'message ' + i }, 'ipc');

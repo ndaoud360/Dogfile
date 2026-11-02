@@ -344,6 +344,7 @@ export async function webhook(d: Deps, raw: string, sigHeader: string | null) {
 export function maskEmail(e: string | null) {
   if (!e) return null;
   const [u, dom] = e.split('@');
+  if (dom === undefined) return '•'.repeat(6); // not an address (an admin can issue one with anything in it): show nothing of it
   return `${u.slice(0, 2)}${'•'.repeat(Math.max(1, Math.min(6, u.length - 2)))}@${dom}`;
 }
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!)); // for text put into an email's HTML

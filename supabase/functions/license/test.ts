@@ -90,7 +90,9 @@ Deno.test('licence server', async (t) => {
     const bytes = b32decode(a.token)!; bytes[5] ^= 1; // another PC ID
     eq(await verify(pub, b32encode(bytes)), null, 'edited token rejected');
     await throwsCode(core.validate(d, { token: b32encode(bytes) }), 'bad_token');
-    const other = await importPub((await crypto.subtle.exportKey('raw', ((await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify'])) as CryptoKeyPair).publicKey) as ArrayBuffer).byteLength ? btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.exportKey('raw', ((await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify'])) as CryptoKeyPair).publicKey)))) : '');
+    // a key that did not sign it
+    const otherPair = (await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify'])) as CryptoKeyPair;
+    const other = await importPub(btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.exportKey('raw', otherPair.publicKey)))));
     eq(await verify(other, a.token), null, 'another key rejects it');
   });
 

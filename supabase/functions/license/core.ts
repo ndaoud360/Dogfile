@@ -24,6 +24,7 @@ export interface Deps {
 
 export class HttpError extends Error { constructor(public status: number, message: string, public code = 'error') { super(message); } }
 const bad = (msg: string, code = 'bad_request') => new HttpError(400, msg, code);
+const pcName = (name: unknown) => (name ? String(name).slice(0, 80) : null); // what a PC calls itself, kept short
 const secs = (ms: number) => Math.floor(ms / 1000);
 
 // ---------- keys ----------
@@ -99,7 +100,7 @@ async function activateCore(d: Deps, serialIn: unknown, machineIn: unknown, name
     if (lic.status !== 'active') return { err: 'revoked' };
     const [existing] = await tx`select id from dogfile.activations where license_id = ${lic.id} and machine = ${mt}`;
     if (existing) {
-      await tx`update dogfile.activations set last_seen = now(), name = coalesce(${name ? String(name).slice(0, 80) : null}, name) where id = ${existing.id}`;
+      await tx`update dogfile.activations set last_seen = now(), name = coalesce(${pcName(name)}, name) where id = ${existing.id}`;
       return { lic, act: existing.id };
     }
     const [{ n }] = await tx`select count(*)::int as n from dogfile.activations where license_id = ${lic.id}`;
@@ -107,7 +108,7 @@ async function activateCore(d: Deps, serialIn: unknown, machineIn: unknown, name
       const others = await tx`select name, created_at from dogfile.activations where license_id = ${lic.id} order by created_at`;
       return { err: 'full', others, max: lic.max_machines };
     }
-    const [a] = await tx`insert into dogfile.activations (license_id, machine, name) values (${lic.id}, ${mt}, ${name ? String(name).slice(0, 80) : null}) returning id`;
+    const [a] = await tx`insert into dogfile.activations (license_id, machine, name) values (${lic.id}, ${mt}, ${pcName(name)}) returning id`;
     return { lic, act: a.id };
   });
   if (result.err === 'unknown') throw await fail('That serial number wasn’t found. Check it against the email you got after buying.', 'unknown_serial');
@@ -133,6 +134,7 @@ export async function offline(d: Deps, q: URLSearchParams, ip: string) {
       text: `Dogfile Pro: activation code\n\n${code}\n\nType this code into Dogfile on the PC you're activating (Settings › License › Activate offline › Enter the activation code),\nor save it as a file and open it there: ${d.self}/offline?k=${encodeURIComponent(q.get('k') || '')}&m=${encodeURIComponent(q.get('m') || '')}&download=1\n\nThe code only works on that PC.\n`,
     };
   } catch (e) {
+    if (!(e instanceof HttpError)) console.error('offline', String(e)); // only the unexpected ones; the others are the buyer's mistakes
     const msg = e instanceof HttpError ? e.message : 'Something went wrong. Try again in a minute.';
     return { status: e instanceof HttpError ? e.status : 500, text: `Dogfile Pro: activation failed\n\n${msg}\n` };
   }
@@ -245,7 +247,11 @@ export async function fulfil(d: Deps, session: any) {
     values (${serial}, ${email}, ${session.id}, ${session.payment_intent || null}, ${session.amount_total ?? null}, ${session.currency || null}, 'stripe')
     on conflict (stripe_session) do nothing returning id`;
   const [lic] = await d.sql`select * from dogfile.licenses where stripe_session = ${session.id}`;
-  if (ins.length && email) await sendSerial(d, lic);
+  // the email goes out once, by whoever inserted the row. If that send failed (email_sent_at stays empty), a later
+  // visit to this function (Stripe retries the webhook for days) tries again, once the row is a few minutes old so
+  // that two callers at the same moment don't both send it
+  const retry = !ins.length && !lic.email_sent_at && Date.now() - new Date(lic.created_at).getTime() > 5 * 60_000;
+  if ((ins.length || retry) && email) await sendSerial(d, lic);
   return lic;
 }
 async function sessionLicense(d: Deps, id: string | null, ip = 'unknown') {
@@ -257,6 +263,12 @@ async function sessionLicense(d: Deps, id: string | null, ip = 'unknown') {
   await limit(d, 'stripe-lookup', ip, 900, 60, 'Too many requests. Try again in a few minutes.');
   await note(d, 'stripe-lookup', ip);
   const s = await d.stripe('GET', `/v1/checkout/sessions/${id}`);
+  // Stripe answered with an error (a key problem, an outage, an unknown session): that is not "not paid yet", which
+  // would leave a buyer waiting forever without anyone seeing why
+  if (s?.error || !s?.id) {
+    console.error('stripe session lookup', id, JSON.stringify(s?.error || s).slice(0, 300));
+    throw new HttpError(502, 'Stripe didn’t answer properly. Try again in a minute.', 'stripe');
+  }
   return await fulfil(d, s);
 }
 /** the app polls this after opening the payment page: the serial number once paid */
@@ -274,7 +286,8 @@ export async function thanks(d: Deps, q: URLSearchParams, ip = 'unknown') {
     const lic = await sessionLicense(d, q.get('session_id'), ip);
     if (!lic) return `Dogfile Pro\n\nThanks! Your payment is being confirmed. Your serial number will arrive by email in a minute or two,\nand Dogfile activates by itself if it's open.\n\n${steps}`;
     return `Dogfile Pro: thank you!\n\nYour serial number:  ${lic.serial}\n\nKeep it somewhere safe. ${lic.email ? `We've also emailed it to ${lic.email}.` : ''}\nIf Dogfile is open on this PC, it has already activated itself.\n\n${steps}`;
-  } catch {
+  } catch (e) {
+    console.error('thanks', String(e)); // the buyer sees a friendly text; the cause belongs in the log
     return `Dogfile Pro\n\nThanks for your purchase. Your serial number will arrive by email.\n\n${steps}`;
   }
 }
@@ -333,9 +346,9 @@ export function maskEmail(e: string | null) {
   const [u, dom] = e.split('@');
   return `${u.slice(0, 2)}${'•'.repeat(Math.max(1, Math.min(6, u.length - 2)))}@${dom}`;
 }
+const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!)); // for text put into an email's HTML
 export async function sendSerial(d: Deps, lic: any) {
   if (!lic?.email) return false;
-  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
   const html = `<div style="font-family:Segoe UI,Arial,sans-serif;max-width:520px;margin:auto;color:#1d1d1f">
 <h2 style="margin:0 0 12px">Thanks for buying Dogfile Pro!</h2>
 <p>Your serial number:</p>
@@ -383,7 +396,6 @@ async function forwardMessage(d: Deps, m: { kind: string; name: string; email: s
   if (m.details) lines.push('', '---', ...Object.entries(m.details).map(([k, v]) => `${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`));
   const text = lines.join('\n');
   if (d.env('RESEND_API_KEY')) {
-    const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
     return (await d.email(to, m.subject, `<pre style="font:14px/1.5 Segoe UI,Arial,sans-serif;white-space:pre-wrap">${esc(text)}</pre>`, text, m.email)) ? 'resend' : 'failed: resend';
   }
   // FormSubmit takes forms "from a web page": the request says it comes from the site's contact page
@@ -456,4 +468,3 @@ export async function admin(d: Deps, route: string, body: any, secret: string | 
   throw new HttpError(404, 'Unknown admin route', 'not_found');
 }
 
-export { machineText };

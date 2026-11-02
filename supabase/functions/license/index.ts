@@ -26,16 +26,19 @@ const stripe = async (method: string, path: string, form?: Record<string, string
     headers: { authorization: `Bearer ${key}`, 'content-type': 'application/x-www-form-urlencoded' },
     body: form ? new URLSearchParams(form) : undefined,
   });
-  return await r.json();
+  return await r.json(); // errors come back as { error } too: the callers that can recover from one read it
 };
 const email = async (to: string, subject: string, html: string, text: string, replyTo?: string) => {
   const key = env('RESEND_API_KEY');
   if (!key) return false;
-  const r = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ from: env('RESEND_FROM') || 'Dogfile <onboarding@resend.dev>', to: [to], subject, html, text, reply_to: replyTo || env('SUPPORT_EMAIL') || undefined }),
-  });
+  let r: Response;
+  try {
+    r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ from: env('RESEND_FROM') || 'Dogfile <onboarding@resend.dev>', to: [to], subject, html, text, reply_to: replyTo || env('SUPPORT_EMAIL') || undefined }),
+    });
+  } catch (e) { console.error('email failed', String(e)); return false; } // a network error is a failed send, like a refusal
   if (!r.ok) console.error('email failed', r.status, (await r.text()).slice(0, 300));
   return r.ok;
 };

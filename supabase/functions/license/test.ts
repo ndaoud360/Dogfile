@@ -156,6 +156,26 @@ Deno.test('licence server', async (t) => {
     eq((await sql`select count(*)::int as n from dogfile.licenses where stripe_session = ${co.session}`)[0].n, 1, 'one licence');
   });
 
+  await t.step('the mail service is down when someone pays: a later webhook retry sends the serial; a Stripe error is not "not paid yet"', async () => {
+    const send = d.email;
+    d.email = async () => false;
+    const co = await core.checkout(d, {});
+    sessions[co.session].payment_status = 'paid';
+    const raw = JSON.stringify({ type: 'checkout.session.completed', data: { object: sessions[co.session] } });
+    const n0 = emails.length;
+    await core.webhook(d, raw, await stripeSig(raw));
+    d.email = send;
+    eq(emails.length, n0, 'nothing sent while the mail service is down');
+    await core.webhook(d, raw, await stripeSig(raw));
+    eq(emails.length, n0, 'a retry in the first minutes does not send (another caller may be sending it)');
+    await sql`update dogfile.licenses set created_at = now() - interval '10 minutes' where stripe_session = ${co.session}`;
+    await core.webhook(d, raw, await stripeSig(raw));
+    eq(emails.length, n0 + 1, 'sent by a later retry');
+    await core.webhook(d, raw, await stripeSig(raw));
+    eq(emails.length, n0 + 1, 'and only once');
+    await throwsCode(core.claim(d, new URLSearchParams({ session: 'cs_test_' + 'x'.repeat(24) })), 'stripe');
+  });
+
   await t.step('Managed Payments accounts: no invoice options, the serial goes in the description', async () => {
     managed = true;
     const co = await core.checkout(d, { machine: mid(50) });

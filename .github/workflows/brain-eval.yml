@@ -27,13 +27,13 @@ jobs:
             file: Qwen3.5-4B-Q4_K_M.gguf
             threads: '6,6'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Git's bash on the path (self-hosted Windows)
         if: runner.os == 'Windows'
         shell: powershell
         run: |
           foreach ($d in @("$env:ProgramFiles\Git\bin", "$env:ProgramFiles\Git\usr\bin", "$env:USERPROFILE\.cargo\bin", "$env:ProgramFiles\LLVM\bin")) { if (Test-Path $d) { $d >> $env:GITHUB_PATH } }
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         if: vars.RUNNER != 'pc'
         with:
           path: |
@@ -42,7 +42,7 @@ jobs:
             target
           key: brain-${{ hashFiles('Cargo.lock') }}
           restore-keys: brain-
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         if: vars.RUNNER != 'pc'
         with:
           path: models

@@ -13,10 +13,10 @@ jobs:
   core-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Rust toolchain
         run: rustup toolchain install stable --profile minimal && rustup default stable
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -46,7 +46,7 @@ jobs:
           $t = $sw.Elapsed.TotalSeconds
           $p = '{"id":1,"cmd":"ping","args":{}}' | ./target/release/dogfile-core.exe
           Write-Output "::notice title=engine::$v%0Abuild-index C: -> $($b -join ' ') (wall $t s)%0Aping: $p"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dogfile-core-windows
           path: core/target/release/dogfile-core.exe

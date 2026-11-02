@@ -9,7 +9,7 @@ jobs:
   bench:
     runs-on: ${{ vars.RUNNER == 'pc' && fromJSON('["self-hosted","Windows","X64"]') || 'windows-latest' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Git's bash on the path (self-hosted Windows)
         shell: powershell
         run: |

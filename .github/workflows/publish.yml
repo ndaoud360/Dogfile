@@ -16,7 +16,7 @@ jobs:
       REPO: ndaoud360/dogfile-updates
       GH_TOKEN: ${{ secrets.DOGFILE_UPDATES_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 1
       - name: Get the finished build

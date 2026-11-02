@@ -124,7 +124,7 @@ pub fn from_store() -> bool {
 /// The keys Dogfile trusts to sign its updates (base64, one per entry): paste the public key printed by
 /// `node build/sign-update.mjs keygen`. A second entry lets a key be replaced without stranding installed copies.
 /// While this is empty a release build uses no update at all, rather than trusting an unsigned one.
-const UPDATE_PUBKEYS: &[&str] = &[];
+const UPDATE_PUBKEYS: &[&str] = &["k8K2dxE1qC9m75w2/ZZk+WGnf+toTIRI6wyWtf7YaU4="];
 
 fn update_keys() -> Vec<ed25519_dalek::VerifyingKey> {
     use base64::Engine;

@@ -1,11 +1,15 @@
-// Updates: a check a few seconds after start and every few hours; a "New update available" pop-up (again every
-// 24 hours after "Later"); the Updates window with the changelog and "Update now"; and the File menu entry
-// (red when an update is waiting, green when up to date).
-import { api, state, bus, h, esc, toast, fmtSize, fmtDate, saveSettings, onMain, sys } from './core.js';
+// Updates: Dogfile doesn't install updates itself, the Microsoft Store does. Dogfile only checks (a few seconds after start
+// and every few hours) whether a newer version exists and says so, with a button that opens the Store's updates page;
+// and after the Store has updated it, a pop-up says so once and shows what changed (the notes come with the program).
+import { api, state, bus, h, esc, toast, fmtDate, saveSettings, sys } from './core.js';
 import { modal } from './dialogs.js';
 
 export const U = { status: null, checking: false };
 const DAY = 24 * 3600 * 1000;
+const STORE_UPDATES = 'ms-windows-store://downloadsandupdates';
+const STORE_PAGE = 'https://apps.microsoft.com/search?query=Dogfile';
+/** the Store's updates page; a copy that wasn't installed from the Store sends people to Dogfile's Store page */
+const openStore = () => api('shell:openExternal', U.status?.store ? STORE_UPDATES : STORE_PAGE).catch(() => api('shell:openExternal', STORE_PAGE));
 
 export async function checkNow({ quiet = true } = {}) {
   if (U.checking) return U.status;
@@ -24,7 +28,7 @@ export function menuItem() {
   return { label: s?.checked && !s.error ? 'Up to date' : 'Updates', icon: 'check', tone: s?.checked && !s.error ? 'good' : null, run: () => openUpdates() };
 }
 
-// the pop-up: Update / Later (Later waits 24 hours)
+// the pop-up: Open Microsoft Store / Later (Later waits 24 hours)
 let popupOpen = false;
 async function maybePopup() {
   const s = U.status;
@@ -36,12 +40,12 @@ async function maybePopup() {
     width: 440,
     body: h('div', { class: 'upd-pop' },
       h('div', { class: 'upd-logo' }),
-      h('div', {}, h('b', {}, `Dogfile ${s.latest}`), h('div', { class: 'hint' }, `You have ${s.current}.${s.size ? ` Download: ${fmtSize(s.size)}.` : ''}`))),
-    buttons: [{ label: 'Later', value: 'later' }, { label: 'Update', primary: true, value: 'update' }],
+      h('div', {}, h('b', {}, `Dogfile ${s.latest}`), h('div', { class: 'hint' }, `You have ${s.current}. The Microsoft Store installs the update for you; you can also open the Store and update now.`))),
+    buttons: [{ label: 'Later', value: 'later' }, { label: 'Open Microsoft Store', primary: true, value: 'update' }],
     closeOnBackdrop: false,
   });
   popupOpen = false;
-  if (v === 'update') openUpdates();
+  if (v === 'update') openStore();
   else { state.settings.updateSnoozeUntil = Date.now() + DAY; saveSettings(); }
 }
 
@@ -71,33 +75,10 @@ export async function openUpdates() {
     body.innerHTML = '';
     if (s.available) {
       body.append(
-        h('div', { class: 'upd-head bad' }, h('div', {}, h('b', {}, `Dogfile ${s.latest}`), h('div', { class: 'hint' }, `${s.date ? new Date(s.date + 'T12:00:00').toLocaleDateString() + ' · ' : ''}you have ${s.current}${s.size ? ` · ${fmtSize(s.size)} to download` : ''}`))),
-        h('div', { class: 'upd-sec' }, 'What’s new'), notesEl(s.notes));
-      const bar = h('div', { class: 'tp-bar upd-bar' }, h('div', { class: 'tp-fill' }));
-      const msg = h('div', { class: 'hint upd-msg' });
-      const go = h('button', { class: 'btn primary' }, s.canInstall === false ? 'Download' : 'Update now');
-      const cancel = h('button', { class: 'btn', style: { display: 'none' } }, 'Cancel');
-      cancel.onclick = () => api('update:cancel');
-      go.onclick = async () => {
-        go.disabled = true; cancel.style.display = ''; bar.style.display = 'block'; msg.textContent = 'Downloading…';
-        const off = onMain('update:progress', (p) => {
-          if (p.stage === 'download') { bar.firstChild.style.width = Math.round((p.done / Math.max(1, p.total)) * 100) + '%'; msg.textContent = `Downloading… ${fmtSize(p.done)} of ${fmtSize(p.total)}`; }
-          else if (p.stage === 'unpack') msg.textContent = 'Getting it ready…';
-        });
-        try {
-          await api('update:download');
-          off?.();
-          bar.firstChild.style.width = '100%';
-          if (s.canInstall === false) { msg.textContent = 'Downloaded. Installing updates works on Windows.'; return; }
-          msg.textContent = 'Restarting Dogfile to finish the update…';
-          cancel.style.display = 'none';
-          // open tabs come back after the restart
-          bus.emit('saveSession');
-          await new Promise((r) => setTimeout(r, 800));
-          await api('update:install');
-        } catch (e) { off?.(); msg.textContent = e.message; go.disabled = false; cancel.style.display = 'none'; go.textContent = 'Try again'; }
-      };
-      body.append(bar, msg, h('div', { class: 'upd-acts' }, cancel, go));
+        h('div', { class: 'upd-head bad' }, h('div', {}, h('b', {}, `Dogfile ${s.latest}`), h('div', { class: 'hint' }, `${s.date ? new Date(s.date + 'T12:00:00').toLocaleDateString() + ' · ' : ''}you have ${s.current}`))),
+        h('div', { class: 'upd-sec' }, 'What’s new'), notesEl(s.notes),
+        h('div', { class: 'hint' }, 'Dogfile is updated by the Microsoft Store.'),
+        h('div', { class: 'upd-acts' }, h('button', { class: 'btn primary', onclick: openStore }, 'Open Microsoft Store')));
     } else {
       const ok = s.checked && !s.error;
       body.append(
@@ -105,31 +86,49 @@ export async function openUpdates() {
         s.error ? h('div', { class: 'hint upd-err' }, s.error) : null);
       const btn = h('button', { class: 'btn primary', disabled: U.checking ? true : null }, U.checking ? 'Checking…' : 'Check for updates');
       btn.onclick = async () => { btn.disabled = true; btn.textContent = 'Checking…'; await checkNow({ quiet: true }); draw(); };
-      body.append(h('div', { class: 'upd-acts' }, btn));
+      body.append(h('div', { class: 'upd-acts' }, h('button', { class: 'btn', onclick: () => showWhatsNew() }, 'What’s new in this version'), btn));
     }
     const auto = h('input', { type: 'checkbox' });
     auto.checked = state.settings.autoUpdates !== false;
     auto.onchange = () => { state.settings.autoUpdates = auto.checked; saveSettings(); };
-    body.append(h('label', { class: 'check upd-auto' }, auto, ' Check for updates automatically'));
+    body.append(h('label', { class: 'check upd-auto' }, auto, ' Tell me when an update is available'));
   };
   draw();
-  const off = bus.on('updateStatus', () => { if (body.isConnected && !body.querySelector('.upd-bar[style*="block"]')) draw(); });
+  const off = bus.on('updateStatus', () => { if (body.isConnected) draw(); });
   await modal({ title: 'Updates', width: 520, body, buttons: [], onClose: () => off() });
 }
 
-// after an update: say so once
-function afterUpdate() {
+/** what changed in the version running now (the notes come with the program) */
+export async function showWhatsNew({ updated = false } = {}) {
+  const r = await api('update:notes').catch(() => null);
+  if (!r?.notes) return false;
+  await modal({
+    title: updated ? 'Dogfile was updated' : 'What’s new',
+    width: 520,
+    body: h('div', { class: 'upd' },
+      h('div', { class: 'upd-head good' }, h('div', {}, h('b', {}, `Dogfile ${r.version}`), h('div', { class: 'hint' }, updated ? 'The update was applied.' : 'This version'))),
+      notesEl(r.notes)),
+    buttons: [{ label: 'Close', primary: true, value: true }],
+  });
+  return true;
+}
+
+// after an update: say so once, with what changed
+async function afterUpdate() {
   const v = sys.version;
   const last = state.settings.lastVersion;
-  if (last !== v) {
-    state.settings.lastVersion = v;
-    saveSettings();
-    if (last) toast(`Dogfile was updated to ${v}`, { action: { label: 'What’s new', run: () => { checkNow().then(() => openUpdates()); } } });
+  if (last === v) return;
+  state.settings.lastVersion = v;
+  saveSettings();
+  if (last) {
+    // wait until nothing else is open (the welcome tour, a restored dialog)
+    for (let i = 0; i < 20 && document.querySelector('.modal-back'); i++) await new Promise((r) => setTimeout(r, 1000));
+    await showWhatsNew({ updated: true });
   }
 }
 
 export function startUpdates() {
-  afterUpdate();
+  setTimeout(afterUpdate, 2500);
   const tick = async () => {
     if (state.settings.autoUpdates === false) return;
     const s = await checkNow();

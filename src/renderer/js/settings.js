@@ -49,7 +49,7 @@ export async function openSettings(section = 'general', opts = {}) {
         row('On startup', select('startupPath', [['restore', 'Restore previous tabs'], ['home', 'Open Home'], [sys.known.desktop, 'Open Desktop'], [sys.known.downloads, 'Open Downloads'], [sys.known.documents, 'Open Documents']])),
         row('New tab opens', select('newTabPath', [['home', 'Home'], ['current', 'Current folder']])),
         row('Keep running in the background', toggle('keepRunning'), 'Stays in the tray so folders open instantly.'),
-        row('Updates', h('div', { class: 'row-inline' }, toggle('autoUpdates'), h('button', { class: 'btn small', onclick: () => import('./updates.js').then((m) => m.openUpdates()) }, 'Check now…')), 'Checks for new versions now and then, and asks before installing.'),
+        row('Updates', h('div', { class: 'row-inline' }, toggle('autoUpdates'), h('button', { class: 'btn small', onclick: () => import('./updates.js').then((m) => m.openUpdates()) }, 'Check now…')), 'Tells you when a new version is out. The Microsoft Store installs it; after an update Dogfile shows what changed.'),
         IS_WIN() && row('Open and Save dialogs', h('div', { class: 'stack' }, h('label', { class: 'check' }, toggle('dialogJump'), ' Ctrl+G jumps to the folder open in Dogfile'), h('label', { class: 'check' }, toggle('dialogJumpAuto'), ' Jump there by itself when the window opens')), 'Works in the Open and Save windows of any program. Restart Dogfile after changing this.'),
         row('Your settings on other PCs', (() => {
           const box = h('div', { class: 'row-inline', style: { flexWrap: 'wrap', gap: '6px' } });

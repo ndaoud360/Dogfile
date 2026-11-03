@@ -21,7 +21,7 @@ pub const NAMES: &[&str] = &[
     "media:imgMeta", "media:quickProbe", "media:lyrics", "media:sheetCancel", "media:contactSheet", "media:encoder", "media:shotDir", "media:export", "ai:status", "ai:download", "ai:remove", "ai:cacheGet", "ai:cacheSet",
     "tags:read", "tags:write", "keywords:read", "keywords:write", "tags:lookup", "tags:identify", "tags:fetchArt", "media:job", "media:cancel", "fs:trash", "fs:copyFile", "fs:writeDataUrl", "fs:writePart", "fs:finishPart", "fs:readBuffer", "fs:writeEncoded",
     "archive:watchEdit", "fs:watchFile", "mtp:list", "mtp:copyOut", "mtp:copyIn", "mtp:delete", "mtp:mkdir", "mtp:rename", "mtp:fetch", "mtp:origin", "win:corners", "net:discover", "net:open", "locks:who", "locks:kill",
-    "shellverbs:set", "pty:available", "pty:spawn", "pty:write", "pty:resize", "pty:kill", "test:capture", "win:startDrag", "win:dragOut", "win:startResize", "test:log", "sys:uptime", "dialogjump:folders", "dialogjump:test", "update:check", "update:status", "update:download", "update:cancel", "update:install", "bug:report", "notify:show", "ops:busy", "log:error",
+    "shellverbs:set", "pty:available", "pty:spawn", "pty:write", "pty:resize", "pty:kill", "test:capture", "win:startDrag", "win:dragOut", "win:startResize", "test:log", "sys:uptime", "dialogjump:folders", "dialogjump:test", "update:check", "update:status", "update:notes", "bug:report", "notify:show", "ops:busy", "log:error",
 ];
 
 fn dialog_opts(v: &Value) -> DialogOpts {
@@ -81,9 +81,7 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
         "everything:status" => sys::everything_status().await,
         "update:check" => update::check(&a).await,
         "update:status" => update::status(&a),
-        "update:download" => update::download(win, &a).await,
-        "update:cancel" => update::cancel(&a),
-        "update:install" => update::install(&a),
+        "update:notes" => update::notes(&a),
         "sys:uptime" => Ok(json!(crate::uptime_ms())),
         "dialogjump:folders" => {
             #[cfg(windows)]

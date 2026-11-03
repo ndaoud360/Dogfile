@@ -39,7 +39,7 @@ pub fn open_url(url: &str) -> Result<(), String> {
 }
 pub async fn open_external(a: &Args) -> R {
     let url = a.s(0)?;
-    if !(url.starts_with("http://") || url.starts_with("https://") || url.starts_with("mailto:") || url.starts_with("ms-settings:")) {
+    if !(url.starts_with("http://") || url.starts_with("https://") || url.starts_with("mailto:") || url.starts_with("ms-settings:") || url == "ms-windows-store://downloadsandupdates") {
         return Err("Only web addresses".into());
     }
     #[cfg(windows)]

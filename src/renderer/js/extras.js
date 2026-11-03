@@ -182,7 +182,7 @@ async function dump(mode) {
 // ======================================================================
 // Terminal drawer
 // ======================================================================
-let term = null, fit = null, ptyId = null, termCwd = null, lastPrompt = 0, lastInput = 0, termOpen = false, termShell = null;
+let term = null, fit = null, ptyId = null, termCwd = null, busy = false, dirty = false, termOpen = false, termShell = null;
 // set when you press Enter in the terminal: only then may its new folder move the pane (never just from opening it)
 let typedCommand = false;
 async function toggleTerminal(force) {
@@ -241,10 +241,16 @@ async function ensureTerminal() {
   // OSC 9;9 "current directory" (emitted by our prompt) -> keep the pane in sync
   term.parser.registerOscHandler(9, (data) => {
     const m = data.match(/^9;"?(.*?)"?$/);
-    if (m) { termCwd = m[1]; lastPrompt = performance.now(); renderHead(); if (typedCommand) { typedCommand = false; onTerminalCwd(termCwd); } }
+    if (m) {
+      termCwd = m[1]; busy = false; dirty = false; renderHead();
+      if (typedCommand) { typedCommand = false; onTerminalCwd(termCwd); }
+      else syncTerminalTo(activeTab()); // the pane moved while a command was running or a line was half typed: catch up now
+    }
     return true;
   });
-  term.onData((d) => { lastInput = performance.now(); if (d.includes('\r')) typedCommand = true; if (ptyId) api('pty:write', ptyId, d); });
+  term.onData((d) => {
+    if (d.includes('\r')) { typedCommand = true; busy = true; dirty = false; } else if (d === '\x03') dirty = false; else if (/[^\x00-\x1f\x7f]/.test(d) && !d.startsWith('\x1b')) dirty = true;
+    if (ptyId) api('pty:write', ptyId, d); });
   onMain('pty:data', ({ id, d }) => { if (id === ptyId) term.write(d); });
   onMain('pty:exit', ({ id }) => { if (id === ptyId) { ptyId = null; term.write('\r\n\x1b[90m[process exited, press Enter to restart]\x1b[0m\r\n'); const sub = term.onData(() => { sub.dispose(); restart(termShell); }); } });
   new ResizeObserver(debounce(fitTerm, 40)).observe(host);
@@ -282,7 +288,7 @@ export async function runInTerminal({ command, cwd }) {
     api('pty:write', ptyId, termShell === 'cmd' ? `cd /d "${cwd}"\r` : win ? `Set-Location -LiteralPath '${q}'\r` : `cd '${cwd.replace(/'/g, "'\\''")}'\r`);
     termCwd = cwd;
   }
-  lastInput = performance.now();
+  busy = true;
   api('pty:write', ptyId, command + '\r');
   term?.focus();
 }
@@ -333,7 +339,7 @@ function syncTerminalTo(t, force) {
   if (!term || !ptyId || !termOpen || !state.settings.terminalSync || !t || t !== activeTab()) return;
   if (!t.path || isVirtual(t.path) || samePath(t.path, termCwd)) return;
   // only when the shell is sitting at a prompt (don't type into a running program)
-  if (!force && lastInput > lastPrompt) return;
+  if (!force && (busy || dirty)) return;
   const q = t.path.replace(/'/g, "''");
   const cmd = termShell === 'cmd' ? `cd /d "${t.path}"\r` : sys.platform === 'win32' ? `Set-Location -LiteralPath '${q}'\r` : `cd '${t.path.replace(/'/g, "'\\''")}'\r`;
   termCwd = t.path;

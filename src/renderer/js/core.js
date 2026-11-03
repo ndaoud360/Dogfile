@@ -446,9 +446,18 @@ export function moveTags(from, to) {
 export const droppedPaths = (e) => [...(e.dataTransfer?.files || [])].map((f) => window.atlas.pathForFile(f)).filter(Boolean);
 // open a file or folder with its Windows default app; a failure is said instead of being lost
 export const openDefault = (p) => api('shell:open', p).then(() => true, (e) => { toast(`Couldn’t open ${basename(p) || p}: ${errText(e)}`, { error: true }); return false; });
+// a click anywhere that isn't on a message hides all of them at once (they can pile up and cover what you're doing)
+const MAX_TOASTS = 4;
+let toastAwayArmed = false;
+export function dismissToasts() { for (const t of document.querySelectorAll('#toasts .toast')) t.remove(); }
 export function toast(msg, opts = {}) {
   const host = document.getElementById('toasts');
   if (!host) return;
+  if (!toastAwayArmed) {
+    toastAwayArmed = true;
+    document.addEventListener('pointerdown', (e) => { if (!e.target.closest?.('.toast')) dismissToasts(); }, true);
+  }
+  while (host.children.length >= MAX_TOASTS) host.firstElementChild.remove(); // the oldest make room
   // an error passed straight through from the program shows without its internal code ("PRO_REQUIRED: …", "Error: …")
   if (opts.error && typeof msg === 'string') msg = errText(msg);
   // the words can be selected and copied; an error also has a Copy button. It stays while the mouse is over it.
@@ -463,6 +472,7 @@ export function toast(msg, opts = {}) {
   requestAnimationFrame(() => el.classList.add('show'));
   let left = opts.ms || (opts.error ? 9000 : 3200), started = Date.now(), tm = null;
   const close = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); };
+  el.addEventListener('keydown', (e) => { if (e.key === 'Escape') el.remove(); });
   const arm = () => { started = Date.now(); tm = setTimeout(close, left); };
   el.addEventListener('mouseenter', () => { clearTimeout(tm); left = Math.max(1500, left - (Date.now() - started)); });
   el.addEventListener('mouseleave', () => { if (!getSelection()?.toString()) arm(); else { const go = () => { document.removeEventListener('mousedown', go, true); arm(); }; document.addEventListener('mousedown', go, true); } });

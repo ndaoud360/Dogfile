@@ -488,8 +488,8 @@ body.no-status #statusbar #st-left, body.no-status #statusbar #st-mid, body.no-s
 .op-title { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .op-sub { font-size: 11.5px; color: var(--text-3); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .op.error .op-sub { color: var(--danger); }
-.op-bar { height: 4px; border-radius: 4px; background: var(--line); margin-top: 7px; overflow: hidden; position: relative; }
-.op-bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; transition: width .2s; }
+.op-bar { height: 8px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 18%, var(--line)); margin-top: 7px; overflow: hidden; position: relative; }
+.op-bar i { display: block; height: 100%; background: var(--accent); border-radius: 8px; transition: width .2s; }
 .op-bar.indet i { position: absolute; width: 30% !important; animation: slide 1.2s infinite ease-in-out; }
 .op-actions { position: absolute; right: 8px; top: 8px; display: flex; gap: 2px; }
 .op-actions .icon-btn { width: 28px; height: 28px; }

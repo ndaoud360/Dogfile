@@ -300,3 +300,7 @@ html.embedded #b-edit, html.embedded #b-eq { display: none !important; }
 .stems-modal .st-saved { margin-top: 10px; min-height: 18px; color: var(--text-2); font-size: 13px; }
 .stems-modal input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); }
 .stems-modal [hidden] { display: none !important; }
+.stems-modal .st-bar.indeterminate .st-fill { width: 30%; animation: st-slide 1.2s ease-in-out infinite alternate; transition: none; }
+@keyframes st-slide { from { margin-left: 0; } to { margin-left: 70%; } }
+.stems-modal .st-ptext { user-select: text; }
+.stems-modal .st-ptext.st-err { color: var(--danger, #d1242f); font-size: 13px; line-height: 1.4; }

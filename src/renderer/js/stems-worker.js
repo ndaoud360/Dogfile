@@ -5,19 +5,67 @@ import * as ort from '../vendor/ort/ort.bundle.min.mjs';
 
 ort.env.wasm.wasmPaths = '/app/vendor/ort/';
 ort.env.wasm.numThreads = 1; // more threads need the page to be cross-origin isolated, which Dogfile's pages aren't
+ort.env.logLevel = 'warning';
 let session = null;
 const SEG = 343980;
 
+// what the engine says about a failure goes to the window with the error: it is often the only clue
+const notes = [];
+for (const k of ['log', 'info', 'warn', 'error']) {
+  const was = console[k].bind(console);
+  console[k] = (...a) => { notes.push(a.map((x) => (typeof x === 'string' ? x : String(x?.message || x))).join(' ').slice(0, 300)); if (notes.length > 12) notes.shift(); was(...a); };
+}
+/** the engine sometimes throws a bare number (a memory address) instead of an error: say what that most likely means */
+function describe(err, stage) {
+  const raw = err?.message ?? err;
+  const text = typeof raw === 'number' || /^\d+$/.test(String(raw)) ? `the engine stopped with code ${raw}, which usually means it ran out of memory` : String(raw);
+  const clues = notes.filter((n) => !/^\s*$/.test(n)).slice(-4).join(' | ');
+  return `${stage}: ${text}${clues ? ` (${clues})` : ''}`;
+}
+
+/** the model file, read in pieces so the window can show how far it is */
+async function readModel(url, onProgress) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`The model file couldn’t be read (${r.status}). Download it again from Settings.`);
+  const total = Number(r.headers.get('content-length')) || 0;
+  if (!r.body || !total) return new Uint8Array(await r.arrayBuffer());
+  const bytes = new Uint8Array(total);
+  const reader = r.body.getReader();
+  let got = 0, last = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytes.set(value, got); got += value.length;
+    if (got - last > 4e6) { last = got; onProgress(got / total); }
+  }
+  if (got !== total) throw new Error('The model file is incomplete. Download it again from Settings.');
+  return bytes;
+}
+
 self.onmessage = async (e) => {
   const m = e.data;
+  let stage = 'Loading the model';
   try {
     if (m.type === 'init') {
-      const r = await fetch(m.url);
-      if (!r.ok) throw new Error(`The model file couldn’t be read (${r.status}). Download it again from Settings.`);
-      const bytes = new Uint8Array(await r.arrayBuffer());
-      session = await ort.InferenceSession.create(bytes, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
+      let bytes = await readModel(m.url, (p) => self.postMessage({ id: m.id, progress: p }));
+      self.postMessage({ id: m.id, building: true });
+      stage = 'Starting the model';
+      // lighter settings are tried if the first ones can't be built (graph optimisation needs a lot of memory)
+      const tries = [
+        { graphOptimizationLevel: 'all' },
+        { graphOptimizationLevel: 'basic', enableCpuMemArena: false, enableMemPattern: false },
+        { graphOptimizationLevel: 'disabled', enableCpuMemArena: false, enableMemPattern: false },
+      ];
+      let last = null;
+      for (const t of tries) {
+        try { session = await ort.InferenceSession.create(bytes, { executionProviders: ['wasm'], ...t }); last = null; break; }
+        catch (err) { last = err; session = null; console.warn(`model load with ${t.graphOptimizationLevel} optimisation failed`); }
+      }
+      bytes = null;
+      if (last) throw last;
       self.postMessage({ id: m.id, ready: true });
     } else if (m.type === 'run') {
+      stage = 'Separating';
       if (!session) throw new Error('The model isn’t loaded');
       const out = await session.run({ [session.inputNames[0]]: new ort.Tensor('float32', m.chunk, [1, 2, SEG]) });
       const data = out[session.outputNames[0]].data;
@@ -25,6 +73,6 @@ self.onmessage = async (e) => {
       self.postMessage({ id: m.id, out: copy }, [copy.buffer]);
     }
   } catch (err) {
-    self.postMessage({ id: m.id, error: String(err?.message || err) });
+    self.postMessage({ id: m.id, error: describe(err, stage) });
   }
 };

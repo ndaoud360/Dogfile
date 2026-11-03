@@ -21,11 +21,17 @@ function makeEngine() {
   let seq = 0;
   const waiting = new Map();
   const failAll = (err) => { for (const p of waiting.values()) p.rej(err); waiting.clear(); };
-  w.onmessage = (e) => { const p = waiting.get(e.data.id); if (!p) return; waiting.delete(e.data.id); e.data.error ? p.rej(new Error(e.data.error)) : p.res(e.data); };
+  w.onmessage = (e) => {
+    const p = waiting.get(e.data.id);
+    if (!p) return;
+    if (e.data.progress != null || e.data.building) { p.onStatus?.(e.data); return; } // the model is still being read or built
+    waiting.delete(e.data.id);
+    e.data.error ? p.rej(new Error(e.data.error)) : p.res(e.data);
+  };
   w.onerror = (e) => failAll(new Error(e.message || 'The stem separator stopped unexpectedly'));
-  const call = (msg, transfer) => new Promise((res, rej) => { const id = ++seq; waiting.set(id, { res, rej }); w.postMessage({ ...msg, id }, transfer || []); });
+  const call = (msg, transfer, onStatus) => new Promise((res, rej) => { const id = ++seq; waiting.set(id, { res, rej, onStatus }); w.postMessage({ ...msg, id }, transfer || []); });
   return {
-    init: () => call({ type: 'init', url: MODEL_URL }),
+    init: (onStatus) => call({ type: 'init', url: MODEL_URL }, null, onStatus),
     run: async (chunk) => (await call({ type: 'run', chunk }, [chunk.buffer])).out,
     stop: () => { w.terminate(); failAll(new Error('Stopped')); },
   };
@@ -121,7 +127,12 @@ export async function openStems({ path, time = 0 }) {
   // keys typed here shouldn't also control the song underneath (Escape still closes the window)
   body.addEventListener('keydown', (e) => { if (e.key !== 'Escape') e.stopPropagation(); });
 
-  const showProgress = (text, pct) => { intro.hidden = true; mixer.hidden = true; prog.hidden = false; progText.textContent = text; barFill.style.width = (pct ?? 4) + '%'; cancelBtn.hidden = false; };
+  const showProgress = (text, pct) => {
+    intro.hidden = true; mixer.hidden = true; prog.hidden = false; progText.textContent = text; cancelBtn.hidden = false;
+    progText.classList.remove('st-err'); prog.querySelectorAll('.st-back').forEach((b) => b.remove());
+    barFill.parentElement.classList.toggle('indeterminate', pct == null); // no percentage to show: the bar slides instead of sitting empty
+    barFill.style.width = pct == null ? '' : pct + '%';
+  };
 
   function updateClock() {
     if (!preview) return;
@@ -183,9 +194,13 @@ export async function openStems({ path, time = 0 }) {
       if (audio.duration > MAX_SECONDS) throw new Error(`This song is ${fmtTime(audio.duration)} long. Songs up to ${MAX_SECONDS / 60} minutes can be separated (the parts need a lot of memory).`);
       const [left, right] = toStereo(Array.from({ length: Math.min(2, audio.numberOfChannels) }, (_, i) => audio.getChannelData(i)));
       length = audio.length;
-      showProgress('Loading the model… this takes a moment');
+      showProgress('Loading the model…', 2);
       engine = makeEngine();
-      await engine.init();
+      await engine.init((s) => {
+        // reading the file has a real percentage; building it in memory doesn't, so the bar moves back and forth
+        if (s.building) showProgress('Starting the model… this can take a minute', null);
+        else showProgress(`Loading the model… ${Math.round(s.progress * 100)}%`, 2 + s.progress * 30);
+      });
       if (stopped) throw new Error('Stopped');
       const t0 = performance.now();
       const result = await separate(left, right, engine.run, {
@@ -210,8 +225,9 @@ export async function openStems({ path, time = 0 }) {
       if (/Stopped/.test(e.message || '')) { prog.hidden = true; intro.hidden = false; }
       else {
         showProgress(errText(e), 0);
+        progText.classList.add('st-err'); // selectable, so it can be copied
         cancelBtn.hidden = true;
-        prog.append(h('button', { class: 'btn small', onclick: () => { prog.hidden = true; intro.hidden = false; } }, 'Back'));
+        prog.append(h('button', { class: 'btn small st-back', onclick: () => { prog.hidden = true; intro.hidden = false; } }, 'Back'));
         console.error('stems', e);
       }
     } finally { busy = false; if (buffers) updateExportLabel(); }

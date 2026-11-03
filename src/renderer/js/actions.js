@@ -639,19 +639,45 @@ function finishedParts(j) {
     FINISHED_VERB[j.type],
     what,
     (j.type === 'copy' || j.type === 'move') && j.total > 0 ? fmtSize(j.total) : '',
-    j.dest && (j.type === 'copy' || j.type === 'move' || j.type === 'extract') ? `to “${basename(j.dest) || j.dest}”` : '',
+    j.destLabel || (j.dest && (j.type === 'copy' || j.type === 'move' || j.type === 'extract') ? `to “${basename(j.dest) || j.dest}”` : ''),
     secs >= 2 ? (secs < 60 ? `${Math.round(secs)} s` : `${Math.floor(secs / 60)} min ${Math.round(secs % 60)} s`) : '',
     j.errors?.length ? (j.errors.length === 1 ? '1 problem' : `${j.errors.length} problems`) : '',
   ].filter(Boolean);
 }
+// many jobs finishing together (Tidy up moves files into a dozen folders) are one message, not a pile of them
+const finishedQueue = [];
+let finishedTimer = null;
 function confirmFinished(j, entry) {
   if (j.status !== 'done' || !FINISHED_VERB[j.type] || j.client || j.quiet) return;
+  finishedQueue.push({ j, entry });
+  clearTimeout(finishedTimer);
+  finishedTimer = setTimeout(flushFinished, 600);
+}
+function flushFinished() {
+  const byType = new Map();
+  for (const it of finishedQueue.splice(0)) byType.set(it.j.type, [...(byType.get(it.j.type) || []), it]);
+  for (const group of byType.values()) {
+    if (group.length === 1) { announceFinished(group[0].j, [group[0].entry].filter(Boolean)); continue; }
+    const js = group.map((g) => g.j), dests = [...new Set(js.map((x) => x.dest).filter(Boolean))];
+    announceFinished({
+      type: js[0].type, status: 'done', title: '',
+      filesDone: js.reduce((a, x) => a + (x.filesDone || x.filesTotal || x.sourceCount || 0), 0),
+      total: js.reduce((a, x) => a + (x.total || 0), 0),
+      dest: dests.length === 1 ? dests[0] : null,
+      destLabel: dests.length > 1 && ['copy', 'move', 'extract'].includes(js[0].type) ? `to ${dests.length} folders` : '',
+      started: Math.min(...js.map((x) => x.started || Date.now())), finished: Math.max(...js.map((x) => x.finished || Date.now())),
+      errors: js.flatMap((x) => x.errors || []),
+      undo: js[0].undo,
+    }, group.map((g) => g.entry).filter(Boolean));
+  }
+}
+function announceFinished(j, entries) {
   const parts = finishedParts(j);
   const problems = j.errors?.length || 0;
   const shown = j.undo?.paths || (j.undo?.pairs || []).map((p) => p[1]);
   const actions = [];
   if (j.dest && !isVirtual(j.dest) && (j.type === 'copy' || j.type === 'move' || j.type === 'extract')) actions.push({ label: 'Show', run: () => { const t = activeTab(); navigate(t, j.dest, { select: shown?.[0] || null }); } });
-  if (entry) actions.push({ label: 'Undo', run: () => undoEntry(entry) });
+  if (entries.length) actions.push({ label: entries.length > 1 ? 'Undo all' : 'Undo', run: async () => { for (const e of [...entries].reverse()) await undoEntry(e); } });
   const msg = h('span', {}, h('span', {}, parts[0]), ': ', ...parts.slice(1).flatMap((x, i) => [i ? ' · ' : '', h('span', {}, x)]));
   if (!problems) toast(msg, { ok: true, actions, ms: 6000 });
   // in the background: Windows says so too (only for work that took a while, so quick ones don't nag)

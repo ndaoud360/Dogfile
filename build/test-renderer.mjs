@@ -158,5 +158,25 @@ const sc = await import('../src/renderer/js/stems-core.js');
   globalThis.__zipForCheck = all;
 }
 
+// ---------- 4. colour readability ----------
+{
+  const T = await import('../src/renderer/js/theme.js');
+  const K = await import('../src/renderer/js/contrast.js');
+  eq(K.ratio('#000000', '#ffffff'), 21, 'contrast: black on white is 21');
+  for (const [n, p] of Object.entries(T.PRESETS)) eq(K.findProblems(p, p.accent).length, 0, `contrast: the built-in theme “${n}” is readable`);
+  const bad = { light: { '--text': '#fafafa', '--side-text': '#252525', '--side-bg': '#222222' }, dark: { '--bg-body': '#e0e0e0', '--accent': '#1b1c1f' } };
+  ok(K.findProblems(bad).length >= 4, 'contrast: text that matches its background is found');
+  const fixed = K.adjust(bad);
+  eq(K.findProblems(fixed.colors).length, 0, 'contrast: the adjusted colors are all readable');
+  ok(fixed.changes.length > 0, 'contrast: the adjustment lists what it changed');
+  let left = 0; const keys = Object.keys(T.DEFAULT_COLORS.light);
+  for (let i = 0; i < 200; i++) { const rnd = () => '#' + [0, 0, 0].map(() => Math.floor(Math.random() * 256).toString(16).padStart(2, '0')).join(''); const t = { light: {}, dark: {} }; for (const m of ['light', 'dark']) for (const k of keys) if (Math.random() < 0.5) t[m][k] = rnd(); if (K.findProblems(K.adjust(t).colors).length) left++; }
+  eq(left, 0, 'contrast: random colour mixes always end up readable');
+  const s = K.sanitizeTheme({ name: '<b>x</b>', light: { '--text': '#123456', '--bg': 'url(http://evil)', '--nope': '#ffffff' }, dark: 'x', accent: 'red', shadowStrength: 9 });
+  eq(JSON.stringify(s.light), '{"--text":"#123456"}', 'themes: only known colour names with #rrggbb values are kept');
+  eq(s.shadowStrength, 2.5, 'themes: shadow strength is limited'); ok(!s.name.includes('<'), 'themes: the name loses markup characters'); eq(s.accent, undefined, 'themes: a colour name that isn’t #rrggbb is dropped');
+  eq(K.sanitizeTheme({ light: {} }), null, 'themes: an empty theme is refused');
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

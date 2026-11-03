@@ -577,6 +577,7 @@ async function boot() {
     state.pinned = [];
   }
   applyTheme();
+  setTimeout(() => import('./readability.js').then((m) => m.guardReadability()).catch(() => {}), 3000); // colours that came from an import or another PC may be hard to read
   // the interface language (translates as things appear)
   if ((state.settings.language || 'auto') !== 'en') await import('./i18n.js').then((m) => m.initI18n(state.settings.language || 'auto')).catch(() => {});
   initMenubar();

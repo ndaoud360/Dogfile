@@ -9,8 +9,8 @@ import * as X from './extensions.js';
 import { requirePro } from './license.js';
 
 const TOPIC = 'dogfile-mod';
-const gh = async (method, path, body, auth = true) => { const r = await api('gh:request', method, path, body ?? null, auth); return r; };
-const b64 = (s) => btoa(unescape(encodeURIComponent(s)));
+export const gh = async (method, path, body, auth = true) => { const r = await api('gh:request', method, path, body ?? null, auth); return r; };
+export const b64 = (s) => btoa(unescape(encodeURIComponent(s)));
 const unb64 = (s) => decodeURIComponent(escape(atob(String(s).replace(/\n/g, ''))));
 
 export async function signIn() {
@@ -55,16 +55,18 @@ export async function featureBrowser() {
   if (!requirePro('features')) return;
   const q = h('input', { class: 'input', placeholder: 'Search features (e.g. screenplay, rename, photos)…', spellcheck: 'false' });
   q.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') load(); });
-  let target = '';
+  let target = '', tab = 'mods';
   const tchips = h('div', { class: 'row-inline wrap' }, ...[['', 'All'], ...Object.entries(X.TARGETS)].map(([k, l]) => { const b = h('button', { class: 'chip' + (k === target ? ' on' : '') }, l); b.onclick = () => { target = k; tchips.querySelectorAll('.chip').forEach((x) => x.classList.toggle('on', x === b)); load(); }; return b; }));
+  const tabs = h('div', { class: 'row-inline fs-tabs' });
   const grid = h('div', { class: 'fs-grid' });
   const status = h('div', { class: 'hint' });
   const account = h('div', { class: 'fs-acct' });
   const drawAccount = async () => {
     account.innerHTML = '';
     const has = await api('secret:has', 'github');
-    if (has && state.settings.githubUser) account.append(h('span', { class: 'hint' }, `Signed in as ${state.settings.githubUser}`), h('button', { class: 'btn small primary', onclick: () => uploadDialog() }, 'Upload a feature…'), h('button', { class: 'btn small', onclick: async () => { await signOut(); drawAccount(); } }, 'Sign out'));
-    else account.append(h('span', { class: 'hint' }, 'Sign in to upload your own features'), h('button', { class: 'btn small', onclick: async () => { if (await signIn()) drawAccount(); } }, 'Sign in with GitHub…'));
+    const themes = tab === 'themes', what = themes ? 'theme' : 'feature';
+    if (has && state.settings.githubUser) account.append(h('span', { class: 'hint' }, `Signed in as ${state.settings.githubUser}`), h('button', { class: 'btn small primary', onclick: () => (themes ? import('./themestore.js').then((m) => m.uploadTheme()) : uploadDialog()) }, `Upload a ${what}…`), h('button', { class: 'btn small', onclick: async () => { await signOut(); drawAccount(); } }, 'Sign out'));
+    else account.append(h('span', { class: 'hint' }, `Sign in to upload your own ${what}s`), h('button', { class: 'btn small', onclick: async () => { if (await signIn()) drawAccount(); } }, 'Sign in with GitHub…'));
   };
   const card = (repo) => {
     const el = h('div', { class: 'fs-card' }, h('div', { class: 'fs-top' }, h('span', { class: 'ext-ic', html: icon('puzzle') }), h('div', { class: 'hi-main' }, h('b', {}, (repo.name || '').replace(/^atlas-feature-/, '').replace(/-/g, ' ')), h('span', { class: 'hint' }, `by ${repo.owner?.login} · ★ ${repo.stargazers_count} · updated ${fmtDate(Date.parse(repo.pushed_at || repo.updated_at))}`))),
@@ -86,17 +88,30 @@ export async function featureBrowser() {
   };
   const load = async () => {
     grid.innerHTML = ''; status.textContent = 'Loading…';
-    const terms = [`topic:${TOPIC}`, target ? `topic:dogfile-target-${target}` : '', q.value.trim()].filter(Boolean).join(' ');
+    const themes = tab === 'themes';
+    const terms = themes ? ['topic:dogfile-theme', q.value.trim()].filter(Boolean).join(' ') : [`topic:${TOPIC}`, target ? `topic:dogfile-target-${target}` : '', q.value.trim()].filter(Boolean).join(' ');
     const r = await gh('GET', `/search/repositories?q=${encodeURIComponent(terms)}&sort=stars&order=desc&per_page=40`, null, true).catch((e) => ({ ok: false, json: { message: e.message } }));
     if (!r.ok) { status.textContent = r.status === 403 ? 'GitHub is limiting searches right now. Wait a minute (or sign in) and try again.' : `Couldn’t reach GitHub: ${r.json?.message || r.status || 'offline?'}`; return; }
     const items = r.json.items || [];
-    status.textContent = items.length ? `${r.json.total_count} feature${r.json.total_count === 1 ? '' : 's'}` : 'No features found yet. Be the first to share one!';
-    for (const repo of items) grid.append(card(repo));
+    const word = themes ? 'theme' : 'feature';
+    status.textContent = items.length ? `${r.json.total_count} ${word}${r.json.total_count === 1 ? '' : 's'}` : `No ${word}s found yet. Be the first to share one!`;
+    if (themes) { const { themeCard } = await import('./themestore.js'); for (const repo of items) grid.append(themeCard(repo)); }
+    else for (const repo of items) grid.append(card(repo));
   };
+  const drawTabs = () => {
+    tabs.innerHTML = '';
+    for (const [k, l] of [['mods', 'Features'], ['themes', 'Themes']]) {
+      const b = h('button', { class: 'chip' + (k === tab ? ' on' : '') }, l);
+      b.onclick = () => { if (tab === k) return; tab = k; drawTabs(); tchips.hidden = k === 'themes'; q.placeholder = k === 'themes' ? 'Search themes (e.g. midnight, forest, pastel)…' : 'Search features (e.g. screenplay, rename, photos)…'; note.textContent = noteText(); drawAccount(); load(); };
+      tabs.append(b);
+    }
+  };
+  const noteText = () => (tab === 'themes' ? 'Themes are only colors, shared by other people. If a theme’s colors would be hard to read, Dogfile adjusts them and asks whether to keep the adjusted colors or the original ones.' : 'Features are shared by other people and aren’t checked by Dogfile. You’ll see what each one can do before you install it.');
+  const note = h('div', { class: 'hint' }, noteText());
+  drawTabs();
   drawAccount();
   load();
-  await modal({ title: 'Feature browser', width: 900, className: 'fs-modal', body: h('div', { class: 'stack' }, h('div', { class: 'fs-bar' }, q, h('button', { class: 'btn small', onclick: load }, 'Search')), tchips, account, status, grid,
-    h('div', { class: 'hint' }, 'Features are shared by other people and aren’t checked by Dogfile. You’ll see what each one can do before you install it.')),
+  await modal({ title: 'Feature browser', width: 900, className: 'fs-modal', body: h('div', { class: 'stack' }, tabs, h('div', { class: 'fs-bar' }, q, h('button', { class: 'btn small', onclick: load }, 'Search')), tchips, account, status, grid, note),
     buttons: [{ label: 'Close', primary: true, value: true }] });
 }
 

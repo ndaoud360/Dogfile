@@ -156,7 +156,7 @@ export async function openSettings(section = 'general', opts = {}) {
     colors: ['Colors', 'palette', (el) => {
       S.colors = S.colors || { light: {}, dark: {} };
       S.colors.light = S.colors.light || {}; S.colors.dark = S.colors.dark || {};
-      const apply = () => { saveSettings(); bus.emit('theme'); };
+      const apply = () => { saveSettings(); bus.emit('theme'); import('./readability.js').then((m) => m.scheduleReadabilityCheck(() => show('colors'))); };
       const presets = h('div', { class: 'chips' });
       S.colorPresets = S.colorPresets || {};
       const chip = (name, pr, custom) => {
@@ -190,9 +190,10 @@ export async function openSettings(section = 'general', opts = {}) {
             const [f] = await api('dialog:openFiles', { title: 'Import colors', defaultPath: sys.known.downloads, filters: [{ name: 'Dogfile colors', extensions: ['json'] }] });
             if (!f) return;
             try {
-              const c = JSON.parse((await api('fs:readText', f, 1024 * 1024)).text);
-              if (!(c.light || c.dark)) throw new Error('bad');
-              const name = (c.name || f.split(/[\\/]/).pop().replace(/\.json$/i, '').replace(/^Dogfile Colors - /, '')).trim() || 'Imported';
+              const raw = JSON.parse((await api('fs:readText', f, 1024 * 1024)).text);
+              const c = (await import('./contrast.js')).sanitizeTheme(raw); // only known colour names with #rrggbb values get through
+              if (!c || !(Object.keys(c.light).length || Object.keys(c.dark).length || c.accent)) throw new Error('bad');
+              const name = (raw.name || c.name || f.split(/[\\/]/).pop().replace(/\.json$/i, '').replace(/^Dogfile Colors - /, '')).trim() || 'Imported';
               S.colorPresets[name] = { light: c.light || {}, dark: c.dark || {}, accent: c.accent, shadowStrength: c.shadowStrength };
               S.colors = { light: { ...(c.light || {}) }, dark: { ...(c.dark || {}) } }; if (c.accent) S.accent = c.accent; if (c.shadowStrength != null) S.shadowStrength = c.shadowStrength;
               apply(); show('colors'); toast(`Imported “${name}” and added it to your presets`);

@@ -334,7 +334,7 @@ export const uid = () => Math.random().toString(36).slice(2, 10);
 // ---------------- settings & state ----------------
 export const DEFAULT_SETTINGS = {
   theme: 'system', accent: '#3b82f6', density: 'comfortable', fontScale: 1, dialogJump: true, dialogJumpAuto: false,
-  showHidden: false, showSystem: false, showExtensions: true, foldersFirst: false, opsPopup: true, defaultsRev: 2, showCheckboxes: false,
+  showHidden: false, showSystem: false, showExtensions: true, foldersFirst: false, opsPopup: true, defaultsRev: 3, showCheckboxes: true,
   defaultView: 'grid', defaultSort: { key: 'ctime', dir: -1 }, gridSize: 160, gridLabels: 'smart', showPreview: false, previewWidth: 340,
   dateFormat: 'locale', sizeUnits: 'binary', folderSizes: false, rememberFolderViews: true,
   singleClick: false, doubleClickUp: true, typeAhead: 'select', confirmDelete: true, deleteToRecycle: true, linkedFiles: true,

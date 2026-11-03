@@ -228,7 +228,11 @@ async function ensureTerminal() {
   const css = getComputedStyle(document.documentElement);
   term = new X.Terminal({
     fontFamily: "'Cascadia Mono', 'Cascadia Code', Consolas, 'SF Mono', Menlo, monospace", fontSize: 13, cursorBlink: true, allowProposedApi: true, scrollback: 5000,
-    theme: dark ? { background: '#141517', foreground: '#d7d8db', cursor: css.getPropertyValue('--accent').trim(), selectionBackground: '#3a3d45' } : { background: '#fbfbfb', foreground: '#2b2b2b', cursor: css.getPropertyValue('--accent').trim(), selectionBackground: '#cfe0ff', black: '#2b2b2b', brightBlack: '#666' },
+    minimumContrastRatio: 4.5, // any colour a program picks stays readable on the background
+    theme: dark ? { background: '#141517', foreground: '#d7d8db', cursor: css.getPropertyValue('--accent').trim(), selectionBackground: '#3a3d45' } : { background: '#fbfbfb', foreground: '#2b2b2b', cursor: css.getPropertyValue('--accent').trim(), selectionBackground: '#cfe0ff', black: '#2b2b2b', brightBlack: '#666',
+      // darker versions of the ANSI colours: PowerShell prints typed commands in yellow, which is unreadable on white
+      red: '#c4262e', green: '#1a7f37', yellow: '#8a5a00', blue: '#1f5fbf', magenta: '#a3269b', cyan: '#0d7a86', white: '#6b6b6b',
+      brightRed: '#d1242f', brightGreen: '#1f8a3d', brightYellow: '#946200', brightBlue: '#2a6fd6', brightMagenta: '#b02fa8', brightCyan: '#0f8a97', brightWhite: '#2b2b2b' },
   });
   fit = new X.FitAddon();
   term.loadAddon(fit);

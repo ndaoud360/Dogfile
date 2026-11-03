@@ -567,6 +567,9 @@ async function boot() {
   // sorting by date created (newest first) became the default: tabs kept from before move over to it once
   let resort = false;
   if ((state.settings.defaultsRev || 0) < 2) { state.settings.defaultsRev = 2; resort = !!settings; if (settings) saveSettings(); }
+  // check boxes that appear when the pointer is over an item (like Windows Explorer) are on for everyone once;
+  // the choice stays in Settings and View > Item check boxes
+  if ((state.settings.defaultsRev || 0) < 3) { state.settings.showCheckboxes = true; state.settings.defaultsRev = 3; if (settings) saveSettings(); }
   if (library) Object.assign(state, { pinned: library.pinned || [], recent: library.recent || [], recentFiles: library.recentFiles || [], workspaces: library.workspaces || {}, folderViews: library.folderViews || {} });
   state.tags = tags && tags.defs ? tags : { defs: DEFAULT_TAGS.map((d) => ({ ...d })), map: {} };
   if (!library) {

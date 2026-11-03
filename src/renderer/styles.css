@@ -2014,3 +2014,10 @@ body.col-resizing, body.col-resizing * { cursor: col-resize !important; user-sel
 .bug-about { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; padding: 10px 12px; border-radius: 10px; background: var(--bg-hover); }
 .bug-about .ic { width: 18px; height: 18px; color: var(--accent); }
 .fs-report .ic { width: 14px; height: 14px; }
+
+/* item check boxes in every view: shown on hover and while an item is selected (as in Windows Explorer) */
+.drow .cbox, .list-cell .cbox, .gal-cell .cbox { opacity: 0; transition: opacity .1s; }
+.drow:hover .cbox, .list-cell:hover .cbox, .gal-cell:hover .cbox, .drow.selected .cbox, .list-cell.selected .cbox, .gal-cell.selected .cbox,
+.drow:focus-visible .cbox, .cell:focus-within .cbox { opacity: 1; }
+.cbox { cursor: pointer; }
+.drow .cbox, .list-cell .cbox { background: var(--bg); }

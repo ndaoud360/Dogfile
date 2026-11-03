@@ -16,7 +16,7 @@ let kept = null; // the last song's stems stay for a few minutes, so closing and
 const fmtTime = (s) => { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 
 // ---------- the model, in a worker ----------
-function makeEngine() {
+function makeWorker(level) {
   const w = new Worker(new URL('./stems-worker.js', import.meta.url), { type: 'module' });
   let seq = 0;
   const waiting = new Map();
@@ -31,9 +31,28 @@ function makeEngine() {
   w.onerror = (e) => failAll(new Error(e.message || 'The stem separator stopped unexpectedly'));
   const call = (msg, transfer, onStatus) => new Promise((res, rej) => { const id = ++seq; waiting.set(id, { res, rej, onStatus }); w.postMessage({ ...msg, id }, transfer || []); });
   return {
-    init: (onStatus) => call({ type: 'init', url: MODEL_URL }, null, onStatus),
+    init: (onStatus) => call({ type: 'init', url: MODEL_URL, level }, null, onStatus),
     run: async (chunk) => (await call({ type: 'run', chunk }, [chunk.buffer])).out,
     stop: () => { w.terminate(); failAll(new Error('Stopped')); },
+  };
+}
+/** the model engine. Building the model needs a lot of memory, so it starts with the settings that need the least and,
+ * if the engine gives up, tries again in a fresh worker with the next ones. */
+function makeEngine() {
+  let cur = null, stopped = false;
+  return {
+    async init(onStatus) {
+      const errors = [];
+      for (const level of ['disabled', 'basic', 'all']) {
+        if (stopped) throw new Error('Stopped');
+        cur = makeWorker(level);
+        try { await cur.init(onStatus); return; }
+        catch (e) { cur.stop(); cur = null; if (stopped || /Stopped/.test(e.message)) throw e; errors.push(e.message); if (!/Aborted|memory|code \d+/i.test(e.message)) break; }
+      }
+      throw new Error(errors[errors.length - 1] + (errors.length > 1 ? ` (tried ${errors.length} ways)` : ''));
+    },
+    run: (chunk) => cur.run(chunk),
+    stop() { stopped = true; cur?.stop(); },
   };
 }
 

@@ -13,13 +13,13 @@ const SEG = 343980;
 const notes = [];
 for (const k of ['log', 'info', 'warn', 'error']) {
   const was = console[k].bind(console);
-  console[k] = (...a) => { notes.push(a.map((x) => (typeof x === 'string' ? x : String(x?.message || x))).join(' ').slice(0, 300)); if (notes.length > 12) notes.shift(); was(...a); };
+  console[k] = (...a) => { notes.push(a.map((x) => (typeof x === 'string' ? x : String(x?.message || x))).join(' ').slice(0, 300)); if (notes.length > 16) notes.shift(); was(...a); };
 }
 /** the engine sometimes throws a bare number (a memory address) instead of an error: say what that most likely means */
 function describe(err, stage) {
   const raw = err?.message ?? err;
   const text = typeof raw === 'number' || /^\d+$/.test(String(raw)) ? `the engine stopped with code ${raw}, which usually means it ran out of memory` : String(raw);
-  const clues = notes.filter((n) => !/^\s*$/.test(n)).slice(-4).join(' | ');
+  const clues = notes.filter((n) => !/^\s*$/.test(n)).slice(-6).join(' | ');
   return `${stage}: ${text}${clues ? ` (${clues})` : ''}`;
 }
 
@@ -50,17 +50,12 @@ self.onmessage = async (e) => {
       let bytes = await readModel(m.url, (p) => self.postMessage({ id: m.id, progress: p }));
       self.postMessage({ id: m.id, building: true });
       stage = 'Starting the model';
-      // lighter settings are tried if the first ones can't be built (graph optimisation needs a lot of memory)
-      const tries = [
-        { graphOptimizationLevel: 'all' },
-        { graphOptimizationLevel: 'basic', enableCpuMemArena: false, enableMemPattern: false },
-        { graphOptimizationLevel: 'disabled', enableCpuMemArena: false, enableMemPattern: false },
-      ];
+      // one setting per worker: after the engine aborts, its memory is unusable, so the window starts a new worker to try the next one
+      const level = m.level || 'all';
+      const opts = level === 'all' ? {} : { enableCpuMemArena: false, enableMemPattern: false };
       let last = null;
-      for (const t of tries) {
-        try { session = await ort.InferenceSession.create(bytes, { executionProviders: ['wasm'], ...t }); last = null; break; }
-        catch (err) { last = err; session = null; console.warn(`model load with ${t.graphOptimizationLevel} optimisation failed`); }
-      }
+      try { session = await ort.InferenceSession.create(bytes, { executionProviders: ['wasm'], graphOptimizationLevel: level, logSeverityLevel: 1, ...opts }); }
+      catch (err) { last = err; session = null; console.warn(`model load with ${level} optimisation failed`); }
       bytes = null;
       if (last) throw last;
       self.postMessage({ id: m.id, ready: true });

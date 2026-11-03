@@ -182,7 +182,7 @@ async function dump(mode) {
 // ======================================================================
 // Terminal drawer
 // ======================================================================
-let term = null, fit = null, ptyId = null, termCwd = null, busy = false, dirty = false, termOpen = false, termShell = null;
+let term = null, fit = null, ptyId = null, termCwd = null, busy = false, dirty = false, pendingSync = false, lastSent = null, termOpen = false, termShell = null;
 // set when you press Enter in the terminal: only then may its new folder move the pane (never just from opening it)
 let typedCommand = false;
 async function toggleTerminal(force) {
@@ -244,12 +244,12 @@ async function ensureTerminal() {
     if (m) {
       termCwd = m[1]; busy = false; dirty = false; renderHead();
       if (typedCommand) { typedCommand = false; onTerminalCwd(termCwd); }
-      else syncTerminalTo(activeTab()); // the pane moved while a command was running or a line was half typed: catch up now
+      else if (pendingSync) { pendingSync = false; syncTerminalTo(activeTab()); } // the pane moved while a command was running or a line was half typed: catch up once
     }
     return true;
   });
   term.onData((d) => {
-    if (d.includes('\r')) { typedCommand = true; busy = true; dirty = false; } else if (d === '\x03') dirty = false; else if (/[^\x00-\x1f\x7f]/.test(d) && !d.startsWith('\x1b')) dirty = true;
+    if (d.includes('\r')) { typedCommand = true; lastSent = null; busy = true; dirty = false; } else if (d === '\x03') dirty = false; else if (/[^\x00-\x1f\x7f]/.test(d) && !d.startsWith('\x1b')) dirty = true;
     if (ptyId) api('pty:write', ptyId, d); });
   onMain('pty:data', ({ id, d }) => { if (id === ptyId) term.write(d); });
   onMain('pty:exit', ({ id }) => { if (id === ptyId) { ptyId = null; term.write('\r\n\x1b[90m[process exited, press Enter to restart]\x1b[0m\r\n'); const sub = term.onData(() => { sub.dispose(); restart(termShell); }); } });
@@ -338,8 +338,11 @@ function onTerminalCwd(p) {
 function syncTerminalTo(t, force) {
   if (!term || !ptyId || !termOpen || !state.settings.terminalSync || !t || t !== activeTab()) return;
   if (!t.path || isVirtual(t.path) || samePath(t.path, termCwd)) return;
-  // only when the shell is sitting at a prompt (don't type into a running program)
-  if (!force && (busy || dirty)) return;
+  // only when the shell is sitting at a prompt (don't type into a running program): otherwise once, at the next prompt
+  if (!force && (busy || dirty)) { pendingSync = true; return; }
+  // never send the same folder twice in a row: the prompt may spell a path differently, and that must not make a loop
+  if (!force && lastSent === t.path) return;
+  lastSent = t.path;
   const q = t.path.replace(/'/g, "''");
   const cmd = termShell === 'cmd' ? `cd /d "${t.path}"\r` : sys.platform === 'win32' ? `Set-Location -LiteralPath '${q}'\r` : `cd '${t.path.replace(/'/g, "'\\''")}'\r`;
   termCwd = t.path;

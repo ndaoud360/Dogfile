@@ -161,7 +161,7 @@ def('compare', 'Compare / sync folders', { icon: 'compare', keys: ['Ctrl+Alt+M']
 def('dupes', 'Find duplicate files', { icon: 'dupes', cat: 'Tools', run: T.findDuplicates });
 def('analyze', 'Analyze disk space', { icon: 'chart', keys: ['Ctrl+Alt+A'], cat: 'Tools', run: () => T.analyzeSpace() });
 def('analyzeSelection', 'Calculate selection size', { icon: 'chart', cat: 'Tools', run: T.analyzeSelection });
-def('terminal', 'Open terminal window here', { icon: 'terminal', keys: ['Ctrl+Alt+T'], cat: 'Tools', run: () => A.openTerminal(T_()) });
+def('terminal', 'Open terminal here', { icon: 'terminal', keys: ['Ctrl+Alt+T'], cat: 'Tools', run: () => A.openTerminalHere(undefined, T_()) });
 def('terminalDrawer', 'Toggle built-in terminal', { icon: 'terminal', keys: ['Ctrl+`', "Ctrl+'"], cat: 'Tools', run: () => bus.emit('toggleTerminal') });
 def('shelf', 'Toggle Drop Shelf', { icon: 'shelf', keys: ['Ctrl+Shift+J'], cat: 'Tools', run: () => bus.emit('toggleShelf') });
 def('addToShelf', 'Add selection to Drop Shelf', { icon: 'shelf', keys: ['Ctrl+Alt+J'], cat: 'Tools', run: () => { const s = S_().filter((i) => !i.virtual); if (s.length) bus.emit('addToShelf', s.map((i) => i.path)); } });
@@ -208,9 +208,9 @@ def('notepad', 'Open Dogfile Notepad', { icon: 'notepad', cat: 'Tools', run: () 
 def('viewer3d', 'Open Dogfile 3D', { icon: 'cube', cat: 'Tools', run: () => { const s = S_().filter((i) => !i.isDir && !i.virtual && isModelFile(i)); openTool('model', s.map((i) => i.path)); } });
 def('player', 'Open Dogfile Player', { icon: 'film', cat: 'Tools', run: () => { const s = S_().filter((i) => !i.isDir && !i.virtual); openTool('player', s.map((i) => i.path), { play: true }); } });
 def('whoLocks', 'What’s locking this?', { icon: 'lock', cat: 'Tools', run: () => { const s = S_(); if (s.length) bus.emit('whoLocks', s.map((i) => i.path)); } });
-def('terminalAdmin', 'Open terminal as administrator', { icon: 'admin', keys: ['Ctrl+Shift+`'], cat: 'Tools', run: () => A.openTerminal(T_(), null, true) });
-def('cmdHere', 'Open Command Prompt here', { icon: 'terminal', cat: 'Tools', run: () => A.openTerminal(T_(), 'cmd') });
-def('psHere', 'Open PowerShell here', { icon: 'terminal', cat: 'Tools', run: () => A.openTerminal(T_(), 'powershell') });
+def('terminalAdmin', 'Open terminal window as administrator', { icon: 'admin', keys: ['Ctrl+Shift+`'], cat: 'Tools', run: () => A.openTerminal(T_(), null, true) });
+def('cmdHere', 'Open Command Prompt window here', { icon: 'terminal', cat: 'Tools', run: () => A.openTerminal(T_(), 'cmd') });
+def('psHere', 'Open PowerShell window here', { icon: 'terminal', cat: 'Tools', run: () => A.openTerminal(T_(), 'powershell') });
 def('editor', 'Open in code editor', { icon: 'code', keys: ['Ctrl+Shift+O'], cat: 'Tools', run: () => A.openInEditor(S_(), T_()) });
 def('workspaces', 'Workspaces…', { icon: 'workspace', keys: ['Ctrl+Alt+W'], cat: 'Tools', run: () => import('./workspaces.js').then((m) => m.workspacesDialog()) });
 def('profiles', 'Profiles (Work, Gaming, Music, Development…)…', { icon: 'user', cat: 'Tools', run: () => import('./workspaces.js').then((m) => m.profilesDialog()) });

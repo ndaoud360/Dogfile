@@ -331,7 +331,7 @@ export async function openSettings(section = 'general', opts = {}) {
       _append(el,
         group('Programs'),
         row('Terminal', select('terminal', [['auto', 'Windows Terminal (if installed)'], ['powershell', 'Windows PowerShell'], ['pwsh', 'PowerShell 7'], ['cmd', 'Command Prompt']])),
-        row('Code editor command', text('editor', 'Automatic'), 'For Open in code editor. Leave it empty and Dogfile finds one.'),
+        row('Code editor command', text('editor', 'Automatic'), 'For Open in code editor. Empty: files open in Dogfile Notepad, folders in an editor Dogfile finds (VS Code, Cursor…). Set a program here to always use it.'),
         row('File types', h('button', { class: 'btn small', onclick: () => import('./assoc.js').then((m) => m.fileTypesDialog()) }, 'Choose what opens each file type…'), 'Choose what opens each kind of file.'),
         row('“Open with” apps', apps),
         row('Custom commands', cmds),

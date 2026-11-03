@@ -347,7 +347,7 @@ function sideMenu({ label, path, pinned }, e) {
     { separator: true },
     real && { label: 'Paste into folder', icon: 'paste', run: () => A.paste(activeTab(), { target: path }) },
     real && { label: 'Copy path', icon: 'link', run: () => A.copyPaths([{ path, name: label }]) },
-    real && { label: 'Open terminal here', icon: 'terminal', run: () => api('shell:terminal', path, state.settings.terminal) },
+    real && { label: 'Open terminal here', icon: 'terminal', run: () => A.openTerminalHere(path) },
     real && !pinned && { label: 'Pin to sidebar', icon: 'pin', run: () => A.pin([path]) },
     pinned && { label: 'Unpin', icon: 'unpin', run: () => A.unpin(path) },
     pinned && { label: 'Move up', run: () => movePin(path, -1) },

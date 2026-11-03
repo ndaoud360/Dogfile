@@ -914,27 +914,38 @@ export function folderSize(p, onProgress, children = false) {
   })().catch(__reject); });
 }
 
+/** "Open terminal here": Dogfile's own terminal, in the folder (windows and administrator shells are separate commands) */
+export async function openTerminalHere(dir, t = activeTab()) {
+  const target = dir || (selectedItems(t).find((i) => i.isDir && !i.virtual)?.path) || (isVirtual(t.path) ? sys.known.home : t.path);
+  const { openTerminalAt } = await import('./extras.js');
+  await openTerminalAt(target);
+}
+/** a separate terminal window (Windows Terminal, PowerShell or Command Prompt), also as administrator */
 export async function openTerminal(t = activeTab(), kind, admin) {
   const it = selectedItems(t).find((i) => i.isDir && !i.virtual);
   const dir = it?.path || (isVirtual(t.path) ? sys.known.home : t.path);
   await api('shell:terminal', dir, kind || state.settings.terminal, !!admin);
 }
 
+/** "Open in code editor": a program you chose in Settings is used as set. Otherwise files open in Dogfile Notepad
+ * (its own editor) and only folders, which Notepad can't open, go to an editor found on this PC (VS Code, Cursor…). */
 export async function openInEditor(items, t = activeTab()) {
-  const targets = items.length ? items.map((i) => i.path) : [t.path];
-  let cmd = (state.settings.editor || '').trim();
-  if (!cmd || cmd === 'code') {
+  const explicit = (state.settings.editor || '').trim();
+  const own = !explicit || explicit === 'code';
+  let rest = items.length ? items : [{ path: t.path, isDir: true }];
+  if (own && state.settings.useAtlasEditor !== false) {
+    const files = rest.filter((i) => !i.isDir && !i.virtual).map((i) => i.path);
+    if (files.length) { const { openTool } = await import('./apptabs.js'); openTool('editor', files); files.forEach((f) => addRecentFile(f)); }
+    rest = rest.filter((i) => i.isDir);
+    if (!rest.length) return;
+  }
+  let cmd = explicit;
+  if (own) {
     const found = await api('sys:findEditor').catch(() => null);
     cmd = found ? `"${found.path}"` : '';
   }
-  if (!cmd) {
-    // no code editor installed: files open in Dogfile Notepad; folders need an editor
-    const files = items.filter((i) => !i.isDir).map((i) => i.path);
-    if (files.length) { const { openTool } = await import('./apptabs.js'); openTool('editor', files); return; }
-    toast('No code editor found. Install VS Code, or set one in Settings > Tools > Code editor command.', { error: true });
-    return;
-  }
-  await api('shell:runCommand', `${cmd} ${targets.map((p) => `"${p}"`).join(' ')}`, isVirtual(t.path) ? undefined : t.path);
+  if (!cmd) { toast('No code editor found for folders. Install VS Code, or set one in Settings > Tools > Code editor command.', { error: true }); return; }
+  await api('shell:runCommand', `${cmd} ${rest.map((i) => `"${i.path}"`).join(' ')}`, isVirtual(t.path) ? undefined : t.path);
 }
 
 export function pin(paths) {
@@ -1294,7 +1305,7 @@ export function buildItemsMenu(t, items) {
       { label: 'Create shortcut', icon: 'link', run: () => createShortcuts(paths, dirname(paths[0])) },
       { label: 'Create symbolic link / junction…', icon: 'link', run: () => createSymlink(items) },
       { label: 'Open in code editor', icon: 'code', run: () => openInEditor(items) },
-      allDirs && { label: 'Open terminal here', icon: 'terminal', run: () => api('shell:terminal', real[0].path, state.settings.terminal) },
+      allDirs && { label: 'Open terminal here', icon: 'terminal', run: () => openTerminalHere(real[0].path) },
       { label: 'Calculate size', icon: 'chart', run: () => C('analyzeSelection') },
       one && !one.isDir && /^(pdf|jpe?g|png|heic|heif|webp|tiff?|bmp|docx|odt|txt|rtf)$/i.test(one.ext || '') && { label: 'Remind me before it’s due or expires…', icon: 'bell', simple: true, run: () => import('./reminders.js').then((m) => m.remindAbout(one)) },
       one && { label: 'Versions…', icon: 'history', run: () => import('./history.js').then((m) => m.versionsDialog(one.path)) },
@@ -1355,7 +1366,7 @@ export function buildBackgroundMenu(t, e = { clientX: 0, clientY: 0 }) {
     real && { label: t.tt ? 'Close time travel' : 'Time travel (this folder before)', icon: 'history', run: () => C('timeTravel') },
     { separator: true },
     real && { label: 'Search in this folder', icon: 'search', keys: 'Ctrl+Shift+F', run: () => C('search') },
-    real && { label: 'Open terminal here', icon: 'terminal', keys: 'Ctrl+`', run: () => openTerminal(t) },
+    real && { label: 'Open terminal here', icon: 'terminal', keys: 'Ctrl+`', run: () => openTerminalHere(isVirtual(t.path) ? undefined : t.path, t) },
     real && IS_WIN() && { label: 'Open terminal as administrator', icon: 'admin', run: () => openTerminal(t, null, true) },
     real && { label: 'Open in code editor', icon: 'code', run: () => openInEditor([], t) },
     { separator: true },
@@ -1378,7 +1389,7 @@ export function folderContextMenu(p, e) {
     { separator: true },
     { label: 'Paste into folder', icon: 'paste', run: () => paste(t, { target: p }) },
     { label: 'Copy path', icon: 'link', run: () => copyPaths([{ path: p, name: basename(p) }]) },
-    { label: 'Open terminal here', icon: 'terminal', run: () => api('shell:terminal', p, state.settings.terminal) },
+    { label: 'Open terminal here', icon: 'terminal', run: () => openTerminalHere(p) },
     { label: isPinned(p) ? 'Unpin from sidebar' : 'Pin to sidebar', icon: 'pin', run: () => (isPinned(p) ? unpin(p) : pin([p])) },
     { label: 'Tags', icon: 'tag', submenu: tagMenu([p]) },
     { separator: true },

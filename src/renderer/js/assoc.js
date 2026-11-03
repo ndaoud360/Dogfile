@@ -5,7 +5,7 @@ import { api, state, bus, h, toast, saveSettings, extname, basename, IS_WIN } fr
 import { modal, prompt } from './dialogs.js';
 import { icon } from './icons.js';
 
-export const HANDLERS = [['', 'Dogfile decides (built-in apps first)'], ['notepad', 'Dogfile Notepad'], ['player', 'Dogfile Player'], ['photos', 'Dogfile Photos'], ['windows', 'Windows default app']];
+export const HANDLERS = [['', 'Dogfile decides (built-in apps first)'], ['notepad', 'Dogfile Notepad'], ['player', 'Dogfile Player'], ['photos', 'Dogfile Photos'], ['model', 'Dogfile 3D'], ['office', 'Dogfile Office'], ['windows', 'Windows default app']];
 const map = () => (state.settings.fileAssoc ||= {});
 export const assocFor = (ext) => map()[(ext || '').toLowerCase()] || null;
 export function appLabel(h0) {
@@ -20,6 +20,8 @@ export async function openWith(handler, paths) {
   if (handler === 'notepad') return openTool('editor', paths), true;
   if (handler === 'player') return openTool('player', paths, { play: true }), true;
   if (handler === 'photos') return openTool('viewer', paths, { autoPlaylist: paths.length === 1 }), true;
+  if (handler === 'model') return openTool('model', paths), true;
+  if (handler === 'office') return openTool('office', paths), true;
   if (handler === 'windows') { for (const p of paths) await api('shell:open', p); return true; }
   if (handler?.startsWith('app:')) { await api('shell:launch', handler.slice(4), paths); return true; }
   return false;

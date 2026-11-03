@@ -2028,3 +2028,8 @@ body.col-resizing, body.col-resizing * { cursor: col-resize !important; user-sel
 .th-pvs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; min-height: 64px; }
 .th-pv { display: flex; height: 74px; border: 1px solid; border-radius: 6px; overflow: hidden; }
 .th-pv > :first-child { width: 28%; }
+.dc-file[draggable="true"] { cursor: grab; }
+.dc-file.picked { background: var(--bg-sel); border-radius: 6px; }
+.dc-group.drop { outline: 2px dashed var(--accent); outline-offset: -2px; }
+.dc-new { border: 1px dashed var(--line); border-radius: var(--r-panel); padding: 10px; text-align: center; font-size: 12.5px; color: var(--text-3); }
+.dc-new.drop { border-color: var(--accent); color: var(--accent); background: var(--bg-sel); }

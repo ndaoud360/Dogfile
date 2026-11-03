@@ -62,6 +62,9 @@ export async function declutter(t = activeTab()) {
   const box = h('div', { class: 'dc-groups' });
   const summary = h('div', { class: 'hint' });
   const S = { dest: new Map(), why: new Map(), names: new Map() };
+  const picked = new Set(); // files chosen with Ctrl+click, dragged together
+  let dragging = [];
+  const sendTo = (list, g) => { for (const f of list) { S.dest.set(f, g); S.why.set(f, 'you moved it'); } picked.clear(); render(); };
   const draw = () => {
     const r = propose(files, mode, { vectors: useAi ? vectors : null, existing, folderName: basename(t.path), rest: restMode });
     S.dest = r.dest; S.why = r.why; S.names = new Map();
@@ -87,13 +90,33 @@ export async function declutter(t = activeTab()) {
           if (v === '\u0000new') { const { prompt } = await import('./dialogs.js'); v = await prompt('New folder', '', { label: 'Folder name' }); if (!v) { sel.value = g; return; } }
           S.dest.set(f, v); S.why.set(f, 'you chose this'); render();
         };
-        return h('div', { class: 'dc-file', title: f.name }, h('span', { class: 'dc-fn' }, f.name), h('span', { class: 'dc-why' }, S.why.get(f) || ''), h('i', {}, fmtSize(f.size || 0)), sel);
+        const row = h('div', { class: 'dc-file' + (picked.has(f) ? ' picked' : ''), title: `${f.name}\nDrag onto another folder to move it. Ctrl+click picks several.`, draggable: 'true' });
+        row.addEventListener('click', (e) => { if (!(e.ctrlKey || e.metaKey) || e.target.closest('select')) return; picked.has(f) ? picked.delete(f) : picked.add(f); row.classList.toggle('picked', picked.has(f)); });
+        row.addEventListener('dragstart', (e) => { dragging = picked.has(f) ? [...picked] : [f]; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragging.map((x) => x.name).join('\n')); });
+        row.addEventListener('dragend', () => { dragging = []; box.querySelectorAll('.drop').forEach((x) => x.classList.remove('drop')); });
+        row.append(h('span', { class: 'dc-fn' }, f.name), h('span', { class: 'dc-why' }, S.why.get(f) || ''), h('i', {}, fmtSize(f.size || 0)), sel);
+        return row;
       }));
       const det = h('details', { class: 'dc-group' + (leave ? ' leave' : ''), open: sorted.length <= 4 }, h('summary', {}, h('span', { class: 'dc-ic', html: icon(leave ? 'pin' : 'folder') }), nameIn, h('span', { class: 'dc-count' }, `${list.length} file${list.length === 1 ? '' : 's'}${!leave && lower.has((S.names.get(g) || g).toLowerCase()) ? ' · into the existing folder' : ''}`)), filesBox);
+      det.addEventListener('dragover', (e) => { if (!dragging.length) return; e.preventDefault(); det.classList.add('drop'); });
+      det.addEventListener('dragleave', (e) => { if (!det.contains(e.relatedTarget)) det.classList.remove('drop'); });
+      det.addEventListener('drop', (e) => { e.preventDefault(); const list2 = dragging; dragging = []; if (list2.length) sendTo(list2, g); });
       box.append(det);
     }
+    // drop here to start a new folder
+    const fresh = h('div', { class: 'dc-new' }, 'Drop files here to put them in a new folder');
+    fresh.addEventListener('dragover', (e) => { if (!dragging.length) return; e.preventDefault(); fresh.classList.add('drop'); });
+    fresh.addEventListener('dragleave', () => fresh.classList.remove('drop'));
+    fresh.addEventListener('drop', async (e) => {
+      e.preventDefault(); fresh.classList.remove('drop');
+      const list2 = dragging; dragging = []; if (!list2.length) return;
+      const { prompt } = await import('./dialogs.js');
+      const v = await prompt('New folder', '', { label: 'Folder name' });
+      if (v && v.trim()) sendTo(list2, v.trim());
+    });
+    box.append(fresh);
     const moving = files.filter((f) => S.dest.get(f) !== LEAVE).length;
-    summary.textContent = `${moving} of ${files.length} files into ${names.length} folder${names.length === 1 ? '' : 's'}. Open a folder to see why each file goes there, or move it somewhere else. You can rename the folders too.`;
+    summary.textContent = `${moving} of ${files.length} files into ${names.length} folder${names.length === 1 ? '' : 's'}. Open a folder to see why each file goes there. Drag a file onto another folder (Ctrl+click picks several), or use the menu beside it. You can rename the folders too.`;
   };
   const seg = h('div', { class: 'seg' }, ...[['smart', 'By topic in the name'], ['kind', 'By type'], ['date', 'By month']].map(([k, l]) => { const b = h('button', { class: 'seg-btn' + (k === mode ? ' on' : '') }, l); b.onclick = () => { mode = k; seg.querySelectorAll('.seg-btn').forEach((x) => x.classList.toggle('on', x === b)); draw(); }; return b; }));
   const restSel = h('select', { class: 'input sm' }, h('option', { value: 'kind' }, 'sort by type'), h('option', { value: 'leave' }, 'leave them alone'));

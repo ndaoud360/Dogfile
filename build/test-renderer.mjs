@@ -95,5 +95,68 @@ ok(isInside('/home/ann/x', '/home/ann/'), 'isInside (Linux): parent with a trail
 ok(!samePath('/Home', '/home'), 'samePath (Linux): case matters');
 asWindows();
 
+// ---------- 3. stem separation maths ----------
+const sc = await import('../src/renderer/js/stems-core.js');
+{
+  const { SEG, segmentStarts, windowWeights, separate, encodeWav, zipParts, crc32, safeName, mixdown, MODEL_ORDER, STEMS } = sc;
+  eq(JSON.stringify(segmentStarts(SEG)), '[0]', 'stems: a song that fits one piece is one piece');
+  eq(segmentStarts(SEG + 1).length, 2, 'stems: one sample more needs a second piece');
+  const st = segmentStarts(SEG * 5 + 17);
+  ok(st.at(-1) + SEG >= SEG * 5 + 17, 'stems: the pieces reach the end of the song', st.at(-1));
+  ok(st.every((s, i) => i === 0 || s - st[i - 1] === Math.floor(SEG * 0.75)), 'stems: pieces start 75% of a piece apart', st.slice(0, 3));
+  const w = windowWeights(1000);
+  ok(w[0] > 0 && w[499] === 1 && w[999] > 0 && w.every((x) => x > 0 && x <= 1), 'stems: the fade weights are a triangle between 0 and 1', [w[0], w[499], w[999]]);
+  eq(STEMS.length, 6, 'stems: six stems are shown');
+  eq([...MODEL_ORDER].sort().join(), STEMS.map((x) => x.key).sort().join(), 'stems: the model order and the shown stems are the same six');
+  // a pretend model that returns the whole input as "drums" and half of it as "vocals": joining the pieces must give the song back
+  const seg = 1000, len = 3 * seg + 345;
+  const left = Float32Array.from({ length: len }, (_, i) => Math.sin(i / 17) * 0.4 + 0.05), right = Float32Array.from({ length: len }, (_, i) => Math.cos(i / 29) * 0.3);
+  const fake = async (chunk) => {
+    const o = new Float32Array(6 * 2 * seg);
+    for (let c = 0; c < 2; c++) for (let i = 0; i < seg; i++) { o[(0 * 2 + c) * seg + i] = chunk[c * seg + i]; o[(MODEL_ORDER.indexOf('vocals') * 2 + c) * seg + i] = chunk[c * seg + i] / 2; }
+    return o;
+  };
+  let steps = 0;
+  const r = await separate(left, right, fake, { seg, onProgress: () => steps++ });
+  let worst = 0;
+  const { mean } = sc.levelOf(left, right); // the song without its constant offset comes back
+  for (let i = 0; i < len; i++) worst = Math.max(worst, Math.abs(r.drums[0][i] - (left[i] - mean)), Math.abs(r.drums[1][i] - (right[i] - mean)), Math.abs(r.vocals[0][i] - (left[i] - mean) / 2));
+  ok(worst < 1e-4, 'stems: pieces joined back together give the song (the sources add up)', worst);
+  ok(steps === segmentStarts(len, seg).length && r.bass[0].every((x) => Math.abs(x) < 1e-6), 'stems: progress is reported for every piece; a silent source stays silent', steps);
+  let threw = '';
+  try { await separate(left, right, fake, { seg, cancelled: () => true }); } catch (e) { threw = e.message; }
+  eq(threw, 'Stopped', 'stems: stopping ends the work');
+  threw = '';
+  try { await separate(left, right, async () => new Float32Array(10), { seg }); } catch (e) { threw = e.message; }
+  ok(/unexpected/.test(threw), 'stems: a wrong-sized answer from the model is an error, not noise', threw);
+  const mixed = mixdown({ drums: r.drums, vocals: r.vocals }, { drums: 1, vocals: 0 }, len);
+  ok(Math.abs(mixed[0][100] - (left[100] - mean)) < 1e-4, 'stems: a stem at zero volume is left out of the mix', mixed[0][100]);
+  // files
+  const wav = encodeWav(Float32Array.of(0, 1, -1, 0.5), Float32Array.of(0, -1, 1, 0));
+  const dv = new DataView(wav.buffer);
+  eq(String.fromCharCode(...wav.slice(0, 4)) + String.fromCharCode(...wav.slice(8, 12)), 'RIFFWAVE', 'stems: WAV header');
+  eq(wav.length, 44 + 16, 'stems: WAV size');
+  eq([dv.getInt16(44 + 4, true), dv.getInt16(44 + 6, true), dv.getInt16(44 + 8, true)].join(), '32767,-32768,-32768', 'stems: WAV samples are 16-bit and clipped, not wrapped');
+  eq(dv.getUint32(24, true), 44100, 'stems: WAV sample rate');
+  eq(crc32(new TextEncoder().encode('123456789')), 0xcbf43926, 'stems: CRC-32 check value');
+  const files = [{ name: 'Song (vocals).wav', data: wav }, { name: 'Sóng – bass.wav', data: new Uint8Array(1000).map((_, i) => i * 7) }];
+  const zip = zipParts(files, new Date(2026, 10, 2, 12, 30, 10));
+  const all = new Uint8Array(zip.reduce((a, p) => a + p.length, 0)); let o = 0; for (const p of zip) { all.set(p, o); o += p.length; }
+  const zv = new DataView(all.buffer), eocd = all.length - 22;
+  eq(zv.getUint32(eocd, true), 0x06054b50, 'stems: ZIP ends with its end record');
+  eq(zv.getUint16(eocd + 10, true), 2, 'stems: ZIP lists both files');
+  let cp = zv.getUint32(eocd + 16, true), good = 0;
+  for (let i = 0; i < 2; i++) {
+    const nlen = zv.getUint16(cp + 28, true), size = zv.getUint32(cp + 24, true), lho = zv.getUint32(cp + 42, true), crc = zv.getUint32(cp + 16, true);
+    const name = new TextDecoder().decode(all.slice(cp + 46, cp + 46 + nlen));
+    const lnl = zv.getUint16(lho + 26, true), data = all.slice(lho + 30 + lnl, lho + 30 + lnl + size);
+    if (name === files[i].name && data.length === files[i].data.length && crc32(data) === crc && crc === zv.getUint32(lho + 14, true) && data.every((b, j) => b === files[i].data[j])) good++;
+    cp += 46 + nlen;
+  }
+  eq(good, 2, 'stems: each ZIP entry has its name, size, CRC and bytes right');
+  eq(safeName('AC/DC: Back In Black?.mp3 '), 'AC_DC_ Back In Black_.mp3', 'stems: file names lose characters Windows refuses');
+  globalThis.__zipForCheck = all;
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

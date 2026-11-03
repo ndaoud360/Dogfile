@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:*; img-src 'self' http://127.0.0.1:* data: blob:; media-src 'self' http://127.0.0.1:* blob:; connect-src 'self' http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; font-src 'self' http://127.0.0.1:* data:; script-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:*; img-src 'self' http://127.0.0.1:* data: blob:; media-src 'self' http://127.0.0.1:* blob:; connect-src 'self' http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; font-src 'self' http://127.0.0.1:* data:; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:">
   <title>Dogfile Player</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="player.css">
@@ -54,6 +54,7 @@
           <button class="pb" id="b-lyrics" title="Lyrics (Y)"></button>
           <span class="ctl-sep"></span>
           <button class="pb" id="b-edit" title="Edit / trim (Ctrl+K)"></button>
+          <button class="pb" id="b-stems" title="Stem separator: vocals, drums, bass, guitar, piano" hidden></button>
           <button class="pb" id="b-eq" title="Equalizer & effects (Ctrl+E)"></button>
           <span class="ctl-sep"></span>
           <button class="pb" id="b-loop" title="Repeat (L)"></button>

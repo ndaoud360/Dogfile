@@ -47,6 +47,8 @@ File safety (backend)
   `assistant.js` + `assistant-parse.js` (local file assistant; the back end reads Office/PDF text),
   `docpreview.js` (Office previews, file notes, preview panel options), `workspaces.js` (workspaces 2.0 + profiles),
   `network.js` (saved SFTP/FTP/SMB/WebDAV connections; the work is done in `backend/`), `renamestudio.js`, `smartdrop.js`,
+  `stems.js` + `stems-core.js` + `stems-worker.js` (Player's stem separator: HT-Demucs 6-source ONNX model, downloaded on first use,
+  run in a worker with `vendor/ort/ort.bundle.min.mjs`; the maths and the WAV/ZIP writers are tested in `build/test-renderer.mjs`),
   `cliphistory.js`, `assoc.js` (file types), `a11y.js`, `macros.js`, `extensions.js` + `ext-worker.js` (sandboxed
   features; the worker is served with a CSP that blocks network and script loading), `features.js`,
   `featurestore.js` (GitHub-backed feature browser; requests go through `gh:request`).

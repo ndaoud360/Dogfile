@@ -574,6 +574,7 @@ function renderButtons() {
   $('b-audio').innerHTML = icon('audioTrack'); $('b-audio').classList.toggle('dim', P.aStreams.length < 2);
   $('b-subs').innerHTML = icon('cc'); $('b-subs').classList.toggle('on', !!P.sub);
   $('b-lyrics').innerHTML = icon('lyrics'); $('b-lyrics').classList.toggle('on', !!prefs.lyrics); $('b-lyrics').hidden = !document.body.classList.contains('audio-only');
+  $('b-stems').innerHTML = icon('split'); $('b-stems').hidden = !document.body.classList.contains('audio-only'); $('b-stems').classList.toggle('dim', !P.item);
   $('b-eq').innerHTML = icon('sliders'); $('b-eq').classList.toggle('on', !!prefs.eq.on);
   $('b-loop').innerHTML = icon(prefs.repeat === 'one' ? 'repeatOne' : 'repeat'); $('b-loop').classList.toggle('on', prefs.repeat !== 'off');
   $('b-list').innerHTML = icon('listMusic'); $('b-list').classList.toggle('on', !!prefs.showList);
@@ -1010,6 +1011,13 @@ function wire() {
   $('b-audio').onclick = (e) => { const r = e.currentTarget.getBoundingClientRect(); showMenu(audioMenu(), r.left, r.top - 10 - Math.min(300, 32 * (P.aStreams.length || 1))); };
   $('b-lyrics').onclick = () => toggleLyrics();
   $('b-subs').onclick = (e) => { const r = e.currentTarget.getBoundingClientRect(); showMenu(subMenu(), r.left, r.top - 260); };
+  $('b-stems').onclick = async () => {
+    if (!P.item || P.vStream) return;
+    const path = P.item.path, at = pos();
+    v.pause(); // the song stops while the stem window is open
+    const { openStems } = await import('./stems.js');
+    openStems({ path, time: at }).catch((e) => toast(`The stem separator couldn’t open: ${errText(e)}`, { error: true }));
+  };
   $('b-eq').onclick = () => { renderEq(); $('edit-panel').classList.remove('open'); $('eq-panel').classList.toggle('open'); };
   $('b-edit').onclick = () => ($('edit-panel').classList.contains('open') ? $('edit-panel').classList.remove('open') : openEdit());
   $('b-loop').onclick = cycleRepeat;

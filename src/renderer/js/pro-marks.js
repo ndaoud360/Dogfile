@@ -17,6 +17,7 @@ export const FEATURES = {
   model3d: 'Your own textures and backgrounds in Dogfile 3D',
   features: 'Custom features',
   timetravel: 'Time travel',
+  stems: 'The stem separator',
 };
 export const PLURAL = new Set(['panes', 'dupes', 'space', 'automation', 'versions', 'remote', 'features', 'reminders', 'model3d']);
 export const PRO_COMMANDS = {

@@ -49,7 +49,8 @@ export async function initLicense({ test = false } = {}) {
   if (!test && state.settings.welcomed) setTimeout(maybeOffer, 1500);
 }
 /** at start, or at the end of the welcome tour: offer the trial (a few times at most), or say it has ended */
-export function maybeOffer() {
+export async function maybeOffer() {
+  if (!L.status) L.status = await api('license:status').catch(() => null); // the end of the welcome tour can come before the first answer
   const s = L.status, S = state.settings;
   if (!s || document.querySelector('.lic-modal')) return;
   if (s.mode === 'none') {

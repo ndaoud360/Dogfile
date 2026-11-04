@@ -257,7 +257,7 @@ const R = {
     ['Compare', [['compare', 'Compare & sync', true], ['compareFiles', 'Two files…']]],
     ['Protect', [['timeTravel', 'Time travel', true], ['history', 'File history'], ['allVersions', 'Versions'], ['makeChecksums', 'Checksums'], ['verifyChecksums', 'Verify'], ['hashes'], ['whoLocks', 'What’s locking it?']]],
     ['Connect', [['phoneTransfer', 'Phone', true], ['connections', 'Servers', true], ['addConnection', 'Add server']]],
-    ['Apps', [['notepad', 'Notepad', true], ['player', 'Player', true], ['viewer3d', '3D viewer'], ['terminalDrawer', 'Terminal'], ['shelf', 'Drop Shelf'], ['gotoFile', 'Go to file']]],
+    ['Apps', [['notepad', 'Notepad', true], ['photos', 'Photos', true], ['player', 'Player', true], ['music', 'Music', true], ['viewer3d', '3D viewer'], ['office', 'Office'], ['terminalDrawer', 'Terminal'], ['shelf', 'Drop Shelf'], ['gotoFile', 'Go to file']]],
     ['Automate', [['features', 'Features', true], ['startMacro', 'Record macro'], ['macros', 'Macros'], ['featureStore', 'Get features']]],
     ['AI', [['aiModels', 'AI models', true]]],
     ['Windows', [['showInExplorer'], ['winProperties'], ['windowsMenu']]],
@@ -298,6 +298,9 @@ function renderCtxRibbon(r) {
 function ribbonGroup(gname, entries) {
   const g = h('div', { class: 'rb-group' });
   const big = h('div', { class: 'rb-big' }), small = h('div', { class: 'rb-small' });
+  // a lone small button would leave two empty rows under it: it gets a big button like the others (two or three small ones fill their column well enough)
+  const loneSmall = entries.filter((e) => !e.big);
+  if (loneSmall.length === 1) loneSmall[0] = Object.assign(loneSmall[0], { big: true });
   const after = () => { if (!state.settings.ribbonPinned) { ribbonOpen = null; renderRibbon(); } else setTimeout(renderRibbon, 50); };
   for (const e of entries) {
     const b = h('button', { class: `rb-btn ${e.big ? 'big' : ''}${e.on ? ' on' : ''}${e.menu ? ' has-menu' : ''}`, title: e.title || e.label, html: `${icon(e.icon)}<span>${esc(e.label)}${e.pro ? starHtml : ''}${e.menu ? ' ▾' : ''}</span>` });

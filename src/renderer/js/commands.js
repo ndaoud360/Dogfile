@@ -1,6 +1,6 @@
 // Command registry: every action has an id, title, icon and default shortcut(s).
 // Shortcuts are user-remappable; the Command Palette (Ctrl+Shift+P) searches them all.
-import { api, state, bus, h, esc, isVirtual, saveSettings, toast, IS_WIN, sys, debounce, isModelFile } from './core.js';
+import { api, state, bus, h, esc, isVirtual, saveSettings, toast, IS_WIN, sys, debounce, isModelFile, isImageFile, KINDS } from './core.js';
 import { openTool } from './apptabs.js';
 import { icon } from './icons.js';
 import { activeTab, paneCount, navigate, goBack, goForward, goUp, openTab, closeTab, reopenClosedTab, duplicateTab, setLayout, focusPane, splitPane, closePane, selectedItems, selectAll, selectNone, invertSelection, setView, loadTab, otherPaneTab, startPathEdit, paneEls, renderAll, recompute, renderTabPanes, clearThumbCache, touchView, showTabInPane, confirmLeaveAll } from './pane.js';
@@ -206,6 +206,9 @@ def('flattenSel', 'Flatten selected folder', { icon: 'flatten', cat: 'View', hid
 def('gotoFile', 'Go to file…', { icon: 'search', keys: ['Ctrl+P'], cat: 'Navigate', run: () => palette('', 'files') });
 def('notepad', 'Open Dogfile Notepad', { icon: 'notepad', cat: 'Tools', run: () => { const s = S_().filter((i) => !i.isDir && !i.virtual); openTool('editor', s.map((i) => i.path)); } });
 def('viewer3d', 'Open Dogfile 3D', { icon: 'cube', cat: 'Tools', run: () => { const s = S_().filter((i) => !i.isDir && !i.virtual && isModelFile(i)); openTool('model', s.map((i) => i.path)); } });
+def('photos', 'Open Dogfile Photos', { icon: 'image', cat: 'Tools', run: () => { const s = S_().filter((i) => !i.isDir && !i.virtual && isImageFile(i)); const all = s.length ? s : (T_().items || []).filter((i) => !i.isDir && !i.virtual && isImageFile(i)); openTool('viewer', all.map((i) => i.path), { autoPlaylist: all.length === 1 }); } });
+def('music', 'Open Dogfile Music', { icon: 'music', cat: 'Tools', run: () => { const isAudio = (i) => KINDS.audio.includes(i.ext); const s = S_().filter((i) => !i.isDir && !i.virtual && isAudio(i)); const all = s.length ? s : (T_().items || []).filter((i) => !i.isDir && !i.virtual && isAudio(i)); if (!all.length) return toast('Select songs, or open a folder with music, then press Music'); openTool('player', all.map((i) => i.path), { play: true }); } });
+def('office', 'Open Dogfile Office', { icon: 'page', cat: 'Tools', run: () => { const s = S_().filter((i) => !i.isDir && !i.virtual); openTool('office', s.map((i) => i.path)); } });
 def('player', 'Open Dogfile Player', { icon: 'film', cat: 'Tools', run: () => { const s = S_().filter((i) => !i.isDir && !i.virtual); openTool('player', s.map((i) => i.path), { play: true }); } });
 def('whoLocks', 'What’s locking this?', { icon: 'lock', cat: 'Tools', run: () => { const s = S_(); if (s.length) bus.emit('whoLocks', s.map((i) => i.path)); } });
 def('terminalAdmin', 'Open terminal window as administrator', { icon: 'admin', keys: ['Ctrl+Shift+`'], cat: 'Tools', run: () => A.openTerminal(T_(), null, true) });

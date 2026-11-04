@@ -1954,9 +1954,9 @@ body.col-resizing, body.col-resizing * { cursor: col-resize !important; user-sel
 .ln-dot::after { content: ''; position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 0 1.5px var(--bg, #fff); }
 @keyframes ln-glow { 0%, 100% { opacity: 0.55; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .ln-dot::before { animation: none; } }
-.dc.c-name .ln-dot, .list-cell .ln-dot { margin: -11px -4px 0 -11px; z-index: 1; }
-.grid-cell .tile .ln-dot { position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; }
-.gal-cell .ln-dot { position: absolute; left: 5px; top: 5px; width: 18px; height: 18px; }
+.dc.c-name .ln-dot, .list-cell .ln-dot { margin: -11px -5px 0 -10px; z-index: 1; } /* top right of the icon: the hover check box is on the left */
+.grid-cell .tile .ln-dot { position: absolute; right: 3px; top: 3px; width: 18px; height: 18px; }
+.gal-cell .ln-dot { position: absolute; right: 5px; top: 5px; width: 18px; height: 18px; }
 .mi-icon .ln-dot, .si-icon .ln-dot { margin: 0 auto; }
 .lk { display: grid; gap: 14px; max-height: 60vh; overflow: auto; }
 .lk-sec { display: grid; gap: 2px; }

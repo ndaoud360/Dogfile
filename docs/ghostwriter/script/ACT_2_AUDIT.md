@@ -64,3 +64,12 @@ The 7 remaining warnings are all false positives or the one deliberate exception
 1. **Length.** Act Two is 40 pages for about 54 minutes. The script runs a little lean (Acts One and Two total 61 pages for 78 minutes). I would leave it and let Act Three breathe.
 2. **Ingrid's secret.** Theodore tells Theo that his mother "read me every night for years." The audience doesn't yet know what that means. Is that the right amount to hold back for Act Three?
 3. **Theodore's "bookkeeping error" line** calls the wet figure a mistake. Keep it, or soften it?
+
+## 6. Resolved, and changes made during the Act Three pass
+
+**Your answers:** (1) Length: leave Act Two at 40 pages and let Act Three expand (it ran to 38). (2) Keep Theodore's hook, "She read me every night for years, Theo. Ask her what she wished." (3) Keep "bookkeeping error."
+
+**Two continuity patches, neither of which changes the page count (still pp. 22–61):**
+
+- *The sexton's line* (p. 46) now reads "Every Friday. Never did figure out who." Act Three has Nell say Marit leaves marigolds every Friday, and the Marker scene is set on a Friday.
+- *June's middle name is now planted.* The transfer form in the kitchen scene (p. 26) shows, in her neat capitals, JUNE ELISE LINDQVIST-HALE. "Elise" is the cost Theo paid at the Turnover and the thing he cannot say in the Study (Act Three, p. 73), so the audience can check it. (Before this patch the name had never been written down anywhere in the script.)

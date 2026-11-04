@@ -2,7 +2,7 @@
 ### Feature Film Development Bible — Revision 2
 *Psychological Horror / Supernatural Mystery / Existential Thriller — Theatrical Feature, approx. 111 minutes, R*
 
-> **Structure of this document.** Part 0 is the **Pitch Package** (spoiler-light) for directors, actors, financiers and distributors. Sections 1–23 are the full **spoiler bible**.
+> **Structure of this document.** Part 0 is the **Pitch Package** (spoiler-light) for directors, actors, financiers and distributors. Sections 1–23 are the full **spoiler bible**. *Companion file:* the Act One screenplay (pages 1–26) is in `script/` as `.fountain` and `.pdf`.
 
 ---
 
@@ -693,7 +693,11 @@ Impersonal, accounting, indifferent. It does not take sides between Theodore and
 | **The back of the page** | Beats 4, 13, 16, 34 | Bleed-through | The true account. Mara: *"You only ever read the front."* |
 | Pencil marginalia in the green notebook, in a boy's cursive | Beat 14 (close-up), Beat 16 | Another child's scribbles | Tomas, Theo's first reader — the same hand as the backs of the pages |
 | The pages never name Tomas; Theodore never says it ("that boy," "the neighbor's kid," "the wet one") | Beats 4, 8, 18, 20, 27, 33 | Trauma, delicacy | Law 8: he cannot say it |
-| The rescuer's hands and sleeve in the "heroic" flashbacks | Beats 8, 11 | Theo's hands | A thirteen-year-old's hands; a red Rutland Rams jacket. Payoff: Beat 36 |
+| The rescuer's freckled hands and the red jacket (in the fridge photograph and the "heroic" flashbacks); Theo's own hands are pale | Beats 1, 3, 8, 11 | Theo's hands | A thirteen-year-old's hands; a red Rutland Rams jacket. Payoff: Beat 36 |
+| The name **Theodore** on the notebook cover and the envelope | Beats 1, 8 | A formal name for the boy | The abandoned self. Payoff: Beats 14, 18 |
+| The pages insist: *"There was nobody on the ledge. I looked. I want that written down."* | Beats 8, 9 | A traumatized narrator | The lie that answers the exact guilt. Payoff: Beat 36 |
+| A pale square on the felt of Ingrid's shadow box | Beat 8 | A missing photograph | Nell's photograph, removed. Payoff: Beat 26 |
+| Rain falls on the pond and the surface doesn't mark | Beat 2 | An odd image | A thin place. Payoff: Beats 25, 29 |
 | Walter: *"Ghostwriters have no names on anything."* | Beat 7 | Character colour | The definition of Theodore's crime, and of Walter's fate (Beat 23) |
 | Missing spines, words and street names | Beats 11, 22 | Props | Law 1's tally |
 | The handwriting matures through the film | Beats 4 → 18 | Spooky | Theodore gaining power |
@@ -770,7 +774,7 @@ Thirty-eight years later, Theo Lindqvist, a celebrated novelist with eight years
 
 At the house there is a room at the end of the hall painted shut and a cellar door that sits too deep in its frame. That night he hears pencil moving inside the wall. By morning, a page lies on the kitchen table in a child's handwriting, still damp: *The slate was cold on my teeth. Nell asked me to come see the door and I said in a minute.* He has never told anyone those words. That evening at Alder Hill, Ingrid calls him Tomas and sings her refrain: *"Tomas came back wet. Theo came back dry. I counted them both in."* A night nurse named Ellie moves through the frame, soft at the edges where his eyes will not hold her.
 
-The first scare arrives at minute fifteen: wet prints appear behind him in the hall, and a dripping silhouette shows for three frames in a dead TV. A neighbor, Walter Pruitt, a retired ghostwriter, warns him not to let anyone put a name on his work. More pages: the yellow dress with ducks, the iron taste of the water — and a heroic flashback in warm 16mm, in which a nine-year-old Theo hauls his sister from the pond. When he mentions the dress to Ingrid she grips his wrist (hers is wet) and says, *"You weren't there. You were never there."* At the end of the act Theo reads the third page aloud. At the word *and* the clock stops, the light turns gold, and in the dark window a dry, smiling reflection writes on the fogged glass: *Thank you.*
+The first scare arrives at minute fifteen: wet prints appear behind him in the hall, and a dripping silhouette shows for three frames in a dead TV. A neighbor, Walter Pruitt, a retired ghostwriter, warns him not to let anyone put a name on his work. More pages arrive in an envelope addressed to "Theodore": the yellow dress with ducks, the iron taste of the water — and a heroic flashback in warm 16mm, in which a nine-year-old Theo hauls his sister from the pond. When he mentions the dress to Ingrid she grips his wrist (hers is wet) and says, *"You weren't there. You were never there."* At the end of the act Theo reads the third page aloud. At the word *and* the clock stops, the light turns gold, and in the dark window a dry, smiling reflection writes on the fogged glass: *Thank you.*
 
 ### ACT II — THE UNRAVELING (0:24–1:18)
 
@@ -801,28 +805,28 @@ A pond finally holds a reflection. Ingrid, lucid for one breath, sees him soaked
 ### ACT I (0:00–0:24)
 
 **BEAT 1 — THE DOOR (0:00–0:03)**
-- *What happens:* August 1987. Rain on slate. A boy's hand writes in a green notebook. A girl's off-screen voice: "Will you come see the door?" "In a minute." The pencil keeps moving. When it stops the kitchen is empty, the back door ajar, small wet footprints crossing the linoleum into the rain. A drop of water falls on the page and the pencil runs. Title, in handwriting.
+- *What happens:* August 1987. Rain on slate. A boy's hand writes in a green notebook. A girl's off-screen voice: "Will you come see the door?" "In a minute." The pencil keeps moving. When it stops the kitchen is empty, the back door ajar, small wet footprints crossing the linoleum into the rain. A drop of water falls on the page and the pencil runs. Title, in handwriting. *(Script: the notebook cover reads THE MARGIN, BY THEODORE LINDQVIST; we never see the boy's face or the girl's.)*
 - *Character:* Theo's absorption; deferral as a habit.
 - *Mystery:* Who is the girl? What is the door?
 - *Horror/suspense:* A child's voice never matched to a face; the whole score is a pencil.
 - *Purpose:* Plant the wound, the motif, and the dread of something we know is coming.
 
 **BEAT 2 — THE DRIVE (0:03–0:06)**
-- *What happens:* Present. Rain. Theo drives June north. The radio replays his famous interview: "I take dictation… I was home that afternoon." June asks him to read her story. "In a minute." Priya's voicemail: deadline. They pass the quarry memorial; June reads it aloud: "TOMAS ARVIDSEN 1974–1987. HE REACHED FOR HER."
+- *What happens:* Present. Rain. Theo drives June north. The radio replays his famous interview: "I take dictation… I was home that afternoon." June asks him to read her story. "In a minute." Priya's voicemail: deadline. June's bet with Mara: that Theo would say "in a minute" before Albany. They pass the quarry memorial; June reads it aloud: "TOMAS ARVIDSEN 1974–1987. HE REACHED FOR HER." Far below, rain falls on the pond and the surface does not mark.
 - *Character:* Charming, evasive, absent; June dry and watchful.
 - *Mystery:* "I was home that afternoon." Who is Tomas?
 - *Horror/suspense:* The rain on the car roof sounds like a pencil.
 - *Purpose:* Establish protagonist, daughter, block, public story, and the memorial.
 
 **BEAT 3 — THE HOUSE (0:06–0:08)**
-- *What happens:* The farmhouse. Dust sheets. A hall door painted shut. June: "Whose room?" "Storage." A photograph on the fridge: Theo (9) beside a taller boy with a bike at the quarry. The cellar door sits fractionally too deep in its frame.
+- *What happens:* The farmhouse. Dust sheets. A hall door painted shut. June: "Whose room?" "Storage." A photograph on the fridge: Theo (9) beside a taller boy on a bike in a red jacket, freckled hands on the handlebars, his face hidden under a lobster magnet. The cellar door sits fractionally too deep in its frame.
 - *Character:* Theo's avoidance.
 - *Mystery:* The room; the cellar.
 - *Horror/suspense:* Spatial wrongness the audience sees before Theo does.
 - *Purpose:* Location, "heavy" rooms, the planted photograph.
 
 **BEAT 4 — THE NIGHT DESK AND THE FIRST PAGE (0:08–0:11)**
-- *What happens:* Night at the kitchen table: a blank pad, nothing. Pencil scratching inside the wall; he follows it; it stops. He sleeps at the table. Morning: the top sheet is covered in a child's handwriting, ink still damp: "The slate was cold on my teeth. Nell asked me to come see the door and I said in a minute." June denies it: "I write like I'm twelve, not nine." The back of the page is warped, with mirrored smudges.
+- *What happens:* Night at the kitchen table: a blank pad, nothing. Pencil scratching inside the wall; he follows it; it stops. He sleeps at the table. June tucks a note under his mug (*DAD — 11 PAGES. WHENEVER. —J.*). Morning: a single sheet of cream ledger paper lies squared on the pad, covered in a child's handwriting, ink still damp: "The slate was cold on my teeth… Nell asked me to come see the door and I said in a minute. I did not look up." His own handwriting at nine (floating t-crossbars). June denies it: "I write like I'm twelve, not nine." The back of the page is warped, with mirrored smudges; he slides it into his own debut novel on his mother's shelf.
 - *Character:* Shock — no one else knows those words.
 - *Mystery:* Who wrote it?
 - *Horror/suspense:* The smell of pond water; damp paper.
@@ -850,14 +854,14 @@ A pond finally holds a reflection. Ingrid, lucid for one breath, sees him soaked
 - *Purpose:* Introduce the guide and a human suspect; plant "no names."
 
 **BEAT 8 — THE DRESS (0:19–0:22)**
-- *What happens:* Pages 2 and 3 arrive: the yellow dress with ducks, the iron taste of the water. First **heroic flashback** (warm 16mm): nine-year-old Theo wades in and hauls Nell out. At Alder Hill Ingrid is lucid for forty seconds; hearing about the dress she grips his wrist: "You weren't there. You were never there. Your father—" Ellie sedates her. Ingrid's wrist is wet.
+- *What happens:* Pages 2 and 3 arrive in a damp envelope in the mailbox, addressed in the child's hand to "Theodore." They give the yellow dress with ducks and the iron taste of the water. First **heroic flashback** (warm 16mm): a boy's freckled hands wade in; a red jacket lies on the ledge; the pages insist, "There was nobody on the ledge. I looked. I want that written down." Ellie's call interrupts him before the last line. At Alder Hill Ingrid is lucid for forty seconds; hearing about the dress she grips his wrist: "You weren't there. You were never there. Your father—" Her hand is suddenly cold and wet; a puddle spreads under her chair. Ellie works her fingers loose.
 - *Character:* Ingrid's terror is the first crack in his story.
 - *Mystery:* Why did the family lie?
 - *Horror/suspense:* The wet wrist.
 - *Purpose:* Revelation 1; the false memory introduced as true.
 
 **BEAT 9 — "AND" (0:22–0:24)**
-- *What happens:* Night, kitchen. The last page ends mid-sentence: "I reached into the black water and took her hand, and". Theo reads it aloud. At "and," the clock stops, the light warms, and in the dark window a dry, smiling reflection breathes on the glass and writes with a fingertip, from the inside: *Thank you.* (On the outside of the glass, a hand-sized smear of rain, which the audience may or may not register.) Black.
+- *What happens:* Night, kitchen. The last page ends mid-sentence: "I reached into the black water and took her hand, and". Theo reads page 3 aloud, as he has read every sentence he has ever written, and the old dictation feeling returns for the first time in eight years. At "and," the clock stops, the light warms, and in the dark window a dry, smiling reflection breathes on the glass and writes with a fingertip, from the inside: *Thank you.* (On the outside of the glass, a hand-sized smear of rain, which the audience may or may not register.) Black.
 - *Character:* He has crossed a line.
 - *Mystery:* Who is the reflection?
 - *Horror/suspense:* Intimate, quiet, wrong.

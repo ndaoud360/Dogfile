@@ -2,7 +2,7 @@
 ### Feature Film Development Bible — Revision 2
 *Psychological Horror / Supernatural Mystery / Existential Thriller — Theatrical Feature, approx. 111 minutes, R*
 
-> **Structure of this document.** Part 0 is the **Pitch Package** (spoiler-light) for directors, actors, financiers and distributors. Sections 1–23 are the full **spoiler bible**. *Companion files:* the complete screenplay (100 pages) is in `script/` as `THE_GHOSTWRITER_FULL_SCRIPT.pdf`, built from three Fountain act files, with an audit for each act and a full-script review (`script/README.md` lists everything).
+> **Structure of this document.** Part 0 is the **Pitch Package** (spoiler-light) for directors, actors, financiers and distributors. Sections 1–23 are the full **spoiler bible**. *Companion files:* the complete screenplay (97 pages) is in `script/` as `THE_GHOSTWRITER_FULL_SCRIPT.pdf`, built from three Fountain act files, with an audit for each act and a full-script review (`script/README.md` lists everything).
 
 ---
 
@@ -880,63 +880,67 @@ A pond finally holds a reflection. Nell holds out her hand and Theo takes it. In
 
 ### ACT II-A (0:24–0:55)
 
-**BEAT 10 — MORNING AFTER (0:24–0:26)**
+*Synced to `script/THE_GHOSTWRITER_ACT_2` after the development pass. Page references are to the full-script PDF (`script/THE_GHOSTWRITER_FULL_SCRIPT.pdf`, 97 pages). Beats 13 to 16 follow the order of the script: the Box, the Dictation, then Mara.*
+
+**BEAT 10 — MORNING AFTER (0:24–0:26)** *(pp. 21–23)*
 - *What happens:* A warm morning. June has read the pages: "It says you went in." She offers a reason: "Maybe this is your brain giving it back." Theo doesn't say no. The fridge photograph is different: Theo at nine on a boulder with Nell on his shoulders, a red jacket over his arm, no taller boy. June: "You wore it all summer. Everybody knows that." Theo smiles, wipes the smile off, and it comes back.
 - *Character:* Pleasure he is ashamed of.
 - *Mystery:* Why does June believe it?
 - *Horror/suspense:* The photograph changed in plain view.
 - *Purpose:* Revelation 2 begins; the Record shifts.
 
-**BEAT 11 — THE GOOD PAGES (0:26–0:30)**
+**BEAT 11 — THE GOOD PAGES (0:26–0:30)** *(pp. 23–27)*
 - *What happens:* At the library the librarian threads the August 1987 reel: BOY, 13, DIES SAVING NEIGHBOR GIRL; Tomas's face dissolves into halftone dots; "Her brother, Theodore, 9, was at home." She remembers Tomas writing in library-book margins in pencil, and that his mother Marit asks for the reel every August. Theo takes a copy, turns it face down, and types: the words keep coming past where the pages stop, and on his left wrist ink surfaces: *I reached.* Next day June asks for the name of their old street. Theo can't find it, or his second novel, whose place on the shelf is now a gap. June goes upstairs and calls Mara.
 - *Character:* Ecstasy and vanity.
 - *Mystery:* What is it costing? What is on his skin?
 - *Horror/suspense:* Body: the first line of the Fair Copy.
 - *Purpose:* Seduction; Law 1; the visible gauge begins.
 
-**BEAT 12 — PRIYA (0:30–0:32)**
+**BEAT 12 — PRIYA (0:30–0:32)** *(pp. 27–28)*
 - *What happens:* 2 a.m. Theo emails forty pages. Priya, crying: "You went into the water. You said it at the PEN dinner. Table six, 2013." He never did; his right hand is raised, palm out. A second line of ink on his forearm: *There was nobody on the ledge.*
 - *Character:* First flush of dread.
 - *Mystery:* Why does she remember it?
 - *Horror/suspense:* A stranger's certainty.
 - *Purpose:* Revision spreads beyond the house; commercial pressure.
 
-**BEAT 13 — MARA ARRIVES (0:32–0:35)**
-- *What happens:* Mara drives up after June's call. "That's not ink. It's on you the way it's on paper." In gloves she examines page one: rag paper, wet from the inside. "There's something on the back. You only ever read the front." She takes two pages to her lab; June stays. "Nine o'clock every night."
+**BEAT 13 — THE BOX (0:32–0:37)** *(pp. 28–31)*
+- *What happens:* Night at Alder Hill. Ellie: Ingrid keeps asking for Theodore. Ingrid, in coat and hat: "Don't let him finish. The sentence." She gives Theo a brass key on a ribbon: "Under the stairs. Burn it." Ellie: "Ask the house. Tonight, Mr. Lindqvist. Not tomorrow." In the cellar: a tin with the yellow dress and the green notebook, its margins full of pencil notes in a boy's slanted hand ("!!", "go on", "what's behind the door??"); the last line is the Theodore sentence. The bulb gutters; a tall wet figure stands behind the boiler; Theo says "Tomas?" A cold hand closes on his wrist, holds the notebook open at the inside back cover (*T.A. — CHIEF READER*), and presses a small hard object into his palm. Theo flees with the notebook and shoves the object into his coat pocket without looking; it comes out of the pocket open and empty.
+- *Character:* Terror; recognition of the name.
+- *Mystery:* Who is Theodore? Who read the notebook?
+- *Horror/suspense:* First full view of the Wet Boy; the jump.
+- *Purpose:* The notebook; Ingrid's warning; the chewed pencil; misdirection.
+- *Script note:* In the first draft the nurses' station was a separate scene; its two lines now sit in Ingrid's room.
+
+**BEAT 14 — DICTATION (0:37–0:40)** *(pp. 31–32)*
+- *What happens:* Kitchen, 11:50 p.m. Theo reads his own typed pages aloud to prove they are his. With each sentence the table slides farther away; he drowns on dry land. June finds him, blue, and hits his back; he coughs pond water and a chip of slate. "I'm calling Mom." "No." "I'm calling her."
+- *Character:* June's competence and fear.
+- *Mystery:* The pages can hurt him.
+- *Horror/suspense:* Practical forced-perspective; drowning in a dry room.
+- *Purpose:* Physical stakes; Bleed made visible. Mara now arrives because of this scene, not before it.
+
+**BEAT 15 — MARA ARRIVES (0:40–0:43)** *(pp. 32–34)*
+- *What happens:* Morning. Mara has driven five hours after June's midnight call. Four lines of ink on Theo's forearm: "That's not ink. It's under the skin. It sits in the epidermis the way iron-gall sits in paper." In gloves she examines page one: rag paper, "wet from the inside." The back is pencil, a boy's cursive pressed into a groove; she can see it, cannot read it, and her phone photographs blank paper: "You only ever read the front."
 - *Character:* Their history in a gesture.
 - *Mystery:* The back; the arm.
 - *Horror/suspense:* Physical impossibility in daylight.
 - *Purpose:* The skeptic enters; plant the back and the body.
 
-**BEAT 14 — THE BOX (0:35–0:40)**
-- *What happens:* Night at Alder Hill. Ellie: Ingrid keeps asking for Theodore. Ingrid, in coat and hat: "Don't let him finish. The sentence." She gives Theo a brass key on a ribbon: "Under the stairs. Burn it." Ellie: "Tonight, Mr. Lindqvist. Not tomorrow." In the cellar: a tin with the yellow dress and the green notebook, its margins full of pencil notes in a boy's slanted hand ("!!", "go on", "what's behind the door??"); the last line is the Theodore sentence. The bulb gutters; a tall wet figure stands behind the boiler; Theo says "Tomas?" A cold hand closes on his wrist, holds the notebook open at the inside back cover (*T.A. — CHIEF READER*), and presses a small hard object into his palm. Theo flees with the notebook and shoves the object into his coat pocket without looking.
-- *Character:* Terror; recognition of the name.
-- *Mystery:* Who is Theodore? Who read the notebook?
-- *Horror/suspense:* First full view of the Wet Boy; the jump.
-- *Purpose:* The notebook; Ingrid's warning; the chewed pencil; misdirection.
+**BEAT 16 — THE TWO BACKS (0:43–0:46)** *(pp. 34–35)*
+- *What happens:* Mara lays page one beside the sheet Theo copied from: the pencil on page one is dark and deep; on the copied sheet it is a faint gray. "Every line that comes up on you, the pencil on my pages gets lighter. You're writing over someone." "It's my handwriting." "The front is. The back isn't yours." "Stop copying them." "I can't." "Can't, or won't?" She takes both pages to her lab: "Don't read anything aloud." Then the decision: "I came to take you home." June: "I'm staying. He can't do this by himself. I'll call you at nine. Every night." Mara: "Every night. I'll be back Sunday."
+- *Character:* Mara's fear under control; Theo's addiction; June chooses.
+- *Mystery:* What is being erased, and whose hand is on the back?
+- *Horror/suspense:* The blank photograph.
+- *Purpose:* Material evidence; the clock; June's first decision (she stays, and sets the terms).
+- *Script note:* In the first draft this was two scenes, Mara's arrival and a video call from her lab with a pencil-hardness grid (4B to 2H). One scene now carries both, and the evidence is something the audience can see across a kitchen table.
 
-**BEAT 15 — DICTATION (0:40–0:43)**
-- *What happens:* Kitchen. Theo reads his own typed pages aloud to prove they are his. With each sentence the table slides farther away; he drowns on dry land. June finds him, blue, and hits his back; he coughs pond water and a chip of slate. She calls Mara.
-- *Character:* June's competence and fear.
-- *Mystery:* The pages can hurt him.
-- *Horror/suspense:* Practical forced-perspective; drowning in a dry room.
-- *Purpose:* Physical stakes; Bleed made visible.
-
-**BEAT 16 — THE LAB (0:43–0:46)**
-- *What happens:* Video call from Mara's lab. Two inks, two hands. The pencil on the back: she can see it, can't photograph it, can't read it. The graphite has gone from a 4B to a 2H as the writing on Theo's arm has grown to four lines: "You're writing over someone. Stop copying them." "I can't. I'm writing."
-- *Character:* Mara's fear under control; Theo's addiction.
-- *Mystery:* What is being erased?
-- *Horror/suspense:* The blank photographs.
-- *Purpose:* Material evidence; the clock.
-
-**BEAT 17 — WALTER'S STUDY (0:46–0:51)**
-- *What happens:* Walter's cottage. He shows his own forearm, faded: *I DID NOT KNOW* — a senator's memoir, 1991. The senator signed, and "the man I'd been writing for stopped being the man I'd met." Walter can't remember being seven: "My mother. I'm told." "Don't copy. Don't read it aloud. Don't sign." Theo: "I thought it was a ghost." "A ghost is what's left of someone who stopped." The envelope says Theodore: "People don't throw away their names. They leave them somewhere." "A page has two sides. Whoever's holding yours has been pressing hard." "Tell somebody something true. He can't copy that."
+**BEAT 17 — WALTER'S STUDY (0:46–0:51)** *(pp. 35–39)*
+- *What happens:* Walter's cottage. He shows his own forearm, faded: *I DID NOT KNOW* — a senator's memoir, 1991. The senator signed, and "the man I'd been writing for stopped being the man I'd met." Walter can't remember being seven: "My mother. I'm told." Theo: "I thought it was a ghost." "A ghost is what's left of someone who stopped. This is something else. It writes what you'd like to be true, in your own hand. The more you believe it, the more of it shows. And the more of it shows, the less of what happened is left." The rules: "Don't copy it. That's agreeing with your hands. Don't read it aloud. That's agreeing with your lungs. Don't sign. That's agreeing for good." The envelope says Theodore: "People don't throw away their names. They leave them somewhere." Walter counts on his fingers: "A line, one dimension. A page, two. A book, three. The time it takes to read it, four. Every way it might have gone, five. The sixth is the back of the page, where everything it didn't say goes." "That's a metaphor." "It's a filing system. Whoever's holding yours has been pressing hard." "Tell somebody something true. Out loud. It costs you something. It costs him more. He's built from one story, and a true thing is a hole in it."
 - *Character:* Walter's weary kindness.
 - *Mystery:* The rules.
 - *Horror/suspense:* Walter looks at his own hands.
-- *Purpose:* Exposition delivered by experience; Rules 1 and 3.
+- *Purpose:* Exposition delivered by experience; Rules 1, 3 and 4; **the first place the film says what the "6th dimension" is** (the title's payoff comes in the Study, Beat 32).
 
-**BEAT 18 — THE MIRROR (0:51–0:55)**
+**BEAT 18 — THE MIRROR (0:51–0:55)** *(pp. 39–42)*
 - *What happens:* Bathroom. Lines cover his arm and ribs. He tries Walter's advice ("I'm tired. I'm afraid") and the reflection answers: "That's not what he meant." Theodore, dry and warm: "You wrote forty pages. Your daughter thinks you're a hero." He offers to stop "the wet one": "One line." His finger writes in the fog *and she lived*; Theo's right hand writes it on the pad while his left hand tries to stop it. A new line surfaces on his collarbone. (The false completion; the clause that erases Tomas is held back for Act III.)
 - *Character:* Theo wants this.
 - *Mystery:* Theodore is himself.
@@ -945,57 +949,57 @@ A pond finally holds a reflection. Nell holds out her hand and Theo takes it. In
 
 ### ACT II-B (0:55–1:18)
 
-**BEAT 19 — THE HERO'S WELCOME (0:55–0:59)**
+**BEAT 19 — THE HERO'S WELCOME (0:55–0:59)** *(pp. 42–45)*
 - *What happens:* Dawn at the quarry turnout: the letters of TOMAS ARVIDSEN crumble under his fingers and THEODORE LINDQVIST cuts itself into the stone. The sexton: "Who's Tomas? Nobody drowned. You pulled her out." The marigold jar is a mystery to him. Theo shakes his hand. That night the diner throws a welcome-home party: "I always loved this. 'I reached.'" Ellie, unsmiling: "Funny. I don't remember it that way." "You were there?" "I was."
 - *Character:* Guilty pleasure; Ellie is the one unrevised witness.
 - *Mystery:* Tomas is being erased.
 - *Horror/suspense:* An erasure in real time; a town too warm.
 - *Purpose:* The false victory; the stakes turn.
 
-**BEAT 20 — PERFECT CONTINUITY (0:59–1:02)**
+**BEAT 20 — PERFECT CONTINUITY (0:59–1:02)** *(pp. 45–47)*
 - *What happens:* The diner next morning: every mug filled to one line; two men say the same sentence at once; a man's coffee never lowers; the clock stays at 7:15. Theo flees to his car; Theodore sits in the back seat. Theo tests him: "Tomas." Theodore's throat works; he can only say "the neighbor's boy." "I can say anything. I choose not to." "I'll be there for June. I always will."
 - *Character:* Theodore's first sustained scene.
 - *Mystery:* What does he want?
 - *Horror/suspense:* The horror of perfection.
 - *Purpose:* The antagonist at full persuasion.
 
-**BEAT 21 — TWO FATHERS (1:02–1:05)**
+**BEAT 21 — TWO FATHERS (1:02–1:05)** *(pp. 47–49)*
 - *What happens:* Dinner. June, Theo and Theodore at one table. June calls the warm one "Dad" and Theo "Theo." She asks Theo to hear her story: "In a minute." Theodore: "Read it to me." "You should listen too. Dad's listening." "I'm your dad." "I know. You're Dad too." In the window over the sink, June reads to an empty chair.
 - *Character:* Theo watches his daughter choose.
 - *Mystery:* June's role.
 - *Horror/suspense:* Domestic, quiet, excruciating.
 - *Purpose:* The emotional core; raise the stakes.
 
-**BEAT 22 — MARA'S TWO MARRIAGES (1:05–1:07)**
+**BEAT 22 — MARA'S TWO MARRIAGES (1:05–1:07)** *(pp. 49–52)*
 - *What happens:* Mara on the porch: "I remember a flood… I remember you carrying me out. I remember you in the doorway at three in the morning with a glass of water. Which one did I leave?" She has forgotten where they met; Theo supplies "Café Orso." He tells her one true thing, "I don't know what I did that day," and the line *I reached* fades from his wrist. "What did it cost you?" "I don't know." "That's the worst part." "Don't let June read it aloud."
 - *Character:* Mara's grief and clarity.
 - *Mystery:* The truth is being overwritten.
 - *Horror/suspense:* A woman holding two lives.
 - *Purpose:* The ticking clock; Witness.
 
-**BEAT 23 — WALTER'S LAST CHAPTER (1:07–1:10)**
+**BEAT 23 — WALTER'S LAST CHAPTER (1:07–1:10)** *(pp. 52–54)*
 - *What happens:* Walter, calm: "I think I'm going. Out of everyone's memory." The last rule: "It ends when the one who left it open says it truthfully. And you have to say the name of the one it stole from." "Who?" "A boy… I had it this morning." His forty-one books go blank. "Can I help you?" He vanishes; the cottage is cobwebbed and bare. On the floor lies his mother's photograph; on the back: *MOTHER, 1958.*
 - *Character:* Walter's grace.
 - *Mystery:* Whose name?
 - *Horror/suspense:* Revision as a physical event.
 - *Purpose:* The cost made visible; the final rule.
 
-**BEAT 24 — THE TURNOVER (1:10–1:14)**
-- *What happens:* Night. Pencil scratching on every wall; the house is reversed, labels mirror-written, water rising. June reads Theo's pages aloud to Theodore: "So I reached into the black water and took her hand, and she--" A wet hand covers her mouth. Theo, thinking it an attack, attacks the figure; June sees nothing: "You're not Dad." Theo, for the first time, tells the truth: "I'm not a hero! She asked me to come see the door and I said 'in a minute'! I didn't even look up!" The house snaps back; the line *There was nobody on the ledge* fades. June: "Then who saved her?" "I don't know."
+**BEAT 24 — THE TURNOVER (1:10–1:14)** *(pp. 54–57)*
+- *What happens:* Night. Pencil scratching on every wall; the house is reversed, labels mirror-written, water rising. June reads Theo's pages aloud to Theodore: "So I reached into the black water and took her hand, and she--" A wet hand covers her mouth. Theo, thinking it an attack, attacks the figure; June sees nothing: "You're not Dad." Theo, for the first time, tells the truth: "I'm not a hero! She asked me to come see the door and I said 'in a minute'! I didn't even look up!" The house snaps back; the line *There was nobody on the ledge* fades. June: "Then who saved her?" "I don't know." June takes out her phone: the nurse said she was there, at the diner. "It's the middle of the night." "She works nights." She calls Ellie at the station, and Theo, for once, does not stop her. (June's second decision.)
 - *Character:* First confession, to his daughter.
 - *Mystery:* The Wet Boy is stopping June from reading.
 - *Horror/suspense:* The film's biggest set piece so far.
 - *Purpose:* The first truth; June is implicated; a misread gesture the film will re-read.
 
-**BEAT 25 — THE POND AT NIGHT (1:14–1:16)**
+**BEAT 25 — THE POND AT NIGHT (1:14–1:16)** *(p. 57)*
 - *What happens:* June asleep, Theo walks to the pond. The water holds no reflection. A tall dripping figure stands waist-deep, arms out, mouth moving silently. Theo throws a stone; it enters the water without a ring. The figure lowers one arm and points past Theo, up the hill at the house. Theo runs back.
 - *Character:* Terror.
 - *Mystery:* What is the figure saying?
 - *Horror/suspense:* The most frightening image in the film; false menace.
 - *Purpose:* Misdirection before the reveal.
 
-**BEAT 26 — NELL (1:16–1:18)**
-- *What happens:* 4 a.m., rain. Ellie, soaked, sets a framed photograph on the table: Nell at five in the duck dress beside Theo at nine. "This hung in Mom's shadow box until Dad took it down." For the first time her face stays sharp. "I'm Nell." "You never took my hand."
+**BEAT 26 — NELL (1:16–1:18)** *(p. 58)*
+- *What happens:* 4 a.m., rain. Ellie, soaked, at the back door: "Your daughter called the station. I walked from the highway." She sets a framed photograph on the table: Nell at five in the duck dress beside Theo at nine. "This hung in Mom's shadow box until Dad took it down." For the first time her face stays sharp. "I'm Nell." "You never took my hand."
 - *Character:* Theo's collapse.
 - *Mystery:* The truth arrives.
 - *Horror/suspense:* A human face, finally seen.
@@ -1003,114 +1007,114 @@ A pond finally holds a reflection. Nell holds out her hand and Theo takes it. In
 
 ### ACT III (1:18–1:51)
 
-*Synced to `script/THE_GHOSTWRITER_ACT_3`. Page references are to the full-script PDF (`script/THE_GHOSTWRITER_FULL_SCRIPT.pdf`, 100 pages).*
+*Synced to `script/THE_GHOSTWRITER_ACT_3`. Page references are to the full-script PDF (`script/THE_GHOSTWRITER_FULL_SCRIPT.pdf`, 97 pages).*
 
-**BEAT 27 — WHAT NELL REMEMBERS (1:18–1:22)** *(pp. 61–65)*
+**BEAT 27 — WHAT NELL REMEMBERS (1:18–1:22)** *(pp. 59–62)*
 - *What happens:* 4 a.m., rain, the framed photograph on the table. Nell tells it plainly: he came to find her; Tomas had her in the middle of the pond and was swimming her in; Theo was standing on the ledge; Tomas said *take her hand,* twice; Theo put his arm out and then didn't; Tomas looked at him, his arm slid off, he went under; Theo walked home dry. Theodore sits at the head of the table, unseen by Nell: "She was five, Theo. Memory is a draft. I'm the fair copy." Nell watches Theo's eyes land on the empty chair: "He's here." She explains the refrain (Ingrid counted two boys, never her), why she changed her name, why she came back ("when she forgets, there's nobody left who remembers him"), and that Tomas's mother still leaves marigolds at the quarry every Friday and nobody has told her what happened. The line on Theo's collarbone pales as she speaks. From upstairs, in Theo's own voice: *"June. Come see the door."*
 - *Character:* Nell's severity and love; Theo's collapse into knowledge.
 - *Mystery:* Revelation 4.
 - *Horror/suspense:* The truth is worse than the haunting; the voice that is his own.
 - *Purpose:* The emotional center; sets up the choice.
 
-**BEAT 28 — THE EMPTY BED (1:22–1:24)** *(pp. 65–67)*
+**BEAT 28 — THE EMPTY BED (1:22–1:24)** *(pp. 63–64)*
 - *What happens:* June's bed is empty and the front door is open. Two sets of bare wet prints, a child's and a larger pair beside them, lead across the lawn toward the quarry. Theodore stands in the rain, which does not touch him: "The wet one has her. I did ask what he wants… Sign, Theo. She'll wake at home with her shoes by the bed, having never left." In his coat pocket Theo finds a chewed pencil. Nell: "That's Tomas's." "How do you know?" "Teeth marks." And: "Tomas pulled me out of that water." Theo: "You don't know what he is now." Nell: "I know what he was." He takes the green notebook and calls Mara: "I'm putting my shoes on."
 - *Character:* Panic, and the two witnesses who disagree about Tomas.
 - *Mystery:* Who took her?
 - *Horror/suspense:* A child in jeopardy, with misdirection.
 - *Purpose:* The deadline; the pencil.
 
-**BEAT 29 — THE EDGE (1:24–1:26)** *(pp. 67–69)*
+**BEAT 29 — THE EDGE (1:24–1:26)** *(pp. 65–66)*
 - *What happens:* Predawn at the pond. June's pink sneakers sit side by side on the ledge; between them and the water, two large bare prints are planted facing them. Mara tries the water: it stays at her ankles and rings like slate. "It won't let you in." "It let her." She ties her yellow nylon tow rope around Theo's waist; Nell takes the coil, Mara stands behind her: "If it goes slack, I pull." "It won't pull me back." "I'll pull anyway." Theo stands at the edge and his right arm rises a few inches and stops, shaking: his body repeats 1987. Nell: "Theo." Mara: "Go." Theo: "Nell. I'm sorry." Nell: "After." He steps off.
 - *Character:* The test; the allies hold the rope.
 - *Mystery:* Will he freeze?
 - *Horror/suspense:* Suspense built from stillness.
 - *Purpose:* The replay with a choice.
 
-**BEAT 30 — DESCENT (1:26–1:28)** *(p. 69)*
+**BEAT 30 — DESCENT (1:26–1:28)** *(p. 66)*
 - *What happens:* He sinks through pale sheets of paper, faint handwriting turning on them, and his feet touch a black floor under half an inch of water. His clothes are dry. His footsteps sound half a second before they land; his own voice comes back reversed.
 - *Character:* Surrender.
 - *Mystery:* The Verso.
 - *Horror/suspense:* Weightlessness; vertigo.
 - *Purpose:* The crossing.
 
-**BEAT 31 — THE VERSO (1:28–1:31)** *(pp. 69–71)*
+**BEAT 31 — THE VERSO (1:28–1:31)** *(pp. 66–68)*
 - *What happens:* Gray flakes settle on the water without a ripple. Thousands of translucent pages hang in rows. Wet prints guide him between them to the Waiting Rooms: twelve children cross-legged with blank books, who lift their heads together; a man in a wedding suit with a hand raised to knock; a woman holding a telephone whose cord ends in the air; Walter Pruitt at a school desk, typing on a typewriter with no paper in it. "Can I help you?" Theo: "You asked me to put your name somewhere. I will." Walter: "Did I? That was good of me." At the end of the last row a door stands alone with amber light spilling around it.
 - *Character:* Awe and dread; a debt made.
 - *Mystery:* The mythology made visible.
 - *Horror/suspense:* Scale; thousands of unfinished gestures.
 - *Purpose:* The film's one large world reveal; Walter's fate.
 
-**BEAT 32 — THE STUDY (1:31–1:33)** *(pp. 71–72)*
+**BEAT 32 — THE STUDY (1:31–1:33)** *(pp. 68–69)*
 - *What happens:* A warm amber room papered in struck-through sentences (*I was not there. It was my fault. Forgive me. I love her more than the work.*). Shelves of books in the handwriting of the pages. June asleep in an armchair, a blank book in her lap, her own neat capitals fading from her palms (CALL MOM 9. 11 PAGES. DAD.). Theodore at the desk in shirtsleeves with two cups of tea and one cream page: the lie, a printed name, a blank space beside it.
 - *Character:* Theodore at home.
 - *Mystery:* What is in the room?
 - *Horror/suspense:* Beauty as threat.
 - *Purpose:* The antagonist's lair.
 
-**BEAT 33 — THE BEST ARGUMENT (1:33–1:36)** *(pp. 72–75)*
-- *What happens:* Theodore: "Everything you dropped on the way here": Perry Street, the second novel, his father's whistle, the first sentence of *Slate.* "I hold everything you couldn't carry. Elise, too." Theo cannot say June's middle name; it was paid the night he said "in a minute" aloud. Theodore names the other cost too: his father's whistle, the price of the truth he told Mara. Theo purses his lips and only breath comes out. "I'm not taking your life. I'm the part of you that's been holding it." Then the argument: the kindest line is the one where the boy never has to drown and his mother never loses him. "Wouldn't you like to let her stop?" Lines surface on Theo's neck and jaw. He takes the pen and draws the first stroke of a T. Then: "Nell said he told me to take her hand… I stood there. I had her hand in front of me and I didn't take it." The lines on his jaw lift away. "You don't know why." "No." "Then don't. Sign." "I want to know."
+**BEAT 33 — THE BEST ARGUMENT (1:33–1:36)** *(pp. 69–73)*
+- *What happens:* Theodore: "Do you know what this room is? The back of the page, where everything it didn't say goes. Everything you dropped on the way here": Perry Street, the second novel, his father's whistle, the first sentence of *Slate.* "I hold everything you couldn't carry. Elise, too." Theo cannot say June's middle name; it was paid the night he said "in a minute" aloud. Theodore names the other cost too: his father's whistle, the price of the truth he told Mara. Theo purses his lips and only breath comes out. "I'm not taking your life. I'm the part of you that's been holding it." Then the argument: the kindest line is the one where the boy never has to drown and his mother never loses him. "Wouldn't you like to let her stop?" Lines surface on Theo's neck and jaw. Theodore holds out the pen. "And me?" "You'll be very happy." Theo takes the pen and draws the first stroke of a T. Then: "Nell said he told me to take her hand… I stood there. I had her hand in front of me and I didn't take it." The lines on his jaw lift away. "You don't know why." "No." "Then don't. Sign." "I want to know."
 - *Character:* Theo nearly signs, then confesses.
 - *Mystery:* The Retention cost becomes clear.
 - *Horror/suspense:* The best argument is kindness.
 - *Purpose:* The intellectual and emotional climax of the antagonist.
 
-**BEAT 34 — TURNING THE PAGE (1:36–1:37)** *(pp. 75–77)*
+**BEAT 34 — TURNING THE PAGE (1:36–1:37)** *(pp. 73–74)*
 - *What happens:* He turns the page over for the first time. The back looks blank; tilted into the lamp's raking light, the grooves of a boy's pencil cast shadows (Mara's groove, Act II), and graphite darkens in them as he reads: "Theo." "Take her hand." Theodore's hand shoots across the desk and stops an inch above the paper. The warmth begins to fail; the steam stops rising from the tea. Theodore, in the voice that said "in a minute": "Don't." Theo: "There you are." The third line: "Look."
 - *Character:* Acceptance of blame.
 - *Mystery:* The back is readable.
 - *Horror/suspense:* Light dying in the room.
 - *Purpose:* Begin Revelation 5.
 
-**BEAT 35 — THE VERSO REPLAY (1:37–1:39)** *(pp. 77–80)*
+**BEAT 35 — THE VERSO REPLAY (1:37–1:39)** *(pp. 74–77)*
 - *What happens:* The walls go to tracing paper and eight windows light up, each an earlier scene from where the boy stood. His face is never shown. (1) A wet hand beats on the kitchen window while a dry reflection breathes fog onto it. (2) Prints end at the white door; palm and forehead on the paint; Theo mops toward him and the mop sweeps through his ankles. (3) The cellar: a hand around Theo's wrist that does not squeeze, the notebook's back cover held open, a chewed pencil pressed into his palm. (4) Behind the memorial slab, palms on the granite as the letters leave; his forehead drops when the sexton's hand is shaken. (5) The diner window from the sidewalk, WELCOME HOME, THEO; Nell passes him at arm's length and her head turns an inch. (6) A hand over June's mouth to stop the false sentence, a fist, and a boy who does not raise his hands. (7) The pond by moonlight, his arm pointed up at the farmhouse window, where Theodore stands with a hand on the glass. (8) Tonight: June takes off her sneakers, the boy shakes his head and spreads his arms, she walks around him into the water, and the surface will not let him follow.
 - *Character:* The audience re-reads every scare as care.
 - *Mystery:* Everything flips.
 - *Horror/suspense:* Relief turning to grief.
 - *Purpose:* The formal payoff of the title; Revelation 5.
 
-**BEAT 36 — THE TRUE MEMORY (1:39–1:43)** *(pp. 80–83)*
+**BEAT 36 — THE TRUE MEMORY (1:39–1:43)** *(pp. 77–80)*
 - *What happens:* "Show me." Palm on the page, graphite on the heel of the hand. 3:34 P.M., August 14, 1987. A boy's hand, graphite on its heel; sneakers on wet slate; a bicycle on its side with its front wheel still spinning; a red RUTLAND RAMS jacket on the ledge. Tomas Arvidsen (13) swims Nell (5) in on his back. "Theo! Take her hand!" Nell's small open hand; Theo's rising and stopping two inches short. His eyes go to the jacket, then to Tomas's face, and stay. Tomas, lips blue, nods once, small and quick, shoves Nell onto the stone, looks up at Theo, says nothing, and goes under. A chewed pencil floats up and sinks. Theo's sneakers are dry. A quarryman dives in. Theo walks up the steps, past the stopped wheel, his hands dry.
 - *Character:* The truth, including the thing he will never know.
 - *Mystery:* Everything resolves except fear or envy.
 - *Horror/suspense:* The quietest scene in the film.
 - *Purpose:* Revelation 5; the formal peak.
 
-**BEAT 37 — THE SENTENCE (1:43–1:45)** *(pp. 83–86)*
+**BEAT 37 — THE SENTENCE (1:43–1:45)** *(pp. 80–84)*
 - *What happens:* Theodore: "Did you find the reason?" He offers one: fear, shock, grief, "written so well you'll weep." Theo: "Then I'll be a man who doesn't know." Three lines come up at the foot of the page: *"You don't have to be brave. You just have to be quick. Say my name when you tell it."* In the green notebook he strikes THEODORE from the child's unfinished sentence and finishes it with Tomas's pencil: "Tomas Arvidsen, thirteen, reached into the black water and took her hand, and she lived, and he did not, and I stood there." He reads it aloud (Theodore: "Don't read it aloud." Theo: "That's the part that counts."). The Fair Copy lifts as steam; a pencil writes across his back; the books on the shelves go white. "You will never write a sentence like mine again." "They'll notice." "Let them. I'll tell them why." Water seeps up through the floor. He cannot say June's middle name; down the yellow rope, thin and flat, Mara and Nell are calling it: "June Elise Lindqvist-Hale!" He says it, and her fingers curl.
 - *Character:* Acceptance.
 - *Mystery:* The rules close.
 - *Horror/suspense:* The cost, felt.
 - *Purpose:* Truthful completion; Retention; Witness.
 
-**BEAT 38 — NOW (1:45–1:46)** *(pp. 86–89)*
+**BEAT 38 — NOW (1:45–1:46)** *(pp. 84–86)*
 - *What happens:* The flood takes the armchair and June goes under. Theo claws onto the desk, an island with the lamp still burning. A boy wades into the lamplight chest-deep with June held against him: Tomas, with a bruise on his cheekbone where Theo hit him. "Take her hand." Theo's hand rises and stops two inches short. "Take her hand." He looks at Tomas's face and does not move. "Now." His hand crosses the two inches. June coughs and wakes: "Dad?" "I'm here." Tomas has one arm hooked over the edge of the desk, his chin on the wood. Theo goes down on his stomach and holds out his hand: "Tomas." It does not shake. Tomas takes it. As Theo hauls him up, the water stops running off him and his hair and shirt dry. "I hit you." Tomas shrugs; a lopsided grin.
 - *Character:* The reach, completed in both directions.
 - *Mystery:* None.
 - *Horror/suspense:* A held heartbeat.
 - *Purpose:* The film's release.
 
-**BEAT 39 — THE DRY MAN'S END (1:46–1:47)** *(pp. 89–90)*
+**BEAT 39 — THE DRY MAN'S END (1:46–1:47)** *(pp. 86–88)*
 - *What happens:* The flood drains and the Study is gone. Theodore stands alone on the floor, a seam running up his collar and across his jaw: "I only wanted to be the one who did it." "So did I." He looks at Tomas and says the name he could not say: "Tomas." Then: "Thank you." A thread of ink crosses to Theo's palm and sinks in; the rest of him comes apart as flakes. Tomas slides the notebook into Theo's coat, lays the pencil in his palm, and folds his fingers over it, one at a time. Theo lets him. The rope hauls Theo and June up. Tomas, dry, hands in his pockets, mouths *Go on.* As they rise the Verso lets go: the children close their books and stand, the man's knock opens a door onto a lit room, the woman's cord reaches the wall and she says hello, Walter's typewriter makes a sound and types BY WALTER PRUITT. Far below, a boy walks away across the silt, leaving dry footprints.
 - *Character:* Compassion without absolution.
 - *Mystery:* Closure for the antagonist; Law 8 lifts.
 - *Horror/suspense:* Quiet dissolution.
 - *Purpose:* Integration; the dry/wet inversion completes; the Waiting Rooms are released.
 
-**BEAT 40 — SURFACE (1:47–1:48)** *(pp. 90–93)*
+**BEAT 40 — SURFACE (1:47–1:48)** *(pp. 88–91)*
 - *What happens:* The rope jerks; Mara and Nell haul. Theo breaks the surface with June. Mara steps off the ledge and the water takes her to the waist: it lets her in now. She takes June. Nell holds out her hand and Theo takes it. "Nell." "After." "It's after." "Yes. It is." June: "Who saved her?" "His name was Tomas Arvidsen. He was thirteen." June, to Nell: "Aunt Nell?" "Hi, June." Nell lifts the back of his coat and shirt: in slanted pencil, T.A. - CHIEF READER, and the water does not run it. "Tomas Arvidsen." Her palm over the letters. Theo: "Perry Street." Mara laughs: "It was the boiler." "Café Orso." "I owe you a scone." "You owe me several." Mara: "Get up. She's getting checked, and so are you." The fog lifts, and the sky lies in the pond for the first time.
 - *Character:* Exhaustion and grace.
 - *Mystery:* The name on his back.
 - *Horror/suspense:* Release.
 - *Purpose:* Return; Witness (the retrieved names); the pencil's last proof.
 
-**BEAT 41 — WET (1:48–1:49)** *(pp. 93–95)*
+**BEAT 41 — WET (1:48–1:49)** *(pp. 91–92)*
 - *What happens:* Alder Hill, rain on the glass doors. Ingrid folding washcloths: "One in. Two in." Theo comes in from the rain, hair dripping. She cups his face: "Tomas! Look at--" She stops. "Theo." "You're wet." "I went in the water, Mom." "Theo came back wet." At "wet" every resident turns toward the glass doors, then together toward Theo; the man at the window nods. To Nell: "He sees you now." Ingrid folds a third washcloth and holds it out to her: "Three in."
 - *Character:* Her blessing; Nell counted at last.
 - *Mystery:* None.
 - *Horror/suspense:* None.
 - *Purpose:* Payoff of the refrain.
 
-**BEAT 42 — THE MARKER (1:49–1:51)** *(pp. 95–100)*
+**BEAT 42 — THE MARKER (1:49–1:51)** *(pp. 92–97)*
 - *What happens:* Friday. The memorial reads TOMAS ARVIDSEN / 1974 - 1987 / HE REACHED FOR HER. Marit Arvidsen (82) replaces the marigolds. Theo tells her: on the fourteenth of August, 1987, he stood on the ledge, he was told to take her hand, and he didn't. "They said you were home." "I wasn't." "How old were you?" "Nine." "He was thirteen." "Did he say anything? At the end." "No. He looked at me. He nodded." He gives her the notebook and the chewed pencil. Her thumb moves over the margin note, *best part so far,* and the tooth marks: "He ruined every one." "Say it again." "Tomas." "Again." "Tomas Arvidsen." "Thank you for saying it." She takes his hand in both of hers. Dusk in the farmhouse kitchen: dust sheets gone, the FOR SALE sign face down in the grass, the white door open on Nell's room (the duck dress on the pillow), three paperbacks and no gap, the old photograph on the table with Tomas's face clear at last (freckled, grinning, a pencil behind his ear), the wall silent. Walter's voicemail ("I understand you owe me a name"). On a notebook labeled in June's block capitals THEO - BOOKS (DO), Theo writes FOR WALTER PRUITT and then "I was nine. I don't know why I didn't move." He reads it aloud and nothing happens. He phones Priya and reads her the one sentence she asked for: "That's not like you." "No." "…Send me the second." He whistles two falling notes under his breath. June in the doorway: "You're whistling." His pencil keeps moving and stops mid-word. "Can I read you my story?" "Now." She reads: "Chapter One. The lighthouse had no keeper, only a lamp that wouldn't go out." Final image: the pond at dusk holding the sky; a single ring spreads from below; black.
 - *Character:* A smaller, truer man.
 - *Mystery:* Fear or envy, unanswerable.

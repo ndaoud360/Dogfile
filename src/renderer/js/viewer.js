@@ -11,6 +11,7 @@ function applyMediaTheme() {
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyMediaTheme());
 import { readExif } from './exif.js';
+import { ensureComponent } from './components.js';
 import { requirePro, initLicense } from './license.js';
 import { EMBED, pendingFiles, onHost, tellHost, showInFiles, setTitle, onLeave, onWindowClose, onAsk } from './embed.js';
 
@@ -95,6 +96,7 @@ function layout() {
 let ocrWorker = null, OCR = null;
 async function getOcr() {
   if (ocrWorker) return ocrWorker;
+  if (!(await ensureComponent('ocr', 'Reading text in photos'))) throw new Error('Text recognition isn’t installed');
   const mod = await import('../vendor/tesseract/tesseract.esm.min.js');
   const createWorker = mod.createWorker || mod.default.createWorker;
   const base = new URL('../vendor/tesseract/', import.meta.url).href;

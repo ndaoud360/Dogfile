@@ -1,6 +1,7 @@
 // AI search: "photos of a dog running on grass", "songs with piano", "find the video where I'm riding a bicycle".
 // Free and private: open models run on this PC. Pictures and video frames use CLIP, music and sounds use CLAP.
 // Embeddings are cached, so a folder is only analyzed once.
+import { ensureComponent } from './components.js';
 import { api, bus, h, esc, toast, KINDS, IS_WIN, fileUrl } from './core.js';
 import { confirm, modal } from './dialogs.js';
 import { requirePro } from './license.js';
@@ -87,6 +88,7 @@ export function call(msg, transfer, onPartial) {
 let idleTimer = null;
 const fmtMB = (b) => (b / 1048576).toFixed(0) + ' MB';
 export async function ensureModels(need) {
+  if (!(await ensureComponent('ort', 'The on-device AI'))) return false;
   let st = await api('ai:status');
   const missing = need.filter((k) => !st[k].ready);
   if (!missing.length) return true;

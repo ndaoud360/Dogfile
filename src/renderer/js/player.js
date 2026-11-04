@@ -9,6 +9,7 @@ import { modal } from './dialogs.js';
 import { applyColors, mediaSettings } from './theme.js';
 import { EMBED, pendingFiles, onHost, tellHost, showInFiles, setTitle, onWindowClose, onAsk } from './embed.js';
 import { analyzeAudio, cachedAnalysis } from './audio-analysis.js';
+import { ensureComponent } from './components.js';
 function applyMediaTheme() {
   const dark = applyColors(mediaSettings(settings));
   if (!EMBED && sys?.platform === 'win32') api('win:overlay', dark ? { color: '#101012', symbolColor: '#c9cacc' } : { color: getComputedStyle(document.documentElement).getPropertyValue('--tabbar').trim() || '#efeff0', symbolColor: '#3a3a3a' });
@@ -145,7 +146,8 @@ function setSource(t = 0, autoplay = true) {
 function fallback(reason) {
   const order = P.vStream ? ['direct', 'remux', 'transcode'] : ['direct', 'audio'];
   const next = order.find((m) => !P.triedModes.has(m) && (m !== 'remux' || videoOk(P.vStream)));
-  if (!next || !sys.ffmpeg) { showError(reason); return; }
+  if (next && !sys.ffmpeg) { needEngine('Playing this file').then((ok) => (ok ? fallback(reason) : showError(reason))); return; }
+  if (!next) { showError(reason); return; }
   const at = pos();
   P.mode = next;
   osd(next === 'transcode' ? 'Converting video on the fly…' : 'Converting audio on the fly…');
@@ -458,10 +460,17 @@ let osdT = null;
 function osd(msg) { const o = $('osd'); o.textContent = msg; o.classList.add('show'); clearTimeout(osdT); osdT = setTimeout(() => o.classList.remove('show'), 1600); }
 function flash(ic) { const c = $('center-flash'); c.innerHTML = icon(ic); c.classList.remove('go'); void c.offsetWidth; c.classList.add('go'); }
 function setBusy(b) { $('busy').classList.toggle('show', b && !!P.item); }
+/** the media engine isn't in this copy of Dogfile until it's first needed: ask, download, then carry on */
+async function needEngine(what) {
+  if (sys.ffmpeg) return true;
+  if (!(await ensureComponent('ffmpeg', what))) return false;
+  sys.ffmpeg = true;
+  return true;
+}
 function showError(msg) {
   setBusy(false);
   const e = $('err'); e.innerHTML = '';
-  e.append(h('div', { class: 'err-title' }, 'Can’t play this file'), h('div', { class: 'err-msg' }, msg || ''), sys.ffmpeg ? null : h('div', { class: 'err-msg' }, 'The ffmpeg component is missing, so only natively supported formats can play.'),
+  e.append(h('div', { class: 'err-title' }, 'Can’t play this file'), h('div', { class: 'err-msg' }, msg || ''), sys.ffmpeg ? null : h('div', { class: 'err-msg' }, 'The media engine isn’t downloaded, so only formats Windows plays natively can open.'), sys.ffmpeg ? null : h('div', { class: 'row-inline' }, h('button', { class: 'btn small primary', onclick: async () => { if (await needEngine('Playing this file')) { $('err').classList.remove('show'); load(P.idx, { startAt: pos() }); } } }, 'Download the media engine')),
     h('div', { class: 'row-inline' }, h('button', { class: 'btn small', onclick: () => openDefault(P.item.path) }, 'Open with Windows default app'), P.list.length > 1 ? h('button', { class: 'btn small', onclick: () => { const n = nextIndex(); if (n != null) load(n); } }, 'Skip to next') : null));
   e.classList.add('show');
 }
@@ -706,7 +715,7 @@ const ED = { a: 0, b: 0, mode: 'fast', format: 'same', removeAudio: false, norma
 const AUDIO_OUT = ['mp3', 'm4a', 'flac', 'wav', 'ogg'];
 function openEdit() {
   if (!P.item) return toast('Open a file first');
-  if (!sys.ffmpeg) return toast('Editing needs the bundled ffmpeg component', { error: true });
+  if (!sys.ffmpeg) { needEngine('Editing').then((ok) => ok && openEdit()); return; }
   const d = dur();
   if (!ED.path || ED.path !== P.item.path) Object.assign(ED, { path: P.item.path, a: 0, b: d, format: 'same', removeAudio: false, normalize: false });
   $('eq-panel').classList.remove('open');
@@ -828,7 +837,7 @@ const fmtTs = (s, ms) => { s = Math.max(0, s || 0); const hh = Math.floor(s / 36
 function toSrt(chunks) { return chunks.map((c, i) => `${i + 1}\n${fmtTs(c.start, true)} --> ${fmtTs(c.end ?? c.start + 3, true)}\n${c.text.trim()}\n`).join('\n'); }
 async function openTranscript() {
   if (!P.item) return toast('Play something first');
-  if (!sys.ffmpeg) return toast('Transcripts need the bundled ffmpeg component', { error: true });
+  if (!sys.ffmpeg && !(await needEngine('Transcripts'))) return;
   const panel = $('tx-panel');
   panel.classList.add('open');
   if (TX.path === P.item.path && TX.chunks.length) return renderTranscript();
@@ -1182,7 +1191,7 @@ onAsk(async (op, a = {}) => {
     case 'subDelay': { if (a.set != null) P.subDelay = 0; subDelay(a.set != null ? a.set : a.by || 0); return { ok: true, msg: `Subtitle delay ${P.subDelay >= 0 ? '+' : ''}${P.subDelay.toFixed(2)} s${P.sub == null && !P.subCues.length ? ' (turn subtitles on to see it)' : ''}` }; }
     // "trim from 1:15 to 4:30 (fast / lossless)": opens Edit with the part chosen; save = make the file now
     case 'trim': {
-      if (!sys.ffmpeg) return { ok: false, msg: 'Trimming needs the bundled ffmpeg component' };
+      if (!sys.ffmpeg && !(await needEngine('Trimming'))) return { ok: false, msg: 'Trimming needs the media engine (not downloaded)' };
       openEdit();
       const d = dur();
       ED.a = Math.max(0, Math.min(d, a.from || 0)); ED.b = a.to ? Math.max(ED.a + 0.2, Math.min(d || a.to, a.to)) : d;

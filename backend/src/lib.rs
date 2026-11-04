@@ -54,6 +54,7 @@ pub mod shell;
 pub mod server;
 pub mod util;
 pub mod update;
+pub mod components;
 #[cfg(windows)]
 pub mod win;
 

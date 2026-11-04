@@ -1,6 +1,8 @@
 // Packs the interface (src/renderer) into app/gen/ui.pak, which the build compiles into Dogfile.exe: no interface
 // files ship beside the program. Dogfile's own scripts and styles are minified first; everything is compressed.
-//   node build/pack-ui.mjs [--out <file>] [--unpack <dir>]   (--unpack also writes the packed files to a folder, for tests)
+//   node build/pack-ui.mjs [--out <file>] [--unpack <dir>] [--exclude vendor/ort,vendor/tesseract]
+//   (--unpack also writes the packed files to a folder, for tests; --exclude leaves those folders out: the Windows builds
+//   download them the first time they're needed, see backend/src/components.rs and build/make-components.mjs)
 // Format: "DGPK" | u32 LE length of the index | deflated JSON index { name: [offset, length] } | deflated files.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,6 +15,7 @@ const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.a
 const src = path.join(root, 'src', 'renderer');
 const out = arg('--out') || path.join(root, 'app', 'gen', 'ui.pak');
 const unpack = arg('--unpack');
+const exclude = (arg('--exclude') || '').split(',').map((x) => x.trim().replace(/\/+$/, '')).filter(Boolean);
 
 // esbuild from the project, or from ESBUILD_DIR (CI installs just esbuild there: npm install --prefix <dir> esbuild)
 let esbuild = null;
@@ -33,6 +36,7 @@ const own = (rel) => !rel.startsWith('vendor/');
 let index = {}, blobs = [], off = 0, raw = 0, mini = 0;
 for (const f of files) {
   const rel = path.relative(src, f).split(path.sep).join('/');
+  if (exclude.some((x) => rel === x || rel.startsWith(x + '/'))) continue;
   let data = fs.readFileSync(f);
   raw += data.length;
   if (esbuild && own(rel) && /\.(js|mjs|css)$/.test(rel)) {

@@ -15,20 +15,26 @@ use std::sync::{Arc, OnceLock};
 use tokio::io::AsyncReadExt;
 
 const EXE: &str = if cfg!(windows) { ".exe" } else { "" };
+/// the media engine that comes with the program (its ffmpeg/ folder, ATLAS_FFMPEG_DIR, the development copy)
+pub fn bundled_dir() -> Option<PathBuf> {
+    let s = crate::try_st()?;
+    let plat = if cfg!(windows) { "win32" } else { "linux" };
+    let mut c: Vec<PathBuf> = vec![];
+    if let Ok(d) = std::env::var("ATLAS_FFMPEG_DIR") {
+        c.push(PathBuf::from(d));
+    }
+    c.push(s.res_dir.join("ffmpeg"));
+    c.push(s.res_dir.join("vendor").join("ffmpeg").join(plat));
+    c.into_iter().find(|d| d.join(format!("ffmpeg{EXE}")).is_file())
+}
+/// where ffmpeg is: with the program, else the copy downloaded when it was first needed (components.rs). Looked up each
+/// time (a few file checks), so a download that finishes is used straight away.
 fn ff_dir() -> Option<PathBuf> {
-    static D: OnceLock<Option<PathBuf>> = OnceLock::new();
-    D.get_or_init(|| {
-        let s = st();
-        let plat = if cfg!(windows) { "win32" } else { "linux" };
-        let mut c: Vec<PathBuf> = vec![];
-        if let Ok(d) = std::env::var("ATLAS_FFMPEG_DIR") {
-            c.push(PathBuf::from(d));
-        }
-        c.push(s.res_dir.join("ffmpeg"));
-        c.push(s.res_dir.join("vendor").join("ffmpeg").join(plat));
-        c.into_iter().find(|d| d.join(format!("ffmpeg{EXE}")).is_file())
+    bundled_dir().or_else(|| {
+        crate::try_st()?;
+        let d = crate::components::ffmpeg_dir();
+        (d.join(format!("ffmpeg{EXE}")).is_file() && crate::components::ready("ffmpeg")).then_some(d)
     })
-    .clone()
 }
 pub fn ffmpeg() -> PathBuf {
     ff_dir().map(|d| d.join(format!("ffmpeg{EXE}"))).unwrap_or_else(|| PathBuf::from("ffmpeg"))

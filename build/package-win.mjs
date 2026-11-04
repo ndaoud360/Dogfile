@@ -1,7 +1,9 @@
 // Builds the ready-to-run Windows x64 folder + zip for Dogfile 2 (Tauri):
 //   Dogfile.exe (the program with its interface inside, built by GitHub Actions, .github/workflows/app.yml, fetched from the app-bin branch),
-//   ffmpeg/ (Dogfile Player), 7zip/ (archives), installer scripts.
-// usage: node build/package-win.mjs <Dogfile.exe> <ffmpeg-win64-shared.zip>
+//   7zip/ (archives), installer scripts. The big parts (ffmpeg, text recognition, the AI runtime, llama-server) aren't in it:
+//   Dogfile downloads them the first time they're needed (backend/src/components.rs). Give an ffmpeg zip as the second
+//   argument to bundle the media engine anyway (an offline copy).
+// usage: node build/package-win.mjs <Dogfile.exe> [<ffmpeg-win64-shared.zip>]
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,7 +16,7 @@ const unzip = (zip, dir) => {
   else execFileSync('unzip', ['-q', zip, '-d', dir]);
 };
 const [exe, ffZip] = process.argv.slice(2);
-if (!exe || !fs.existsSync(exe)) { console.error('usage: node build/package-win.mjs <Dogfile.exe> <ffmpeg.zip>'); process.exit(1); }
+if (!exe || !fs.existsSync(exe)) { console.error('usage: node build/package-win.mjs <Dogfile.exe> [<ffmpeg.zip>]'); process.exit(1); }
 // DOGFILE_ARCH=arm64 builds the Windows on ARM folder (dist/Dogfile-arm64) next to the x64 one
 const ARCH = process.env.DOGFILE_ARCH === 'arm64' ? 'arm64' : 'x64';
 const outDir = path.join(root, 'dist', ARCH === 'x64' ? 'Dogfile' : 'Dogfile-arm64');
@@ -26,7 +28,7 @@ fs.mkdirSync(outDir, { recursive: true });
 fs.copyFileSync(exe, path.join(outDir, 'Dogfile.exe'));
 // the interface is inside Dogfile.exe (build/pack-ui.mjs before the build), so no renderer/ folder ships
 
-// media engine: ffmpeg + ffprobe (shared build) for Dogfile Player, thumbnails and conversions
+// media engine, only when asked for: ffmpeg + ffprobe (shared build) for Dogfile Player, thumbnails and conversions
 if (ffZip) {
   const tmp = path.join(root, 'dist', '_ff');
   fs.mkdirSync(tmp, { recursive: true });

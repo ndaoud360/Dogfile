@@ -210,7 +210,11 @@ fn app_file(rest: &str) -> Resp {
     // the interface packed into the program
     let packed = st().ui.as_ref().map(|p| p.get(&rel.replace('\\', "/")));
     if packed == Some(None) {
-        return Resp::text(404, "Not found");
+        // the big vendor parts a slim build doesn't carry (text recognition, the AI runtime) come from the downloaded copy
+        return match crate::components::web_file(&rel.replace('\\', "/")) {
+            Some(f) => serve_file(&f, None, true, "no-cache"),
+            None => Resp::text(404, "Not found"),
+        };
     }
     if ext == "html" {
         let html = match packed {

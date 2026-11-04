@@ -9,7 +9,7 @@ Companion to `THE_GHOSTWRITER_FULL_SCRIPT.pdf` (97 pages). This records the star
 | Check | How | Result |
 |---|---|---|
 | Every action line | Read in full: Act One, Act Two, Act Three (Act Three twice, plus a line-by-line read of every change made in each pass; Act Two again in full after the development pass) | Fixes listed in section 3 |
-| Linter (patterns) | `tools/lint_script.py` on each act and on the joined script | 0 errors; 15 warnings, all reviewed: five "year(s)" (five-year-old, ten-year-old, the SUPER); three "was" inside text written on a page; four "blur" (ink on a page, Ellie's face three times, the last of which is the payoff); three "once/still" |
+| Linter (patterns) | `tools/lint_script.py` on each act file (the act files carry the `~` markers the linter skips) | 0 errors; 15 warnings, all reviewed: five "year(s)" (five-year-old, ten-year-old, the SUPER); three "was" inside text written on a page; four "blur" (ink on a page, Ellie's face three times, the last of which is the payoff); three "once/still" |
 | Character cues and (CONT'D) | Script that tracks the last speaker in each scene | 8 wrong or missing (CONT'D) found and fixed in the first pass; 0 remain after the development pass |
 | Voice-over and off-screen | Listed every extension | V.O. only for radio, phone, voicemail, the archive interview, the pages read by the boy and the rope; O.S. only for people in the scene but off screen |
 | Scene headings | Parsed all 70 (73 before the development pass) | All follow INT./EXT. LOCATION - TIME; location names consistent |
@@ -112,7 +112,7 @@ The 1987 day, August 14, was a Friday, as the radio says.
 
 ```bash
 python3 tools/build_full_script.py     # joins the three act files; writes the full script and its PDF
-python3 tools/lint_script.py THE_GHOSTWRITER_FULL_SCRIPT.fountain --verbose
+python3 tools/lint_script.py THE_GHOSTWRITER_ACT_1.fountain --verbose     # then _2 and _3
 ```
 
-The three act files are the source of truth. Edit them, then rebuild.
+The three act files are the source of truth. Edit them, then rebuild. In the act files, text written on a page starts with `~` so the PDF can italicize it and the linter can skip it; the joined `.fountain` is written for screenwriting software, so those lines are ordinary action lines there. Lint the act files, not the joined file.

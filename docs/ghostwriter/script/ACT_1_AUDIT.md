@@ -51,7 +51,7 @@ The linter finds patterns. A full line-by-line read caught what it cannot, for e
 1. **Ellie's face blurs whenever Theo looks at it.** One story-critical visual device, written as what appears on screen.
 2. **Two short flashbacks** (the pages' version of the rescue). Each is under a minute and each changes the present scene.
 3. **SUPER lines and the centered title card;** ALL CAPS only for printed text on screen (labels, signage, the phone display).
-4. **`~` lines** are text on a page, a scrap, or an envelope.
+4. **`~` lines** are text on a page, a scrap, or an envelope. The PDF sets them in italics and the linter skips them. In the joined `.fountain` the marker is removed, so they are ordinary action lines for screenwriting software that does not read `~`.
 
 ## 4. Scene audit (every scene must turn)
 

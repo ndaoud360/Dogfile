@@ -114,7 +114,7 @@ My recommendation has not changed: keep the long title for development and festi
 
 ## 9. Checks run after the changes
 
-- Linter: Act One 0 errors, 7 warnings; Act Two 0 errors, 7; Act Three 0 errors, 1; the joined script 0 errors, 15. Every warning is one of the known false positives (year in "five-year-old," "was" inside text written on a page, "blur" for Ellie's face).
+- Linter: Act One 0 errors, 7 warnings; Act Two 0 errors, 7; Act Three 0 errors, 1; all three together 0 errors, 15. Every warning is one of the known false positives (year in "five-year-old," "was" inside text written on a page, "blur" for Ellie's face).
 - Character cues and (CONT'D): none wrong or missing.
 - Every plant and payoff, by anchor phrase, looked up again in the rebuilt PDF: 104 found, none missing.
 - Page breaks: no heading, cue or lead-in stranded at a page foot; three dialogue splits with (MORE).

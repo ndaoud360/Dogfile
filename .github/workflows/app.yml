@@ -55,15 +55,15 @@ jobs:
         shell: bash
         run: |
           npm install --prefix "$RUNNER_TEMP/esbuild" --no-audit --no-fund --silent esbuild@0.24.2
-          ESBUILD_DIR="$RUNNER_TEMP/esbuild" node build/pack-ui.mjs
+          # the text recognition and AI runtime files (about 20 MB packed) are downloaded the first time they're needed
+          ESBUILD_DIR="$RUNNER_TEMP/esbuild" node build/pack-ui.mjs --exclude vendor/ort,vendor/tesseract
       - name: llama.cpp's server program (the assistant's fast engine)
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           # the newest official Windows CPU build (clang + OpenMP, picks the best code for the processor at start);
-          # shipped in Dogfile's llama/ folder, and its address and checksum go into the program so a copy updated
-          # without the folder can download the same files
+          # not shipped: its address and checksum go into the program, which downloads it once the assistant is set up
           $ProgressPreference = 'SilentlyContinue'
           $dl = "$env:RUNNER_TEMP/dl"; New-Item -ItemType Directory -Force $dl | Out-Null
           $h = @{ 'User-Agent' = 'Dogfile-CI'; 'Authorization' = "Bearer $env:GITHUB_TOKEN" }
@@ -77,8 +77,44 @@ jobs:
           $sha = (Get-FileHash "$dl/llama.zip" -Algorithm SHA256).Hash.ToLower()
           "DOGFILE_LLAMA_URL=$($asset.browser_download_url)" >> $env:GITHUB_ENV
           "DOGFILE_LLAMA_SHA256=$sha" >> $env:GITHUB_ENV
-          "DOGFILE_LLAMA_ZIP=$dl/llama.zip" >> $env:GITHUB_ENV
           Write-Output "::notice title=llama-server::$tag $($asset.name) $sha"
+      - name: Downloadable parts (media engine, text recognition, AI runtime)
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The big parts aren't inside the program or the Store package: Dogfile downloads each the first time it's needed
+          # (backend/src/components.rs). Their zips go to this repository's "components" release under names that carry
+          # their checksum (an older program always finds the file it was built with), and each address and checksum is
+          # written into the build below, so a download that isn't exactly this file is refused.
+          $ProgressPreference = 'SilentlyContinue'
+          $dl = "$env:RUNNER_TEMP/dl"; New-Item -ItemType Directory -Force $dl | Out-Null
+          # the newest stable shared FFmpeg build listed in the release (names change with each version), master as a fallback
+          $ffRel = Invoke-RestMethod 'https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/latest' -Headers @{ 'User-Agent' = 'Dogfile-CI'; 'Authorization' = "Bearer $env:GITHUB_TOKEN" }
+          $ffAsset = $ffRel.assets | Where-Object { $_.name -match '^ffmpeg-n[\d.]+-latest-win64-gpl-shared-[\d.]+\.zip$' } | Sort-Object { [version](($_.name -replace '^ffmpeg-n([\d.]+)-.*','$1') + '.0') } -Descending | Select-Object -First 1
+          if (-not $ffAsset) { $ffAsset = $ffRel.assets | Where-Object { $_.name -eq 'ffmpeg-master-latest-win64-gpl-shared.zip' } | Select-Object -First 1 }
+          if (-not $ffAsset) { Write-Output "::error title=ffmpeg::No FFmpeg build found"; exit 1 }
+          Invoke-WebRequest $ffAsset.browser_download_url -OutFile "$dl/ff.zip"
+          Write-Output "::notice title=ffmpeg::$($ffAsset.name)"
+          $parts = "$env:RUNNER_TEMP/components"
+          node build/make-components.mjs $parts --ffmpeg "$dl/ff.zip"
+          if ($LASTEXITCODE -ne 0) { Write-Output "::error title=components::could not make the downloadable parts"; exit 1 }
+          $repo = '${{ github.repository }}'
+          gh release view components --repo $repo *> $null
+          if ($LASTEXITCODE -ne 0) { gh release create components --repo $repo --title 'Downloadable parts' --notes 'Parts of Dogfile that are downloaded the first time they are needed (media engine, text recognition, AI runtime). Files are named after their checksums; do not delete them while a release that uses them is in the Store.' --latest=false *> $null }
+          gh release upload components (Get-ChildItem "$parts/*.zip" | ForEach-Object { $_.FullName }) --repo $repo --clobber
+          if ($LASTEXITCODE -ne 0) { Write-Output "::error title=components::could not upload the parts to the components release"; exit 1 }
+          $j = Get-Content "$parts/components.json" -Raw | ConvertFrom-Json
+          foreach ($n in @('ffmpeg', 'ocr', 'ort')) {
+            $c = $j.$n
+            if (-not $c) { continue }
+            $u = $n.ToUpper()
+            "DOGFILE_${u}_URL=https://github.com/$repo/releases/download/components/$($c.file)" >> $env:GITHUB_ENV
+            "DOGFILE_${u}_SHA256=$($c.sha256)" >> $env:GITHUB_ENV
+            "DOGFILE_${u}_SIZE=$($c.size)" >> $env:GITHUB_ENV
+            Write-Output "::notice title=component-$n::$($c.file) $([math]::Round($c.size/1MB,1)) MB $($c.sha256)"
+          }
       - name: Build
         shell: pwsh
         run: |
@@ -243,17 +279,9 @@ jobs:
           vendor/7zip/win32/7za.exe x "$dl/7z-arm64.exe" "-o$dl/7zfull-arm64" 7z.exe 7z.dll License.txt -y | Out-Null
           New-Item -ItemType Directory -Force "$out/7zfull", "$out/7zfull-arm64" | Out-Null
           Copy-Item "$dl/7zfull/*" "$out/7zfull/"; Copy-Item "$dl/7zfull-arm64/*" "$out/7zfull-arm64/"
-          # the media engine
-          # the newest stable shared build listed in the release (names change with each FFmpeg version), master as a fallback
-          $ffRel = Invoke-RestMethod 'https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/latest' -Headers @{ 'User-Agent' = 'Dogfile-CI'; 'Authorization' = "Bearer $env:GITHUB_TOKEN" }
-          $ffAsset = $ffRel.assets | Where-Object { $_.name -match '^ffmpeg-n[\d.]+-latest-win64-gpl-shared-[\d.]+\.zip$' } | Sort-Object { [version](($_.name -replace '^ffmpeg-n([\d.]+)-.*','$1') + '.0') } -Descending | Select-Object -First 1
-          if (-not $ffAsset) { $ffAsset = $ffRel.assets | Where-Object { $_.name -eq 'ffmpeg-master-latest-win64-gpl-shared.zip' } | Select-Object -First 1 }
-          if (-not $ffAsset) { Write-Output "::error title=ffmpeg::No FFmpeg build found"; exit 1 }
-          Invoke-WebRequest $ffAsset.browser_download_url -OutFile "$dl/ff.zip"
-          Write-Output "::notice title=ffmpeg::$($ffAsset.name)"
           Copy-Item target/release/dogfile.exe "$dl/Dogfile.exe"
           $env:DOGFILE_7Z_FULL = "$dl/7zfull"
-          $pk = node build/package-win.mjs "$dl/Dogfile.exe" "$dl/ff.zip" 2>&1
+          $pk = node build/package-win.mjs "$dl/Dogfile.exe" 2>&1
           Write-Output "::notice title=package-win::$(($pk | Out-String) -replace "[`r`n]+",'%0A')"
           $ver = (Get-Content app/tauri.conf.json -Raw | ConvertFrom-Json).version
           $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe | Where-Object { $_.FullName -like '*\x64\*' } | Select-Object -First 1
@@ -355,7 +383,37 @@ jobs:
         shell: bash
         run: |
           npm install --prefix "$RUNNER_TEMP/esbuild" --no-audit --no-fund --silent esbuild@0.24.2
-          ESBUILD_DIR="$RUNNER_TEMP/esbuild" node build/pack-ui.mjs
+          ESBUILD_DIR="$RUNNER_TEMP/esbuild" node build/pack-ui.mjs --exclude vendor/ort,vendor/tesseract
+      - name: Downloadable parts (text recognition, AI runtime)
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The big parts aren't inside the program or the Store package: Dogfile downloads each the first time it's needed
+          # (backend/src/components.rs). Their zips go to this repository's "components" release under names that carry
+          # their checksum (an older program always finds the file it was built with), and each address and checksum is
+          # written into the build below, so a download that isn't exactly this file is refused.
+          $ProgressPreference = 'SilentlyContinue'
+          $dl = "$env:RUNNER_TEMP/dl"; New-Item -ItemType Directory -Force $dl | Out-Null
+          $parts = "$env:RUNNER_TEMP/components"
+          node build/make-components.mjs $parts
+          if ($LASTEXITCODE -ne 0) { Write-Output "::error title=components::could not make the downloadable parts"; exit 1 }
+          $repo = '${{ github.repository }}'
+          gh release view components --repo $repo *> $null
+          if ($LASTEXITCODE -ne 0) { gh release create components --repo $repo --title 'Downloadable parts' --notes 'Parts of Dogfile that are downloaded the first time they are needed (media engine, text recognition, AI runtime). Files are named after their checksums; do not delete them while a release that uses them is in the Store.' --latest=false *> $null }
+          gh release upload components (Get-ChildItem "$parts/*.zip" | ForEach-Object { $_.FullName }) --repo $repo --clobber
+          if ($LASTEXITCODE -ne 0) { Write-Output "::error title=components::could not upload the parts to the components release"; exit 1 }
+          $j = Get-Content "$parts/components.json" -Raw | ConvertFrom-Json
+          foreach ($n in @('ffmpeg', 'ocr', 'ort')) {
+            $c = $j.$n
+            if (-not $c) { continue }
+            $u = $n.ToUpper()
+            "DOGFILE_${u}_URL=https://github.com/$repo/releases/download/components/$($c.file)" >> $env:GITHUB_ENV
+            "DOGFILE_${u}_SHA256=$($c.sha256)" >> $env:GITHUB_ENV
+            "DOGFILE_${u}_SIZE=$($c.size)" >> $env:GITHUB_ENV
+            Write-Output "::notice title=component-$n::$($c.file) $([math]::Round($c.size/1MB,1)) MB $($c.sha256)"
+          }
       - name: Build (ARM64)
         shell: pwsh
         run: |

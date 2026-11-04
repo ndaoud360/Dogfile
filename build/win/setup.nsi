@@ -109,7 +109,7 @@ Section "Desktop shortcut" SecDesktop
 SectionEnd
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
-  !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} "Dogfile, its Notepad, Photos and Player, the media engine (FFmpeg) and 7-Zip."
+  !insertmacro MUI_DESCRIPTION_TEXT ${SecMain} "Dogfile, its Notepad, Photos and Player, and 7-Zip. The media engine, text recognition and the AI runtime are downloaded the first time they are needed."
   !insertmacro MUI_DESCRIPTION_TEXT ${SecDesktop} "A Dogfile icon on your desktop."
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 

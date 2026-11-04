@@ -4,6 +4,7 @@ import { api, h, toast, basename, dirname, stem, bus, IS_WIN, fileUrl, backupBef
 import { modal } from './dialogs.js';
 import { analyzeAudio, fmtAnalysis } from './audio-analysis.js';
 import { requirePro } from './license.js';
+import { ensureComponent } from './components.js';
 
 export function progressToast(title, onCancel) {
   const host = document.getElementById('toasts');
@@ -28,6 +29,7 @@ async function waitJob(id, onPct) {
 export async function convertMedia(paths, format, { normalize = false, audioOnly = false, bitrate = 0 } = {}) {
   if (!requirePro('convert')) return;
   if (!paths.length) return;
+  if (!(await ensureComponent('ffmpeg', 'Converting audio and video'))) return;
   let cancelled = false, curJob = null;
   const p = progressToast(`Converting ${paths.length === 1 ? basename(paths[0]) : paths.length + ' files'}…`, () => { cancelled = true; if (curJob) api('media:cancel', curJob); });
   let ok = 0;

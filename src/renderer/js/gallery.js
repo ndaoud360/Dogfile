@@ -97,6 +97,8 @@ export async function contactSheets(items) {
   const vids = items.filter(MM.isVid);
   if (!vids.length) return toast('Select one or more videos');
   let made = [];
+  const { ensureComponent } = await import('./components.js');
+  if (!(await ensureComponent('ffmpeg', 'Contact sheets'))) return;
   const { progressToast } = await import('./mediatools.js');
   let cancelled = false, jobId = null;
   const p = progressToast(`Making a contact sheet…`, () => { cancelled = true; if (jobId) api('media:sheetCancel', jobId); });

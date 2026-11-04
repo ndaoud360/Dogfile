@@ -157,7 +157,7 @@ Festival launch (Sundance Midnight, TIFF Midnight Madness, Venice, Fantastic Fes
 | 0:02 | 1 | Dread | Small wet footprints leave a back door while a boy keeps writing |
 | 0:09 | 4 | Uncanny | The first page: damp, in a child's hand, with a line only he knows |
 | 0:13 | 5 | Uncanny | Every resident in the corridor turns the same way at the word "wet" |
-| 0:15 | 6 | Scare | The Wet Hallway: prints appear behind him; a dripping silhouette in a dead TV for three frames |
+| 0:15 | 6 | Scare | The Wet Hallway: prints appear behind him; a dripping silhouette in a dead TV for half a second |
 | 0:21 | 8 | Shock | Ingrid's grip: her wrist is wet |
 | 0:23 | 9 | Uncanny | The reflection breathes on the glass and writes *Thank you* |
 | 0:29 | 11 | Body | Dry ink rises on his forearm and won't wash off |
@@ -698,7 +698,7 @@ Impersonal, accounting, indifferent. It does not take sides between Theodore and
 | The pages insist: *"There was nobody on the ledge. I looked. I want that written down."* | Beats 8, 9 | A traumatized narrator | The lie that answers the exact guilt. Payoff: Beat 36 |
 | A pale square on the felt of Ingrid's shadow box | Beat 8 | A missing photograph | Nell's photograph, removed. Payoff: Beat 26 |
 | Rain falls on the pond and the surface doesn't mark | Beat 2 | An odd image | A thin place. Payoff: Beats 25, 29 |
-| Walter: *"Ghostwriters have no names on anything."* | Beat 7 | Character colour | The definition of Theodore's crime, and of Walter's fate (Beat 23) |
+| Walter: *"Not a name on one of them."* | Beat 7 | Character color | The definition of Theodore's crime, and of Walter's fate (Beat 23) |
 | Missing spines, words and street names | Beats 11, 22 | Props | Law 1's tally |
 | The handwriting matures through the film | Beats 4 → 18 | Spooky | Theodore gaining power |
 | **Writing on Theo's skin** | Beats 11, 13, 16, 18, 19, 21, 27, 33, 37 | A symptom | The Fair Copy: a visible gauge of belief (Law 3) |
@@ -774,7 +774,7 @@ Thirty-eight years later, Theo Lindqvist, a celebrated novelist with eight years
 
 At the house there is a room at the end of the hall painted shut and a cellar door that sits too deep in its frame. That night he hears pencil moving inside the wall. By morning, a page lies on the kitchen table in a child's handwriting, still damp: *The slate was cold on my teeth. Nell asked me to come see the door and I said in a minute.* He has never told anyone those words. That evening at Alder Hill, Ingrid calls him Tomas and sings her refrain: *"Tomas came back wet. Theo came back dry. I counted them both in."* A night nurse named Ellie moves through the frame, soft at the edges where his eyes will not hold her.
 
-The first scare arrives at minute fifteen: wet prints appear behind him in the hall, and a dripping silhouette shows for three frames in a dead TV. A neighbor, Walter Pruitt, a retired ghostwriter, warns him not to let anyone put a name on his work. More pages arrive in an envelope addressed to "Theodore": the yellow dress with ducks, the iron taste of the water — and a heroic flashback in warm 16mm, in which a nine-year-old Theo hauls his sister from the pond. When he mentions the dress to Ingrid she grips his wrist (hers is wet) and says, *"You weren't there. You were never there."* At the end of the act Theo reads the third page aloud. At the word *and* the clock stops, the light turns gold, and in the dark window a dry, smiling reflection writes on the fogged glass: *Thank you.*
+The first scare arrives at minute fifteen: wet prints appear behind him in the hall, and a dripping silhouette shows for half a second in a dead TV. A neighbor, Walter Pruitt, a retired ghostwriter, warns him not to let anyone put a name on his work. More pages arrive in an envelope addressed to "Theodore": the yellow dress with ducks, the iron taste of the water — and a heroic flashback in warm 16mm, in which a nine-year-old Theo hauls his sister from the pond. When he mentions the dress to Ingrid she grips his wrist (hers is wet) and says, *"You weren't there. You were never there."* At the end of the act Theo reads the third page aloud. At the word *and* the clock stops, the light turns gold, and in the dark window a dry, smiling reflection writes on the fogged glass: *Thank you.*
 
 ### ACT II — THE UNRAVELING (0:24–1:18)
 
@@ -812,7 +812,7 @@ A pond finally holds a reflection. Ingrid, lucid for one breath, sees him soaked
 - *Purpose:* Plant the wound, the motif, and the dread of something we know is coming.
 
 **BEAT 2 — THE DRIVE (0:03–0:06)**
-- *What happens:* Present. Rain. Theo drives June north. The radio replays his famous interview: "I take dictation… I was home that afternoon." June asks him to read her story. "In a minute." Priya's voicemail: deadline. June's bet with Mara: that Theo would say "in a minute" before Albany. They pass the quarry memorial; June reads it aloud: "TOMAS ARVIDSEN 1974–1987. HE REACHED FOR HER." Far below, rain falls on the pond and the surface does not mark.
+- *What happens:* Present. Rain. Theo drives June north. The radio replays his famous interview: "I take dictation… I was home that afternoon." June asks him to read her story. "In a minute." Priya's voicemail: the December 1 deadline, and "Read me one sentence out loud, like you used to." June's bet with Mara: that Theo would say "in a minute" before Albany. They pass the quarry memorial; June reads it aloud: "TOMAS ARVIDSEN 1974–1987. HE REACHED FOR HER." Far below, rain falls on the pond and the surface does not mark.
 - *Character:* Charming, evasive, absent; June dry and watchful.
 - *Mystery:* "I was home that afternoon." Who is Tomas?
 - *Horror/suspense:* The rain on the car roof sounds like a pencil.
@@ -833,21 +833,21 @@ A pond finally holds a reflection. Ingrid, lucid for one breath, sees him soaked
 - *Purpose:* Inciting incident; plant the back of the page.
 
 **BEAT 5 — ALDER HILL (0:11–0:15)**
-- *What happens:* Ingrid sorts napkins and calls Theo "Tomas." "Tomas came back wet. Theo came back dry. I counted them both in." The doctor: months. The night nurse Ellie is covering a day shift; Theo's eyes slide off her and the camera keeps her soft. Ingrid: "He doesn't see you, does he." When Ingrid says "wet," every resident in the corridor turns the same way. The house must be sold.
+- *What happens:* Ingrid sorts napkins and calls Theo "Tomas." "Tomas came back wet. Theo came back dry. I counted them both in." The night nurse Ellie is covering a day shift; her face blurs whenever Theo looks at it, and his eyes slide to her name tag. Ingrid: "He doesn't see you, does he." When Ingrid says "wet," everyone in the dayroom turns toward the glass doors. Ellie presses Theo to visit in the mornings, while Ingrid's "windows" last. Theo: "We're selling the house." Ellie: "Then come while she still knows what a house is."
 - *Character:* Helplessness; Ingrid's strange clarity.
 - *Mystery:* The refrain; who is Ellie?
 - *Horror/suspense:* The corridor.
 - *Purpose:* Ingrid as window and clock; seed Ellie.
 
 **BEAT 6 — THE WET HALLWAY (0:15–0:17)**
-- *What happens:* Night, one long take. Wet prints appear down the hall from the cellar door to the painted-shut room as Theo walks away from them. A tall, dripping silhouette shows for three frames in the dead TV. He mops the floor and tells himself it's the pipes.
+- *What happens:* Night, one long take. Wet prints appear down the hall from the cellar door to the painted-shut room as Theo walks away from them. A tall, dripping silhouette shows for half a second in the dead TV. He mops the floor and tells himself it's the pipes.
 - *Character:* Rationalization.
 - *Mystery:* Who is the wet figure?
 - *Horror/suspense:* The film's first true scare.
 - *Purpose:* Introduce the Wet Boy as menace and teach the audience to fear wet.
 
 **BEAT 7 — WALTER (0:17–0:19)**
-- *What happens:* Diner. Walter Pruitt: "I heard you from my porch. Pencil, all night. Don't tell me." "Ghostwriters have no names on anything." "If anyone offers to put a name on it — don't." Wet prints trail behind Theo across dry linoleum, visible only to Walter, who goes pale.
+- *What happens:* Diner. Walter Pruitt: "I heard you from my porch. Pencil, all night. Don't tell me." "Not a name on one of them" (his forty-one ghostwritten books). "Nobody can ever blame you." "If anyone offers to put a name on it — don't." Wet prints trail behind Theo across dry linoleum, visible only to Walter, who goes pale.
 - *Character:* Walter, courtly and haunted.
 - *Mystery:* What does Walter know?
 - *Horror/suspense:* A print only one man can see.
@@ -1049,7 +1049,7 @@ A pond finally holds a reflection. Ingrid, lucid for one breath, sees him soaked
 - *Purpose:* Begin Revelation 5.
 
 **BEAT 35 — THE VERSO REPLAY (1:37–1:39)**
-- *What happens:* The film turns over. Eight earlier scenes replay from behind, about ten seconds each: a wet palm on the kitchen window beside a dry reflection; prints in the hall ending at the desk where a pencil lay; a cold hand closing Theo's fingers around the pencil; a soaked boy pressing his palms against the memorial as the letters leave; a soaked figure standing in the sun on the diner sidewalk, unseen; a wet hand over June's mouth; the figure pointing up at the house; the prints between June's sneakers and the water.
+- *What happens:* The film turns over. Eight earlier scenes replay from behind, about ten seconds each: a wet palm on the kitchen window beside a dry reflection; prints in the hall ending at Nell's painted-shut door, a wet palm flat against the paint; a cold hand closing Theo's fingers around the pencil; a soaked boy pressing his palms against the memorial as the letters leave; a soaked figure standing in the sun on the diner sidewalk, unseen; a wet hand over June's mouth; the figure pointing up at the house; the prints between June's sneakers and the water.
 - *Character:* The audience re-reads every scare as care.
 - *Mystery:* Everything flips.
 - *Horror/suspense:* Relief turning to grief.

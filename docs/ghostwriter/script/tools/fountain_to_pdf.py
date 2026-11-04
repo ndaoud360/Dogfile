@@ -251,10 +251,12 @@ def render(title, pages, out):
     c.showPage()
 
     # script pages
+    start = int(title.get("start page", "1"))
     for pno, page in enumerate(pages, start=1):
         c.setFont("Courier", 12)
-        if pno > 1:
-            label = f"{pno}."
+        num = start + pno - 1
+        if num > 1:
+            label = f"{num}."
             c.drawString(LEFT + W_ACTION * CHAR_W - len(label) * CHAR_W, PAGE_H - 48, label)
         row = 0
         for before, block in page:

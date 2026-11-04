@@ -1,6 +1,224 @@
 # THE GHOSTWRITER FROM THE 6TH DIMENSION
-### Feature Film Development Bible
-*Psychological Horror / Supernatural Mystery / Existential Thriller — Theatrical Feature, approx. 114 minutes, R*
+### Feature Film Development Bible — Revision 2
+*Psychological Horror / Supernatural Mystery / Existential Thriller — Theatrical Feature, approx. 111 minutes, R*
+
+> **Structure of this document.** Part 0 is the **Pitch Package** (spoiler-light) for directors, actors, financiers and distributors. Sections 1–23 are the full **spoiler bible**.
+
+---
+
+# PART 0 — THE PITCH PACKAGE
+
+## 0.1 THE HOOK
+
+**Two sentences (spoiler-free):**
+
+> *A blocked novelist starts receiving handwritten pages in his own childhood handwriting, and every page he believes rewrites the world around him. The truth is on the other side.*
+
+**Tagline:** **TURN IT OVER.**
+
+**Thirty seconds, out loud:**
+
+"Theo Lindqvist hasn't finished a sentence in eight years. Then pages start turning up in the handwriting he had at nine, describing the afternoon his little sister nearly drowned, and saying he's the one who saved her. His editor remembers it that way. The whole town remembers it that way. Words begin to surface on his skin. His daughter starts to prefer the version of him who actually listens. There's only one problem: that isn't what happened. And whoever is writing the pages is about to sign his name."
+
+---
+
+## 0.2 THE DIRECTOR'S ONE-PAGER *(spoiler-light)*
+
+**THE GHOSTWRITER FROM THE 6TH DIMENSION** *(release title under consideration: **VERSO**)*
+
+*Everyone has a flattering draft of their own life. This is what happens when it starts signing things.*
+
+Theo Lindqvist is a celebrated novelist, a tired father, and a man who has never finished a sentence he didn't take down from dictation. He drives his twelve-year-old daughter to the slate-country house he grew up in, to close it up and to settle his mother, whose memory is almost gone, into care. The first night he hears a pencil moving inside the wall. In the morning there's a page on the kitchen table, in a child's hand, damp. It describes the taste of cold slate. It describes his little sister asking him to come see "the door," and him answering *in a minute.* He has never told anyone that.
+
+More pages come. They say that on an August afternoon in 1987 he walked into a quarry pond and pulled his drowning sister out. The town has always said a neighbor boy did that, and died doing it. But the town begins to remember it Theo's way. The memorial at the quarry is re-cut while we watch. His editor remembers a speech he never gave. Writing starts to appear on his own skin, in his own hand, and everyone treats it as if it has always been there. At breakfast his daughter looks up from her story and talks to the father who *listens* — who is sitting at the table beside the father who says *in a minute.*
+
+It is a ghost story in which the ghost is the best-lit person in the room; a mystery whose evidence is the back of a sheet of paper; and a horror film about the oldest thing you can fail to do for a child. Somewhere in the last twenty minutes it turns itself over, and every scare you sat through reads differently. It is built to be seen twice.
+
+**The ride, in five images:**
+1. A page, still damp, in a nine-year-old's hand, containing a sentence only one man alive has ever known.
+2. Wet footprints appearing one at a time behind a man who doesn't turn around.
+3. A kitchen table with two of the same man at it, lit by two different suns, and a twelve-year-old looking at the warm one.
+4. A memorial stone being re-cut in one locked-off shot while the town walks past and doesn't notice.
+5. A flooded cathedral of slate with a half-inch of black water for a floor, and thousands of pages hanging in the dark.
+
+---
+
+## 0.3 WHY NOW
+
+1. **The flattering draft is no longer a metaphor.** Phones now remove a person from a photograph with one tap. Software writes in your voice, in your best sentences, and offers you the improved version of your own story. This film's horror — a voice that improves your past and asks you to sign it — is the technology people already carry, without the film ever being "about" technology.
+2. **Original horror is currently the most reliable way to turn a small budget into a large result** (see 0.6): *Weapons*, *Sinners*, *Longlegs*, *Talk to Me*, *Barbarian*, *Smile* all came from original ideas and all broke out.
+3. **Audiences are hungry for a mystery that rewards a second viewing.** The last wave of hits turned on a question people wanted to argue about on the way out.
+
+---
+
+## 0.4 WHY A DIRECTOR WILL WANT TO MAKE THIS
+
+**Five sequences you will want to shoot, none of which depends on a visual-effects budget:**
+1. **The Wet Hallway** — a single uncut take; the horror arrives behind the actor, one footprint at a time.
+2. **Two Fathers** — one table, one actor twice, two kinds of light, and a child choosing.
+3. **The Re-Cut Memorial** — a locked-off shot of a town quietly forgetting a boy.
+4. **The Verso** — a flooded quarry-cathedral: a black mirror floor, grey silt falling like snow, thousands of translucent pages on invisible lines.
+5. **The True Memory** — four minutes, one take, at a nine-year-old's eye line, in which we see a face the film has withheld for 99 minutes.
+
+**A formal idea worth a director's name:** *the film has two sides.* The first 95 minutes are the front of the page. At minute 97 the film **turns over** and replays eight earlier scenes from the other side, and each of them means something different. This is the structural payoff of the title, and the reason the film plays differently on a second viewing.
+
+**A personal way in:** every director has a moment they didn't move. The film asks the filmmaker to go there.
+
+**Every department gets a playground:**
+- *Cinematography:* two light worlds — honeyed, flattering "dry" and cold, truthful "wet" — that cross over as the film proceeds.
+- *Production design:* "heavy" rooms whose doorframes are fractionally too deep; a Study papered in crossed-out sentences; a cathedral of paper.
+- *Sound:* a score built around the sound of a pencil; a mix in which beauty is the warning.
+- *Music:* one unfinished melodic phrase that resolves only on the last note of the film.
+- *Editing:* continuity errors as horror — and then perfect continuity as horror.
+- *VFX:* almost none; water, mirrors, paper, fans, and one invisible plate-swap or two.
+
+**The non-negotiables (protect these in any development process):**
+1. Tomas's face is not shown until the True Memory.
+2. The Verso is never explained in voice-over or by a lecturing character.
+3. The villain is never a demon, a twin, or a hallucination.
+4. No sequel hook. The story ends.
+5. R rating. No jump-scare notes pass.
+6. The last word of the film's argument is **"Now."**
+
+**Scale-agnostic:** the film works at $7M or at $35M (see 0.6). Every spectacle is a camera, set, or lighting solution — never a plot dependency.
+
+---
+
+## 0.5 WHY AN ACTOR WILL WANT TO PLAY IT
+
+Seven roles, each with at least one scene that works as an awards clip.
+
+| Role | Why it's a gift | The clip |
+|---|---|---|
+| **THEO / THEODORE** *(one actor, dual role)* | Plays the man and his flattering double — often in the same frame — and the audience must feel the difference with *no change in face.* Guilt, vanity, grief, seduction, and the hardest thing an actor can play: a person who is slowly deciding to tell the truth. | The Mirror (5 minutes, two-hander with himself); Two Fathers; the Best Argument; **"Now."** |
+| **NELL** | The only living witness. Furious, tender, withheld for 78 minutes. | **What Nell Remembers** — a four-minute testimony, the best scene she'll be offered this year |
+| **INGRID** *(late-career actress)* | Dementia played as a window, not a symptom — poetic, strange, sometimes ruthlessly lucid. Three lines across the film that matter. | **"Theo came back wet."** |
+| **MARA** | The materialist who has to watch the world split in two. | **"I remember that you were a hero and I remember that you weren't. Which one did I leave?"** |
+| **WALTER** *(veteran character actor)* | A courtly, funny, ruined ghostwriter who is quietly written out of existence. | **Walter's Archive** — one take, forty-one books going blank behind him |
+| **JUNE** *(breakout, age 12)* | Dry, sharp, never a "creepy kid"; the film's best reader. The role that a young actor builds a career on. | Two Fathers; **"You were quick."** |
+| **TOMAS** *(young actor)* | The face the film withholds. One scene, two lines. | **The True Memory** |
+
+*Casting tier for the lead (illustrative only; no approach implied):* an actor of the Andrew Scott / Jake Gyllenhaal / Paul Giamatti range, capable of restraint and of warmth that curdles.
+
+---
+
+## 0.6 WHY A FINANCIER WILL WANT TO BACK THIS
+
+### The pattern of recent breakouts
+
+| Film | Year | Budget (approx.) | Worldwide gross (approx.) | What it proves |
+|---|---|---|---|---|
+| *Get Out* | 2017 | $4.5M | $255M | Original social horror with a one-line hook |
+| *Hereditary* | 2018 | $10M | $81–88M | Grief horror can anchor a specialty label |
+| *Midsommar* | 2019 | $9M | $47–48M | The ceiling for pure arthouse horror: strong, not huge |
+| *Us* | 2019 | ~$20M | $256M | A double is a marketing engine |
+| *Annihilation* | 2018 | $40–55M | $43M | **The cautionary tale:** conceptual, ambiguous, expensive, poorly sold |
+| *Smile* | 2022 | $17M | $217M | **Feature grown from a proof-of-concept short** |
+| *Barbarian* | 2022 | $4.5M | $45M | Original, twisty, tiny budget |
+| *Talk to Me* | 2023 | $4.25–4.5M | $90–92M | Original; A24's biggest horror grosser at the time |
+| *Longlegs* | 2024 | $10M | $125–128M | Atmosphere + a singular villain + a cryptic campaign |
+| *The Substance* | 2024 | $17.5M | $77–82M | High concept can travel internationally |
+| *Weapons* | 2025 | ~$38M | $239M+ (as of Sept. 2025) | Original mystery-structure horror at a larger scale |
+| *Sinners* | 2025 | n/v | ~$367–370M | Original, auteur-driven, a global hit |
+| *Lights Out* | 2016 | $4.9M | ~$149M | **Feature grown from a short** |
+
+*Figures are as reported by The Numbers, Box Office Mojo and trade press; sources differ by a few million. Verify before external circulation. n/v = not verified in this research.*
+
+**Reading the pattern.** Every success is built from: an original idea that fits in one line, a memorable villain or image, a contained setting, an emotional wound, and a director with a voice. This package has each. The cautionary row is *Annihilation*: heady, ambiguous, costly, hard to market. The mitigation here is a human spine, a spoiler-free hook, a visible clock (the writing on Theo's skin), and a modest budget.
+
+### Scalability — the same story at three sizes
+
+| Tier | Budget | What changes |
+|---|---|---|
+| **Lean** | $6–8M | One main location; the Verso on a single stage with ~300 hung pages; 28 shooting days; a lead of festival stature |
+| **Base** | $11–14M | The plan in Section 20: full farmhouse, quarry pond, Verso stage with 800+ pages, 38 + 10 days |
+| **Maximum** | $28–35M | A 60-ft practical Verso cathedral, large-format photography, an A-list dual-role star, 55 days, a built quarry for the True Memory |
+
+### The proof-of-concept route
+
+*Lights Out* and *Smile* both began as short films. **TWO FATHERS** is a seven-minute proof of concept with one location, three actors and almost no effects: a father at a breakfast table, his daughter, and a second, warmer version of him who answers the question the first one deferred. It contains the film's hook, its poster image, and its emotional wound. Estimated cost: low six figures or less. It is the single highest-leverage step between "interesting" and "I need this."
+
+### Extendable world, closed story
+
+The Verso can support companion stories (other people's abandoned selves — a surgeon's, a senator's) as a limited series or anthology, **without this film containing any sequel setup.** The film's story ends.
+
+### Route to market
+
+Festival launch (Sundance Midnight, TIFF Midnight Madness, Venice, Fantastic Fest) → specialty-label bidding → fall release with a critics-first, no-spoilers campaign. Natural homes: labels that have shown they know how to sell mystery-led horror (A24, Neon, MUBI), or a studio prestige-horror banner.
+
+---
+
+## 0.7 THE SCARE MAP
+
+*The film never goes more than five minutes without a scare, a set piece, or a revelation.*
+
+| ~Time | Beat | Type | What |
+|---|---|---|---|
+| 0:02 | 1 | Dread | Small wet footprints leave a back door while a boy keeps writing |
+| 0:09 | 4 | Uncanny | The first page: damp, in a child's hand, with a line only he knows |
+| 0:13 | 5 | Uncanny | Every resident in the corridor turns the same way at the word "wet" |
+| 0:15 | 6 | Scare | The Wet Hallway: prints appear behind him; a dripping silhouette in a dead TV for three frames |
+| 0:21 | 8 | Shock | Ingrid's grip: her wrist is wet |
+| 0:23 | 9 | Uncanny | The reflection breathes on the glass and writes *Thank you* |
+| 0:29 | 11 | Body | Dry ink rises on his forearm and won't wash off |
+| 0:39 | 14 | Jump | The cellar: a wet hand closes on his wrist |
+| 0:41 | 15 | Body | He drowns on dry land: pond water and a chip of slate on the kitchen floor |
+| 0:45 | 16 | Dread | The pencil on the back fades as the writing on his body grows |
+| 0:53 | 18 | Uncanny | His reflection speaks |
+| 0:56 | 19 | Awe | The memorial is re-cut in one locked-off shot |
+| 1:00 | 20 | Uncanny | A diner where everyone finishes each other's sentences |
+| 1:03 | 21 | Emotional horror | Two fathers; the child picks |
+| 1:08 | 23 | Tragic | Walter's life goes blank on his shelves |
+| 1:11 | 24 | **Set piece** | The Turnover: the house flips like a page |
+| 1:15 | 25 | Dread | The pond with no reflection; the standing figure |
+| 1:23 | 28 | Peril | June's bed is empty; two sets of prints |
+| 1:25 | 29 | Suspense | Ninety seconds at the water's edge |
+| 1:29 | 31 | Awe | The Verso |
+| 1:34 | 33 | Psychological | The best argument is kindness |
+| 1:37 | 35 | Revelation | The film turns over; the scares are replayed from behind |
+| 1:40 | 36 | Emotional | The True Memory: one take, a boy's face at last |
+
+---
+
+## 0.8 TITLE STRATEGY
+
+*This is a recommendation; the title is yours to decide.*
+
+- **Retain** *THE GHOSTWRITER FROM THE 6TH DIMENSION* as the development and festival-submission title: it is distinctive, and "ghostwriter" does real work in the story.
+- **Consider** *VERSO* as the release title. Reasons: one word (the pattern of recent breakout horror titles), pronounceable worldwide, thematically exact (the back of the page), and it avoids the pulp tone the long title can suggest to a cold reader. *The Ghostwriter from the 6th Dimension* could stay as an on-poster subtitle.
+- **Clearance:** *The Ghost Writer* (Polanski, 2010) exists; a title search is required for both candidates before any public use.
+
+---
+
+## 0.9 COMMERCIAL SCORECARD — AN HONEST ACCOUNTING
+
+**Can this reach 10/10? Not on paper.** A 10 is a result, not a property of a document: it requires a director, a star, a distributor and a market. What the material *can* do is bring every lever it controls to its ceiling, and tell you exactly which levers remain outside it.
+
+| Lever the material controls | Rev 1 | Rev 2 | Why |
+|---|---|---|---|
+| Spoiler-free hook | 6 | 9 | A 22-word hook, a 30-second pitch, a tagline |
+| Poster / trailer imagery | 7 | 9.5 | Dual-role "two fathers" image; day/night lightbox; the page held to light |
+| Actor magnet | 6.5 | 9 | One dual role and six showcase roles |
+| Director's playground | 7 | 9.5 | Five must-shoot sequences; a film built to be seen twice |
+| Scare density and pace | 6 | 8.5 | First page by 0:08; a beat every ~4–5 minutes (unproven until script and cut) |
+| Budget scalability | 7 | 9 | Works at $7M or $35M |
+| Audience breadth | 7 | 8.5 | Genre fans, book-club readers, family-grief audience |
+| Extendable world (no sequel bait) | 4 | 7 | Anthology-ready; story closed |
+| Title | 5 | 7 | Working title kept; *VERSO* recommended for release |
+| **Average** | **6.2** | **8.6** | |
+
+**Honest headline: commercial viability on paper, 8.5/10.** I score my own work, so discount accordingly.
+
+**What would take it to 10 (and who controls each):**
+1. A director whose sensibility matches the film — *outside the document*.
+2. A lead who commits to the dual role — *outside the document*.
+3. **Act 1 pages that read faster than this bible** — *next*.
+4. **A proof-of-concept short with audience reaction** — *next, if wanted*.
+5. A distributor's early interest or pre-sales — *outside the document*.
+6. A favorable release window — *outside the document*.
+
+---
+# THE SPOILER BIBLE (SECTIONS 1–23)
 
 > **SPOILER NOTICE.** This is an internal development document. It reveals every twist.
 
@@ -11,16 +229,16 @@
 | | |
 |---|---|
 | **Title** | THE GHOSTWRITER FROM THE 6TH DIMENSION (optional market short-title: *VERSO*) |
-| **Format** | Theatrical feature, 114 minutes picture, R-rated |
+| **Format** | Theatrical feature, 111 minutes picture, R-rated |
 | **Genre** | Elevated psychological horror / metaphysical mystery |
 | **Setting** | Kettle Hollow, New York — a fictional slate-quarry town on the New York/Vermont border. Present day, early November ("stick season": bare trees, wet slate, early dark). Flashbacks to August 1987. Brief New York City interludes. |
 | **Core locations** | The Lindqvist farmhouse above the quarry; Alder Hill memory-care home; the flooded quarry pond; Walter Pruitt's cottage; the town diner and library; Mara's paper-conservation lab; and the Verso itself |
-| **Principal cast** | Theo (protagonist), June (daughter), Mara (ex-wife), Ingrid (mother), Ellie/Nell (sister), Walter (ghostwriter), Priya (editor), and two entities: Theodore (antagonist) and the Wet Boy |
+| **Principal cast** | Theo (protagonist), June (daughter), Mara (ex-wife), Ingrid (mother), Ellie/Nell (sister), Walter (ghostwriter), Priya (editor), and two entities: Theodore (antagonist) and the Wet Boy. **Theo and Theodore are played by the same actor.** |
 | **Central image** | A sheet of handwritten paper held to the light, with a second, different handwriting showing through from the back |
 
 ### The film in one paragraph (spoiler)
 
-Theo Lindqvist, a celebrated novelist who hasn't finished a page in eight years, takes his daughter to his childhood home to close up his mother's life as dementia takes it from her. There, handwritten pages begin to appear — in a child's hand that matures as the film goes on — describing an afternoon in 1987 when Theo's little sister nearly drowned and a neighbor boy, Tomas, died saving her. Theo has always believed he was at home that day. The pages say he was at the pond, in the water, a hero. As he reads, believes and copies them, the world begins to agree: photographs change, neighbors remember differently, a memorial stone is re-cut. The pages are not recovered memories. They are *edits*, written from the unseen back of reality by "Theodore," the heroic version of himself that a nine-year-old invented to survive the day he froze on the bank and let a better boy drown. The pages were never written by the dead boy's ghost. They were *stolen from him*: every page has a second, fading text on its back in pencil — Tomas's own last minutes — and Theodore has been copying them with the pronouns changed. The terrifying wet figure that haunts the house is not a threat. It is Tomas, trying to deliver his own story. The immaculate, gracious, better-lit man in the mirror is the monster.
+Theo Lindqvist, a celebrated novelist who hasn't finished a page in eight years, takes his daughter to his childhood home to close up his mother's life as dementia takes it from her. There, handwritten pages begin to appear — in a child's hand that matures as the film goes on — describing an afternoon in 1987 when Theo's little sister nearly drowned and a neighbor boy, Tomas, died saving her. Theo has always believed he was at home that day. The pages say he was at the pond, in the water, a hero. As he reads, believes and copies them, the world begins to agree: photographs change, neighbors remember differently, a memorial stone is re-cut, and the account begins to surface in his own handwriting on his own skin. The pages are not recovered memories. They are *edits*, written from the unseen back of reality by "Theodore," the heroic version of himself that a nine-year-old invented to survive the day he froze on the bank and let a better boy drown. The pages were never written by the dead boy's ghost. They were *stolen from him*: every page has a second, fading text on its back in pencil — Tomas's own last minutes — and Theodore has been copying them with the pronouns changed. The terrifying wet figure that haunts the house is not a threat. It is Tomas, trying to deliver his own story. The immaculate, gracious, better-lit man in the mirror is the monster.
 
 ### Motifs (the film's visual vocabulary)
 
@@ -32,18 +250,23 @@ Theo Lindqvist, a celebrated novelist who hasn't finished a page in eight years,
 | **The back of the page** | Bleed-through | Where the truth is written |
 | **Reaching hands** | Menace | Delivery, then rescue |
 | **Perfect continuity** | Quality | The signature of a rewritten world |
+| **Writing on skin (the Fair Copy)** | A symptom | A visible gauge of how much he believes — and how close he is to being replaced |
 
 ---
 
 ## 2. FINAL RECOMMENDED LOGLINE
 
-> **A blocked novelist begins receiving handwritten pages that restore a childhood afternoon he has never been able to remember — until he realizes they aren't memories but revisions, written from the unseen back of reality by the flattering self he invented at nine to survive the day his sister nearly drowned, and that every page he believes erases the boy who actually saved her.**
+**Market logline (spoiler-free):**
 
-**Short form (poster/pitch):** *The pages say he was a hero. The truth is on the other side.*
+> **A blocked novelist starts receiving handwritten pages in his own childhood handwriting, and every page he believes rewrites the world around him. The truth is on the other side.**
+
+**Internal logline (full):**
+
+> A blocked novelist begins receiving handwritten pages that restore a childhood afternoon he has never been able to remember — until he realizes they aren't memories but revisions, written from the unseen back of reality by the flattering self he invented at nine to survive the day his sister nearly drowned, and that every page he believes erases the boy who actually saved her.
 
 **Tagline:** **TURN IT OVER.**
 
-*Why this replaces the proposed logline:* the original promises a vast dimension of forgotten things and "something writing him." The new logline keeps both but anchors them in one human fact — **a boy who was there, and a better boy who remembers it** — so audiences grasp the stakes without the metaphysics.
+*Why this replaces the proposed logline:* the original promised a vast dimension of forgotten things and "something writing him." These versions keep both but anchor them in one human fact — **a boy who was there, and a better boy who remembers it** — and the market version withholds the twist so the hook works in a single breath. "Something is writing him" is now literal: it surfaces on his skin.
 
 ---
 
@@ -76,6 +299,7 @@ The film makes three promises to its audience:
 - **Reader complicity.** The pages' false version of the rescue is shown to the audience as flashback in exactly the same visual grammar as true memory. We believe it because Theo does. The correction is the climax. The audience should feel, at the end, *that they were also a Hand.*
 - **Practical first.** Wet floors, forced-perspective sets, practical lighting, paper, water. CGI is reserved for invisible plate work.
 - **Dry/Wet inversion.** Theo's instinct (and ours) is to read wetness as threat. The film exploits that instinct, then honors it.
+- **A film with two sides.** The first 95 minutes are the front of the page. At minute 97 the **Verso Replay** (Beat 35) turns the film over and shows eight earlier scenes from behind. The film is built to be seen twice.
 
 ---
 
@@ -106,7 +330,7 @@ Because retention is finite. A universe that can remember must also discard, and
 None of those exactly. It is a **relation**, like the back of a sheet of paper: not a place beyond the page but the other face of the same thing. Minds *perceive* it as geography, because minds need geography:
 - **The Silt** — the vast inert drift of ordinary forgetting (grey snow, endlessly falling).
 - **The Waiting Rooms** — galleries where heavier abandoned things gather: unfinished stories, suppressed memories, discarded names.
-- **The Studies** — rooms built by Remainders that have learned to imitate their sources; Theodore's Study is the only one in the film.
+- **The Studies** — rooms built by Remainders that have learned to imitate their sources; Theodore's Study is the only one in the film. A Study holds Visitors as furniture and dissolves when its Remainder is truthfully completed (Law 6).
 - **The Surface** — the thin places where the two faces nearly touch: water without reflection, paper held to light, the minds of the very old and the very young.
 
 **D. What inhabits it?**
@@ -135,7 +359,7 @@ Four reasons, each seeded early: (1) children perceive the Verso — their imagi
 Because bleed (Law 3) requires a thin, translucent substrate and a body trace. Paper is thin; handwriting is the body's signature. Typed text and screens cannot carry it. Handwriting is also the one signature Theo can never disown.
 
 **K. Who or what is writing the pages?**
-*Two hands on one sheet.* On the **front**, in a forged copy of Theo's own handwriting that matures from age nine to age forty-seven as Theodore gains power: **Theodore**, the abandoned heroic self. On the **back**, in faint pencil in a thirteen-year-old's cursive: **Tomas's remembered last minutes**, which Theodore is copying and altering. Theo cannot read the back until Act III.
+*Two hands on one sheet.* On the **front**, in a forged copy of Theo's own handwriting that matures from age nine to age forty-seven as Theodore gains power: **Theodore**, the abandoned heroic self. On the **back**, in faint pencil in a thirteen-year-old's cursive: **Tomas's remembered last minutes**, which Theodore is copying and altering. Tomas was the first reader of Theo's boyhood stories and wrote in their margins in pencil; the back of every page is a margin. Theo cannot read the back until Act III.
 
 **L. What does the entity want?**
 To finish the sentence he was abandoned in — *"Theodore reached into the black water and took her hand, and"* — with an ending in which it is **true**. This requires the Record to say Theo reached. Which requires Tomas never to have been in that water.
@@ -144,7 +368,7 @@ To finish the sentence he was abandoned in — *"Theodore reached into the black
 Laws 3 (Bleed), 4 (Attribution), and 8 (Voice).
 
 **N. What are the consequences of discovering this realm?**
-Perception makes you a **thin place**. You leak. Forgetting costs more, remembering costs more, and the Record around you softens. People who touch the pages become **marked** and retain memory of every version of reality (a palimpsest).
+Perception makes you a **thin place**. You leak. Forgetting costs more, remembering costs more, and the Record around you softens. People who touch the pages become **marked** and retain memory of every version of reality (a palimpsest). And once you have believed enough of an account, your *body* becomes a page: it surfaces on your skin (the Fair Copy, Law 3).
 
 **O. Can someone become trapped there?**
 Yes. Three ways: being **revised out** of the Record (Walter); **crossing** and staying too long (June); or **being replaced** (Theo, in Ending A). The Verso doesn't hold people; it holds *their absence*.
@@ -167,6 +391,7 @@ Eight laws. The audience needs to *feel* only three (see end of section).
 - **How it operates.** It is not literal bookkeeping; it is felt as a **tithe**. When Theo recovers a memory, something small vanishes from the world — a word, a street name, a book spine. What vanishes lands in the Verso and becomes part of whoever holds it.
 - **Limits.** The cost is taken from what is held most loosely first. It can be shared (Law 7). Trivial memories cost trivially.
 - **Consequences.** Truth is expensive. Lies are *cheap* — Theodore's offers cost nothing up front, because the Verso supplies them free.
+- **The Fair Copy rule.** Truth spoken aloud to another person also erases a line of the writing on the Hand's skin (Law 3), at the price of something small and remembered.
 - **Cinematic application.** Each recovery removes an object from the frame (a spine on a shelf; the kitchen clock; Mara's old street name). Attentive viewers can keep count. At the climax, Theo cannot recall June's middle name.
 
 ### LAW 2 — WEIGHT
@@ -181,6 +406,7 @@ Eight laws. The audience needs to *feel* only three (see end of section).
 - **How it operates.** A place is thin where attention is low: sleep, grief, dementia, trance, fog, translucent surfaces (paper, water, glass, mirrors), anniversaries.
 - **Limits.** It shows through only as *marks*: writing, wetness, reflection, sound. It cannot move objects. Bleed is mirrored until the Hand "teaches" it to flow forward.
 - **Consequences.** People at the edge of mind — the demented, the ghostwriters, the blocked — leak the most. Ingrid is a window.
+- **The Fair Copy.** A Hand who has adopted enough of an account becomes a thin place himself: the account surfaces on his skin in his own handwriting — dry ink, legible to all, behaving like iron-gall ink on paper (it bleeds with sweat, it fades in water). The marked see it for what it is; everyone Revised treats it as something that has always been there (a tattoo, an old scar). It is a **visible gauge of belief**: it grows when he wants the lie and fades when he tells the truth. Pencil-bleed from the other side (Tomas) appears on the *back* and cannot be read.
 - **Cinematic application.** Writing appears first on the *back* of pages; wet prints; pencil scratching from inside walls; Ingrid's lucid mutterings.
 
 ### LAW 4 — ATTRIBUTION (The Signature) — *two faces*
@@ -195,6 +421,7 @@ Eight laws. The audience needs to *feel* only three (see end of section).
 - **How it operates.** It spreads outward from the Hand through strength of relation: June and Priya first, strangers later. High-Weight witnesses (Nell, Ingrid, Tomas's mother) resist. The **marked** (those who handled the pages) hold both versions.
 - **Limits.** It can only *reassign credit*, never invent from nothing; it needs an existing path of memory. That is why the pages change a single pronoun — *he* to *I* — rather than composing something new.
 - **Consequences.** The revised world is indistinguishable from truth, except for one tell: **it is too well-continuous.** Revised rooms have perfect continuity. Revised people finish each other's sentences.
+- **Substitution.** If the Fair Copy covers the Hand completely and the final line is adopted, the Remainder can sign without him, and the Hand becomes the Remainder. This only happens if the Hand *wants* it: the gauge is belief, not time.
 - **Cinematic application.** Photographs; the memorial plaque; Priya's false memories; the diner where a whole room speaks in unison; Walter's manuscripts going blank.
 
 ### LAW 6 — COMPLETION
@@ -202,21 +429,22 @@ Eight laws. The audience needs to *feel* only three (see end of section).
 - **How it operates.** A false ending strengthens it. A truthful ending **integrates** it — it becomes knowledge in the finisher, not a separate being.
 - **Limits.** Cannot be finished by a stranger. Cannot be finished by a lie. Truth must include the cost to oneself.
 - **Consequences.** The cure for a haunting is not exorcism but confession. A monster is a sentence waiting for a verb.
+- **The Study dissolves.** A Remainder's Study holds any Visitors inside it as furniture; truthful completion dissolves the room and releases them.
 - **Cinematic application.** The climax: Theo writes the true clause, says the name, and completes the long-delayed reach.
 
 ### LAW 7 — WITNESS
-- **Definition.** Weight divides among those who hold a memory. A thing that has been **named** is easier to hold.
+- **Definition.** Weight divides among those who hold a memory. A thing that has been **named by someone who will answer for it** is easier to hold.
 - **How it operates.** Shared remembering lowers the Retention cost per person. Saying a full name aloud before a witness gives the thing a handle to return by.
 - **Limits.** Witnesses must hold it truthfully. A witness who lies adds weight rather than sharing it.
 - **Consequences.** **Isolation is lethal.** Theodore's first strategy is to keep Theo alone — the writer's solitude is the bait.
 - **Cinematic application.** Nell, Mara and Theo at the pond edge; Mara and Nell supply "June Elise" when Theo has paid away her middle name.
 
 ### LAW 8 — VOICE
-- **Definition.** A Remainder has no language of its own. It speaks with what its source supplied — the Hand's vocabulary, rhythms and memories. Those with nothing to borrow are silent. Unnamed things are mute.
+- **Definition.** A Remainder has no language of its own. It speaks with what its source supplied — the Hand's vocabulary, rhythms and memories. Those with nothing to borrow are silent. A thing with no one willing to answer for it is mute: a name spoken carelessly gives no voice; a name spoken by someone prepared to be responsible does.
 - **How it operates.** Theodore speaks in Theo's best sentences, slightly improved. He can borrow trusted voices — he calls June in Theo's voice.
 - **Limits.** **A Remainder cannot say the name of the person it stole from.** Theodore physically cannot say "Tomas." He says "that boy," "the neighbor's kid," "the wet one." The pages never name him.
 - **Consequences.** Borrowed eloquence: the better the author, the more persuasive the villain.
-- **Cinematic application.** A clue hidden in plain sight — a villain's one stammer. The Wet Boy's first spoken word is his own name, said by Theo.
+- **Cinematic application.** A clue hidden in plain sight — a villain's one stammer. The Wet Boy speaks for the first time only after Theo says his name aloud (Beat 37); his first words are "Take her hand."
 
 ### The three rules the audience must *feel* (front of house)
 
@@ -245,7 +473,7 @@ The other five laws are felt, not explained.
 Swedish-Norwegian slate-workers. Father **Gunnar**, quarry foreman, stern, silent, died of silicosis in 2011. Mother **Ingrid**, school librarian, now 79 and in memory care. Sister **Nell** (Eleanor), b. 1982. The neighbor boy **Tomas Arvidsen** (b. 1974), son of the quarry blaster, babysat the Lindqvist children and was the town's golden boy.
 
 ### Childhood history
-A dreamy, brilliant, watchful boy who saw himself as the family's author. At seven he began a serial story in a green notebook titled **THE MARGIN**, about a door in the quarry pond that opens onto a place behind the world where lost and forgotten things wait. He idolized Tomas and resented him in equal measure. Nell adored Theo and followed him everywhere.
+A dreamy, brilliant, watchful boy who saw himself as the family's author. At seven he began a serial story in a green notebook titled **THE MARGIN**, about a door in the quarry pond that opens onto a place behind the world where lost and forgotten things wait. He idolized Tomas and resented him in equal measure. Nell adored Theo and followed him everywhere. Tomas was also the only person who ever read the notebook: he pencilled notes in its margins ("!!", "go on", "what's behind the door??") and signed the inside back cover **T.A. — CHIEF READER.** It was the first time anyone had taken Theo seriously.
 
 ### The suppressed memory
 **August 14, 1987.** Theo (9) is writing at the kitchen table. Nell (5) asks him to come see "the door" in the pond. He says: **"In a minute."** She goes alone. When he finally follows, he finds Tomas (13) already in the water, holding Nell, pushing her toward the slate ledge where Theo stands. Tomas shouts: **"Theo! Take her hand!"** Theo's arm rises — and stops, inches from her fingers. He does not move. Tomas lifts Nell onto the stone, exhausted, goes under, and does not come up. Theo does not call for help. Nell, coughing, crawls out. Theo walks home, dry, and sits at the kitchen table.
@@ -299,7 +527,7 @@ He is the origin of the heaviest Remainder in the county and the only living per
 - **Personality:** Dry, quick, honest in a way adults find rude. Not a "creepy child." She is the film's best reader.
 - **Relationship:** Loves her father and has learned to expect less than she needs.
 - **Motivation:** To be heard, in a minute-less way.
-- **Secret:** She keeps page 3 in her pocket (Beat 11).
+- **Secret:** She keeps page 3 in her pocket (Beat 10) — and reads it aloud, at night, to the father who listens (Beat 24).
 - **Relationship to the Verso:** She is a *reader*, the most dangerous thing in the Verso's economy. She articulates the central rule in her own idiom: *"A character isn't real until somebody believes in them. That's all fanfic is."* She is tempted by Theodore because he is a better father: he listens.
 - **Narrative purpose:** Emotional stakes; the living repetition of Nell; the proof that "In a minute" is still killing people.
 - **Arc:** Resentful hope → seduced by the better dad → crossing → chooses her real father.
@@ -311,7 +539,7 @@ He is the origin of the heaviest Remainder in the county and the only living per
 - **Relationship:** Ended the marriage fourteen months ago because she was "married to a man who wasn't there." She does not hate him.
 - **Motivation:** To protect June; to understand.
 - **Secret:** She has not told Theo that she suspected, for years, that his gift cost something. She kept a private tally of the times he returned from his writing "different."
-- **Relationship to the Verso:** She handles the pages and becomes **marked**: she remembers both versions of the world. She is the film's materialist and its eyewitness. Her lab results (two hands, two inks) are the first evidence.
+- **Relationship to the Verso:** She handles the pages and becomes **marked**: she remembers both versions of the world. She is the film's materialist and its eyewitness. Her lab results (two hands, two inks; and a measurable correlation between the writing on Theo's skin and the fading pencil on the backs) are the first evidence.
 - **Narrative purpose:** Skeptic turned witness; supplies "June Elise" at the climax.
 - **Arc:** Cool control → awe and terror → loyal presence.
 - **Fate:** Survives; stands at the pond edge in Act III.
@@ -347,7 +575,7 @@ He is the origin of the heaviest Remainder in the county and the only living per
 - **Relationship to the Verso:** The only person in the film who has seen a Hand's fate. His expertise is cautionary, not explanatory: *"Don't copy. Don't sign. Don't say it's yours."*
 - **Narrative purpose:** Embodied rules; the demonstration of Revision's cost; the title's dark mirror.
 - **Arc:** Evasion → warning → acceptance of being unwritten.
-- **Fate:** Revised out of the Record at the 70-minute mark. His manuscripts go blank. No one remembers him.
+- **Fate:** Revised out of the Record at about the 68-minute mark. His manuscripts go blank. No one remembers him.
 
 ### PRIYA RAMAN — 52 (editor)
 - **Occupation:** Editor-in-chief at Theo's publishing house.
@@ -356,7 +584,7 @@ He is the origin of the heaviest Remainder in the county and the only living per
 - **Fate:** Her memories restore in the epilogue; she quietly drops the contract.
 
 ### TOMAS ARVIDSEN — 13 (the Wet Boy)
-- **Who he was:** Freckled, tall for thirteen, chewing pencils, fast on a bike; the golden boy of Kettle Hollow; a person, not a saint.
+- **Who he was:** Freckled, tall for thirteen, chewing pencils, fast on a bike; the golden boy of Kettle Hollow; a person, not a saint. He read everything Theo wrote and wrote back in the margins in pencil.
 - **What he is now:** A **Memory-Remainder** — the last four minutes of his life, held open by nobody. He has no voice (Law 8) because no one will say his name. He appears as a tall, dripping figure with his face withheld, arms extended.
 - **What he does:** Leaves wet prints; blots ink on the backs of pages; presses handprints on glass; stands between June and the water. All of it is *delivery and warning.* The film trains us to read it as menace.
 - **Narrative purpose:** The ghost behind the Ghostwriter.
@@ -391,11 +619,13 @@ He is the origin of the heaviest Remainder in the county and the only living per
 
 **Method of communication (escalating).**
 1. Handwritten pages in a child's hand that matures with each adoption.
-2. The sounds of pencil scratching.
+2. The sounds of pencil scratching, and the **Fair Copy** — the account surfacing in his own hand on Theo's skin.
 3. His reflection in glass, silent.
 4. His reflection speaking in Theo's voice.
 5. Physical presence in rooms, visible only to those he has revised.
 6. Finally, a full Study.
+
+**Casting and design note.** Theodore is played by the same actor as Theo. He is never a mirror-image twin: he is *better lit.* His hair is always dry; his clothes never crease; he leaves no prints; the light that falls on him has a source the room doesn't. His voice is a half-step warmer and his sentences a half-beat more finished. To Theo he is a reflection that gradually acquires a body; to the Revised (June, the town) he is visible as "the Dad who listens"; to the unrevised (Nell, Mara) he is invisible, and they watch Theo's eyes track an empty chair.
 
 **Ability to manipulate reality.** He cannot move objects. He can only change what is *recorded and remembered*. This sounds small. It is total: a Record that says a thing happened is, for every living person, a thing that happened.
 
@@ -456,63 +686,68 @@ Impersonal, accounting, indifferent. It does not take sides between Theodore and
 
 | Clue | Where planted | What the audience thinks | What it means |
 |---|---|---|---|
-| "In a minute" | Prologue; Theo to June (Beat 2); again Beat 24 | Parental fatigue | The phrase that killed Nell, recurring in the present |
-| **"Tomas came back wet. Theo came back dry. I counted them both in."** | Beat 4, repeated Beat 16 | Dementia poetry | The literal truth of that day |
-| Ellie's soft focus | Beats 4, 22 | Her face is hard for him to read | He cannot hold his sister's face (Law 2) |
-| The wet footprints | Beats 7, 28, 31 | A haunting | Tomas, delivering |
-| The back of the page | Beats 6, 18, 19, 37 | Bleed-through | The true account |
-| Pages never name Tomas | All | Theo's trauma | Theodore cannot say it (Law 8) |
-| The rescuer's hands in flashbacks | Beats 9, 13 | Theo's hands | A teenager's hands — a red Rutland Rams sleeve |
-| Walter: "Ghostwriters have no names on anything" | Beat 8 | Character color | The definition of the antagonist's crime |
-| Theodore is always dry and warmly lit | Beats 10–37 | Aesthetics | He never went in |
-| The missing spines and words | Beats 13, 25 | Props | Law 1 tally |
-| Theodore says "that boy," "the neighbor's kid" | Beats 20–36 | Verbal tic | Law 8 |
-| The wet figure points at the notebook, not at Theo | Beat 16 | A threat | A message |
-| Handwriting matures through the film | Beats 6–36 | Spooky | Theodore gaining weight |
-| Ingrid: "Don't let him finish" | Beat 16 | Ambiguous "him" | Theodore, not Tomas |
+| **"In a minute"** | Beats 1, 2, 21 | A tired parent's phrase | The last words Theo said to Nell; he is still saying them to June. Payoff: **"Now"** (Beat 38) |
+| **"Tomas came back wet. Theo came back dry. I counted them both in."** | Beats 5, 14 | Dementia poetry | The literal truth of that day. Payoff: **"Theo came back wet"** (Beat 41) |
+| Ellie's soft focus; his eyes slide off her | Beats 5, 19 | She is hard for him to read | He cannot hold his sister's face (Law 2). Payoff: Beat 26 |
+| Small wet footprints | Beats 1, 6, 25, 28, 29 | A haunting | The first, in 1987, are Nell's in the rain; the later ones are Tomas's — delivery, warning, guarding |
+| **The back of the page** | Beats 4, 13, 16, 34 | Bleed-through | The true account. Mara: *"You only ever read the front."* |
+| Pencil marginalia in the green notebook, in a boy's cursive | Beat 14 (close-up), Beat 16 | Another child's scribbles | Tomas, Theo's first reader — the same hand as the backs of the pages |
+| The pages never name Tomas; Theodore never says it ("that boy," "the neighbor's kid," "the wet one") | Beats 4, 8, 18, 20, 27, 33 | Trauma, delicacy | Law 8: he cannot say it |
+| The rescuer's hands and sleeve in the "heroic" flashbacks | Beats 8, 11 | Theo's hands | A thirteen-year-old's hands; a red Rutland Rams jacket. Payoff: Beat 36 |
+| Walter: *"Ghostwriters have no names on anything."* | Beat 7 | Character colour | The definition of Theodore's crime, and of Walter's fate (Beat 23) |
+| Missing spines, words and street names | Beats 11, 22 | Props | Law 1's tally |
+| The handwriting matures through the film | Beats 4 → 18 | Spooky | Theodore gaining power |
+| **Writing on Theo's skin** | Beats 11, 13, 16, 18, 19, 21, 27, 33, 37 | A symptom | The Fair Copy: a visible gauge of belief (Law 3) |
+| Everyone treats the writing as an old tattoo | Beat 19 | A quirk | Revision has absorbed it into the Record |
+| The wet figure points at the notebook's back cover and presses a pencil into Theo's palm | Beat 14 | A threat | Message and tool. The pencil is in his pocket at Beat 28 and is used at Beat 37 |
+| The wet figure's hand over June's mouth; pointing up at the house; standing between June and the water | Beats 24, 25, 29 | Attack, menace | Guarding. Payoff: Verso Replay (Beat 35) |
+| Theodore is always dry, warmly lit, and leaves no prints | Beats 9–33 | Aesthetics | He never went in |
+| Tomas's face is never shown | All | Visual style | Withheld until Beat 36 |
+| Ingrid: *"Don't let him finish."* / *"Not Tomas. Theodore."* | Beat 14 | An ambiguous "him" | Theodore |
+| Mara: *"That's not ink. It's on you the way it's on paper."* | Beat 13 | Skepticism | The body as a page |
 
 ---
 
 ## 11. MAJOR REVELATIONS AND TWISTS
 
-### REVELATION 1 — "I WAS THERE." (≈ 0:24)
+### REVELATION 1 — "I WAS THERE." (≈ 0:21, Beat 8)
 1. **Audience believes:** Theo was home that day; the pages are leaking his own repressed memory, or a prank.
-2. **New information:** The pages describe the cold of the water, the iron taste of the slate — sensations of being *in* the pond — and place Theo at its edge. When he repeats a detail to Ingrid, she reacts with terror: *"You were never there."*
+2. **New information:** The pages describe the cold of the water, the iron taste of the slate — sensations of being *in* the pond — and place Theo at its edge. The first "heroic" flashback plays. When he repeats the dress detail to Ingrid, she goes rigid: *"You weren't there. You were never there."*
 3. **Actual truth:** He was at the pond. But the sensations in the pages are not his; he never went in.
-4. **Earlier scenes that change:** The prologue's "In a minute"; his interview: "I felt it in the kitchen"; Ingrid's "Theo came back dry."
+4. **Earlier scenes that change:** The prologue's "in a minute"; his interview line, "I felt it in the kitchen"; Ingrid's "Theo came back dry."
 5. **Objective shift:** From curing writer's block to finding out what he did.
-6. **Stakes:** His identity's foundation cracks. And he reads the last page aloud — and the world begins to move.
+6. **Stakes:** His identity's foundation cracks. And in Beat 9 he reads the last line aloud — and the world begins to move.
 
-### REVELATION 2 — "THE PAGES DON'T REMEMBER. THEY EDIT." (≈ 0:38)
-1. **Believes:** The pages restore a suppressed past.
-2. **New information:** Priya refers to an event that never happened. Photographs differ. June says "Why didn't you tell me you were brave?" Mara's lab finds two inks: a modern forged-ink front and a faint pencil on the back.
-3. **Truth:** Every page Theo adopts changes the Record (Law 5).
-4. **Earlier scenes:** The fridge photograph (Beat 11); Walter's "Don't put your name on it."
-5. **Objective:** Stop copying; find the source.
-6. **Stakes:** The present — his daughter, his editor, his town — is being rewritten.
+### REVELATION 2 — "THE PAGES DON'T REMEMBER. THEY EDIT." (≈ 0:33, Beats 12–16)
+1. **Audience believes:** The pages restore a suppressed past.
+2. **New information:** Priya remembers a PEN dinner that never happened. The photograph on the fridge has changed. June says, "Why didn't you tell me you were brave?" **Writing has begun to surface on Theo's skin** in his own hand. Mara examines it: *"That's not ink. It's on you the way it's on paper."* In her lab she finds two hands on every page — a modern ink on the front, a faint pencil on the back — and measures a correlation: **as the writing on Theo's body grows, the pencil on the backs fades.**
+3. **Actual truth:** Every page Theo adopts changes the Record (Law 5), and the writing on his body is the gauge of how much of the account he now believes.
+4. **Earlier scenes:** The fridge photo (Beat 10); the first "thank you" in the glass (Beat 9); Walter's "Don't put your name on it."
+5. **Objective:** Stop copying. Find the source.
+6. **Stakes:** The present — his daughter, his editor, his town, and now his own body — is being rewritten, and the truth is visibly being erased.
 
-### REVELATION 3 (MIDPOINT, ≈ 0:57) — "THE GHOSTWRITER IS ME." And the hero's world is wonderful.
-1. **Believes:** A dead boy's ghost is haunting him (the wet figure); the pages are accusation or offering.
-2. **New information:** The green notebook, its last unfinished sentence, and the forbidden name **Theodore**. His reflection speaks. The memorial at the quarry now reads *"Theodore Lindqvist. He reached."* The town greets him as a hero.
-3. **Truth:** The author is Theodore — an abandoned identity. And Theodore is *offering* Theo the life of a good man.
+### REVELATION 3 (MIDPOINT, ≈ 0:53, Beats 17–19) — "THE GHOSTWRITER IS ME." And the hero's world is wonderful.
+1. **Audience believes:** A dead boy's ghost is haunting him (the wet figure, who grabbed his wrist in the cellar); the pages are accusation or offering.
+2. **New information:** The green notebook, its last unfinished sentence, and the forbidden name **Theodore.** His reflection speaks. The next morning the quarry memorial is re-cut in one locked-off shot, and the town greets him as a hero.
+3. **Actual truth:** The author is Theodore — an abandoned identity. And he is *offering* Theo the life of a good man. The wet figure's grab, which looked like attack, was the first of many gestures the film will re-read.
 4. **Earlier scenes:** The trance-dictation; the changing handwriting; Ingrid's "Not Tomas. Theodore."
 5. **Objective:** From stopping a haunting to deciding whether to accept a gift.
 6. **Stakes:** The enemy is inside the self, and it is *appealing.*
 
-### REVELATION 4 (≈ 1:17) — "I DIDN'T SAVE HER. I WATCHED." (Nell)
-1. **Believes:** The public record (Tomas saved Nell; Theo was home); the pages (Theo went in); the wet figure is hostile.
-2. **New information:** Ellie is Nell. She tells him the true account: *he was there; Tomas said "Take her hand"; Theo did not.*
-3. **Truth:** The pages' heroic account is false. The hero was Tomas. Theo is the one who froze.
+### REVELATION 4 (≈ 1:16, Beats 26–27) — "I DIDN'T SAVE HER. I WATCHED."
+1. **Audience believes:** The public record (Tomas saved Nell; Theo was home); the pages (Theo went in); the wet figure is hostile.
+2. **New information:** Ellie is Nell. She tells him the true account: *he was there; Tomas said "Take her hand"; Theo did not.* As she speaks, the writing on his skin begins to fade — he is beginning to doubt.
+3. **Actual truth:** The pages' heroic account is false. The hero was Tomas. Theo is the one who froze.
 4. **Earlier scenes:** Ellie's soft focus; Ingrid's "He doesn't see you, does he"; the red sleeve in the rescue flashbacks.
 5. **Objective:** From "who wrote this" to "what is the truth, and can I bear it?"
 6. **Stakes:** June vanishes. The lie is no longer abstract.
 
-### REVELATION 5 (≈ 1:41) — THE GHOST BEHIND THE GHOSTWRITER.
-1. **Believes:** The wet figure is the threat (June followed its prints); the dry man is, at worst, selfish.
-2. **New information:** In the Verso Theo turns the final page over for the first time, accepting blame, and finds Tomas's pencil. The true memory plays. He realizes: **every "memory he couldn't possibly know" was Tomas's.** Theodore has been copying a dead boy's last minutes and changing *he* to *I*.
-3. **Actual truth:** The "ghostwriter" is the thief who writes a dead boy's deed under another's name. The real ghost-author has been Tomas — trying to deliver his own account to the only person who could receive it. The wet prints were messenger work, and the wet figure stood *between June and the water.*
-4. **Earlier scenes re-read:** The cellar apparition pointing at the notebook; the wet palm on the window reaching toward the *pages*; Theodore's never saying "Tomas"; the camera never showing Tomas's face; the rescue flashbacks (a boy's hands that are too big); Walter's "A page has two sides"; the pencil word "Take" glimpsed in the fire (Beat 27); Ingrid's "I counted them both in."
-5. **Objective:** From escape to **completion**: write the true clause, say the name, and reach.
+### REVELATION 5 (≈ 1:36, Beats 34–36) — THE GHOST BEHIND THE GHOSTWRITER.
+1. **Audience believes:** The wet figure is the threat (wet prints led June to the pond); the dry man is, at worst, selfish.
+2. **New information:** In the Verso Theo turns the final page over for the first time, accepting blame, and reads the pencil. The film **turns over**: eight earlier scenes replay from behind. Then the True Memory plays, including Tomas's face. Theo realizes: **every "memory he couldn't possibly know" was Tomas's.** Theodore has been copying a dead boy's last minutes and changing *he* to *I.*
+3. **Actual truth:** The "ghostwriter" is the thief who writes a dead boy's deed under another's name. The real ghost-author has been Tomas — Theo's first reader, who wrote in the margins in pencil — trying to deliver his own account to the only person who could receive it. The wet prints, the cellar grab, the hand over June's mouth, the figure pointing at the house, the figure standing between June and the water: all of it was **delivery and guarding.**
+4. **Earlier scenes re-read:** The cellar apparition pointing at the notebook's back cover and pressing a pencil into Theo's palm; the wet palm on the kitchen window; the "attack" on June in the Turnover; the pointing at the pond; Theodore's never saying "Tomas"; the camera never showing Tomas's face; the rescue flashbacks (a boy's hands that are too big, a red sleeve); Walter's "A page has two sides"; Mara's "You only ever read the front"; Ingrid's "I counted them both in."
+5. **Objective:** From escape to **completion:** write the true clause, say the name, and reach.
 6. **Stakes:** The cost — Theo's gift, his flattering story, and the certainty that he will never know whether he froze from fear or envy.
 
 *Fairness note:* nothing here is arbitrary. This is not "it was all in his head," "he was dead," or "reality was fake." The supernatural events are real; the twist is **who was authoring what.**
@@ -521,353 +756,345 @@ Impersonal, accounting, indifferent. It does not take sides between Theodore and
 
 ## 12. COMPLETE THREE-ACT NARRATIVE
 
-### ACT I — THE ARRIVAL (0:00–0:26)
+| Act | Runtime | Minutes |
+|---|---|---|
+| I — The Arrival | 0:00–0:24 | 24 |
+| II — The Unraveling | 0:24–1:18 | 54 (midpoint ≈ 0:55) |
+| III — The Author | 1:18–1:51 | 33 |
 
-The film opens in August 1987: rain on a slate roof, a child's hand moving a pencil across a green notebook, a small voice off-screen asking, *"Will you come see the door?"* — and a boy's voice, not looking up, answering, *"In a minute."* The pencil stops mid-word.
+### ACT I — THE ARRIVAL (0:00–0:24)
 
-Thirty-eight years later, Theo Lindqvist, a celebrated novelist with eight years of nothing on the page, drives north with his twelve-year-old daughter, June, to close up his late father's house and settle his mother, Ingrid, into permanent memory care. In the car, an old radio interview replays: *"I don't write my books. I take dictation. And I was home that afternoon — I felt it in the kitchen."* June asks him to read her story. *"In a minute."*
+The film opens in August 1987: rain on a slate roof, a child's hand moving a pencil across a green notebook, a small voice off-screen asking, *"Will you come see the door?"* — and a boy's voice, not looking up, answering, *"In a minute."* When the pencil finally stops, the kitchen is empty, the back door ajar, and small wet footprints cross the linoleum into the rain. A drop of water falls on the page and the pencil lines run.
 
-At the house and at Alder Hill, the film plants everything: the room at the end of the hall that is painted shut; a cellar door that sits too deep in its frame; Ingrid sorting napkins and calling Theo "Tomas"; her singsong, *"Tomas came back wet. Theo came back dry. I counted them both in"*; a night nurse, Ellie, whose face his eyes won't hold. That night he hears pencil scratching in the walls. In the morning his blank legal pad is covered in a child's handwriting, still damp, describing the taste of slate and the sound of his sister asking him to come see the door. He did say *in a minute.* He has never told anyone.
+Thirty-eight years later, Theo Lindqvist, a celebrated novelist with eight years of nothing on the page, drives north with his twelve-year-old daughter, June, to close up his late father's house and settle his mother, Ingrid, into permanent memory care. On the radio an old interview replays: *"I don't write my books. I take dictation. And I was home that afternoon — I felt it in the kitchen."* June asks him to read her story. *"In a minute."* They pass a memorial at the quarry: TOMAS ARVIDSEN 1974–1987. HE REACHED FOR HER.
 
-More pages arrive. They contain things he cannot know — the yellow dress with ducks, the iron taste of the water — and they place him at the pond, in the water, a hero. When he mentions the dress to Ingrid she grows terrified: *"You weren't there. You were never there."* At the end of the act Theo reads the third page aloud in the kitchen. At the word *and* the clock stops, the light turns gold, and in the dark window a dry, smiling reflection writes with a fingertip on the fogged glass: *Thank you.*
+At the house there is a room at the end of the hall painted shut and a cellar door that sits too deep in its frame. That night he hears pencil moving inside the wall. By morning, a page lies on the kitchen table in a child's handwriting, still damp: *The slate was cold on my teeth. Nell asked me to come see the door and I said in a minute.* He has never told anyone those words. That evening at Alder Hill, Ingrid calls him Tomas and sings her refrain: *"Tomas came back wet. Theo came back dry. I counted them both in."* A night nurse named Ellie moves through the frame, soft at the edges where his eyes will not hold her.
 
-### ACT II — THE UNRAVELING (0:26–1:20)
+The first scare arrives at minute fifteen: wet prints appear behind him in the hall, and a dripping silhouette shows for three frames in a dead TV. A neighbor, Walter Pruitt, a retired ghostwriter, warns him not to let anyone put a name on his work. More pages: the yellow dress with ducks, the iron taste of the water — and a heroic flashback in warm 16mm, in which a nine-year-old Theo hauls his sister from the pond. When he mentions the dress to Ingrid she grips his wrist (hers is wet) and says, *"You weren't there. You were never there."* At the end of the act Theo reads the third page aloud. At the word *and* the clock stops, the light turns gold, and in the dark window a dry, smiling reflection writes on the fogged glass: *Thank you.*
 
-**A: Seduction and signs (0:26–0:57).** The world begins to agree with the pages. The fridge photograph shifts. June says, *"You never told me you saved her."* Priya, his editor, remembers a PEN dinner that never happened. Theo starts copying the pages into his laptop and, for the first time in eight years, the sentences *flow.* Each recovered detail costs something: a book spine disappears, the name of a street, a word. Mara, his ex-wife and a paper conservator, finds two hands on every page: a modern ink on the front, a faint pencil on the back. A wet, dripping figure begins to appear — at the foot of the cellar stairs, in the dark of the TV — and in the cellar Theo finds the green notebook, its last line the sentence the pages are finishing. Ingrid warns him: *"Don't let him finish."* "Tomas?" "Not Tomas. Theodore."
+### ACT II — THE UNRAVELING (0:24–1:18)
 
-The neighbor Walter Pruitt, a retired ghostwriter, tells him what he knows: the Verso, the back of the page, the things you leave out; *don't copy, don't sign.* Theo has already copied forty pages. At the **midpoint**, his reflection speaks: *"You called me a ghost. I'm the one who went in."*
+**A: Seduction and signs (0:24–0:55).** The world begins to agree with the pages. The fridge photograph shifts. June says, *"You never told me you saved her."* Theo starts copying the pages into his laptop and, for the first time in eight years, the sentences *flow.* Each recovered detail costs something — a book spine, a street name, a word. On his wrist, in dry ink, in his own hand: *I reached.* It does not wash off. His editor remembers a speech he never gave. Mara, his ex-wife and a paper conservator, looks at his arm — *"That's not ink; it's on you the way it's on paper"* — and finds two hands on every page, a modern ink on the front and a faint pencil on the back; the pencil fades every time the writing on his body grows.
 
-**B: The false victory and its price (0:57–1:20).** The next morning the town loves him. The memorial at the quarry now bears his name. For three minutes the film is warm and golden, and the audience understands what is being offered. Then the cracks: a diner whose every glass is filled to the same line; a room of people finishing each other's sentences. Theodore sits in the back seat of Theo's car: *"It's a good world. I wrote it."* At breakfast June chooses the father who listens — Theodore — over the one who says *in a minute.* Mara, now marked, remembers two versions of her marriage. Walter is revised out of existence; his forty-one manuscripts go blank. Theo tries to burn the pages; they won't burn, but the fire lifts the ink long enough for him to glimpse the back — the pencil. Sleepwalking, he finds himself at the pond at night, the water holding no reflection, a tall dripping figure standing waist-deep with its arms out.
+In the cellar he finds his boyhood notebook, its margins filled with a boy's pencil, its last line the sentence the pages are finishing. A tall wet figure behind the boiler grabs his wrist. Ingrid warns him: *"Don't let him finish."* "Tomas?" "Not Tomas. Theodore." Walter tells him what he knows: *the Verso, the back of the page. Don't copy. Don't sign.* Theo has already copied forty pages. At the **midpoint**, his reflection speaks: *"You called me a ghost. I'm the one who went in."*
 
-At 4 a.m., in the rain, Ellie sets the yellow dress on the kitchen table: *"I'm Nell."* For the first time, her face resolves.
+**B: The false victory and its price (0:55–1:18).** The next morning the town loves him. Strangers wave. They admire his old tattoo. The memorial at the quarry is re-cut in one locked-off shot to bear his name. For four minutes the film is warm and golden, and the audience understands what is being offered. Then the cracks: a diner whose every glass is filled to the same line; a room of people finishing each other's sentences. Theodore sits in the back seat of Theo's car: *"It's a good world. I wrote it."* At breakfast June chooses the father who listens — Theodore — over the one who says *in a minute.* Mara, now marked, remembers two versions of her marriage. Walter is revised out of existence; his forty-one manuscripts go blank, and no one in town remembers him.
 
-### ACT III — THE AUTHOR (1:20–1:54)
+Then **the Turnover**: June reads page 3 aloud to the father who listens, and the house flips like a page. A wet hand covers June's mouth; Theo, thinking it an attack, swings at it, and for the first time says the truth aloud — *"I'm not a hero. I froze."* — and a line on his arm fades. At the pond, the water holds no reflection and a tall dripping figure stands waist-deep with its arms out; it points past him, up the hill. At 4 a.m., in the rain, Ellie sets the yellow dress on the kitchen table: *"I'm Nell."* For the first time, her face resolves.
 
-Nell tells him what happened: he was on the ledge; Tomas said *take her hand*; Theo did not; Tomas went under; Theo went home, dry, and wrote himself a better ending. Theodore, unseen by Nell, whispers that she was five and memory is a draft. Theo realizes he has spent three weeks signing a lie that erases the boy who died. Then June is gone. Two sets of wet prints lead toward the pond. Theodore appears in the doorway: *"I told you to get rid of him. Sign, and I'll bring her back."*
+### ACT III — THE AUTHOR (1:18–1:51)
 
-At the pond, Theo stands at the edge of the water with his daughter's shoes beside it and feels his body do what it did in 1987. Nell says, *"Theo."* Mara says, *"Go."* He goes.
+Nell tells him what happened: he was on the ledge; Tomas said *take her hand*; Theo did not; Tomas went under; Theo went home, dry, and wrote himself a better ending. Theodore, unseen by Nell, whispers that she was five and memory is a draft. As Theo realizes he has spent three weeks signing a lie that erases the boy who died, June's bed is found empty and two sets of wet prints lead to the pond. Theodore appears in the doorway: *"I told you to get rid of him. Sign, and I'll bring her back."*
 
-The Verso is a flooded cathedral of slate: a black mirror floor, grey silt falling like snow, thousands of translucent pages hanging in rows, Waiting Rooms where unwritten children read blank books. Theodore's Study is a warm amber room papered in crossed-out sentences. June sleeps in a chair with her handwriting fading from her palms. Theodore offers the best argument in the film. Theo nearly signs. Then he turns the final page over, for the first time in his life, accepting the blame for whatever is written there, and reads the pencil. The film plays, in one unbroken four-minute take, what happened on the ledge — including Tomas's face. Theo finishes the sentence truthfully, says the name, and reaches *at once.* Theodore crumbles to silt in his hand. The Verso lets go. The cost is Theo's gift; his sentences, from now on, will be his own.
+At the pond, Theo stands at the water's edge with his daughter's sneakers beside him and feels his body do what it did in 1987. Nell says, *"Theo."* Mara says, *"Go."* He goes.
+
+The Verso is a flooded cathedral of slate: a black mirror floor, grey silt falling like snow, thousands of translucent pages hanging in rows, Waiting Rooms where unwritten children read blank books. Theodore's Study is a warm amber room papered in crossed-out sentences. June sleeps in a chair, her handwriting fading from her palms. Theodore offers the best argument in the film. Theo nearly signs. Then he turns the final page over, for the first time in his life, accepting the blame for whatever is written there. The film **turns over**: eight earlier scenes replay from behind, and every terror is revealed as care. Then, in one unbroken four-minute take, the film plays what happened on the ledge, including Tomas's face. Theo takes out the chewed pencil he never knew he was carrying and writes the true clause. He says the name. He reaches **at once.** Theodore crumbles to silt in his hand; the Wet Boy, at last, is dry. The Verso lets go. The cost is Theo's gift; his sentences, from now on, will be his own.
 
 A pond finally holds a reflection. Ingrid, lucid for one breath, sees him soaked and says, *"Theo came back wet."* The memorial is restored. A woman in her eighties takes his hand. June gives him a blank notebook. He writes one plain sentence.
 
 ---
 
-## 13. BEAT OUTLINE (44 BEATS)
+## 13. BEAT OUTLINE (42 BEATS)
 
-*Times are approximate and sum to a 114-minute picture.*
+*Times are approximate and sum to a 111-minute picture.*
 
-### ACT I
+### ACT I (0:00–0:24)
 
 **BEAT 1 — THE DOOR (0:00–0:03)**
-- *What happens:* August 1987. Rain on slate. A boy's hand writes in a green notebook. A girl's off-screen voice: "Will you come see the door?" "In a minute." The pencil stops mid-word. Black. Title.
-- *Character:* Theo's absorption; his habit of deferral.
+- *What happens:* August 1987. Rain on slate. A boy's hand writes in a green notebook. A girl's off-screen voice: "Will you come see the door?" "In a minute." The pencil keeps moving. When it stops the kitchen is empty, the back door ajar, small wet footprints crossing the linoleum into the rain. A drop of water falls on the page and the pencil runs. Title, in handwriting.
+- *Character:* Theo's absorption; deferral as a habit.
 - *Mystery:* Who is the girl? What is the door?
-- *Horror/suspense:* The child's voice is never matched to a face; the pencil's scratch is the whole score.
-- *Purpose:* Plant the wound and the film's key phrase.
+- *Horror/suspense:* A child's voice never matched to a face; the whole score is a pencil.
+- *Purpose:* Plant the wound, the motif, and the dread of something we know is coming.
 
 **BEAT 2 — THE DRIVE (0:03–0:06)**
-- *What happens:* Present. Rain. Theo drives June north. The radio replays his famous interview: "I take dictation… I was home that afternoon." June asks him to read her story. "In a minute." Priya's voicemail: deadline.
-- *Character:* Charming, evasive, absent. June's dryness.
-- *Mystery:* "I was home that afternoon."
-- *Horror/suspense:* The rain on the roof sounds like a pencil.
-- *Purpose:* Establish protagonist, daughter, block, public story.
+- *What happens:* Present. Rain. Theo drives June north. The radio replays his famous interview: "I take dictation… I was home that afternoon." June asks him to read her story. "In a minute." Priya's voicemail: deadline. They pass the quarry memorial; June reads it aloud: "TOMAS ARVIDSEN 1974–1987. HE REACHED FOR HER."
+- *Character:* Charming, evasive, absent; June dry and watchful.
+- *Mystery:* "I was home that afternoon." Who is Tomas?
+- *Horror/suspense:* The rain on the car roof sounds like a pencil.
+- *Purpose:* Establish protagonist, daughter, block, public story, and the memorial.
 
-**BEAT 3 — THE HOUSE (0:06–0:09)**
-- *What happens:* On the road they pass a quarry memorial; June reads it aloud: "TOMAS ARVIDSEN 1974–1987. HE REACHED FOR HER." The farmhouse. Dust sheets. A hall door painted shut. June: "Whose room?" "Storage." A photograph on the fridge: Theo (9) and a taller boy at the quarry. The cellar door sits a few inches too deep in its frame.
+**BEAT 3 — THE HOUSE (0:06–0:08)**
+- *What happens:* The farmhouse. Dust sheets. A hall door painted shut. June: "Whose room?" "Storage." A photograph on the fridge: Theo (9) beside a taller boy with a bike at the quarry. The cellar door sits fractionally too deep in its frame.
 - *Character:* Theo's avoidance.
-- *Mystery:* Who is Tomas? What is behind the door?
+- *Mystery:* The room; the cellar.
 - *Horror/suspense:* Spatial wrongness the audience sees before Theo does.
-- *Purpose:* Location; "heavy" rooms; plant the memorial and the photo.
+- *Purpose:* Location, "heavy" rooms, the planted photograph.
 
-**BEAT 4 — ALDER HILL (0:09–0:13)**
-- *What happens:* Ingrid sorts napkins and calls Theo "Tomas." "Tomas came back wet. Theo came back dry. I counted them both in." The doctor: months. Nurse Ellie — Theo's eyes slide off her; the camera keeps her soft. Ingrid: "He doesn't see you, does he." The house must be sold.
-- *Character:* Theo's helplessness; Ingrid's strange clarity.
+**BEAT 4 — THE NIGHT DESK AND THE FIRST PAGE (0:08–0:11)**
+- *What happens:* Night at the kitchen table: a blank pad, nothing. Pencil scratching inside the wall; he follows it; it stops. He sleeps at the table. Morning: the top sheet is covered in a child's handwriting, ink still damp: "The slate was cold on my teeth. Nell asked me to come see the door and I said in a minute." June denies it: "I write like I'm twelve, not nine." The back of the page is warped, with mirrored smudges.
+- *Character:* Shock — no one else knows those words.
+- *Mystery:* Who wrote it?
+- *Horror/suspense:* The smell of pond water; damp paper.
+- *Purpose:* Inciting incident; plant the back of the page.
+
+**BEAT 5 — ALDER HILL (0:11–0:15)**
+- *What happens:* Ingrid sorts napkins and calls Theo "Tomas." "Tomas came back wet. Theo came back dry. I counted them both in." The doctor: months. The night nurse Ellie is covering a day shift; Theo's eyes slide off her and the camera keeps her soft. Ingrid: "He doesn't see you, does he." When Ingrid says "wet," every resident in the corridor turns the same way. The house must be sold.
+- *Character:* Helplessness; Ingrid's strange clarity.
 - *Mystery:* The refrain; who is Ellie?
-- *Horror/suspense:* When Ingrid says "wet," every resident in the corridor turns the same way.
+- *Horror/suspense:* The corridor.
 - *Purpose:* Ingrid as window and clock; seed Ellie.
 
-**BEAT 5 — THE NIGHT DESK (0:13–0:15)**
-- *What happens:* Theo sits to write in his usual trance; nothing. Pencil scratching through the wall. He follows it; it stops. Upstairs, June's light. He falls asleep at the table.
-- *Character:* The cost of the block.
-- *Mystery:* The scratching.
-- *Horror/suspense:* Sound only; dread through the wall.
-- *Purpose:* Establish bleed.
-
-**BEAT 6 — THE FIRST PAGE (0:15–0:17)**
-- *What happens:* The legal pad's top sheet is covered in a child's handwriting, ink damp: "The slate was cold on my teeth. Nell asked me to come see the door and I said in a minute." June denies it: "I write like I'm twelve, not nine." The back is warped and smudged, mirrored writing.
-- *Character:* Theo's shock; he has never told anyone those words.
-- *Mystery:* Who knows this?
-- *Horror/suspense:* Damp paper, the smell of pond water.
-- *Purpose:* Inciting incident; the back of the page, planted.
-
-**BEAT 7 — WET FLOOR (0:17–0:19)**
-- *What happens:* Night. One long take. Wet prints appear down the hall from the cellar to Nell's room as Theo walks away from them. A tall dripping figure shows for three frames in the dark TV. He mops them.
+**BEAT 6 — THE WET HALLWAY (0:15–0:17)**
+- *What happens:* Night, one long take. Wet prints appear down the hall from the cellar door to the painted-shut room as Theo walks away from them. A tall, dripping silhouette shows for three frames in the dead TV. He mops the floor and tells himself it's the pipes.
 - *Character:* Rationalization.
 - *Mystery:* Who is the wet figure?
 - *Horror/suspense:* The film's first true scare.
-- *Purpose:* Introduce the Wet Boy as apparent menace.
+- *Purpose:* Introduce the Wet Boy as menace and teach the audience to fear wet.
 
-**BEAT 8 — WALTER (0:19–0:21)**
-- *What happens:* Diner. A neighbor, Walter Pruitt, says he heard pencil from his porch all night. "Ghostwriters have no names on anything." "If anyone offers to put a name on it — don't." Wet prints trail behind Theo that only Walter sees.
-- *Character:* Walter as haunted and courtly.
+**BEAT 7 — WALTER (0:17–0:19)**
+- *What happens:* Diner. Walter Pruitt: "I heard you from my porch. Pencil, all night. Don't tell me." "Ghostwriters have no names on anything." "If anyone offers to put a name on it — don't." Wet prints trail behind Theo across dry linoleum, visible only to Walter, who goes pale.
+- *Character:* Walter, courtly and haunted.
 - *Mystery:* What does Walter know?
-- *Horror/suspense:* Walter goes pale at a print on dry linoleum.
-- *Purpose:* Introduce the guide and a human suspect.
+- *Horror/suspense:* A print only one man can see.
+- *Purpose:* Introduce the guide and a human suspect; plant "no names."
 
-**BEAT 9 — THE DRESS (0:21–0:24)**
-- *What happens:* Pages 2 and 3 arrive: the yellow dress with ducks, the iron taste of water. First **heroic flashback** (warm 16mm): nine-year-old Theo wades in and hauls Nell out. Theo visits Ingrid; lucid for forty seconds, she hears about the dress and grips his wrist: "You weren't there. You were never there. Your father—" Ellie sedates her. Ingrid's wrist is wet.
+**BEAT 8 — THE DRESS (0:19–0:22)**
+- *What happens:* Pages 2 and 3 arrive: the yellow dress with ducks, the iron taste of the water. First **heroic flashback** (warm 16mm): nine-year-old Theo wades in and hauls Nell out. At Alder Hill Ingrid is lucid for forty seconds; hearing about the dress she grips his wrist: "You weren't there. You were never there. Your father—" Ellie sedates her. Ingrid's wrist is wet.
 - *Character:* Ingrid's terror is the first crack in his story.
 - *Mystery:* Why did the family lie?
 - *Horror/suspense:* The wet wrist.
 - *Purpose:* Revelation 1; the false memory introduced as true.
 
-**BEAT 10 — "AND" (0:24–0:26)**
-- *What happens:* Night, kitchen. The last page ends: "I reached into the black water and took her hand, and". Theo reads it aloud. At "and," the clock stops, the light warms, and in the dark window a dry, smiling reflection breathes on the glass and writes with a fingertip, from the inside: *Thank you.* Black.
+**BEAT 9 — "AND" (0:22–0:24)**
+- *What happens:* Night, kitchen. The last page ends mid-sentence: "I reached into the black water and took her hand, and". Theo reads it aloud. At "and," the clock stops, the light warms, and in the dark window a dry, smiling reflection breathes on the glass and writes with a fingertip, from the inside: *Thank you.* (On the outside of the glass, a hand-sized smear of rain, which the audience may or may not register.) Black.
 - *Character:* He has crossed a line.
 - *Mystery:* Who is the reflection?
 - *Horror/suspense:* Intimate, quiet, wrong.
 - *Purpose:* End of Act I: the irreversible act.
 
-### ACT II-A
+### ACT II-A (0:24–0:55)
 
-**BEAT 11 — MORNING AFTER (0:26–0:29)**
-- *What happens:* A warm morning. June: "You never told me you saved her." "I didn't." "It says you did." She has kept page 3 in her pocket. The fridge photograph now shows Theo alone on a rock with Nell on his shoulders, a red jacket across his arm.
-- *Character:* Theo's flicker of pleasure.
+**BEAT 10 — MORNING AFTER (0:24–0:26)**
+- *What happens:* A warm morning, the first of the film. June: "You never told me you saved her." "I didn't." "It says you did." She has kept page 3 in her pocket. The fridge photograph now shows Theo alone on a rock with Nell on his shoulders and a red jacket over his arm. Theo feels a flicker of pleasure he can't help.
+- *Character:* Pleasure he is ashamed of.
 - *Mystery:* Why does June believe it?
 - *Horror/suspense:* The photograph changed in plain view.
 - *Purpose:* Revelation 2 begins; the Record shifts.
 
-**BEAT 12 — MICROFILM (0:29–0:32)**
-- *What happens:* Library. An article: "LOCAL BOY DIES SAVING SISTER, 5." Tomas's photo has dissolved into halftone dots. "The girl's brother, 9, was at home." The librarian: "You're the first to ask in years." The reel spools by itself to an obituary.
-- *Character:* Relief at the "home" line, then an itch.
-- *Mystery:* Tomas's face is gone.
-- *Horror/suspense:* The reflection in the viewer lags and smiles.
-- *Purpose:* Establish Tomas in the Record while withholding his face.
-
-**BEAT 13 — THE GOOD PAGES (0:32–0:35)**
-- *What happens:* Theo begins copying the pages into his laptop and finds he can go on past where they stop. Three nights of flow; June eats alone ("In a minute"). A second heroic flashback. A spine vanishes from the bookshelf; he cannot recall Mara's old street.
+**BEAT 11 — THE GOOD PAGES (0:26–0:30)**
+- *What happens:* At the library, a microfilm article — "LOCAL BOY DIES SAVING SISTER, 5." Tomas's photo has dissolved into halftone dots; "the girl's brother, 9, was at home." That night Theo starts copying the pages into the laptop and finds he can go on past where they stop: three nights of flow while June eats alone ("In a minute"). A second heroic flashback. A spine vanishes from the bookshelf; he can't recall Mara's old street. On his left wrist, dry ink rises in a neat hand: *I reached.* It won't wash off.
 - *Character:* Ecstasy and vanity.
-- *Mystery:* What is it costing?
-- *Horror/suspense:* The pencil scratch syncs with his keystrokes.
-- *Purpose:* Seduction; Law 1.
+- *Mystery:* What is it costing? What is on his skin?
+- *Horror/suspense:* Body: the first line of the Fair Copy.
+- *Purpose:* Seduction; Law 1; the visible gauge begins.
 
-**BEAT 14 — PRIYA (0:35–0:38)**
-- *What happens:* 2 a.m. call. Priya, in tears: "You went in the water — you said it at the PEN dinner." He never did. He looks at his hands: dry.
-- *Character:* Theo's first flush of dread.
+**BEAT 12 — PRIYA (0:30–0:32)**
+- *What happens:* 2 a.m. call. Priya, in tears of joy: "You went into the water — you said it at the PEN dinner." He never did. His forearm now carries two lines. He looks at his hands: dry.
+- *Character:* First flush of dread.
 - *Mystery:* Why does she remember it?
 - *Horror/suspense:* A stranger's certainty.
 - *Purpose:* Revision spreads beyond the house; commercial pressure.
 
-**BEAT 15 — MARA ARRIVES (0:38–0:41)**
-- *What happens:* Mara comes up, cool. He shows her a page. She handles it with gloves: "This is rag paper. It's wet from the inside." She notices the back: "There's something on the back." Theo glances at a smudge. She takes two pages. Her gloves come away wet; the page is dry.
+**BEAT 13 — MARA ARRIVES (0:32–0:35)**
+- *What happens:* Mara drives up after June's worried call. Cool reunion. She sees his forearm: "That's not ink. It's on you the way it's on paper." He shows her a page; she handles it in gloves: "This is rag paper. It's wet from the inside." She turns it over: "There's something on the back. You only ever read the front." Theo glances at a smudge. She takes two pages. Her gloves come away wet; the page is dry.
 - *Character:* Their history in a gesture.
-- *Mystery:* What's on the back?
-- *Horror/suspense:* Physical impossibility, in daylight.
-- *Purpose:* Bring in a skeptic; plant the back of the page.
+- *Mystery:* The back; the arm.
+- *Horror/suspense:* Physical impossibility in daylight.
+- *Purpose:* The skeptic enters; plant the back and the body.
 
-**BEAT 16 — THE BOX (0:41–0:44)**
-- *What happens:* Alder Hill, night. Ingrid agitated: "Don't let him finish." "Tomas?" "Not Tomas. Theodore. Your father burned his name." Ellie: "She keeps the cellar key on a ribbon." In the cellar: the green notebook, Nell's yellow dress, Tomas's chewed pencil. The last line is the Theodore sentence. A tall wet figure behind the boiler, arms out, pointing at the notebook's back cover. Theo flees.
-- *Character:* Terror and recognition.
-- *Mystery:* Who is "Theodore"?
-- *Horror/suspense:* The first full view of the Wet Boy.
-- *Purpose:* The notebook; Ingrid's warning; misdirection.
+**BEAT 14 — THE BOX (0:35–0:40)**
+- *What happens:* Alder Hill at night. Ingrid, agitated: "Don't let him finish." "Tomas?" "Not Tomas. Theodore. Your father burned his name." Ellie: "She keeps the cellar key on a ribbon." In the cellar: the green notebook, its margins full of pencil notes in a boy's cursive ("!!", "go on", "what's behind the door??"), Nell's yellow dress, a chewed pencil. The last line is the Theodore sentence. The lights gutter. A tall wet figure behind the boiler, arms out. A cold hand closes on his wrist — the audience jumps — forces the notebook open to its inside back cover (*T.A. — CHIEF READER*), and presses something small into his palm. Theo tears free and flees; the pencil drops into his coat pocket, unnoticed.
+- *Character:* Terror; recognition of the name.
+- *Mystery:* Who is Theodore? Who read the notebook?
+- *Horror/suspense:* First full view of the Wet Boy; the jump.
+- *Purpose:* The notebook; Ingrid's warning; the chewed pencil; misdirection.
 
-**BEAT 17 — DICTATION (0:44–0:47)**
-- *What happens:* Kitchen. Reading aloud, the room stretches: the table recedes with each sentence. Theo drowns on dry land. June finds him on the floor, blue, coughing pond water and a chip of slate.
-- *Character:* June's competence; her fear.
+**BEAT 15 — DICTATION (0:40–0:43)**
+- *What happens:* Kitchen. Reading aloud, the room stretches; the table recedes with each sentence. Theo drowns on dry land. June finds him on the floor, blue, coughing pond water and a chip of slate.
+- *Character:* June's competence and fear.
 - *Mystery:* The pages can hurt him.
-- *Horror/suspense:* Practical forced-perspective set piece.
+- *Horror/suspense:* Practical forced-perspective; drowning in a dry room.
 - *Purpose:* Physical stakes; Bleed made visible.
 
-**BEAT 18 — THE LAB (0:47–0:50)**
-- *What happens:* Video call. Mara, with raking light and UV: two inks, two hands. The back is pencil, "a boy's cursive." Her photographs of the back come out blank. "Bleed doesn't have a second handwriting. Stop copying them." "I can't. I'm writing."
+**BEAT 16 — THE LAB (0:43–0:46)**
+- *What happens:* Video call from Mara's lab. Raking light and UV: two inks, two hands. The back is pencil, "a boy's cursive." She can see it; she can't photograph it and she can't read it. She has measured something: "Each time the writing on you grows, the pencil on the back of my samples fades. You're erasing it by writing on yourself. Stop copying them." "I can't. I'm writing."
 - *Character:* Mara's fear under control; Theo's addiction.
-- *Mystery:* The back is faint and fading.
-- *Horror/suspense:* The photos are blank.
-- *Purpose:* Material evidence.
+- *Mystery:* What is being erased?
+- *Horror/suspense:* The blank photographs.
+- *Purpose:* Material evidence; the clock.
 
-**BEAT 19 — WALTER'S STUDY (0:50–0:53)**
-- *What happens:* Walter's cottage: forty-one books he wrote under other men's names. "It's not a ghost. It's everything you ever left out. A page has two sides." "Don't copy. Don't sign." "I've copied forty." "Then he's got a hand." "Who's he?" "Theodore." "That's the one you threw away."
+**BEAT 17 — WALTER'S STUDY (0:46–0:51)**
+- *What happens:* Walter's cottage: forty-one books he wrote under other men's names. "It's not a ghost. It's everything you ever left out. A page has two sides." "Don't copy. Don't sign." "I've copied forty." "Then he's got a hand." "Who's he?" "Theodore." Walter goes still. "That's the one you threw away." Walter admits he has no childhood left; he traded it, memoir by memoir.
 - *Character:* Walter's weary kindness.
 - *Mystery:* The rules.
 - *Horror/suspense:* Walter looks at his own hands.
-- *Purpose:* Exposition delivered by experience.
+- *Purpose:* Exposition delivered by experience; Rules 1 and 3.
 
-**BEAT 20 — THE MIRROR (0:53–0:57)**
-- *What happens:* Bathroom. His reflection, dry and warm, speaks in his voice: "You called me a ghost. I'm the one who went in. Let me take the wet thing away. Just let them love you." He says "that boy," never a name. Theo weeps. The reflection writes the last line on the fogged glass; Theo's hand follows it before he can stop.
+**BEAT 18 — THE MIRROR (0:51–0:55)**
+- *What happens:* Bathroom. The Fair Copy has spread across his chest, visible in the mirror. His reflection, dry and warm, speaks in his voice: "You called me a ghost. I'm the one who went in. Let me take the wet thing away. Just let them love you." He says "that boy," never a name. Theo weeps. The reflection writes the last line on the fogged glass; Theo's hand moves to copy it before he can stop.
 - *Character:* Theo wants this.
 - *Mystery:* Theodore is himself.
-- *Horror/suspense:* The dread of being seduced.
-- *Purpose:* Revelation 3; midpoint hinge.
+- *Horror/suspense:* The dread of being seduced; his own handwriting moving his hand.
+- *Purpose:* Revelation 3; the midpoint hinge.
 
-### ACT II-B
+### ACT II-B (0:55–1:18)
 
-**BEAT 21 — THE MEMORIAL (0:57–1:00)**
-- *What happens:* Golden light. Strangers greet him as a hero. At the quarry, the memorial stone is re-cut in a locked-off long take: TOMAS ARVIDSEN fades; THEODORE LINDQVIST — HE REACHED FOR HER fills in. Townspeople pass behind. A sexton: "Who's Tomas?" Theo takes the flowers.
-- *Character:* Guilty pleasure.
+**BEAT 19 — THE HERO'S WELCOME (0:55–0:59)**
+- *What happens:* Golden light. Strangers wave. "Always loved that tattoo." At the quarry, the memorial is re-cut in one locked-off shot: TOMAS ARVIDSEN fades; THEODORE LINDQVIST — HE REACHED FOR HER fills in. Townspeople pass behind. A sexton: "Who's Tomas?" At a dinner in his honor June is thrilled; across the room Ellie doesn't smile: "Funny. I don't remember it that way." The camera holds her soft, then sharp when he looks away.
+- *Character:* Guilty pleasure; Ellie is the one unrevised witness.
 - *Mystery:* Tomas is being erased.
-- *Horror/suspense:* An erasure played in real time.
-- *Purpose:* False victory; the stakes turn.
+- *Horror/suspense:* An erasure in real time; a town too warm.
+- *Purpose:* The false victory; the stakes turn.
 
-**BEAT 22 — THE WELCOME (1:00–1:02)**
-- *What happens:* Town dinner in his honor. June is thrilled. Across the room Ellie does not smile: "Funny. I don't remember it that way." The camera holds her soft, then sharp when he looks away.
-- *Character:* Ellie is the one unrevised witness.
-- *Mystery:* Who is she?
-- *Horror/suspense:* Everyone else is too warm.
-- *Purpose:* Isolate the truth-holder.
-
-**BEAT 23 — PERFECT CONTINUITY (1:02–1:05)**
-- *What happens:* The diner next morning. Every glass is filled to the same line. Two tables say the same line together. A man's coffee never lowers. Theo flees to his car. Theodore sits in the back seat, dry. "It's a good world. Everyone's happy. I wrote it." "Don't worry about the wet one. He's a bookkeeping error." "I'll be there for June. I always will."
+**BEAT 20 — PERFECT CONTINUITY (0:59–1:02)**
+- *What happens:* The diner next morning. Every glass is filled to the same line. Two tables speak the same sentence together. A man's coffee never lowers. Theo flees to his car. Theodore sits in the back seat, dry. "It's a good world. Everyone's happy. I wrote it." "Don't worry about the wet one. He's a bookkeeping error." "I'll be there for June. I always will."
 - *Character:* Theodore's first sustained scene.
 - *Mystery:* What does he want?
 - *Horror/suspense:* The horror of perfection.
 - *Purpose:* The antagonist at full persuasion.
 
-**BEAT 24 — TWO FATHERS (1:05–1:08)**
-- *What happens:* Breakfast. June, Theo, and Theodore at one table. June asks Theo to read her story. "In a minute." Theodore: "Read it to me." She turns and reads to him. "Dad's different today. Dad's listening."
+**BEAT 21 — TWO FATHERS (1:02–1:05)**
+- *What happens:* Breakfast. June, Theo, and Theodore at one table. June asks Theo to read her story. "In a minute." Theodore: "Read it to me." She turns and reads to him. "Dad's different today. Dad's listening." She notices Theo's wrist: "Cool tattoo. Have you always had that?"
 - *Character:* Theo watches his daughter choose.
-- *Mystery:* What is June's role?
+- *Mystery:* June's role.
 - *Horror/suspense:* Domestic, quiet, excruciating.
-- *Purpose:* Emotional core; raise the stakes.
+- *Purpose:* The emotional core; raise the stakes.
 
-**BEAT 25 — MARA'S TWO MARRIAGES (1:08–1:10)**
-- *What happens:* Mara returns, marked. "I remember two versions of us. In one you were never there. In the other, you carried me out of a flood. I remember you were a hero and I remember you weren't. Which one did I leave?" She has lost her old street's name. "The pencil is fading. Every page you copy, it gets fainter."
+**BEAT 22 — MARA'S TWO MARRIAGES (1:05–1:07)**
+- *What happens:* Mara returns, marked. "I remember two versions of us. In one you were never there. In the other you carried me out of a flood. I remember you were a hero and I remember you weren't. Which one did I leave?" She has lost the name of her old street. "The pencil is almost gone."
 - *Character:* Mara's grief and clarity.
-- *Mystery:* The clock — the truth is being overwritten.
+- *Mystery:* The truth is being overwritten.
 - *Horror/suspense:* A woman holding two lives.
 - *Purpose:* The ticking clock; Witness.
 
-**BEAT 26 — WALTER'S LAST CHAPTER (1:10–1:13)**
-- *What happens:* Rain. Walter is calm: "I think I'm going." The last rule: "It ends when the one who left it open says it truthfully. And you have to say the name of the one it stole from." "Whose name?" Walter can't remember. His books go blank, row by row. "Can I help you?" He is gone; a dust sheet over the chair. In town: "That cottage has been empty for years."
+**BEAT 23 — WALTER'S LAST CHAPTER (1:07–1:10)**
+- *What happens:* Rain. Walter, calm: "I think I'm going." The last rule: "It ends when the one who left it open says it truthfully. And you have to say the name of the one it stole from." "Whose name?" Walter can't remember. His books go blank, row by row. "Can I help you?" He is gone: a dust sheet over the chair. In town: "That cottage has been empty for years."
 - *Character:* Walter's grace.
 - *Mystery:* Whose name?
 - *Horror/suspense:* Revision as a physical event.
-- *Purpose:* Cost made visible; final rule.
+- *Purpose:* The cost made visible; the final rule.
 
-**BEAT 27 — BURN (1:13–1:15)**
-- *What happens:* Theo burns the pages. They won't burn. The heat lifts the ink and shows the back for a second: a pencil word — "Take" — he cannot read the rest. The pages re-form on the desk, dry. Theodore sits at the desk, writing at the speed of thought.
-- *Character:* Defeat.
-- *Mystery:* The back.
-- *Horror/suspense:* The pages as unkillable.
-- *Purpose:* Limits of brute force; hint of the back.
+**BEAT 24 — THE TURNOVER (1:10–1:14)**
+- *What happens:* Night. Pencil scratching on every wall. Theo wakes to find the hall running the wrong way: rooms mirrored, text reversed on every label, the staircase descending where it should rise. In the kitchen June reads page 3 aloud to Theodore, who listens. As she says "and," the house turns over like a page. A tall wet figure slides between rooms and clamps a wet hand over June's mouth; Theo, thinking it an attack, swings at it. June, dazed: "You're not him." Theo screams the truth for the first time: "I'm not a hero! I froze! I didn't take her hand!" The house snaps back. A line on his arm fades. June: "What do you mean?"
+- *Character:* First confession, to his daughter.
+- *Mystery:* The Wet Boy is stopping June from reading.
+- *Horror/suspense:* The film's biggest set piece so far.
+- *Purpose:* The first truth; June is implicated; a misread gesture the film will re-read.
 
-**BEAT 28 — THE POND AT NIGHT (1:15–1:17)**
-- *What happens:* Sleepwalking, Theo wakes at the pond. The water holds no reflection. A tall, dripping figure stands waist-deep, arms out, mouth moving silently. Theo throws a stone. The figure drops one arm and points at him. He runs.
+**BEAT 25 — THE POND AT NIGHT (1:14–1:16)**
+- *What happens:* June asleep, Theo walks to the pond. The water holds no reflection. A tall dripping figure stands waist-deep, arms out, mouth moving silently. Theo throws a stone. The figure drops one arm and points — past Theo — up the hill at the house. Theo runs back.
 - *Character:* Terror.
-- *Mystery:* What is the figure trying to say?
-- *Horror/suspense:* The film's most frightening image; false menace.
+- *Mystery:* What is the figure saying?
+- *Horror/suspense:* The most frightening image in the film; false menace.
 - *Purpose:* Misdirection before the reveal.
 
-**BEAT 29 — NELL (1:17–1:20)**
-- *What happens:* 4 a.m., rain. Ellie, soaked, sets the yellow dress on the table. "I'm Nell." The rack focus: her face finally resolves. "You never took my hand."
+**BEAT 26 — NELL (1:16–1:18)**
+- *What happens:* The kitchen, 4 a.m., rain. Ellie, soaked, sets the yellow dress on the table. "I'm Nell." The rack focus: her face finally resolves. "You never took my hand."
 - *Character:* Theo's collapse.
 - *Mystery:* The truth arrives.
 - *Horror/suspense:* A human face, finally seen.
 - *Purpose:* Act II low point.
 
-### ACT III
+### ACT III (1:18–1:51)
 
-**BEAT 30 — WHAT NELL REMEMBERS (1:20–1:26)**
-- *What happens:* Nell's testimony: he was on the ledge; Tomas said *take her hand*; Theo did not; Tomas went under; Theo went home dry. Intercut with sensory fragments only — cold, sound, no faces. Theo denies, then remembers pieces. Theodore appears beside him, unseen by Nell: "She was five. Memory is a draft. I'm the fair copy." Nell watches Theo's eyes track an empty chair: "He's here, isn't he? I used to be afraid of Theodore. He was so good." Why she came home; why she never told him again; Tomas's mother still sends Ingrid a card each August. Theo understands what he has been signing.
+**BEAT 27 — WHAT NELL REMEMBERS (1:18–1:22)**
+- *What happens:* Her testimony: he was on the ledge; Tomas said *take her hand*; Theo did not; Tomas went under; Theo went home dry. Intercut with sensory fragments only — cold, sound, no faces. Theodore appears beside him, unseen by Nell: "She was five. Memory is a draft. I'm the fair copy." Nell watches Theo's eyes track an empty chair: "He's here, isn't he? I used to be afraid of Theodore. He was so good." Why she came home. Why she never told him again. Tomas's mother still sends Ingrid a card each August. As she speaks the writing on his skin pales.
 - *Character:* Nell's severity and love.
 - *Mystery:* Revelation 4.
 - *Horror/suspense:* The truth is worse than the haunting.
 - *Purpose:* The emotional center; set up the climax.
 
-**BEAT 31 — THE EMPTY BED (1:26–1:29)**
-- *What happens:* June's bed is empty. Wet prints, small bare ones and larger ones, lead toward the pond. Theodore in the doorway: "I told you to get rid of him. He's taking her. Sign, and I'll bring her back." Theo thinks Tomas lured her. Mara arrives.
-- *Character:* Theo's panic.
+**BEAT 28 — THE EMPTY BED (1:22–1:24)**
+- *What happens:* June's bed is empty. Two sets of prints, small bare feet and larger ones beside them, lead toward the pond. In his coat pocket Theo finds a cold, wet, chewed pencil. Theodore in the doorway: "I told you to get rid of him. He's taking her. Sign, and I'll bring her back." The writing races up Theo's neck. He calls Mara.
+- *Character:* Panic; he wants the lie.
 - *Mystery:* Who took her?
 - *Horror/suspense:* A child in jeopardy, with misdirection.
-- *Purpose:* The deadline.
+- *Purpose:* The deadline; the pencil.
 
-**BEAT 32 — THE EDGE (1:29–1:31)**
-- *What happens:* The pond. June's sneakers at the water's edge. The black water. The film lets Theo stand at the edge for as long as the original ninety seconds. His body repeats what it did in 1987. Nell: "Theo." Mara: "Go." He goes.
+**BEAT 29 — THE EDGE (1:24–1:26)**
+- *What happens:* The pond. June's sneakers at the water's edge; between them and the water, a line of wet prints, as if someone had stood there. The film lets Theo stand at the edge for as long as the original ninety seconds. His body repeats what it did in 1987. Nell: "Theo." Mara: "Go." He goes.
 - *Character:* The test.
 - *Mystery:* Will he freeze?
 - *Horror/suspense:* Suspense built from stillness.
 - *Purpose:* The replay with a choice.
 
-**BEAT 33 — DESCENT (1:31–1:33)**
+**BEAT 30 — DESCENT (1:26–1:28)**
 - *What happens:* He steps in. The water holds him like paper. He sinks through sheets of grey page like leaves. Sound inverts. He stands on a black mirror.
 - *Character:* Surrender.
 - *Mystery:* The Verso.
 - *Horror/suspense:* Weightlessness; vertigo.
 - *Purpose:* The crossing.
 
-**BEAT 34 — THE VERSO (1:33–1:36)**
+**BEAT 31 — THE VERSO (1:28–1:31)**
 - *What happens:* Silt falls like snow. Pages hang in rows. In the Waiting Rooms, unwritten children read blank books; half-finished people reach for nothing. He calls June and gets his own voice back reversed. Wet prints on the black floor guide him.
 - *Character:* Awe and dread.
 - *Mystery:* The mythology made visible.
 - *Horror/suspense:* Scale; thousands of unfinished gestures.
-- *Purpose:* The film's one large world-reveal.
+- *Purpose:* The film's one large world reveal.
 
-**BEAT 35 — THE STUDY (1:36–1:38)**
+**BEAT 32 — THE STUDY (1:31–1:33)**
 - *What happens:* A warm amber room papered in crossed-out sentences. Theodore at a desk. June asleep in a leather chair with a blank book, her handwriting fading from her palms. The final page, waiting.
 - *Character:* Theodore at home.
 - *Mystery:* What is in the room?
 - *Horror/suspense:* Beauty as threat.
 - *Purpose:* The antagonist's lair.
 
-**BEAT 36 — THE BEST ARGUMENT (1:38–1:41)**
-- *What happens:* Theodore: "You were nine. I wrote every sentence you're proud of. I hold everything you've forgotten — including her middle name. Say it." Theo can't. "I'm not stealing your life. I'm the part of you that lived it." Theo reaches for the pen.
+**BEAT 33 — THE BEST ARGUMENT (1:33–1:36)**
+- *What happens:* Theodore: "You were nine. I wrote every sentence you're proud of. I hold everything you've forgotten — including her middle name. Say it." Theo can't. "I'm not stealing your life. I'm the part of you that lived it." The writing races across Theo's face as he lifts the fountain pen.
 - *Character:* Theo nearly signs.
-- *Mystery:* The cost of the Retention law is finally clear.
+- *Mystery:* The Retention cost becomes clear.
 - *Horror/suspense:* The best argument is kindness.
 - *Purpose:* The intellectual and emotional climax of the antagonist.
 
-**BEAT 37 — TURNING THE PAGE (1:41–1:43)**
-- *What happens:* Theo hesitates. He turns the page over for the first time. It is nearly blank — except the last lines in pencil. He can read them now. Theodore lunges. The warmth begins to fail.
+**BEAT 34 — TURNING THE PAGE (1:36–1:37)**
+- *What happens:* Theo hesitates. He puts down the pen and turns the page over for the first time. The back is nearly blank except for the last lines in pencil. He can read them now. Theodore lunges. The warmth begins to fail.
 - *Character:* Acceptance of blame.
 - *Mystery:* The back is readable.
 - *Horror/suspense:* Light dying in the room.
 - *Purpose:* Begin Revelation 5.
 
-**BEAT 38 — THE TRUE MEMORY (1:43–1:47)**
-- *What happens:* One unbroken four-minute take, at the eye line of a nine-year-old. The slate steps. The pond. Tomas in the water holding Nell, a red Rutland Rams jacket on the ledge. "Theo! Take her hand!" Nell's small hand. Theo's arm rises and stops. The camera finds Tomas's face for the first time: freckled, terrified, kind. Then the boy's own face: a flicker, two things at once, then nothing. Tomas lifts Nell onto the stone and goes under. Theo does not move. He walks home, dry.
+**BEAT 35 — THE VERSO REPLAY (1:37–1:39)**
+- *What happens:* The film turns over. Eight earlier scenes replay from behind, about ten seconds each: a wet palm on the kitchen window beside a dry reflection; prints in the hall ending at the desk where a pencil lay; a cold hand closing Theo's fingers around the pencil; a soaked boy pressing his palms against the memorial as the letters leave; a soaked figure standing in the sun on the diner sidewalk, unseen; a wet hand over June's mouth; the figure pointing up at the house; the prints between June's sneakers and the water.
+- *Character:* The audience re-reads every scare as care.
+- *Mystery:* Everything flips.
+- *Horror/suspense:* Relief turning to grief.
+- *Purpose:* The formal payoff of the title; Revelation 5.
+
+**BEAT 36 — THE TRUE MEMORY (1:39–1:43)**
+- *What happens:* One unbroken four-minute take at the eye line of a nine-year-old. The slate steps. The pond. Tomas in the water holding Nell, a red Rutland Rams jacket on the ledge. "Theo! Take her hand!" Nell's small hand. Theo's arm rises and stops. The camera finds Tomas's face for the first time: freckled, terrified, kind. Then the boy's own: a flicker, two things at once, then nothing. Tomas lifts Nell onto the stone and goes under. Theo does not move. He walks home, dry.
 - *Character:* The truth, including the thing he will never know.
 - *Mystery:* Everything resolves — except fear or envy.
 - *Horror/suspense:* The quietest scene in the film.
 - *Purpose:* Revelation 5; the formal peak.
 
-**BEAT 39 — THE SENTENCE (1:47–1:49)**
-- *What happens:* Theo takes the pen and writes the true clause. "Theodore did not reach. Theo did not reach. Tomas Arvidsen, thirteen, reached." He says the name aloud. Books in the Study go blank — his gift. The pencil's last lines: *"You don't have to be brave. You just have to be quick. Say my name when you tell it."* Theo cannot remember June's middle name. Mara's voice reaches him through the water: "June Elise."
+**BEAT 37 — THE SENTENCE (1:43–1:45)**
+- *What happens:* Theo takes out the chewed pencil. On the back of the last page, beneath Tomas's lines, he writes the true clause: "Theodore did not reach. Theo did not reach. Tomas Arvidsen, thirteen, reached." He says the name aloud. The writing lifts off his skin like steam. The books on Theodore's shelves go blank — his gift. The pencil's last lines: *"You don't have to be brave. You just have to be quick. Say my name when you tell it."* He cannot remember June's middle name. Mara's voice reaches him through the water: "June Elise."
 - *Character:* Acceptance.
 - *Mystery:* The rules close.
 - *Horror/suspense:* The cost, felt.
-- *Purpose:* The truthful completion; Retention; Witness.
+- *Purpose:* Truthful completion; Retention; Witness.
 
-**BEAT 40 — NOW (1:49–1:50)**
-- *What happens:* The Study floods; June sinks. A thirteen-year-old steps into the light, wet, face revealed. "Take her hand." Theo: "Now." He takes it.
+**BEAT 38 — NOW (1:45–1:46)**
+- *What happens:* The Study floods; June sinks in her chair. A thirteen-year-old steps into the light, wet, face revealed. "Take her hand." Theo: "Now." He takes it. June wakes: "You were quick."
 - *Character:* The reach, completed.
 - *Mystery:* None.
-- *Horror/suspense:* A moment held for a heartbeat.
-- *Purpose:* The film's emotional release.
+- *Horror/suspense:* A held heartbeat.
+- *Purpose:* The film's release.
 
-**BEAT 41 — THE DRY MAN'S END (1:50–1:51)**
-- *What happens:* Theodore, crumbling to silt: "I only wanted to be the one who did it." "So did I." He dissolves into ink in Theo's palm.
+**BEAT 39 — THE DRY MAN'S END (1:46–1:47)**
+- *What happens:* As Tomas lifts them toward the Surface, Theodore, crumbling to silt: "I only wanted to be the one who did it." "So did I." He dissolves into ink in Theo's palm. Tomas, at last, is dry.
 - *Character:* Compassion without absolution.
 - *Mystery:* Closure for the antagonist.
 - *Horror/suspense:* Quiet dissolution.
-- *Purpose:* Integration.
+- *Purpose:* Integration; the dry/wet inversion completes.
 
-**BEAT 42 — SURFACE (1:51–1:52)**
-- *What happens:* They break through into rain. Mara and Nell haul them out. Theo kneels, soaked. The pond reflects the sky for the first time.
+**BEAT 40 — SURFACE (1:47–1:48)**
+- *What happens:* They break through into rain. Mara and Nell haul them out. Theo kneels, soaked. His shirt is plastered to his back, and on his shoulder blade, faint in pencil, Nell reads a name. The pond reflects the sky for the first time.
 - *Character:* Exhaustion and grace.
-- *Mystery:* The surface.
+- *Mystery:* The name on his back.
 - *Horror/suspense:* Release.
-- *Purpose:* Return.
+- *Purpose:* Return; the pencil's last proof.
 
-**BEAT 43 — WET (1:52–1:53)**
+**BEAT 41 — WET (1:48–1:49)**
 - *What happens:* Dawn at Alder Hill. Theo walks in soaked. Ingrid, lucid for one breath: "Theo came back wet."
 - *Character:* Her blessing.
 - *Mystery:* None.
 - *Horror/suspense:* None.
-- *Purpose:* Emotional payoff of the refrain.
+- *Purpose:* Payoff of the refrain.
 
-**BEAT 44 — THE MARKER (1:53–1:54)**
-- *What happens:* The memorial is restored. A woman in her eighties, Marit Arvidsen, takes Theo's hand. He says her son's name. At home, June hands him a blank notebook. He writes one plain sentence. Priya's voicemail: the board feels his work is "different now." Final image: the pond, holding the trees. A single ripple spreads from below. Black.
+**BEAT 42 — THE MARKER (1:49–1:51)**
+- *What happens:* The memorial is restored. An old woman, Marit Arvidsen, takes Theo's hand; he says her son's name. At home June hands him a blank notebook. He writes one plain sentence: "I was nine. I don't know why I didn't move." Priya's voicemail: the board feels his work is "different now." Final image: the pond, holding the trees. A single ripple spreads from below. The lithophone resolves the unfinished phrase. Black.
 - *Character:* A smaller, truer man.
 - *Mystery:* Fear or envy — unanswerable.
 - *Horror/suspense:* An unsettling calm.
@@ -877,73 +1104,89 @@ A pond finally holds a reflection. Ingrid, lucid for one breath, sees him soaked
 
 ## 14. SIGNATURE HORROR SEQUENCES
 
-Twelve sequences, all designed to be shot practically.
+Sixteen sequences, all designed to be shot practically.
 
-### 1. The Wet Hallway (Beat 7)
+### 1. The Wet Hallway (Beat 6)
 - **Setting:** The farmhouse hall at night.
-- **Visual concept:** One uncut take. Theo walks away from the cellar door; wet prints appear behind him, one at a time, in the frame's background, each a half-second after he leaves it.
-- **Camera:** Locked wide at eye level, 40mm equivalent; no push-in. The audience sees what he does not.
+- **Visual concept:** One uncut take. Theo walks away from the cellar door; wet prints appear behind him, one at a time, each a half-second after he leaves it.
+- **Camera:** Locked wide at eye level, ~40mm equivalent; no push-in. The audience sees what he does not.
 - **Sound:** No music. Drips. His slippers on boards. The pencil scratch under the floor.
 - **Psychological effect:** The slow dawning of being observed.
-- **Narrative significance:** Establishes the Wet Boy as threat, and teaches the audience to read wet as menace — the misdirection the film pays for later.
+- **Narrative significance:** The first true scare; teaches the audience to read wet as menace — the misdirection the film pays off later.
 
-### 2. Dictation (Beat 17)
-- **Setting:** The kitchen.
-- **Visual concept:** As Theo reads aloud, the room stretches; the table recedes with each sentence until it is twenty feet away; the walls lean; his voice thins.
-- **Camera:** A practical forced-perspective set (sliding wall flats) plus a slow dolly-zoom. No CGI.
-- **Sound:** His voice dubbed with a secondary, drier voice in sync with his lips. Water slowly enters the mix.
-- **Psychological effect:** Drowning in a dry room.
-- **Narrative significance:** Bleed made physical; the stakes for Theo's body.
-
-### 3. The Memory-Care Corridor (Beat 4)
+### 2. The Memory-Care Corridor (Beat 5)
 - **Setting:** Alder Hill.
 - **Visual concept:** Identical doors; room numbers subtly out of sequence. When Ingrid says "wet," every resident turns the same direction at once.
 - **Camera:** Long, symmetrical lens compression; Ellie always slightly out of focus when Theo looks at her.
-- **Sound:** Hospital ambience; a muffled underwater tone enters under "wet."
-- **Psychological effect:** The unease of a world where the minds are thin.
+- **Sound:** Hospital ambience; a muffled underwater tone enters under the word "wet."
+- **Psychological effect:** The unease of a world where minds are thin.
 - **Narrative significance:** Establishes Ingrid as window and Ellie as hidden.
 
-### 4. The Raking-Light Lab (Beat 18)
+### 3. The Cellar (Beat 14)
+- **Setting:** Slate-floored cellar, boiler, the box under the stairs.
+- **Visual concept:** A swinging work light; the tall wet figure seen only in the flare of the boiler's pilot. The notebook's pencil margins in close-up.
+- **Camera:** Handheld, tight on Theo's hands and the notebook; the figure always at the edge of focus.
+- **Sound:** The pilot light, drips, pencil scratch; true silence just before the grab.
+- **Psychological effect:** The film's one earned jump.
+- **Narrative significance:** The notebook, the pencil, the first physical contact — a gesture the film later re-reads as help.
+
+### 4. Dictation (Beat 15)
+- **Setting:** The kitchen.
+- **Visual concept:** As Theo reads aloud, the room stretches; the table recedes with each sentence until it is twenty feet away; the walls lean; his voice thins.
+- **Camera:** A practical forced-perspective set (sliding wall flats) plus a slow dolly-zoom. No CGI.
+- **Sound:** His voice dubbed with a second, drier voice in sync with his lips. Water slowly enters the mix.
+- **Psychological effect:** Drowning in a dry room.
+- **Narrative significance:** Bleed made physical; real jeopardy for Theo's body.
+
+### 5. The Raking-Light Lab (Beat 16)
 - **Setting:** Mara's conservation lab.
-- **Visual concept:** Under raking light and UV, the page's two inks separate: a modern forged hand on the front, a faint pencil on the back. When Mara photographs the back, the images come out blank.
+- **Visual concept:** Under raking light and UV, the page's two inks separate: a modern forged hand on the front, a faint pencil on the back. Mara can see the pencil but cannot photograph it. Beside the page, a live feed of Theo's arm.
 - **Camera:** Macro and top-down; the page as landscape.
 - **Sound:** A soft, dry rustle; the machine hum drops out as she reads.
 - **Psychological effect:** The scientist's fear.
-- **Narrative significance:** Material proof of two authors; sets up the final reveal.
+- **Narrative significance:** Material proof of two authors, and of the clock: the truth fades as the lie grows.
 
-### 5. The Mirror That Writes (Beat 20)
+### 6. The Fair Copy (running image, Beats 11–37)
+- **Setting:** Theo's body.
+- **Visual concept:** Dry ink rises in a neat, maturing hand — left wrist (*I reached*), forearm, chest, neck, jaw — with the last line gathering at his throat. Lines fade when he tells the truth and lift like steam at the end. A faint pencil name waits on his shoulder blade.
+- **Camera:** Macro on skin, but never in a cutaway: the writing is always in a shot with the actor's face.
+- **Sound:** A faint nib scratch when a line surfaces; silence when one fades.
+- **Psychological effect:** Body horror with a literal clock.
+- **Narrative significance:** The visible gauge of belief — how close he is to being replaced. "Something is writing him," made literal and trailerable.
+
+### 7. The Mirror That Writes (Beat 18)
 - **Setting:** The farmhouse bathroom.
-- **Visual concept:** His reflection, dry and warm, writes on the fogged glass *from inside* in letters that read forward to Theo; Theo's hand moves to copy them.
-- **Camera:** Theo's face and the mirror in a single two-shot; the reflection is lit with soft, flattering amber that the room doesn't have.
+- **Visual concept:** His reflection, dry and warm, writes on the fogged glass *from inside,* in letters that read forward to Theo; Theo's hand moves to copy them.
+- **Camera:** Theo's face and the mirror in a single two-shot; the reflection is lit with soft amber that the room does not have.
 - **Sound:** The reflection's voice is Theo's — slightly warmer, slightly more articulate.
 - **Psychological effect:** Self-seduction; the horror of your best self.
 - **Narrative significance:** The antagonist's first speech and the midpoint hinge.
 
-### 6. The Re-Cut Memorial (Beat 21)
+### 8. The Re-Cut Memorial (Beat 19)
 - **Setting:** The quarry memorial.
 - **Visual concept:** A locked-off wide shot in golden light. Chiseled letters fade and fill like erosion in reverse: TOMAS ARVIDSEN becomes THEODORE LINDQVIST. Townspeople pass behind, oblivious.
-- **Camera:** Static. No cut. Four minutes of public erasure.
+- **Camera:** Static. No cut. About two and a half minutes of public erasure.
 - **Sound:** Birdsong, and under it, faint stone-on-stone.
 - **Psychological effect:** The horror of a world that doesn't notice.
 - **Narrative significance:** The false victory and the midpoint pivot.
 
-### 7. Perfect Continuity (Beat 23)
+### 9. Perfect Continuity (Beat 20)
 - **Setting:** The diner.
 - **Visual concept:** Every glass is filled to the same line; two tables speak the same sentence; a man's coffee never lowers.
-- **Camera:** Slowly symmetrical; the director's usual imperfections removed.
+- **Camera:** Slowly symmetrical; the film's own usual imperfections removed.
 - **Sound:** Unison speech with a one-frame lag. A near-perfect room tone.
 - **Psychological effect:** Revulsion at perfection.
 - **Narrative significance:** The tell of a rewritten world.
 
-### 8. Two Fathers (Beat 24)
+### 10. Two Fathers (Beat 21)
 - **Setting:** The kitchen table at breakfast.
 - **Visual concept:** Theo (rumpled, cold-lit) and Theodore (immaculate, honey-lit) at one table. June looks at the warm one.
 - **Camera:** A patient single master, no coverage; the light splits the table.
 - **Sound:** Cutlery in crisp close-up on Theodore's side, muffled on Theo's.
 - **Psychological effect:** Parental inadequacy rendered as horror.
-- **Narrative significance:** The emotional heart of Act II.
+- **Narrative significance:** The emotional heart of Act II, and the film's key image.
 
-### 9. Walter's Archive (Beat 26)
+### 11. Walter's Archive (Beat 23)
 - **Setting:** Walter's study.
 - **Visual concept:** Forty-one manuscripts go blank, row by row, as Walter is revised out — a tide of blank paper moving down the shelves while he talks.
 - **Camera:** One take; slow push toward the shelves.
@@ -951,7 +1194,15 @@ Twelve sequences, all designed to be shot practically.
 - **Psychological effect:** A life unwritten.
 - **Narrative significance:** The cost of Revision, delivered through a man we like.
 
-### 10. The Pond With No Reflection (Beat 28)
+### 12. The Turnover (Beat 24)
+- **Setting:** The farmhouse, night.
+- **Visual concept:** The house turns over like a page: layout mirrored, signage and clock faces reversed, stairs descending where they should rise. A wet figure slides between rooms and covers June's mouth; Theo swings at it.
+- **Camera:** The kitchen, hall and stairs are built twice, once in mirror image; handheld, with practical moves.
+- **Sound:** Room tone played backward; pencil on every wall; the sound of a page turning as the house flips.
+- **Psychological effect:** Vertigo; the family home becoming alien.
+- **Narrative significance:** Theo's first spoken truth; the film's great misread gesture.
+
+### 13. The Pond With No Reflection (Beat 25)
 - **Setting:** The quarry pond at night.
 - **Visual concept:** The water reflects nothing — not the moon, not the trees. A tall figure stands waist-deep, arms out, mouth moving silently.
 - **Camera:** Slow, sparse; the figure is never in focus.
@@ -959,7 +1210,7 @@ Twelve sequences, all designed to be shot practically.
 - **Psychological effect:** Primal fear of black water.
 - **Narrative significance:** The film's central image of menace — and its central misdirection.
 
-### 11. The Verso (Beats 33–35)
+### 14. The Verso (Beats 30–32)
 - **Setting:** The sixth dimension.
 - **Visual concept:** A flooded quarry-cathedral: a black mirror floor under a half-inch of water, grey silt falling like snow, thousands of translucent pages hanging on near-invisible lines, children in rows reading blank books.
 - **Camera:** A slow, vertiginous descent with the horizon inverted; handheld at the black floor.
@@ -967,7 +1218,15 @@ Twelve sequences, all designed to be shot practically.
 - **Psychological effect:** Awe inside dread.
 - **Narrative significance:** The one large reveal of the mythology.
 
-### 12. The True Memory (Beat 38)
+### 15. The Verso Replay (Beat 35)
+- **Setting:** Eight earlier locations, seen from behind.
+- **Visual concept:** The film turns over. Eight scenes replay in reverse angle, ten seconds each: every image of menace becomes an image of care.
+- **Camera:** Exact reverse set-ups of the original shots, matched in focal length and light so the audience recognizes each instantly.
+- **Sound:** The original scene's sound played from the other side of the wall; no score until the last image.
+- **Psychological effect:** Relief turning to grief; a re-reading.
+- **Narrative significance:** The structural payoff of the title; the reason the film plays differently on a second viewing.
+
+### 16. The True Memory (Beat 36)
 - **Setting:** The pond, August 1987.
 - **Visual concept:** One uncut four-minute take at a nine-year-old's eye line. We finally see Tomas's face, and the flicker in the boy's own.
 - **Camera:** Locked at child height; no push-in until the last ten seconds.
@@ -975,8 +1234,8 @@ Twelve sequences, all designed to be shot practically.
 - **Psychological effect:** Recognition and grief; the audience realizes the earlier flashbacks lied.
 - **Narrative significance:** The final revelation, played without a word of exposition.
 
-### Bonus: The Heroic Flashbacks (Beats 9, 13)
-- **Concept:** Shot warm, sun-dappled, 16mm, reliably framed. A boy's hands wade in and haul a girl out. On re-watch: the sleeves are too large, red, and the hands belong to a thirteen-year-old.
+### Bonus: The Heroic Flashbacks (Beats 8, 11)
+- Shot warm, sun-dappled, on 16mm, reliably framed. A boy's hands wade in and haul a girl out. On re-watch: the sleeves are too large, red, and the hands belong to a thirteen-year-old.
 
 ---
 
@@ -987,19 +1246,20 @@ Twelve sequences, all designed to be shot practically.
 **Color.** Two palettes that cross over as the film proceeds.
 - **Wet / true:** cold slate, wet moss, bruised mauve dusk, teal-grey shadow, low contrast, visible grain.
 - **Dry / false:** honeyed gold, paper white, clean amber lamplight, high clarity, soft diffusion. The most beautiful frames in the film are the most dangerous.
-- Over the course of Act II, the film's overall palette *warms* — the audience feels the seduction before Theo does. In the Verso, the palettes invert: Theodore's Study is the only warm place; the cold is everywhere else.
+- Over the course of Act II, the film's overall palette *warms* — the audience feels the seduction before Theo does. In the Verso, the palettes invert: Theodore's Study is the only warm place; the cold is everywhere else. At the end, Tomas is the only dry figure in a cold room.
 
 **Lighting.** Practical sources (lamps, windows, candles). Theodore is lit from a source the room does not have. Tomas is almost never lit.
 
-**Camera.** Mostly static, with long takes. Wide margins in the frame: empty negative space on one side, which the audience learns to scan. Handheld only in the Verso and during the pond sequences.
+**Camera.** Mostly static, with long takes. Wide margins in the frame: empty negative space on one side, which the audience learns to scan. Handheld only in the cellar, the Turnover, the Verso and the pond.
 
 **Production design.**
-- *The farmhouse:* slate roof, slate floor in the cellar, a kitchen table scarred with rings; every surface paper-thin in feeling. Heavy rooms (Nell's room, the cellar) have doorframes built slightly deeper than any other.
-- *The pages:* school-weight ledger rag, aged, with ink that dries too fast. Handwriting design is critical: a child's hand that matures across the film.
+- *The farmhouse:* slate roof, slate floor in the cellar, a kitchen table scarred with rings. "Heavy" rooms (the painted-shut room, the cellar) have doorframes built fractionally deeper than any other.
+- *The pages:* school-weight ledger rag, with ink that dries too fast. A calligrapher designs the handwriting: a child's hand that matures across the film into a handsome adult script.
+- *The Fair Copy:* applied as hand-lettered temporary transfers in staged layers matched to a continuity chart, with limited digital sub-surface enhancement only for the rising and fading beats.
 - *The Verso:* thousands of translucent sheets on fishing line; fans for drift; a polished black floor under an inch of water; the Study built in a stage tank with amber practicals.
-- *Continuity design:* a deliberate catalog of "revision tells" — prop continuity shifting across a cut (a mug moving hands), background extras moving in unison, a photograph changing in a locked-off shot, an exterior with one window more than before.
+- *Continuity design:* a deliberate catalogue of "revision tells" — a mug moving hands across a cut, background extras moving in unison, a photograph changing in a locked-off shot, an exterior with one window more than before — twelve in all, which also serve as a "Spot the Revision" game for fans.
 
-**Editing.** Patient. Cuts avoid emphasis. The pages' flashbacks and the true flashbacks share rhythm so the audience cannot tell by edit alone. The film uses *match cuts on hands*: Theo's hand, June's hand, Tomas's hand.
+**Editing.** Patient. Cuts avoid emphasis. The pages' flashbacks and the true flashbacks share rhythm so the audience cannot tell by edit alone. The film uses *match cuts on hands:* Theo's hand, June's hand, Tomas's hand.
 
 **"Audience-first" techniques.** The audience should notice before Theo does:
 - the dripping silhouette reflected in a dark window;
@@ -1007,17 +1267,18 @@ Twelve sequences, all designed to be shot practically.
 - the photograph that changes;
 - Ellie's softness;
 - Theodore's lack of footprints;
-- the wet figure pointing at the *pages*, not at Theo.
+- the wet figure pointing at the *pages,* not at Theo.
 
 ---
 
 ## 16. SOUND AND MUSICAL IDENTITY
 
 **Sound design as the film's backbone.**
-- **The pencil.** Contact-mic'd pencil on paper is the percussion of the film — the scratch is always the sound of *the other side* writing.
+- **The pencil.** Contact-mic'd pencil on paper is the percussion of the film — the scratch is always the sound of *the other side* writing. A fainter *nib* sound accompanies the Fair Copy.
 - **Dry vs. wet.** Theodore's world is recorded in crisp, ASMR-close foley — every paper rustle, every cuff button. Tomas's world is low-passed, as if heard from underwater. When the sound is beautiful, be afraid.
 - **Silence.** The True Memory has no score.
-- **Room tone as a character.** The quarry house has a sub-bass tone that changes pitch when the cellar is near.
+- **Room tone as a character.** The house has a sub-bass tone that changes pitch near the cellar.
+- **The Turnover.** Room tone played backward; the sound of a page turning.
 
 **Score.** A small ensemble: bowed double bass, prepared piano, muted cello, and a **lithophone** — an instrument made from slate bars — played with felt mallets. Slate is the film's physical and musical material.
 
@@ -1031,30 +1292,30 @@ Twelve sequences, all designed to be shot practically.
 
 The themes arise from decisions, not speeches.
 
-**Are we the authors of our own identities?** The film's answer: *partly — and the part we skip is the part that matters.* Theo's refusal to own his sentences (dictation) is the first form of the lie.
+**Are we the authors of our own identities?** *Partly — and the part we skip is the part that matters.* Theo's refusal to own his sentences (dictation) is the first form of the lie.
 
 **If a memory is forgotten, does it stop existing?** No. It moves. The Verso is a theory of repression as manufacture.
 
-**Does an unwritten story have a right to exist?** The film's quiet position: it has a right to be *finished honestly.* Theodore's wrong is not that he exists but that he wants to finish with a lie.
+**Does an unwritten story have a right to exist?** It has a right to be *finished honestly.* Theodore's wrong is not that he exists but that he wants to finish with a lie.
 
-**Can an abandoned version of ourselves still be alive?** Yes — and, if loved by one person and not by the rest, it grows hungry.
+**Can an abandoned version of ourselves still be alive?** Yes — and, if believed by one person and not by the rest, it grows hungry.
 
 **Is imagination a creative ability or a form of perception?** Perception. Children know it; adults call it fiction.
 
-**What makes a fictional character different from a real person?** *A debt.* Theodore can be eloquent and kind and still not be a person, because there is nothing he *owes*. Tomas, who paid, is the real one.
+**What makes a fictional character different from a real person?** *A debt.* Theodore can be eloquent and kind and still not be a person, because there is nothing he *owes.* Tomas, who paid, is the real one.
 
 **Can something understand humanity better than humanity understands itself?** The Verso holds everything we dropped. It understands us the way an archive understands a family: better, and without love.
 
 **If our memories can be rewritten, what remains of identity?** *Obligation.* What we owe survives revision. That is why the thing that cannot be rewritten in the end is a boy's name.
 
-**The central moral claim.** *The story of what you did is not the same as what you did. The dead boy is the difference.*
+**The cultural moment.** We now carry tools that improve our photographs and our prose and offer us the flattering draft. The film's argument: *the story of what you did is not the same as what you did. The dead boy is the difference.*
 
 ---
 
 ## 18. THREE ALTERNATIVE ENDINGS
 
 ### ENDING A — THE MOST DISTURBING: "THE FAIR COPY"
-- **What happens.** In the Study, Theo signs. June is returned. The Record revises. The next scene is a lit, warm, flawless kitchen: Ingrid lucid, Nell laughing, Mara at the stove, June asking the new Theo to read her story — *"Read it to me,"* he says, with perfect attention. The camera slides to the window. On the back of the glass, a wet hand presses from outside. It is Theo — the real one — in the Verso, soaked and mute, the new Tomas. In the last shot, he finds a pencil in the silt and begins, slowly, to write on the back of a page: *"Take her hand."*
+- **What happens.** In the Study, Theo signs. The writing completes across his throat and jaw. June is returned. The Record revises. The next scene is a lit, warm, flawless kitchen: Ingrid lucid, Nell laughing, Mara at the stove, June asking the new Theo to read her story — *"Read it to me,"* he says, with perfect attention. His skin is clean. The camera slides to the window. On the back of the glass, a wet hand presses from outside. It is Theo — the real one — in the Verso, soaked and mute, now the writing on his skin. In the last shot, he finds a pencil in the silt and begins, slowly, to write on the back of a page: *"Take her hand."*
 - **What it means.** Substitution is complete. The world is kinder, and a boy has been erased twice.
 - **What the audience understands.** They would have signed. That is the horror.
 - **What remains unanswered.** Whether the new Theo is villain or victim; whether the cycle repeats.
@@ -1062,7 +1323,7 @@ The themes arise from decisions, not speeches.
 - **Commercial/critical potential.** High critical potential; polarizing commercially; reads as a punishing ending.
 
 ### ENDING B — THE MOST EMOTIONALLY POWERFUL: "SAY MY NAME"
-- **What happens.** As in Beats 37–44: Theo turns the page, names Tomas, writes the true clause, and reaches *Now.* Theodore dissolves. The cost: his gift. Ingrid: "Theo came back wet." Marit takes his hand. June gives him a blank notebook. The pond holds a reflection.
+- **What happens.** As in Beats 34–42: Theo turns the page, names Tomas, writes the true clause with Tomas's own pencil, and reaches *Now.* Theodore dissolves; Tomas is dry at last. The cost: Theo's gift. Ingrid: "Theo came back wet." Marit takes his hand. June gives him a blank notebook. He writes: "I was nine. I don't know why I didn't move." The pond holds a reflection.
 - **What it means.** The truth costs, and the cost is the point. Obligation survives revision.
 - **What the audience understands.** The pages were Tomas's. The monster was the flattering draft.
 - **What remains unanswered.** Whether Theo froze from fear or envy. What, exactly, Tomas is. Whether the Verso holds others — the final ripple.
@@ -1075,7 +1336,7 @@ The themes arise from decisions, not speeches.
 - **What the audience understands.** Their fear was manipulated by a love they could not read.
 - **What remains unanswered.** Whether Theo's choices were free.
 - **Why it works.** It recasts every scare as a kindness.
-- **Commercial/critical potential.** Highly shareable and debatable; risks undercutting Theo's agency and reading as clever rather than devastating.
+- **Commercial/critical potential.** Highly shareable and debatable; risks undercutting Theo's agency and reading as clever rather than devastating. *(Note: the Verso Replay in Ending B already delivers its best idea — the re-read — without sacrificing Theo's choice.)*
 
 ---
 
@@ -1084,13 +1345,13 @@ The themes arise from decisions, not speeches.
 **Ending B — "Say My Name" — with one image borrowed from C and one chill borrowed from A.**
 
 *Why B:*
-1. **Emotional logic.** The film's wound is a refusal to move in time; its cure must be a movement in time. "Now" is the only possible last word.
+1. **Emotional logic.** The film's wound is a refusal to move in time; its cure must be a movement in time. "Now" is the only possible last word of the argument.
 2. **Thematic integrity.** A is a nihilist version of the story's own seduction. C replaces moral choice with design. B keeps the choice human.
-3. **Inevitable in retrospect.** Every clue (the refrain, the wet/dry motif, the back of the page) pays off in B without cheating.
+3. **Inevitable in retrospect.** Every clue (the refrain, the wet/dry motif, the back of the page, the pencil) pays off in B without cheating.
 4. **No sequel setup.** B resolves the central gesture and leaves only the question that cannot be resolved: fear or envy.
 
 *What we borrow:*
-- From **C**: the back of the *first* page carries one line in Tomas's pencil — *"Say my name when you tell it."* This is the quiet proof that he was the original author.
+- From **C**: the pencil on Theo's back — a name — and the re-read of every scare (the Verso Replay).
 - From **A**: the final ripple under the reflection — the dread that the Verso is large and holds others. It is a statement about scale, not a hook.
 
 ---
@@ -1101,84 +1362,109 @@ The themes arise from decisions, not speeches.
 
 | Item | Plan |
 |---|---|
-| **Budget** | $11–14M |
-| **Schedule** | 38 shooting days (upstate NY/Vermont slate belt) + 6 days NYC + 4 days stage tank |
-| **VFX** | ~$1.2M, almost all invisible: plate swaps for photographs, water surface in the Verso, subtle reflections |
-| **Practical heavy lifts** | Forced-perspective kitchen; the Verso stage (black polished floor, 800+ hanging pages); the Study set; the quarry pond (a real flooded quarry with safety divers) |
-| **Water/children safety** | Dedicated safety team and body doubles for all in-water work with the 12-year-old; the 1987 sequence shot in a controlled tank, with the 9-year-old and 5-year-old never in deep water |
-| **Cast** | Theo needs an actor in his late 40s with restraint and warmth (talent tier of Andrew Scott / Jake Gyllenhaal / Paul Giamatti, depending on budget). Nell and Mara need dramatic weight, not genre credentials. June is the most important casting decision. |
-| **Director** | A filmmaker with atmospheric control and patience (the Ari Aster / Mike Flanagan / Robert Eggers tier) |
+| **Budget** | $11–14M base (range $6–8M lean to $28–35M maximum; see 0.6) |
+| **Schedule (base)** | 38 shooting days (upstate NY / Vermont slate belt) + 6 days NYC + 4 days stage tank |
+| **VFX** | ~$1.2M, almost all invisible: plate swaps for photographs, water surfaces in the Verso, subtle reflections, sub-surface enhancement of the Fair Copy |
+| **Practical heavy lifts** | Forced-perspective kitchen; mirrored builds for the Turnover; the Verso stage (black polished floor, 800+ hanging pages); the Study set; the quarry pond (a real flooded quarry with safety divers) |
+| **Water / children safety** | Dedicated safety team and body doubles for all in-water work with the 12-year-old; the 1987 sequence shot in a controlled tank, with the 9-year-old and 5-year-old never in deep water |
+| **Sensitivity** | Child drowning and dementia: consult drowning-prevention and dementia-care advisers on script and cut; protect the child actors with an on-set specialist |
+| **Cast** | The dual-role lead needs restraint and warmth that curdles. Nell and Mara need dramatic weight, not genre credentials. June is the most important casting decision. |
+| **Director** | A filmmaker with atmospheric control and patience, comfortable with long takes and with actors (the Eggers / Aster / Perkins / Flanagan range; wish-list, no approach implied) |
 | **Rating** | R |
-| **Release** | Fall; festival launch (Venice, TIFF Midnight Madness, or Sundance) |
+| **Proof of concept** | *TWO FATHERS* — seven minutes, one location, three actors; est. low six figures or less |
+| **Release** | Festival launch (Sundance Midnight, TIFF Midnight Madness, Venice, Fantastic Fest) then a late-summer / early-fall release |
 
 ---
 
 ## 21. MARKETING AND COMMERCIAL POSITIONING
 
-**Classification:** elevated horror / metaphysical thriller — "A24-style" prestige.
-**Theatrical potential:** moderate to strong on word of mouth.
-**Streaming:** strong second life; the film re-watches well because of the clue ledger.
-**International appeal:** high; the Nordic-American slate-country setting is exotic but the core story (guilt, a child, a promise) is universal.
+**Classification:** elevated horror / metaphysical thriller — "prestige genre."
+**Theatrical potential:** moderate to strong, driven by word of mouth and a no-spoilers campaign.
+**Streaming:** strong second life; the film re-watches well because of the clue ledger and the Verso Replay.
+**International appeal:** high; the visual grammar (dry/wet) needs no translation, and the core story (guilt, a child, a promise) is universal.
 
-**Marketing hook:** *"What if the ghost isn't the dead boy — but the better version of you?"*
+**Marketing hook:** *"What if the ghost isn't the dead boy — but the better version of you?"* (Held back from the market logline, which stays spoiler-free.)
 
-**Poster concept:** A sheet of handwritten paper held to a window. Through it, from the back, the pencil of a boy's cursive shows in reverse and a small wet hand is pressed flat against the other side. Tagline: **TURN IT OVER.**
+### The campaign: TURN IT OVER
 
-**Trailer moments:**
+1. **The Page.** A press and influencer mailer: a handwritten, damp-feeling page; held to a lamp, a pencil line on the back reads *"I was there. —T."* (ambiguous: Theo? Theodore? Tomas?).
+2. **Day/Night lightboxes.** Printed so that in daylight the box shows a warm, handsome Theo; when it lights at night, the back image appears — a soaked boy's handprint pressed against glass. The dry man by day; the wet boy by night.
+3. **The teaser.** Sixty seconds: the first page, the wet hallway, the mirror, a child's voice saying "In a minute," and the tagline. No Verso reveal.
+4. **The ticket stub.** The back is printed in faint pencil with a line only readable after the film: *"Say his name when you tell it."*
+5. **Spot the Revision.** The film contains twelve deliberate continuity changes. Fans freeze-frame, post, argue.
+6. **Press-screening card.** "Please don't turn it over."
+7. **Optional cause partnership** (handle with care): a drowning-prevention organization, built on the idea that "in a minute" is the most dangerous phrase near water.
+
+**Trailer (2:10):**
 1. The first page, damp, in a child's hand.
 2. Wet footprints appearing behind Theo in one unbroken shot.
-3. The mirror writes.
-4. June: *"Dad's different today. Dad's listening."*
-5. The town's memorial re-cut in one locked-off shot.
-6. The perfect diner.
-7. A hand pressed against glass from the other side.
-8. A final title card: *Turn it over.*
+3. Words rising on his forearm.
+4. The memorial re-cut in one locked-off shot.
+5. June: *"Dad's different today. Dad's listening."*
+6. Two fathers at one table.
+7. The house turning over.
+8. A hand pressed against glass from the other side.
+9. Title card: **TURN IT OVER.**
 
-**Comparable films and differentiation**
+**Poster concept:** A sheet of handwritten paper held to a window. Through it, from the back, a boy's pencil cursive shows in reverse and a small wet hand is pressed flat against the other side. Alternative key art: the two fathers at the table, one wet and cold-lit, one dry and warm, and a child looking at the warm one.
+
+**Differentiation from comparable films**
+
 | Comparable | Shared | How this differs |
 |---|---|---|
-| *Hereditary* | Grief horror, domestic dread | Mystery-driven; the villain is persuasion, not possession |
-| *Arrival* | Language as reality | Human, small-scale, with horror stakes |
-| *Annihilation* | Self-erasure | No external alien; the threat is a flattering self |
-| *The Sixth Sense* | Late reframing | The twist is moral, not ontological |
-| *Enemy* / *Us* | Doubles | Not a twin; an abandoned identity that is *better lit* |
-| *Lake Mungo* | Memory and grief | Mainstream-friendly, with a unifying mythology |
-| *Synecdoche, New York* | Authorship and mortality | Horror engine and a clear emotional line |
+| *Get Out* | Replacement horror; a one-line hook | The usurper is a better version of you, not an outside threat |
+| *Hereditary* | Grief horror; domestic dread | Mystery-driven; the villain is persuasion, not possession |
+| *Us* / *Enemy* | Doubles | Not a twin: an abandoned identity that is *better lit,* and a villain who cannot say one name |
+| *Arrival* | Language as reality; a late reframing | Human-scale; horror stakes; the reframe is moral, not ontological |
+| *Longlegs* | Atmosphere; a singular villain; a cryptic campaign | The villain is kind; the mystery's solution is emotional |
+| *The Sixth Sense* | A reframing that sends you back | The reframe is staged *inside* the film (the Verso Replay) |
+| *Annihilation* | Conceptual, ambiguous | Contained budget, a human spine, a spoiler-free hook, a visible clock |
 
 **Biggest commercial risks and solutions**
+
 | Risk | Solution |
 |---|---|
-| **Metaphysics too heavy for mainstream** | Three front-of-house rules; stakes are human (a daughter, a dead boy) |
-| **Writer-protagonist fatigue** | Writing is incidental; the film is about authorship of memory, not the writing life |
-| **Slow-burn pacing** | A set piece every 6–8 minutes; the whodunit layer in Act I |
-| **Child death subject matter** | Handled with restraint; Nell survived; the death is off-screen and dignified |
-| **Twist predictability** | Decoys (Ellie as prankster; Theo as the ghost; the wet figure as Nell) |
-| **Marketing difficulty** | The poster and tagline carry a single clean image |
-| **Genre audience wants more scares** | Five major set pieces and a sustained dread curve |
+| Metaphysics too heavy for mainstream | Three front-of-house rules; a visible gauge on the hero's body; human stakes (a daughter, a dead boy) |
+| Writer-protagonist fatigue | Writing is a lens, not the topic; the signature images are on skin, in water and at a table |
+| Slow-burn pacing | The first page by 0:08; a scare or set piece every 4–5 minutes |
+| Child-death subject matter | Restraint; Nell survived; the death is off-screen and dignified; sensitivity advisers |
+| Twist predictability | Decoys (Ellie as a prankster suspect; the wet figure as menace) and a reframe that is moral rather than a simple "who" |
+| Marketing difficulty | The poster and the tagline carry a single clean image; the campaign is physical |
+| Genre audiences want more scares | A scare map with one beat every 4–5 minutes and four true set pieces |
+| Crowded elevated-horror market | A dual-role lead and a formal idea (the film that turns over) that no comparable has |
+| Title reads as pulp | Retain for development; consider *VERSO* for release |
 
-**Honest commercial range:** A good outcome is $35–70M worldwide on a $12M budget with strong reviews and a festival launch; a mediocre outcome is $12–20M. It is a prestige-genre film, not a franchise. It does not survive a PG-13 mandate or a "jump-scare" notes pass.
+**Honest commercial range.** A good outcome is $35–70M worldwide on a $12M budget with strong reviews and a festival launch; a breakout outcome (the *Longlegs* / *Talk to Me* / *Smile* pattern) is $90–200M+; a weak outcome is $12–20M. It is a prestige-genre film, not a franchise. It does not survive a PG-13 mandate or a "jump-scare" notes pass.
 
 ---
 
-## 22. POTENTIAL WEAKNESSES AND SOLUTIONS
+## 22. POTENTIAL WEAKNESSES AND SOLUTIONS — STATUS AFTER REVISION 2
 
-*A deliberate self-critique. These are real problems; each has been corrected in the document above.*
+*A deliberate self-critique. Where a problem was real, it was fixed in the document.*
 
-1. **Writer-protagonist cliché.** *Problem:* Novelist-haunted-by-pages evokes *Misery*, *Secret Window*, *In the Mouth of Madness*. *Fix:* Writing is a lens, not the topic. The film's concern is authorship of memory; the profession is incidental. Scenes at the desk are few and brief.
-2. **Doppelgänger risk.** *Problem:* *Us*, *Enemy*, *Dead Ringers.* *Fix:* Theodore is not a twin. He is an *abandoned identity*, and the horror is in tone, light, and persuasion, not in a mirrored face.
-3. **Over-complicated mythology.** *Problem:* Eight laws. *Fix:* Only three are "front of house"; the rest are felt. Each law has a single image.
-4. **Child-in-peril cliché.** *Problem:* June going missing is a trope. *Fix:* June is an active reader; she chooses; she crosses because she's *called*; she's not a victim of plot but of Theo's habit.
-5. **Ellie = Nell is guessable.** *Problem:* "Ellie" and "Nell" are close. *Fix:* The audience may guess; that is allowed. The surprise is not *who* but *what she remembers.* Decoys: Ellie behaves like a prankster suspect; the whodunit layer points at Walter, June, and Mara first.
-6. **Why didn't Nell tell him earlier?** *Fix:* She tried at nineteen; he collapsed and was hospitalized; the family agreed. She returned only when her mother's memory began to fail.
-7. **Why now?** *Fix:* Ingrid's dementia is the clock. Theodore has waited thirty-eight years for the last anchor to loosen.
-8. **The Revision logic could confuse.** *Fix:* Show, don't explain: three clear demonstrations (the fridge photo, Priya, the memorial). Mara states the principle once, as a materials scientist.
-9. **The wet/dry inversion is schematic.** *Fix:* Keep it subtle in the first half; the audience must feel dread at the wet figure honestly. The inversion arrives only in Beat 37 and is not announced.
-10. **Ending B can be sentimental.** *Fix:* Preserve the unanswerable question (fear or envy), the cost to Theo (his gift), and the unsettling ripple.
-11. **Tomas as a "saintly dead child."** *Fix:* Tomas had a temper, chewed pencils, rode too fast, and was the golden boy that a nine-year-old could resent. The ambiguity of Theo's freeze requires that Tomas be a real boy.
-12. **Theodore's motive reads as villainy for its own sake.** *Fix:* He is sympathetic: he truly wants Nell healed, Ingrid peaceful, June loved. His flaw is that he cannot say the name.
-13. **Act II sag.** *Fix:* Walter's disappearance, the perfect diner, the burn, and the pond at night each carry a set piece, arranged one every 3–5 minutes.
-14. **Mara risks being a service role.** *Fix:* She is the film's materialist; her tests reframe the plot; and she is the voice that names June at the climax.
-15. **Exposition through Walter.** *Fix:* Walter's information is limited, cost-laden, and emotionally charged; he's a cautionary tale, not a lecturer.
+| # | Weakness | Fix | Status |
+|---|---|---|---|
+| 1 | Writer-protagonist cliché (*Misery*, *Secret Window*, *In the Mouth of Madness*) | Writing is a lens; the film's signature images are skin, water and a kitchen table | Mitigated |
+| 2 | Doppelgänger comps (*Us*, *Enemy*) | Embraced as a marketing asset; the difference is moral and tonal (an abandoned identity, better lit) | Mitigated |
+| 3 | Over-complicated mythology (eight laws) | Three front-of-house rules; the Fair Copy as a visible gauge | Mitigated |
+| 4 | Child-in-peril cliché | June is an active reader: she keeps page 3, picks a father, is called in a trusted voice, wakes with a joke | Mitigated |
+| 5 | Ellie = Nell is guessable | Decoys; the payoff is her testimony, not her identity | Accepted risk |
+| 6 | Why didn't Nell tell him earlier? | She tried at nineteen; he collapsed and was hospitalized | Resolved |
+| 7 | Why now? | Ingrid's dementia is the clock | Resolved |
+| 8 | Revision logic could confuse | Three demonstrations (photo, Priya, memorial) plus the Fair Copy gauge | Mitigated |
+| 9 | Wet/dry inversion is schematic | Kept honest until the Verso Replay | Mitigated |
+| 10 | Ending B can be sentimental | Unanswerable question, real cost, unsettling ripple | Mitigated |
+| 11 | Tomas as saintly dead child | A real boy: chewed pencils, temper, Theo's first reader | Resolved |
+| 12 | Theodore's motive reads as villainy | He is sympathetic: he wants everyone healed; he cannot say a name | Resolved |
+| 13 | *Rev 1:* Act I too slow (first page at 0:15) | First page at 0:08; first scare at 0:15; cold-open footprint at 0:02 | Resolved on paper |
+| 14 | *Rev 1:* Too few physical-threat scenes | Added the cellar grab, drowning on dry land, the Fair Copy, the Turnover | Resolved |
+| 15 | *Rev 1:* Act III dialogue-heavy | Nell's testimony cut to four minutes; the Verso and the Replay add spectacle | Mitigated |
+| 16 | *Rev 1:* Theo too passive in Act II | Small truths erase lines; the Turnover confession; he chooses to go in | Mitigated |
+| 17 | Exposition through Walter | His information is limited, cost-laden and emotional | Mitigated |
+| 18 | Mara as a service role | She is the materialist whose measurements reframe the plot, and who names June at the climax | Mitigated |
+| 19 | The back of the page is guessable as Tomas's | Fair play; the audience misreads it as accusation until the Replay | Accepted risk |
+| 20 | Dementia and child-death sensitivity | Specialist advisers on script and set | Open (production) |
+| 21 | Title | Working title retained; *VERSO* proposed | Open (your decision) |
 
 ---
 
@@ -1188,33 +1474,50 @@ The themes arise from decisions, not speeches.
 
 | Question | Answer |
 |---|---|
-| Is the concept original? | **Mostly.** The *back of the page* and the *flattering self as monster* are fresh. Dissociative amnesia and the writer-protagonist are familiar; the film earns its place by making them unfamiliar. |
-| Is the sixth dimension understandable? | **Yes**, through three rules; the other five are felt. |
+| Is the concept original? | **Mostly.** *The back of the page,* *the flattering self as monster* and *a film that turns itself over* are fresh. Dissociative amnesia and the writer-protagonist are familiar; the film earns its place by making them unfamiliar. |
+| Is the sixth dimension understandable? | **Yes**, through three rules and a visible gauge; the other five are felt. |
 | Contradictions in the mythology? | None found after revision; Law 5 only reassigns credit, which is why the pages swap a pronoun. |
 | Is the protagonist compelling? | **Yes** — his contradiction is human and unresolved. |
-| Is the antagonist memorable? | **Yes** — an eloquent, kind thief who cannot say one name. |
+| Is the antagonist memorable? | **Yes** — an eloquent, kind thief who cannot say one name, played by the same actor. |
 | Are the twists surprising? | The final reframing (the wet figure is the victim; the pages are his) should surprise most, though some will guess Ellie. |
-| Momentum? | Strong if the mid-film set pieces hold. |
+| Momentum? | Strong on paper: the first page at 0:08; a beat every 4–5 minutes. Unproven until script and cut. |
 | Unnecessary characters? | Priya is the only borderline; she serves as the first outward Revision and may be trimmed to a voice. |
-| Is Act III as strong as I and II? | Yes — it is the strongest part, because the film saves its biggest image (the Verso) and its quietest (the True Memory) for the end. |
+| Is Act III as strong as I and II? | Yes — it is the strongest part, because the film saves its biggest image (the Verso), its formal idea (the Replay) and its quietest scene (the True Memory) for the end. |
 | Does the ending satisfy? | Yes; it resolves the gesture and leaves the one unanswerable question. |
-| Visually distinctive? | **Yes** — the Verso, the Study, the dry/wet palette and the mirror writing are all unusual. |
-| Could it attract a director, producer, or company? | **Yes**, as an elevated-horror vehicle with a lead role of real range and a great poster. |
+| Visually distinctive? | **Yes** — the Verso, the Study, the dry/wet palette, the Fair Copy and the mirror writing are all unusual. |
+| Could it attract a director, producer or company? | **Yes**, as an elevated-horror vehicle with a dual-role lead, six showcase scenes, five must-shoot sequences and a poster image. |
 
-### Scorecard (candid)
+### Scorecard (candid; I am scoring my own work)
 
-| Dimension | Score /10 | Note |
-|---|---|---|
-| Concept originality | 8 | Two original ideas; some familiar scaffolding |
-| Emotional core | 8.5 | The "In a minute / Now" spine is strong |
-| Mythology clarity | 7.5 | Strong if the three front-of-house rules are honored |
-| Antagonist | 8.5 | The strongest element after the ending |
-| Twist integrity | 8 | Fair-play, but guessable at the edges |
-| Commercial viability | 6.5 | Prestige-genre only; not a franchise |
-| Execution risk | **High** | It depends on the director's control of tone and the lead actor's restraint |
+| Dimension | Rev 1 | Rev 2 | Note |
+|---|---|---|---|
+| Concept originality | 8 | 8.5 | Two original ideas plus a formal one |
+| Emotional core | 8.5 | 9 | "In a minute" → "Now"; Tomas as Theo's first reader |
+| Mythology clarity | 7.5 | 8 | Visible gauge; three rules |
+| Antagonist | 8.5 | 9 | Same actor; kindness as menace |
+| Twist integrity | 8 | 8.5 | Fair play; staged inside the film |
+| **Commercial viability (on paper)** | **6.5** | **8.5** | See 0.9 |
+| Execution risk | High | High | Depends on the director's tonal control and the lead actor's restraint |
 
 ### Verdict
 
-This is a strong, specific, producible psychological horror with a genuinely original central image and an emotionally honest spine. Its principal risks are **tonal** (it must stay frightening while it grieves), **structural** (the mid-film set pieces must keep pace), and **commercial** (it is a prestige film, not a tentpole). If the director understands that the scariest thing in the film is the nicest thing in it, this is a film people will argue about on the way out of the theater.
+This is now a pitch-ready package: a spoiler-free hook, a director's playground, a dual-role lead, a scare map, a scalable budget, verified comps and a campaign built on the film's own idea. It is not a 10/10, because no document can be. The remaining points belong to a director, a star, a distributor and the market — and to an Act 1 that reads faster than this bible.
 
 *End of development bible.*
+
+---
+
+### Sources for comparable-film figures
+Figures as reported by The Numbers, Box Office Mojo and trade press (accessed during Revision 2); sources differ by a few million. Verify before external circulation.
+- [Longlegs — The Numbers](https://www.the-numbers.com/movie/Longlegs-(2024))
+- [Weapons — Fangoria](https://www.fangoria.com/zach-cregger-weapons-200-million-box-office/)
+- [Talk to Me — The Numbers](https://www.the-numbers.com/movie/Talk-To-Me-(2022-United-Kingdom))
+- [Barbarian — The Numbers](https://www.the-numbers.com/movie/Barbarian-(2022))
+- [Hereditary — The Numbers](https://www.the-numbers.com/movie/Hereditary-(2018))
+- [Midsommar — The Numbers](https://www.the-numbers.com/movie/Midsommar-%282019%29)
+- [Smile — Box Office Pro](https://www.boxofficepro.com/?p=34077)
+- [The Substance — The Numbers](https://www.the-numbers.com/movie/Substance-The-(2024))
+- [Annihilation — The Numbers](https://www.the-numbers.com/movie/Annihilation)
+- [Get Out — TheWrap](https://www.thewrap.com/get-out-200-million-worldwide-jordan-peele)
+- [Sinners — Fangoria](https://www.fangoria.com/sinners-thunderbolts-box-office/)
+- [Lights Out — Box Office Mojo](https://www.boxofficemojo.com/title/tt4786282/credits)

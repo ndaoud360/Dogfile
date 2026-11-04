@@ -1,6 +1,6 @@
 # Act One: Standards and Audit (Draft 2)
 
-Companion to `THE_GHOSTWRITER_ACT_1.fountain` / `.pdf`. This page records the screenplay standards used, the results of the pass, and the checklist to apply to every later act.
+Companion to `THE_GHOSTWRITER_ACT_1.fountain`. Page numbers refer to the full-script PDF (`THE_GHOSTWRITER_FULL_SCRIPT.pdf`), where Act One runs from page 1 to page 21. This page records the screenplay standards used, the results of the pass, and the checklist to apply to every later act.
 
 ## 1. Standards applied
 
@@ -34,7 +34,7 @@ Sources are working-industry craft sources (Script Magazine, Final Draft, John A
 | Measure | Draft 1 | Draft 2 |
 |---|---|---|
 | Errors | 63 | **0** |
-| Warnings | 240 | 8 (all reviewed, see below) |
+| Warnings | 240 | 7 (all reviewed, see below) |
 | "as if / as though" | 13 | 0 |
 | Interior-state verbs (thinks, knows, feels, hears, sees) | 14 | 0 |
 | Camera / transition lines | 17 | 0 |
@@ -44,7 +44,7 @@ Sources are working-industry craft sources (Script Magazine, Final Draft, John A
 
 The linter finds patterns. A full line-by-line read caught what it cannot, for example "The silence is wrong," "something settles," "a woman who has smelled something from her childhood," and "the way you hide something from yourself."
 
-**The 8 remaining warnings, all reviewed:** three are "year(s)" inside "five-year-old," "ten-year-old" and the SUPER; two are text Theo writes or reads on a page ("IT WAS," "There was nobody on the ledge"); one is "quiet" describing sound; two are "blur" (ink on a page; Ellie, below).
+**The 7 remaining warnings, all reviewed:** three are "year(s)" inside "five-year-old," "ten-year-old" and the SUPER; two are text Theo writes or reads on a page ("IT WAS," "There was nobody on the ledge"); two are "blur" (ink on a page; Ellie, below).
 
 ## 3. Deliberate exceptions
 
@@ -59,10 +59,10 @@ The linter finds patterns. A full line-by-line read caught what it cannot, for e
 |---|---|---|---|---|
 | 1987 kitchen | 1–2 | Nell safe → Nell gone | The wound, "in a minute," the name Theodore | Boy's face stays hidden by staging, not camera notes |
 | Station wagon | 2–6 | Theo's pride → exposed block; June's trust → resignation | Deadline, the public lie, Tomas | Bet rewritten to "I took the other side"; Priya plants "read me one sentence out loud" |
-| Farmhouse kitchen and hall | 6–7 | Theo's control → June breaks his silence | Photo with hidden face, cellar, sealed room | Hand-over-hand block; creak behind the door |
+| Farmhouse kitchen and hall | 6–8 | Theo's control → June breaks his silence | Photo with hidden face, cellar, sealed room | Hand-over-hand block; creak behind the door |
 | Kitchen, night | 8 | Hope of writing → failure and surrender | Block; the pencil in the wall; June's note | Backstory lines cut; the ritual is shown, not told |
-| Kitchen, morning | 8–9 | Safety → destabilized | **Inciting incident: the first page** | Handwriting proved with the atlas flyleaf; page hidden in his own novel |
-| Dayroom | 10–13 | Hope of reaching Ingrid → rebuke | The refrain; Ellie's agenda; the clock | **Dr. Haskell cut;** Ellie now carries the information, and presses Theo to come |
+| Kitchen, morning | 8–10 | Safety → destabilized | **Inciting incident: the first page** | Handwriting proved with the atlas flyleaf; page hidden in his own novel |
+| Dayroom | 10–12 | Hope of reaching Ingrid → rebuke | The refrain; Ellie's agenda; the clock | **Dr. Haskell cut;** Ellie now carries the information, and presses Theo to come |
 | Parking lot | 13 | Denial → doubt | "She said both" | Button: June waits in the rain |
 | Hall, night | 13–14 | Rationalization → terror and denial | First scare | One location; wet slap; mopping |
 | Sitting room | 14 | Stinger | The figure | "Three frames" became "half a second" |
@@ -87,7 +87,16 @@ The linter finds patterns. A full line-by-line read caught what it cannot, for e
 
 ```bash
 python3 tools/lint_script.py THE_GHOSTWRITER_ACT_1.fountain --verbose
-python3 tools/fountain_to_pdf.py THE_GHOSTWRITER_ACT_1.fountain THE_GHOSTWRITER_ACT_1.pdf
+python3 tools/fountain_to_pdf.py THE_GHOSTWRITER_ACT_1.fountain THE_GHOSTWRITER_ACT_1.pdf   # one act, numbered from 1
+python3 tools/build_full_script.py                                                          # all three acts into one script and one PDF
 ```
 
 The PDF tool needs `reportlab`.
+
+## 7. Changes made during the full-script pass
+
+- *June's story is planted* (p. 5): "It's eleven pages. It's a ghost story with a lighthouse." Before, she called it "a crossover," so the lighthouse first appeared at the Act Two dinner and again in the last scene of Act Three.
+- *A line that was not filmable* (p. 6): June "waves a hand at the smell" became "waves a hand in front of her nose."
+- *Sensory lines made visible actions:* "the radio is loud in the quiet" is now "the radio is the only sound" (p. 2); "smells them" is "holds them to his nose" (pp. 9 and 14).
+- *Two missing (CONT'D)* on the boy's voice-over in the flashback (p. 17).
+- Nothing else changed. All 21 pages were read again against the checklist above.

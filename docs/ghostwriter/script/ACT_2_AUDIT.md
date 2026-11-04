@@ -1,6 +1,6 @@
 # Act Two: Audit (Draft 1)
 
-Companion to `THE_GHOSTWRITER_ACT_2.fountain` / `.pdf` (script pages 22–61). The standards are in `ACT_1_AUDIT.md`; the same linter and checklist were applied from the first draft.
+Companion to `THE_GHOSTWRITER_ACT_2.fountain`. Page numbers refer to the full-script PDF (`THE_GHOSTWRITER_FULL_SCRIPT.pdf`), where Act Two runs from page 21 to page 61. The standards are in `ACT_1_AUDIT.md`; the same linter and checklist were applied from the first draft.
 
 ## 1. Results
 
@@ -9,7 +9,7 @@ Companion to `THE_GHOSTWRITER_ACT_2.fountain` / `.pdf` (script pages 22–61). T
 | Errors | 8 | **0** |
 | Warnings | 34 | 7 (all reviewed) |
 | Parentheticals | 5 | 1 |
-| Script pages | n/a | 40 (pp. 22–61) |
+| Script pages | n/a | about 40 (pp. 21–61 of the full script) |
 | Scenes | n/a | 28 |
 
 The 7 remaining warnings are all false positives or the one deliberate exception: "at once" (×2); "year" in "five-year-old"; "was" inside the text of a line written on Theo's arm; "still" in "sits still"; and "blur" (×2) for Ellie's face (below).
@@ -20,14 +20,14 @@ The 7 remaining warnings are all false positives or the one deliberate exception
 
 | # | Scene | Pages | Value: open → close | Plot job |
 |---|---|---|---|---|
-| 1 | Kitchen, morning | 22–23 | Fear of the pages → temptation | June gives Theo a reason to believe ("your brain giving it back"); the photograph changes |
+| 1 | Kitchen, morning | 21–23 | Fear of the pages → temptation | June gives Theo a reason to believe ("your brain giving it back"); the photograph changes |
 | 2 | Library | 23–25 | Hope the record clears him → reassurance, then moral choice | Establishes the record ("at home"); Tomas as a boy who wrote in margins; Marit |
 | 3 | Kitchen, night | 25–26 | Doubt → surrender | He turns the printout face down and types; first ink on his skin |
 | 4 | Kitchen, day | 26–27 | June's trust → disappointment | The cost: the street and a whole novel are gone; June calls Mara |
 | 5 | Kitchen, night | 27–28 | Pride → dread | Priya's false memory: the Revision reaches the outside world |
 | 6 | Kitchen, day | 29–31 | Secrecy → exposure | Mara sees the arm and the back of the page |
 | 7 | Alder Hill | 31–33 | Theo's skepticism → a key | Ingrid names Theodore and hands over the key; Ellie pushes: "Tonight" |
-| 8 | Cellar | 33–35 | Curiosity → terror | The notebook; the wet figure; "T.A. — CHIEF READER"; the pencil |
+| 8 | Cellar | 33–34 | Curiosity → terror | The notebook; the wet figure; "T.A. — CHIEF READER"; the pencil |
 | 9 | Kitchen, night | 35–36 | Trying to prove the pages are his → drowning | Reading aloud is physically dangerous; June saves him |
 | 10 | Mara's lab | 36–38 | Rationalization → "You're writing over someone" | The measurable proof that the truth is being erased |
 | 11 | Walter's study | 38–41 | Disbelief → fear | What a finished lie does to a person; "tell somebody something true" |
@@ -65,11 +65,16 @@ The 7 remaining warnings are all false positives or the one deliberate exception
 2. **Ingrid's secret.** Theodore tells Theo that his mother "read me every night for years." The audience doesn't yet know what that means. Is that the right amount to hold back for Act Three?
 3. **Theodore's "bookkeeping error" line** calls the wet figure a mistake. Keep it, or soften it?
 
-## 6. Resolved, and changes made during the Act Three pass
+## 6. Resolved, and changes made during the Act Three and full-script passes
 
-**Your answers:** (1) Length: leave Act Two at 40 pages and let Act Three expand (it ran to 38). (2) Keep Theodore's hook, "She read me every night for years, Theo. Ask her what she wished." (3) Keep "bookkeeping error."
+**Your answers:** (1) Length: leave Act Two as it is and let Act Three expand (it ran to about 39 pages). (2) Keep Theodore's hook, "She read me every night for years, Theo. Ask her what she wished." (3) Keep "bookkeeping error."
 
-**Two continuity patches, neither of which changes the page count (still pp. 22–61):**
+**Continuity patches (all in the source file; none changes what the scenes do):**
 
 - *The sexton's line* (p. 46) now reads "Every Friday. Never did figure out who." Act Three has Nell say Marit leaves marigolds every Friday, and the Marker scene is set on a Friday.
-- *June's middle name is now planted.* The transfer form in the kitchen scene (p. 26) shows, in her neat capitals, JUNE ELISE LINDQVIST-HALE. "Elise" is the cost Theo paid at the Turnover and the thing he cannot say in the Study (Act Three, p. 73), so the audience can check it. (Before this patch the name had never been written down anywhere in the script.)
+- *June's middle name is planted.* The transfer form in the kitchen scene (p. 26) shows, in her neat capitals, JUNE ELISE LINDQVIST-HALE. "Elise" is the cost Theo paid at the Turnover and the thing he cannot say in the Study (Act Three, p. 73). Before this patch the name had never been written down anywhere in the script.
+- *The father's whistle is planted* (p. 22): Theo whistles two falling notes in the happy first scene and says it was his father's call to bring the children in. It is the cost of the truth he tells Mara on the porch, which he cannot name ("I don't know what"); Theodore names it in the Study.
+- *The reflection is "REFLECTION" until Theo says its name* (p. 42), then "THEODORE." The cue no longer gives the name away before the dialogue does.
+- *Time card on the Priya call* (p. 27): the email goes at 2:07 and she calls at 3:22, so she has time to read forty pages.
+- *Mara's evidence grid* (p. 37): the first photograph shows a forearm with two lines, which is what Theo had when she arrived.
+- *Wording:* "She is waiting for him to say yes" is now behavior (p. 22); "unbothered" is now "nod, and go back to their pie" (p. 47); the diner waitress is introduced once, not twice (p. 47); a wrong (CONT'D) after Walter's exit was removed (p. 57); a stray "Silence." before the scratching resumes is gone (p. 57).

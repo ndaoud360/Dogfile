@@ -173,15 +173,14 @@ pub fn preflight(env: &dyn Env, root: &Path, base: &[BEntry], foot: &Footprint) 
         let mut want = 0usize;
         for e in base.iter().filter(|e| e.path.starts_with(&prefix)) {
             want += 1;
-            let rel = &e.path[prefix.len()..];
-            match now.get(rel) {
+            match now.get(&e.path) {
                 Some(m) if m.kind == e.kind && (e.kind != Kind::File || (m.size == e.size && m.mtime == e.mtime)) => {}
                 Some(_) => bad.push(format!("{} has been changed", shown(&e.path))),
                 None => bad.push(format!("{} isn’t there any more", shown(&e.path))),
             }
         }
         if now.len() != want {
-            let known: HashSet<&str> = base.iter().filter(|e| e.path.starts_with(&prefix)).map(|e| &e.path[prefix.len()..]).collect();
+            let known: HashSet<&str> = base.iter().filter(|e| e.path.starts_with(&prefix)).map(|e| e.path.as_str()).collect();
             for k in now.keys().filter(|k| !known.contains(k.as_str())).take(3) {
                 bad.push(format!("{} was added to {}", shown(k), shown(p)));
             }
@@ -257,6 +256,10 @@ pub fn apply(c: &Ctx, base: &[BEntry], foot: &Footprint, acts: &[Act]) -> Result
         match a {
             Act::Mkdir { path } => {
                 let p = dp(c.root, path);
+                // looked at first, so that a folder found later where this one was made is known to be ours
+                if matches!(c.env.stat(&p), Ok(Some(_))) {
+                    return fail(c, j, &steps, None, format!("The folder {} couldn’t be made: something with that name is already there", shown(path)));
+                }
                 step!(Step::Mkdir { path: path.clone() }, c.env.mkdir(&p).map_err(|e| format!("The folder {} couldn’t be made: {}", shown(path), io_msg(&e))));
             }
             Act::Mv { from, to } => {
@@ -398,8 +401,15 @@ fn reverse_pending(c: &Ctx, s: &Step, problems: &mut Vec<String>) {
                 }
             }
         }
-        // a folder that is there may not be ours: left alone (it is empty at worst)
-        Step::Mkdir { .. } => {}
+        // it was known not to exist when this was written down, so a folder there now is the one this step made
+        Step::Mkdir { path } => {
+            let p = dp(c.root, path);
+            if matches!(exists(c, &p), Some(m) if m.kind == Kind::Dir) {
+                if let Err(e) = c.env.remove_dir(&p) {
+                    problems.push(format!("The folder {} was left because it isn’t empty or is in use ({})", shown(path), io_msg(&e)));
+                }
+            }
+        }
         Step::Copy { part, .. } => {
             let pp = dp(c.root, part);
             if exists(c, &pp).is_some() {
@@ -478,37 +488,83 @@ fn reverse_step(c: &Ctx, s: &Step, problems: &mut Vec<String>) {
 }
 
 // ---------- undo ----------
+/// What the folder would look like part way through an undo, for checking it beforehand: what is there now, with the
+/// effect of the steps already "undone" laid over it.
+struct Sim<'a, 'b> {
+    c: &'a Ctx<'b>,
+    over: HashMap<String, bool>,
+}
+impl Sim<'_, '_> {
+    fn has(&self, p: &str) -> bool {
+        if let Some(v) = self.over.get(p) {
+            return *v;
+        }
+        // inside something that is sent away
+        let mut q = p;
+        while let Some((par, _)) = q.rsplit_once('/') {
+            if let Some(v) = self.over.get(par) {
+                if !*v {
+                    return false;
+                }
+                break;
+            }
+            q = par;
+        }
+        exists(self.c, &dp(self.c.root, p)).is_some()
+    }
+}
+
 /// What stands in the way of undoing; empty means it can go ahead.
 pub fn undo_check(c: &Ctx, steps: &[Step]) -> Vec<String> {
     let mut bad = vec![];
+    let mut sim = Sim { c, over: HashMap::new() };
     for s in steps.iter().rev() {
         match s {
             Step::Mv { from, to } => {
-                if exists(c, &dp(c.root, to)).is_none() {
+                let same = from.to_lowercase() == to.to_lowercase();
+                if !sim.has(to) {
                     bad.push(format!("{} isn’t there any more", shown(to)));
                 }
-                if from.to_lowercase() != to.to_lowercase() && exists(c, &dp(c.root, from)).is_some() {
+                if !same && sim.has(from) {
                     bad.push(format!("Something is now at {}", shown(from)));
                 }
+                if !same {
+                    sim.over.insert(to.clone(), false);
+                }
+                sim.over.insert(from.clone(), true);
             }
-            Step::Mkdir { .. } => {}
+            Step::Mkdir { path } => {
+                sim.over.insert(path.clone(), false);
+            }
             Step::Copy { to, size, .. } => {
-                if let Some(m) = exists(c, &dp(c.root, to)) {
-                    if m.kind != Kind::File || m.size != *size {
-                        bad.push(format!("The copy {} has been changed", shown(to)));
+                if sim.over.get(to).is_none() {
+                    if let Some(m) = exists(c, &dp(c.root, to)) {
+                        if m.kind != Kind::File || m.size != *size {
+                            bad.push(format!("The copy {} has been changed", shown(to)));
+                        }
                     }
                 }
+                sim.over.insert(to.clone(), false);
             }
-            Step::Del { orig, state, .. } => {
-                if !matches!(state, DelState::Kept) && exists(c, &dp(c.root, orig)).is_some() {
-                    bad.push(format!("Something is now at {}", shown(orig)));
+            Step::Del { orig, staged, state, .. } => match state {
+                DelState::Kept => {}
+                DelState::Staged => {
+                    if sim.has(orig) {
+                        bad.push(format!("Something is now at {}", shown(orig)));
+                    }
+                    sim.over.insert(staged.clone(), false);
+                    sim.over.insert(orig.clone(), true);
                 }
-                if let DelState::Trashed { from } = state {
+                DelState::Trashed { from } => {
+                    if sim.has(orig) {
+                        bad.push(format!("Something is now at {}", shown(orig)));
+                    }
                     if !c.env.bin_has(Path::new(from)) {
                         bad.push(format!("{} isn’t in the Recycle Bin any more", shown(orig)));
                     }
+                    sim.over.insert(orig.clone(), true);
                 }
-            }
+            },
         }
     }
     bad.sort();

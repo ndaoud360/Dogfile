@@ -255,7 +255,7 @@ const R = {
   tools: [
     ['Clean up', [['cleanup', 'Cleanup', true], ['analyze', 'Disk space'], ['emptyRecycle'], ['similarMedia', 'Similar media']]],
     ['Compare', [['compare', 'Compare & sync', true], ['compareFiles', 'Two files…']]],
-    ['Protect', [['timeTravel', 'Time travel', true], ['history', 'File history'], ['allVersions', 'Versions'], ['makeChecksums', 'Checksums'], ['verifyChecksums', 'Verify'], ['hashes'], ['whoLocks', 'What’s locking it?']]],
+    ['Protect', [['timeTravel', 'Time travel', true], ['history', 'File history'], ['allVersions', 'Versions'], ['makeChecksums', 'Checksums'], ['verifyChecksums', 'Verify'], ['hashes'], ['whoLocks', 'What’s locking it?'], ['lock', 'Lock'], ['unlock', 'Unlock']]],
     ['Connect', [['phoneTransfer', 'Phone', true], ['connections', 'Servers', true], ['addConnection', 'Add server']]],
     ['Apps', [['notepad', 'Notepad', true], ['photos', 'Photos', true], ['player', 'Player', true], ['music', 'Music', true], ['viewer3d', '3D viewer'], ['office', 'Office'], ['terminalDrawer', 'Terminal'], ['shelf', 'Drop Shelf'], ['gotoFile', 'Go to file']]],
     ['Automate', [['features', 'Features', true], ['startMacro', 'Record macro'], ['macros', 'Macros'], ['featureStore', 'Get features']]],

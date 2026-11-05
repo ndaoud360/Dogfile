@@ -203,7 +203,7 @@ const EXT_COLORS = {
   py: '#3572a5', json: '#777', html: '#e34c26', css: '#563d7c', md: '#555', txt: '#888', mp3: '#c2185b', wav: '#c2185b', flac: '#c2185b',
   mp4: '#5e35b1', mkv: '#5e35b1', mov: '#5e35b1', avi: '#5e35b1', psd: '#2a6dd8', ai: '#d97b00', svg: '#e09a00', c: '#555', cpp: '#00599c', cs: '#178600',
   java: '#b07219', go: '#00add8', rs: '#b7410e', rb: '#cc342d', php: '#777bb3', sql: '#e38c00', xml: '#777', yml: '#cb171e', yaml: '#cb171e', lnk: '#777', dll: '#666',
-  ttf: '#444', otf: '#444', woff: '#444', woff2: '#444',
+  ttf: '#444', otf: '#444', woff: '#444', woff2: '#444', dflock: '#7a5af8',
 };
 export function fileArt(ext) {
   const label = (ext || '').slice(0, 4).toUpperCase();

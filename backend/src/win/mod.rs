@@ -412,7 +412,7 @@ pub fn invoke_verb(p: &str, verb: &str) -> Result<(), String> {
 // ---------------- icons (exe / shortcut / file type) ----------------
 pub fn file_icon(p: &str, size: &str) -> Option<String> {
     com_init();
-    let px = match size { "small" => 16, "large" => 48, _ => 32 };
+    let px = match size { "small" => 16, "large" => 256, _ => 32 };
     let it = item(p).ok()?;
     let f: IShellItemImageFactory = it.cast().ok()?;
     let hbm = unsafe { f.GetImage(SIZE { cx: px, cy: px }, SIIGBF(SIIGBF_ICONONLY.0 | SIIGBF_BIGGERSIZEOK.0)) }.ok()?;

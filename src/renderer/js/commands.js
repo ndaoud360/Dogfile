@@ -220,6 +220,8 @@ def('profiles', 'Profiles (Work, Gaming, Music, Development…)…', { icon: 'us
 def('pinToWorkspace', 'Pin selected files to this workspace', { icon: 'pin', cat: 'Tools', run: () => import('./workspaces.js').then((m) => m.pinFilesToWorkspace(S_().filter((i) => !i.isDir).map((i) => i.path))) });
 def('saveWorkspace', 'Save workspace…', { icon: 'workspace', cat: 'Tools', run: async () => { const { prompt } = await import('./dialogs.js'); const n = await prompt('Save workspace', '', { label: 'Name' }); if (n) { const W = await import('./workspaces.js'); state.workspaces[n] = await W.captureWorkspace({ files: state.projectFiles || [] }); (await import('./core.js')).saveLibrary(); toast('Saved'); } } });
 def('emptyRecycle', 'Empty Recycle Bin', { icon: 'recycle', cat: 'Tools', run: A.emptyRecycle });
+def('lock', 'Lock with a password…', { icon: 'lock', cat: 'Tools', run: () => import('./lockui.js').then((m) => m.lockItems(S_())) });
+def('unlock', 'Unlock…', { icon: 'lock', cat: 'Tools', run: () => import('./lockui.js').then((m) => m.unlockItems(S_())) });
 def('hashes', 'Compute file hashes', { icon: 'hash', cat: 'Tools', run: () => A.properties(S_().slice(0, 1)) });
 def('palette', 'Command palette', { icon: 'command', keys: ['Ctrl+Shift+P', 'Ctrl+K'], cat: 'App', run: () => palette() });
 def('settings', 'Settings', { icon: 'settings', keys: ['Ctrl+,'], cat: 'App', run: () => bus.emit('openSettings') });

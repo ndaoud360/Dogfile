@@ -93,6 +93,12 @@ pub fn encode(w: u32, h: u32, rgba: Vec<u8>, force_png: bool) -> Option<(Vec<u8>
     }
 }
 fn make(p: &str, size: u32) -> Option<(Vec<u8>, bool)> {
+    // pictures with see-through parts: Windows returns some of them with the see-through parts black
+    if !p.starts_with("atlas:mtp|") {
+        if let Some(r) = crate::alpha_thumb::make(p, size) {
+            return Some(r);
+        }
+    }
     // phones and cameras through Windows (cable or Phone Link): Windows makes their thumbnails too
     let it = if p.starts_with("atlas:mtp|") { super::mtp::item_of(p).ok()? } else { super::shellx::item(p).ok()? };
     let f: IShellItemImageFactory = it.cast().ok()?;

@@ -65,6 +65,40 @@ async function filesFor(x, { exts = null, kind = null, wantFolderFiles = true } 
   return items;
 }
 
+/** the items a lock request means: the files it names (found in the open folder), else what is selected */
+function lockTargets(op, x) {
+  const t = activeTab();
+  const here = (t?.items || []).filter((i) => !i.virtual);
+  const found = [], missing = [];
+  for (const n of x.names || []) {
+    const low = n.toLowerCase();
+    const it = here.find((i) => i.name.toLowerCase() === low) || (op === 'unlock' ? here.find((i) => i.name.toLowerCase() === `${low}.dflock`) : null);
+    if (it) { if (!found.includes(it)) found.push(it); } else missing.push(n);
+  }
+  return { items: found.length || missing.length ? found : selectedItems(t).filter((i) => !i.virtual), missing };
+}
+async function lockOrUnlock(op, x, { say, acts }) {
+  const L = await import('./lockui.js');
+  const { items: all, missing } = lockTargets(op, x);
+  const items = all.filter(op === 'lock' ? L.canLock : L.isLocked);
+  if (missing.length) say(`I couldn’t find ${missing.map((n) => `“${n}”`).join(', ')} in this folder.`);
+  if (!items.length) return missing.length ? undefined : say(op === 'lock' ? 'Select the file or folder to lock (or name it, like “lock report.docx and make the password 1234”), then ask again.' : 'Select the locked file (.dflock) to unlock, then ask again.');
+  const what = items.length === 1 ? `“${items[0].name}”` : plural(items.length, 'item');
+  if (!x.password) { // no password in the request: the password box asks
+    say(op === 'lock' ? `Let’s lock ${what}. Type the password in the box.` : `Let’s unlock ${what}.`);
+    return op === 'lock' ? L.lockItems(items) : L.unlockItems(items);
+  }
+  say(op === 'lock'
+    ? `I’ll lock ${what} with the password you gave. It becomes one encrypted file that only that password opens, and the original is removed once the locked copy has been checked. I can’t recover a forgotten password.`
+    : `I’ll unlock ${what} with the password you gave.`);
+  acts(btn(op === 'lock' ? 'Lock it' : 'Unlock it', async (e) => {
+    e.target.disabled = true;
+    const results = await L.lockWithPassword(op, items.map((i) => i.path), x.password);
+    const bad = results.filter((r) => r.error);
+    say(bad.length ? `${bad[0].error === 'Wrong password' ? 'That password didn’t open it.' : `Couldn’t ${op} it: ${bad[0].error}`}` : op === 'lock' ? `Locked ${what}.` : `Unlocked ${what}.`);
+  }, 'primary'));
+}
+
 export const HANDLERS = {
   // ---------------- appearance & settings ----------------
   async glass(x, { say }) {
@@ -267,6 +301,9 @@ export const HANDLERS = {
       say(j.status === 'done' ? `Removed from ${basename(arc)}.` : `Couldn’t remove it: ${jobProblem(j)}`);
     }, 'primary danger'));
   },
+  // ---------------- lock with a password ----------------
+  async lockItems(x, ctx) { return lockOrUnlock('lock', x, ctx); },
+  async unlockItems(x, ctx) { return lockOrUnlock('unlock', x, ctx); },
   async convertArchive(x, { say }) {
     const items = selectedItems(activeTab()).filter((i) => kindOf(i) === 'archive');
     if (!items.length && !A.arcOf(activeTab()?.path)) return say('Select the archive to convert, then ask again.');

@@ -323,7 +323,7 @@ body.show-preview #workspace { grid-template-columns: 1fr 1px var(--pv-w); }
 .grid-cell .tile svg.folder-art { width: 82%; height: 82%; }
 .grid-cell .tile .virt-art { width: 60%; height: 60%; display: grid; place-items: center; color: var(--text-3); }
 .grid-cell .tile .virt-art .ic { width: 64%; height: 64%; stroke-width: 1; }
-.grid-cell .tile img.wicon.big { width: 48px; height: 48px; image-rendering: -webkit-optimize-contrast; }
+.grid-cell .tile img.wicon.big { width: 60%; height: 60%; object-fit: contain; }
 .grid-cell .label { margin-top: 8px; max-width: 100%; padding: 0 6px; font-size: calc(12.5px * var(--fs)); color: var(--text-2); text-align: center; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; border-radius: 4px; }
 .grid-cell .label .tdots { margin-right: 4px; }
 .grid-cell .sub { font-size: 11px; color: var(--text-3); margin-top: 2px; }
@@ -378,6 +378,18 @@ body.show-preview #workspace { grid-template-columns: 1fr 1px var(--pv-w); }
 .fico.folder .ic { fill: color-mix(in srgb, var(--folder) 55%, transparent); }
 .fico.k-image { color: #2f9e8f; } .fico.k-video { color: #7b5bd6; } .fico.k-audio { color: #c2185b; } .fico.k-archive { color: #b38600; } .fico.k-code { color: #3a7bd5; } .fico.k-executable { color: #5a6b80; } .fico.k-model { color: #d9822b; }
 img.wicon { width: 18px; height: 18px; flex: none; }
+img.cicon { width: 18px; height: 18px; flex: none; object-fit: contain; }
+.grid-cell .tile img.cicon.big { width: 60%; height: 60%; }
+.ic-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ic-title { flex: 1; font-size: 18px; font-weight: 600; }
+.ic-list { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-top: 8px; }
+.ic-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.ic-row:last-child { border-bottom: 0; }
+.ic-row.on { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.ic-name { flex: 1; display: flex; flex-direction: column; gap: 2px; cursor: default; }
+.ic-thumb { width: 36px; height: 36px; object-fit: contain; }
+.ic-preview { width: 48px; height: 48px; object-fit: contain; margin-left: 12px; }
+.ic-empty { padding: 18px 0; }
 .c-git { display: flex; align-items: center; }
 
 /* List view */

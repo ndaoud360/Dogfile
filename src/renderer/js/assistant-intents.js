@@ -144,6 +144,9 @@ const INTENTS = [
     return { undo: /\b(undo|put back|reverse)\b/.test(s), what: what ? { renam: 'renamed', rename: 'renamed', mov: 'moved', move: 'moved', cop: 'created', copy: 'created', delet: 'trashed', delete: 'trashed', recycl: 'trashed', recycle: 'trashed', trash: 'trashed' }[what.replace(/(ed|ing|e)$/, '')] || { rename: 'renamed', move: 'moved', copy: 'created', delete: 'trashed', recycle: 'trashed', trash: 'trashed' }[what] || null : null, folder: /\bfolder\b/.test(s), minutesAgo: mins, today: /\btoday\b/.test(s) };
   }],
   ['reminders', (t, s) => (/\b(remind(?:er)?s?|notif(?:y|ication)s?|alert)\b.*\b(expir\w*|renew\w*|due|passport|licen[cs]e|insurance|warranty|document|bill)\b|\b(expir\w*|renew\w*)\b.*\b(remind\w*|notif\w*|alert|track|watch)\b|\bdocument reminders?\b|\bwhen (?:does|do|is) (?:my )?\w+ (?:expire|due)\b/.test(s) ? { about: /\b(this|these|it|selected)\b/.test(s) } : null)],
+  // ---------- lock with a password ----------
+  ['unlockItems', (t) => (/^\s*(?:(?:please|can you|could you|will you|i want to|i need to|go ahead and)\s+)*(?:unlock|decrypt)\b/i.test(t) ? lockDetails(t) : null)],
+  ['lockItems', (t) => (/^\s*(?:(?:please|can you|could you|will you|i want to|i need to|go ahead and)\s+)*(?:lock|encrypt|password[- ]protect)\b/i.test(t) && !/\block(?:ing|ed)?\s+(?:screen|up)\b/i.test(t) ? lockDetails(t) : null)],
   ['whoLocks', (t, s) => (/\b(what|which)\b.*\b(program|process|app|application)\b.*\b(locking|using|has .* open|holding|blocking)\b|\bwho(?:'s| is) (?:locking|using)\b|\bwhat'?s (?:locking|using)\b|\bin use by\b/.test(s) ? {} : null)],
   // ---------- pictures, songs & videos ----------
   ['similarTo', (t, s) => (/\b(?:look|looks|looking)\s+(?:like|similar to)\s+(?:this|these|the selected|that|the one)|\bsimilar to (?:this|these|the selected)\b|\blike this (?:one|picture|photo|image|video|song)\b/.test(s) ? {} : null)],
@@ -183,6 +186,18 @@ export function intentParams(id, text) {
   const s = ' ' + t.toLowerCase().replace(/[“”]/g, '"').replace(/[‘’]/g, "'") + ' ';
   const it = INTENTS.find(([k]) => k === id);
   return (it && it[1](t, s)) || {};
+}
+/** "Lock report.docx and make the password 1234", "lock 'Tax Folder' with the password 'my secret phrase'", "unlock notes.txt.dflock, password hunter2":
+ * the password (one word, or anything in quotes) and the names of the files or folders, when they were named */
+export function lockDetails(t) {
+  const text = String(t);
+  const pm = /\b(?:pass ?words?|pass ?codes?|pass ?phrases?|pins?)\s*(?:is|to|as|be|should be|of|=|:)?\s*(?:(?:["“‘']([^"”’']+)["”’'])|([^\s"“”]+))/i.exec(text);
+  let password = pm ? (pm[1] ?? pm[2]).replace(/[.,;!?]+$/, '') : null;
+  if (password != null && /^(?:to|is|as|be|of|the|a|and|with)$/i.test(password)) password = null;
+  const rest = pm ? text.replace(pm[0], ' ') : text;
+  const names = quoted(rest);
+  for (const m of rest.matchAll(/(?:^|[\s,(])([\w()&+-]+(?:\.[\w()&+-]+)*\.[A-Za-z0-9]{1,6})(?=$|[\s,.;:!?)])/g)) if (!names.some((n) => n.toLowerCase() === m[1].toLowerCase())) names.push(m[1]);
+  return { password, names };
 }
 export function matchIntent(text) {
   const t = String(text || '').trim();

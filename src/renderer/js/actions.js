@@ -1,5 +1,6 @@
 // File actions: open, copy/cut/paste, delete, rename, new items, undo/redo, archives, shortcuts,
 // virtual locations (Home, This PC, Recent, Recycle Bin, Network, Tags), and context menus.
+import { isLocked, canLock, lockItems, unlockItems } from './lockui.js';
 import { api, state, sys, bus, h, isVirtual, isRemote, remoteParts, onMain, pjoin, dirname, basename, normalize, samePath, extname, stem, fmtSize, toast, onWorkMsgFor, IS_WIN, isMtp, isTextFile, isMediaFile, isImageFile, isModelFile, isOfficeFile, addRecentFile, tagsOf, setTags, moveTags, saveLibrary, kindOf, KINDS, setDriveNames, uid, errText, openDefault } from './core.js';
 import { activeTab, paneTab, navigate, openTab, loadTab, renderTabPanes, selectedItems, startRename, selectOnly, otherPaneTab, paneCount, clearThumbCache, invalidateArchive } from './pane.js';
 import { showMenu } from './menu.js';
@@ -24,6 +25,8 @@ export async function openItems(items, { pane = state.activePane, newTab = false
   let files = items.filter((i) => !i.isDir);
   if (items.length === 1 && items[0].addPhone) { import('./phonelink.js').then((m) => m.openPhoneTransfer({ focus: 'android' })); return; }
   if (items.length === 1 && items[0].netdev) { const d = items[0].netdev; if (d.url) api('shell:openExternal', d.url); else if (d.source === 'ssdp') toast(`${d.name}${d.model ? ` (${d.model})` : ''} at ${d.ip}. This device has no web page to open.`); else api('net:open', d.name); return; }
+  const locks = files.filter(isLocked);
+  if (locks.length) { files = files.filter((f) => !locks.includes(f)); await unlockItems(locks); if (!files.length && !dirs.length) return; }
   const feats = files.filter((f) => /\.(dogmod|atlasfeature)$/i.test(f.name || f.path));
   if (feats.length) { files = files.filter((f) => !feats.includes(f)); const F = await import('./features.js'); for (const f of feats) await F.importFeature(f.path); if (!files.length && !dirs.length) return; }
   const rem = files.filter((f) => f.remote);
@@ -1288,6 +1291,8 @@ export function buildItemsMenu(t, items) {
       anyArchive && { label: 'Convert to', icon: 'convert', submenu: convertMenu(items) },
       anyArchive && { label: 'Test archive', icon: 'check', run: () => testArchives(items) },
     ] },
+    real.some(isLocked) && { label: 'Unlock…', icon: 'lock', run: () => unlockItems(real.filter(isLocked)) },
+    real.some(canLock) && { label: 'Lock with a password…', icon: 'lock', run: () => lockItems(real.filter(canLock)) },
     anyArchive && { label: 'Extract', icon: 'extract', submenu: [
       { label: 'Extract here (smart)', run: () => extract(items) }, { label: 'Extract to folder', run: () => extract(items, 'folder') },
       { label: 'Extract to…', run: () => extract(items, 'choose') }, paneCount() > 1 && { label: 'Extract to other pane', run: () => extract(items, 'other') },

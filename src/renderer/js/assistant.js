@@ -5,6 +5,7 @@
 import { animatePanel } from './panelanim.js';
 import { api, state, sys, bus, h, esc, toast, fmtSize, fmtDate, basename, dirname, pjoin, KINDS, TEXT_EXTS, uid, setTags, isVirtual, jobProblem } from './core.js';
 import { icon, fileArt } from './icons.js';
+import { loadWinIcons, winIconsOn } from './winicons.js';
 import { confirm } from './dialogs.js';
 import { activeTab, navigate, selectedItems, openTab, loadTab } from './pane.js';
 import * as A from './actions.js';
@@ -331,7 +332,8 @@ function fileRows(items, why, { limit = 40, checks = null } = {}) {
   for (const f of items.slice(0, limit)) {
     const c = checks ? h('input', { type: 'checkbox', checked: !checks.off.has(f) }) : null;
     if (c) c.onchange = () => (c.checked ? checks.off.delete(f) : checks.off.add(f));
-    const row = h('div', { class: 'as-file', title: f.path }, c, h('span', { class: 'as-art', html: fileArt(f.ext) }), h('div', { class: 'as-fn' }, h('b', {}, f.name), h('span', { class: 'hint' }, [basename(dirname(f.path)), fmtDate(f.mtime), fmtSize(f.size || 0), why?.get(f), f._older?.length ? `${f._older.length} older version${f._older.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · '))));
+    const row = h('div', { class: 'as-file', title: f.path }, c, h('span', { class: 'as-art', html: winIconsOn() && f.path ? `<img class="wicon" data-icon="${esc(f.path)}" alt="">` : fileArt(f.ext) }), h('div', { class: 'as-fn' }, h('b', {}, f.name), h('span', { class: 'hint' }, [basename(dirname(f.path)), fmtDate(f.mtime), fmtSize(f.size || 0), why?.get(f), f._older?.length ? `${f._older.length} older version${f._older.length === 1 ? '' : 's'}` : ''].filter(Boolean).join(' · '))));
+    loadWinIcons(row.querySelectorAll('img[data-icon]'), (_p) => fileArt(f.ext));
     row.addEventListener('click', (e) => { if (e.target.tagName === 'INPUT') return; navigate(activeTab(), dirname(f.path), { select: f.path }); });
     row.addEventListener('dblclick', () => A.openItems([{ ...f, isDir: false }]));
     box.append(row);

@@ -1,6 +1,7 @@
 // Tabs, panes, navigation, listing, sorting/grouping/filtering, the virtualized views
 // (Grid · Details · List · Columns), selection (click/shift/ctrl/marquee/type-ahead), inline rename and drag & drop.
-import { customIcon } from './icontheme.js';
+import { customIcon, iconRev } from './icontheme.js';
+import { loadWinIcons } from './winicons.js';
 import { playFolderAnim, directionOf } from './folderanim.js';
 import { shownPath, demoRealPath,
   api, state, sys, bus, h, esc, isVirtual, isMtp, isRemote, remoteParts, pjoin, dirname, basename, normalize, samePath, isInside, splitPath, virtualTitle,
@@ -597,7 +598,6 @@ export const paneEls = []; // [{root, nav, crumbs, body, scroller, inner, overla
 const thumbCache = new Map();
 let thumbBytes = 0;
 const fontCache = new Map();
-const iconCache = new Map();
 
 export function buildPanes(host) {
   host.innerHTML = '';
@@ -1089,7 +1089,8 @@ function paintRows(el, t) {
     // instead of every tile and picture being made again on each step (that's what froze the window)
     const sm = html.match(/^<div\b[^>]*?\sstyle="([^"]*)"/);
     const style = sm ? sm[1] : null;
-    const sig = html.replace(/<!--T-->[\s\S]*?<!--\/T-->/, '').replace(/^(<div\b[^>]*?)\sstyle="[^"]*"/, '$1');
+    // the picture part is ignored, except when the way pictures are chosen changed (Windows icons on/off, an icon theme)
+    const sig = html.replace(/<!--T-->[\s\S]*?<!--\/T-->/, '').replace(/^(<div\b[^>]*?)\sstyle="[^"]*"/, '$1') + '|' + artEpoch();
     if (old && old.sig === sig && old.node.parentNode === el.inner) {
       if (style != null && old.style !== style) { old.node.setAttribute('style', style); old.style = style; }
       next.set(key, old); prev.delete(key); return;
@@ -1177,16 +1178,17 @@ function gitBadge(t, it) {
   return `<span class="git-badge g${c}" title="Git: ${esc(code)}">${c}</span>`;
 }
 
+const artEpoch = () => `${state.settings.useWindowsIcons ? 'w' : 'd'}|${state.settings.iconTheme || ''}|${iconRev()}`;
+const winOn = (it) => state.settings.useWindowsIcons && IS_WIN() && !it?.archive && !it?.mtp && !it?.recycle;
+
 function smallIcon(it) {
   if (it.drive) return icon(it.drive.type === 'portable' ? 'phone' : it.drive.type === 'removable' ? 'usb' : it.drive.type === 'network' ? 'network' : it.drive.type === 'optical' ? 'disc' : 'drive');
   if (it.icon) return icon(it.icon);
   if (it.isDir) return `<span class="fico folder">${icon('folder')}</span>`;
   const own = customIcon(it.ext);
   if (own) return `<img class="cicon" src="${own}" alt="" draggable="false">`;
-  if (state.settings.useWindowsIcons && IS_WIN()) return `<img class="wicon" data-icon="${esc(it.path)}" alt="">`;
-  const k = kindOf(it);
-  const map = { image: 'photos', video: 'videos', audio: 'music', archive: 'zip', code: 'code', executable: 'terminal', document: 'page', font: 'page', model: 'cube' };
-  return `<span class="fico k-${k}">${icon(map[k] || 'page')}</span>`;
+  if (winOn(it)) return `<img class="wicon" data-icon="${esc(it.path)}" alt="">`;
+  return ownArt(it.path || it.name || '', false).replace(/k-\w+/, 'k-' + kindOf(it));
 }
 
 function wantsThumb(it) {
@@ -1211,7 +1213,7 @@ function gridCell(t, it, ix, y, x, L) {
   else if (it.isDir) art = it.icon && !it.path.startsWith('atlas:') ? folderArt() : it.icon ? `<div class="virt-art">${icon(it.icon)}</div>` : folderArt(it.color);
   else if (!it.isDir && customIcon(it.ext)) art = `<img class="cicon big" src="${customIcon(it.ext)}" alt="" draggable="false">`;
   else if (thumb && thumbCache.get(it.path + '|' + (it.mtime || 0))) art = `<img class="thumb-img" src="${thumbCache.get(it.path + '|' + (it.mtime || 0))}" alt="" draggable="false" decoding="sync">`;
-  else if (thumb && thumbCache.get(it.path + '|' + (it.mtime || 0)) === null) art = fileArt(it.ext);
+  else if (thumb && thumbCache.get(it.path + '|' + (it.mtime || 0)) === null) art = winOn(it) ? `<img class="wicon big" data-icon="${esc(it.path)}" alt="">` : fileArt(it.ext);
   else if (thumb) art = `<img class="thumb-img pending" data-thumb="${esc(it.path)}" data-m="${it.mtime || 0}" alt="" draggable="false">${state.settings.useWindowsIcons ? '' : `<div class="thumb-fallback">${fileArt(it.ext)}</div>`}`;
   else if (KINDS.font.includes(it.ext) && it.ext !== 'fon' && !it.archive && !it.mtp) art = `<div class="font-art" data-font="${esc(it.path)}"><b>Aa</b><span>${esc(it.ext.toUpperCase())}</span></div>`;
   else if (state.settings.useWindowsIcons && IS_WIN() && !it.archive) art = `<img class="wicon big" data-icon="${esc(it.path)}" alt="">`;
@@ -1232,6 +1234,8 @@ function galleryCell(t, it, ix, y, x, w, hh) {
     const u = thumbCache.get(k);
     art = u ? `<img class="gal-img" src="${u}" alt="" draggable="false" crossorigin="anonymous" data-gal="${esc(it.path)}">` : `<img class="gal-img pending" data-thumb="${esc(it.path)}" data-m="${it.mtime || 0}" data-gal="${esc(it.path)}" data-tw="${Math.min(1024, Math.round(Math.max(w, hh) * (window.devicePixelRatio || 1)))}" alt="" draggable="false" crossorigin="anonymous">`;
   } else if (MM.isAud(it)) art = `<div class="gal-wave"><img src="/media/wave?p=${encodeURIComponent(it.path)}&w=${Math.min(1200, Math.round(w * (window.devicePixelRatio || 1)))}&h=${Math.round(hh * 0.6 * (window.devicePixelRatio || 1))}&c=${(getComputedStyle(document.documentElement).getPropertyValue('--accent').trim().replace('#', '') || '3b82f6').slice(0, 6)}" alt="" draggable="false" onerror="this.remove()"></div>`;
+  else if (customIcon(it.ext)) art = `<div class="gal-file"><img class="cicon big" src="${customIcon(it.ext)}" alt="" draggable="false"></div>`;
+  else if (winOn(it)) art = `<div class="gal-file"><img class="wicon big" data-icon="${esc(it.path)}" alt=""></div>`;
   else art = `<div class="gal-file">${fileArt(it.ext)}</div>`;
   const cap = it.isDir || !(pic || vid) || state.settings.galleryNames;
   return `<div class="cell gal-cell${itemClasses(t, it)}${cap ? ' cap' : ''}${vid ? ' vid' : ''}" data-ix="${ix}" role="option" aria-selected="${t.sel.has(it.path)}" draggable="false" style="transform:translate(${x}px,${y}px);width:${w}px;height:${hh}px">
@@ -1368,15 +1372,15 @@ function hydrateImages(el, t, nodes) {
     let url = thumbCache.get(key);
     const show = (u) => {
       img.onload = () => { img.classList.remove('pending'); img.nextElementSibling?.classList?.contains('thumb-fallback') && img.nextElementSibling.remove(); };
-      img.onerror = () => { img.remove(); };
+      img.onerror = () => { thumbFailed(img, t.shown[t.indexOf.get(p)]); };
       img.src = u;
     };
     if (url) return show(url);
-    if (url === null) { img.remove(); return; }
     const it = t.shown[t.indexOf.get(p)];
+    if (url === null) { thumbFailed(img, it); return; }
     // time travel: a file that's gone shows its picture from its copy in the Recycle Bin or Versions
     const src = it?.thumbSrc || p;
-    if (it?.tt === 'gone' && !it.thumbSrc) { img.remove(); return; }
+    if (it?.tt === 'gone' && !it.thumbSrc) { thumbFailed(img, it); return; }
     if (it && DECODED_IMG.has(it.ext)) url = decodedUrl(src, Math.min(512, Math.round((t.gridSize || state.settings.gridSize) * (window.devicePixelRatio || 1))));
     else if (IS_WIN() || it?.mtp) {
       url = await api('thumb:get', src, Math.min(512, Math.round((t.gridSize || state.settings.gridSize) * (window.devicePixelRatio || 1)))).catch(() => null);
@@ -1387,7 +1391,7 @@ function hydrateImages(el, t, nodes) {
     thumbBytes += url ? url.length : 0;
     // keep the cache to about 48 MB of thumbnails (oldest go first)
     while (thumbCache.size > 3000 || thumbBytes > 48 * 1048576) { const k = thumbCache.keys().next().value; thumbBytes -= thumbCache.get(k)?.length || 0; thumbCache.delete(k); }
-    if (url && img.isConnected) show(url); else img.remove();
+    if (url && img.isConnected) show(url); else thumbFailed(img, it);
   });
   q('.font-art[data-font]').forEach(async (el2) => {
     const p = el2.dataset.font;
@@ -1395,14 +1399,23 @@ function hydrateImages(el, t, nodes) {
     if (!fam) { fam = 'ff' + fontCache.size; fontCache.set(p, fam); try { const ff = new FontFace(fam, `url("${fileUrl(p)}")`); await ff.load(); document.fonts.add(ff); } catch { fontCache.set(p, 'x-none'); } }
     if (fontCache.get(p) !== 'x-none') el2.querySelector('b').style.fontFamily = `"${fam}"`;
   });
-  q('img[data-icon]').forEach(async (img) => {
-    const p = img.dataset.icon;
-    const e = extname(p);
-    const key = ['exe', 'lnk', 'ico', 'url', 'appref-ms', 'msc', 'cpl', 'scr'].includes(e) || !e ? p : '.' + e;
-    let u = iconCache.get(key);
-    if (u === undefined) { u = await api('icon:get', p, img.classList.contains('big') ? 'large' : 'normal'); iconCache.set(key, u); }
-    if (u) img.src = u; else img.replaceWith(Object.assign(document.createElement('span'), { className: 'fico', innerHTML: icon('page') }));
-  });
+  loadWinIcons(q('img[data-icon]'), ownArt);
+}
+const KIND_GLYPH = { image: 'photos', video: 'videos', audio: 'music', archive: 'zip', code: 'code', executable: 'terminal', document: 'page', font: 'page', model: 'cube' };
+/** Dogfile's own picture for a file, for when Windows has none to give */
+function ownArt(p, big) {
+  const ext = extname(p);
+  if (big) return fileArt(ext);
+  return `<span class="fico k-${kindOf({ ext, name: p })}">${icon(KIND_GLYPH[kindOf({ ext, name: p })] || 'page')}</span>`;
+}
+/** a picture that couldn't be made: the Windows icon if that's what's chosen, otherwise nothing (Dogfile's own is already behind it) */
+function thumbFailed(img, it) {
+  if (!img.isConnected) return;
+  if (!winOn(it) || it?.isDir) { img.remove(); return; }
+  const w = Object.assign(document.createElement('img'), { className: 'wicon big', alt: '' });
+  w.dataset.icon = it.path;
+  img.replaceWith(w);
+  loadWinIcons([w], ownArt);
 }
 export function clearThumbCache(p) { for (const k of [...thumbCache.keys()]) if (!p || k.startsWith(p + "|")) { thumbBytes -= thumbCache.get(k)?.length || 0; thumbCache.delete(k); } if (!p) thumbBytes = 0; }
 

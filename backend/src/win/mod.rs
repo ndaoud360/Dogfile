@@ -413,12 +413,57 @@ pub fn invoke_verb(p: &str, verb: &str) -> Result<(), String> {
 pub fn file_icon(p: &str, size: &str) -> Option<String> {
     com_init();
     let px = match size { "small" => 16, "large" => 256, _ => 32 };
-    let it = item(p).ok()?;
-    let f: IShellItemImageFactory = it.cast().ok()?;
-    let hbm = unsafe { f.GetImage(SIZE { cx: px, cy: px }, SIIGBF(SIIGBF_ICONONLY.0 | SIIGBF_BIGGERSIZEOK.0)) }.ok()?;
-    let (w, h, rgba) = thumbs::hbitmap_rgba(hbm)?;
+    // the shell's own picture of the file's icon; some types (a .zip, whose "folder" Windows opens itself) come back
+    // empty or not at all, so those are taken from the system icon list instead, which every type has
+    let direct = || -> Option<(u32, u32, Vec<u8>)> {
+        let it = item(p).ok()?;
+        let f: IShellItemImageFactory = it.cast().ok()?;
+        let hbm = unsafe { f.GetImage(SIZE { cx: px, cy: px }, SIIGBF(SIIGBF_ICONONLY.0 | SIIGBF_BIGGERSIZEOK.0)) }.ok()?;
+        thumbs::hbitmap_rgba(hbm).filter(|(_, _, rgba)| !blank(rgba))
+    };
+    let (w, h, rgba) = direct().or_else(|| system_icon(p, px, false)).or_else(|| system_icon(p, px, true))?;
     let png = thumbs::encode(w, h, rgba, true)?;
     Some(format!("data:image/png;base64,{}", crate::util::b64(&png.0)))
+}
+/// nothing drawn at all (every pixel see-through)
+fn blank(rgba: &[u8]) -> bool {
+    rgba.chunks_exact(4).all(|p| p[3] == 0)
+}
+/// The icon Windows shows for this file's type from the system icon list, at the nearest size it keeps (16, 32, 48 or
+/// 256). With `by_type` it goes by the extension alone (the file need not be readable).
+fn system_icon(p: &str, px: i32, by_type: bool) -> Option<(u32, u32, Vec<u8>)> {
+    use windows::Win32::UI::Controls::{IImageList, ILD_TRANSPARENT};
+    unsafe {
+        let wide: Vec<u16> = if by_type {
+            let ext = std::path::Path::new(p).extension()?.to_string_lossy().to_string();
+            format!("x.{ext}").encode_utf16().chain(Some(0)).collect()
+        } else {
+            p.encode_utf16().chain(Some(0)).collect()
+        };
+        let mut fi = SHFILEINFOW::default();
+        let flags = if by_type { SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES } else { SHGFI_SYSICONINDEX };
+        let attrs = if by_type { FILE_ATTRIBUTE_NORMAL } else { FILE_FLAGS_AND_ATTRIBUTES(0) };
+        if SHGetFileInfoW(PCWSTR(wide.as_ptr()), attrs, Some(&mut fi), std::mem::size_of::<SHFILEINFOW>() as u32, flags) == 0 {
+            return None;
+        }
+        // the sizes of the system lists: SHIL_SMALL 16, SHIL_LARGE 32, SHIL_EXTRALARGE 48, SHIL_JUMBO 256
+        let order: &[i32] = if px >= 128 { &[4, 2, 0] } else if px >= 48 { &[2, 4, 0] } else if px > 16 { &[0, 2] } else { &[1, 0] };
+        for &which in order {
+            let Ok(list) = SHGetImageList::<IImageList>(which) else { continue };
+            let Ok(hicon) = list.GetIcon(fi.iIcon, ILD_TRANSPARENT.0) else { continue };
+            let mut ii = ICONINFO::default();
+            let got = GetIconInfo(hicon, &mut ii).is_ok();
+            let out = if got && !ii.hbmColor.is_invalid() { thumbs::hbitmap_rgba(ii.hbmColor) } else { None };
+            if got && !ii.hbmMask.is_invalid() {
+                let _ = windows::Win32::Graphics::Gdi::DeleteObject(ii.hbmMask);
+            }
+            let _ = DestroyIcon(hicon);
+            if let Some(r) = out.filter(|(_, _, rgba)| !blank(rgba)) {
+                return Some(r);
+            }
+        }
+        None
+    }
 }
 
 // ---------------- Recycle Bin ----------------

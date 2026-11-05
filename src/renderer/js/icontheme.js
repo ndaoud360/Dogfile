@@ -13,7 +13,11 @@ export const activeName = () => (state.settings.iconTheme && themes()[state.sett
 /** the picture for a file extension in the theme that is on, or null */
 export const customIcon = (ext) => { const n = activeName(); return n ? themes()[n].icons[String(ext || '').toLowerCase()] || null : null; };
 
+// bumped whenever the pictures in use change, so file lists redraw their icons right away
+let rev = 0;
+export const iconRev = () => rev;
 function changed() {
+  rev++;
   saveSettings(); bus.emit('settings');
   import('./pane.js').then((m) => m.renderAll());
 }

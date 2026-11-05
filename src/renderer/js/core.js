@@ -339,7 +339,7 @@ export const DEFAULT_SETTINGS = {
   dateFormat: 'locale', sizeUnits: 'binary', folderSizes: false, rememberFolderViews: true,
   singleClick: false, doubleClickUp: true, typeAhead: 'select', confirmDelete: true, deleteToRecycle: true, linkedFiles: true,
   startupPath: 'restore', terminal: 'auto', editor: '', keepRunning: false, openInNewWindow: false, notifyFinished: true,
-  useWindowsIcons: false, showThumbnails: true, gitBadges: true, hoverPreview: false, sequentialOps: false, fastTransfers: true, verifyCopies: false,
+  useWindowsIcons: false, iconThemes: {}, iconTheme: null, showThumbnails: true, gitBadges: true, hoverPreview: false, sequentialOps: false, fastTransfers: true, verifyCopies: false,
   ribbonPinned: false, sidebarWidth: 300, sidebarCollapsed: false, syncNavigation: false, restoreTabs: true,
   showStatusBar: true, smartExtract: true, closeLastTabClosesWindow: false, middleClickOpensTab: true,
   autoUpdates: true, sidebarSections: { quick: true, drives: true, network: true, tags: true, collections: false },

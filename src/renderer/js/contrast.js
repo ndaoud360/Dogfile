@@ -1,6 +1,7 @@
 // Readability of a colour theme: finds text, icons and borders that would be hard to see on the colour behind them
 // and works out nearby colours that are readable. Plain functions, no window: readability.js shows the result.
 import { DEFAULT_COLORS, COLOR_PARTS } from './theme.js';
+import { sanitizeIconTheme } from './iconsafe.js';
 
 const HEX = /^#[0-9a-f]{6}$/i;
 export const isColor = (v) => typeof v === 'string' && HEX.test(v);
@@ -152,11 +153,12 @@ export function sanitizeTheme(t) {
   const light = clean(t.light, 'light'), dark = clean(t.dark, 'dark');
   const accent = isColor(t.accent) ? t.accent.toLowerCase() : undefined;
   const shadow = Number(t.shadowStrength);
-  if (!Object.keys(light).length && !Object.keys(dark).length && !accent) return null;
+  const iconTheme = sanitizeIconTheme(t.iconTheme) || undefined;
+  if (!Object.keys(light).length && !Object.keys(dark).length && !accent && !iconTheme) return null;
   return {
     name: String(t.name || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 40),
     author: String(t.author || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 40),
     description: String(t.description || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 200),
-    light, dark, accent, shadowStrength: Number.isFinite(shadow) && t.shadowStrength != null ? Math.max(0, Math.min(2.5, shadow)) : undefined,
+    light, dark, accent, shadowStrength: Number.isFinite(shadow) && t.shadowStrength != null ? Math.max(0, Math.min(2.5, shadow)) : undefined, iconTheme,
   };
 }

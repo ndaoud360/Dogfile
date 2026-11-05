@@ -55,6 +55,8 @@ pub mod server;
 pub mod util;
 pub mod update;
 pub mod components;
+pub mod alpha_thumb;
+pub mod lock;
 #[cfg(windows)]
 pub mod win;
 

@@ -6,6 +6,7 @@ import { modal, prompt } from './dialogs.js';
 import { icon } from './icons.js';
 import { DEFAULT_COLORS, PRESETS } from './theme.js';
 import { sanitizeTheme } from './contrast.js';
+import * as IT from './icontheme.js';
 import { gh, b64, signIn } from './featurestore.js';
 
 export const THEME_TOPIC = 'dogfile-theme';
@@ -42,11 +43,12 @@ export async function applyTheme(t, name) {
   const kept = hasCustom();
   if (kept) { S.colorPresets = S.colorPresets || {}; S.colorPresets['My previous colors'] = currentTheme(); }
   const n = addPreset(t, name);
+  const iconName = t.iconTheme ? IT.adopt({ name: t.iconTheme.name || n, icons: t.iconTheme.icons }) : null;
   S.colors = { light: { ...t.light }, dark: { ...t.dark } };
   S.accent = t.accent || '#3b82f6';
   if (t.shadowStrength != null) S.shadowStrength = t.shadowStrength;
   saveSettings(); bus.emit('theme');
-  toast(`Using “${n}”.${kept ? ' Your earlier colors are saved as “My previous colors” in Settings > Colors.' : ''}`, { ms: 7000 });
+  toast(`Using “${n}”${iconName ? ` with its icons (“${iconName}”)` : ''}.${kept ? ' Your earlier colors are saved as “My previous colors” in Settings > Colors.' : ''}`, { ms: 7000 });
   const { guardReadability } = await import('./readability.js');
   await guardReadability();
 }
@@ -99,8 +101,10 @@ export async function uploadTheme() {
     h('p', { class: 'hint' }, `It will be published publicly as github.com/${S.githubUser}/dogtheme-<name>, so anyone can find and use it. Upload again with the same name to update it. A theme is only colors: no code is shared.`)),
     buttons: [{ label: 'Cancel', value: null }, { label: 'Upload', primary: true, run: (close) => (name.value.trim() ? close(true) : (toast('Give the theme a name'), false)) }] });
   if (!ok) return;
-  const src = sel.value === '__current' ? currentTheme() : S.colorPresets[sel.value];
-  const theme = sanitizeTheme({ ...src, name: name.value.trim(), author: S.githubUser, description: desc.value.trim() });
+  const src = sel.value === '__current' ? { ...currentTheme(), iconTheme: IT.exportActive() } : S.colorPresets[sel.value];
+  let theme = sanitizeTheme({ ...src, name: name.value.trim(), author: S.githubUser, description: desc.value.trim() });
+  // pictures make the file big: a theme with more than about 700 KB of them is shared as colors only
+  if (theme?.iconTheme && JSON.stringify(theme.iconTheme).length > 700000) { theme = { ...theme, iconTheme: undefined }; toast('The icons are too big to share, so only the colors go up', { ms: 6000 }); }
   if (!theme) return toast('Those colors are all the defaults, so there is nothing to share yet', { error: true });
   const slug = 'dogtheme-' + name.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50);
   const full = `${S.githubUser}/${slug}`;

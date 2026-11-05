@@ -176,6 +176,14 @@ const sc = await import('../src/renderer/js/stems-core.js');
   eq(JSON.stringify(s.light), '{"--text":"#123456"}', 'themes: only known colour names with #rrggbb values are kept');
   eq(s.shadowStrength, 2.5, 'themes: shadow strength is limited'); ok(!s.name.includes('<'), 'themes: the name loses markup characters'); eq(s.accent, undefined, 'themes: a colour name that isn’t #rrggbb is dropped');
   eq(K.sanitizeTheme({ light: {} }), null, 'themes: an empty theme is refused');
+  {
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const t = K.sanitizeTheme({ light: {}, iconTheme: { name: '<i>Neon</i>', icons: { PDF: png, pdf: png, '.docx': png, 'a/b': png, xlsx: 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=', txt: 'http://evil/x.png', md: png, 'toolongextension': png } } });
+    ok(t && t.iconTheme, 'icon themes: an icon theme alone is a usable theme', t);
+    eq(Object.keys(t.iconTheme.icons).sort().join(), 'md,pdf', 'icon themes: only real extensions with PNG pictures are kept (no svg, no web addresses, no paths)');
+    eq(t.iconTheme.name, 'iNeon/i', 'icon themes: the name is cleaned');
+    eq(K.sanitizeTheme({ light: {}, iconTheme: { icons: { pdf: 'data:image/png;base64,' + 'A'.repeat(90000) } } }), null, 'icon themes: a huge picture is refused');
+  }
 }
 
 console.log(`${pass} passed, ${fail} failed`);

@@ -8,6 +8,8 @@ import { showMenu } from './menu.js';
 import { commands, keysFor, comboFromEvent, rebuildKeymap } from './commands.js';
 import { renderAll, recompute } from './pane.js';
 import { COLOR_PARTS, PRESETS, DEFAULT_COLORS, currentColor } from './theme.js';
+import * as IT from './icontheme.js';
+import { buildIconsPage } from './settings-icons.js';
 
 export async function openSettings(section = 'general', opts = {}) {
   const nav = h('div', { class: 'set-nav' });
@@ -176,7 +178,8 @@ export async function openSettings(section = 'general', opts = {}) {
       const exportColors = async (name, data) => {
         const dir = sys.known.downloads || sys.known.home;
         const file = await api('fs:uniqueName', dir, `Dogfile Colors - ${String(name).replace(/[<>:"/\\|?*]/g, '')}.json`, 'number');
-        await api('fs:writeText', file, JSON.stringify({ type: 'atlas-colors', version: 1, name, ...data }, null, 2));
+        const iconTheme = IT.exportActive();
+        await api('fs:writeText', file, JSON.stringify({ type: 'atlas-colors', version: 1, name, ...data, ...(iconTheme ? { iconTheme } : {}) }, null, 2));
         toast(`Exported to ${file}`, { ms: 6000, action: { label: 'Show', run: () => api('win:new', { path: dir, select: file }) } });
       };
       _append(el,
@@ -196,7 +199,8 @@ export async function openSettings(section = 'general', opts = {}) {
               const name = (raw.name || c.name || f.split(/[\\/]/).pop().replace(/\.json$/i, '').replace(/^Dogfile Colors - /, '')).trim() || 'Imported';
               S.colorPresets[name] = { light: c.light || {}, dark: c.dark || {}, accent: c.accent, shadowStrength: c.shadowStrength };
               S.colors = { light: { ...(c.light || {}) }, dark: { ...(c.dark || {}) } }; if (c.accent) S.accent = c.accent; if (c.shadowStrength != null) S.shadowStrength = c.shadowStrength;
-              apply(); show('colors'); toast(`Imported “${name}” and added it to your presets`);
+              const iconName = c.iconTheme ? IT.adopt({ name: c.iconTheme.name || name, icons: c.iconTheme.icons }) : null;
+              apply(); show('colors'); toast(`Imported “${name}” and added it to your presets${iconName ? `, with the icon theme “${iconName}”` : ''}`);
             } catch { toast('That isn’t a Dogfile colors file', { error: true }); }
           } }, 'Import from file…')));
       const grid = h('div', { class: 'color-grid' }, h('div', { class: 'cg-head' }, ''), h('div', { class: 'cg-head' }, 'Light'), h('div', { class: 'cg-head' }, 'Dark'), h('div', { class: 'cg-head' }, ''));
@@ -217,7 +221,8 @@ export async function openSettings(section = 'general', opts = {}) {
       }
       const shadow = h('input', { type: 'range', min: '0', max: '2.5', step: '0.1', value: String(S.shadowStrength ?? 1) });
       shadow.addEventListener('input', () => { S.shadowStrength = +shadow.value; apply(); });
-      _append(el, grid, row('Sidebar shadow strength', shadow, 'How much shadow the sidebar casts.'));
+      _append(el, grid, row('Sidebar shadow strength', shadow, 'How much shadow the sidebar casts.'),
+        row('Icons', h('button', { class: 'btn small', onclick: () => show('icons') }, h('span', {}, IT.activeName() ? `Icon theme: ${IT.activeName()}` : 'Icon themes…')), 'Pick your own pictures for file types. A theme goes along when you export your colors.'));
       // color-coding rules
       el.append(h('h3', { class: 'set-h3' }, 'Color-coding rules'), h('p', { class: 'hint' }, 'Tint file names that match a rule. The first match wins.'));
       const rules = h('div', { class: 'stack' });
@@ -241,6 +246,7 @@ export async function openSettings(section = 'general', opts = {}) {
       drawRules();
       el.append(rules);
     }],
+    icons: ['Icon themes', 'palette', (el) => buildIconsPage(el, () => show('colors'))],
     behavior: ['Behavior', 'keyboard', (el) => {
       _append(el,
         row('Progress window for copies and moves', toggle('opsPopup'), 'Shows speed and time left. Minimize it to keep working.'),
@@ -487,8 +493,9 @@ export async function openSettings(section = 'general', opts = {}) {
     }],
   };
 
-  if (opts.index) { const out = []; for (const [id, [label, , fn]] of Object.entries(sections)) { if (id === 'about') continue; const sec = h('div'); try { await fn(sec); } catch { continue; } for (const r of sec.querySelectorAll('.set-row')) { const l = r.querySelector('.set-label > div')?.textContent?.trim(); if (l) out.push({ section: id, sectionLabel: label, label: l, hint: r.querySelector('.set-label .hint')?.textContent || '' }); } } return out; }
+  if (opts.index) { const out = []; for (const [id, [label, , fn]] of Object.entries(sections)) { if (id === 'about' || id === 'icons') continue; const sec = h('div'); try { await fn(sec); } catch { continue; } for (const r of sec.querySelectorAll('.set-row')) { const l = r.querySelector('.set-label > div')?.textContent?.trim(); if (l) out.push({ section: id, sectionLabel: label, label: l, hint: r.querySelector('.set-label .hint')?.textContent || '' }); } } return out; }
   for (const [id, [label, ic]] of Object.entries(sections)) {
+    if (id === 'icons') continue; // a page inside Colors
     if (['behavior', 'safety', 'keys', 'data'].includes(id)) nav.append(h('div', { class: 'set-nav-sep', role: 'separator' }));
     const b = h('button', { class: 'set-tab', 'data-id': id, html: `${icon(ic)}<span>${label}</span>` });
     b.addEventListener('click', () => show(id));
@@ -504,7 +511,7 @@ export async function openSettings(section = 'general', opts = {}) {
     nav.querySelectorAll('.set-tab').forEach((b) => b.classList.remove('on'));
     const out = h('div', {});
     for (const [id, [label, , fn]] of Object.entries(sections)) {
-      if (id === 'about') continue;
+      if (id === 'about' || id === 'icons') continue;
       const sec = h('div', { class: 'set-sec' });
       try { await fn(sec); } catch { continue; }
       if (my !== searchSeq) return;
@@ -526,9 +533,9 @@ export async function openSettings(section = 'general', opts = {}) {
   let lastShown = section;
   const show = async (id) => {
     lastShown = id;
-    nav.querySelectorAll('.set-tab').forEach((b) => b.classList.toggle('on', b.dataset.id === id));
+    nav.querySelectorAll('.set-tab').forEach((b) => b.classList.toggle('on', b.dataset.id === (id === 'icons' ? 'colors' : id)));
     content.innerHTML = '';
-    content.append(h('h2', {}, sections[id][0]));
+    if (id !== 'icons') content.append(h('h2', {}, sections[id][0]));
     await sections[id][2](content);
     tidyRows(content);
   };

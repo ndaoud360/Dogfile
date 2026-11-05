@@ -1,5 +1,6 @@
 // Tabs, panes, navigation, listing, sorting/grouping/filtering, the virtualized views
 // (Grid · Details · List · Columns), selection (click/shift/ctrl/marquee/type-ahead), inline rename and drag & drop.
+import { customIcon } from './icontheme.js';
 import { playFolderAnim, directionOf } from './folderanim.js';
 import { shownPath, demoRealPath,
   api, state, sys, bus, h, esc, isVirtual, isMtp, isRemote, remoteParts, pjoin, dirname, basename, normalize, samePath, isInside, splitPath, virtualTitle,
@@ -1180,6 +1181,8 @@ function smallIcon(it) {
   if (it.drive) return icon(it.drive.type === 'portable' ? 'phone' : it.drive.type === 'removable' ? 'usb' : it.drive.type === 'network' ? 'network' : it.drive.type === 'optical' ? 'disc' : 'drive');
   if (it.icon) return icon(it.icon);
   if (it.isDir) return `<span class="fico folder">${icon('folder')}</span>`;
+  const own = customIcon(it.ext);
+  if (own) return `<img class="cicon" src="${own}" alt="" draggable="false">`;
   if (state.settings.useWindowsIcons && IS_WIN()) return `<img class="wicon" data-icon="${esc(it.path)}" alt="">`;
   const k = kindOf(it);
   const map = { image: 'photos', video: 'videos', audio: 'music', archive: 'zip', code: 'code', executable: 'terminal', document: 'page', font: 'page', model: 'cube' };
@@ -1206,6 +1209,7 @@ function gridCell(t, it, ix, y, x, L) {
   let art;
   if (it.drive) art = driveArt(it.drive, S);
   else if (it.isDir) art = it.icon && !it.path.startsWith('atlas:') ? folderArt() : it.icon ? `<div class="virt-art">${icon(it.icon)}</div>` : folderArt(it.color);
+  else if (!it.isDir && customIcon(it.ext)) art = `<img class="cicon big" src="${customIcon(it.ext)}" alt="" draggable="false">`;
   else if (thumb && thumbCache.get(it.path + '|' + (it.mtime || 0))) art = `<img class="thumb-img" src="${thumbCache.get(it.path + '|' + (it.mtime || 0))}" alt="" draggable="false" decoding="sync">`;
   else if (thumb && thumbCache.get(it.path + '|' + (it.mtime || 0)) === null) art = fileArt(it.ext);
   else if (thumb) art = `<img class="thumb-img pending" data-thumb="${esc(it.path)}" data-m="${it.mtime || 0}" alt="" draggable="false">${state.settings.useWindowsIcons ? '' : `<div class="thumb-fallback">${fileArt(it.ext)}</div>`}`;

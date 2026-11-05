@@ -66,6 +66,12 @@ for (const [t, test] of plans) { const p = P(t, /selected|these|this file/.test(
 
 // ---------- actions the assistant recognises ----------
 const intents = [
+  ['Lock report.docx and make the password 1234', 'lockItems', (x) => x.password === '1234' && x.names.join() === 'report.docx'],
+  ['please lock "Tax Folder" with the password "my secret phrase"', 'lockItems', (x) => x.password === 'my secret phrase' && x.names.join() === 'Tax Folder'],
+  ['Encrypt the selected files, password is hunter2.', 'lockItems', (x) => x.password === 'hunter2' && !x.names.length],
+  ['lock this file', 'lockItems', (x) => x.password === null],
+  ['Unlock notes.txt.dflock with password 1234', 'unlockItems', (x) => x.password === '1234' && x.names.join() === 'notes.txt.dflock'],
+  ['decrypt budget.xlsx passcode abc', 'unlockItems', (x) => x.password === 'abc' && x.names.join() === 'budget.xlsx'],
   ['Find photos that look like this selected image.', 'similarTo'],
   ['Find screenshots vs. camera photos vs. artwork in this folder.', 'classifyPics'],
   ['Break down the storage space in this folder by file type and age.', 'cleanup'],
@@ -136,6 +142,8 @@ const intents = [
   ['turn on the glass sidebar', 'glass', (x) => x.on],
   ['turn off the aero sidebar', 'glass', (x) => !x.on],
 ];
+ok(I("what's locking this file")?.id === 'whoLocks', 'whoLocks still works');
+ok(I('lock screen')?.id !== 'lockItems', 'lock screen is not a file lock');
 for (const [t, id, test] of intents) { const x = I(t); ok(x?.id === id && (!test || test(x)), `intent ${id}: ${t}`, x); }
 // requests that must stay plain file searches (no action steals them)
 for (const t of plans.map((p) => p[0]).filter((t) => !/^(Tag|Zip|Change the file extension)/.test(t))) { const x = I(t); ok(!x, 'no intent: ' + t, x); }

@@ -1,0 +1,3 @@
+in front after 40 s: 7 processes, private working set 117.3 MB [dogfile 38, msedgewebview2 29, msedgewebview2#1 2, msedgewebview2#2 9, msedgewebview2#3 5, msedgewebview2#4 3, msedgewebview2#5 31]
+in front after 60 s: 7 processes, private working set 117.0 MB [dogfile 43, msedgewebview2 27, msedgewebview2#1 2, msedgewebview2#2 9, msedgewebview2#3 5, msedgewebview2#4 3, msedgewebview2#5 29]
+behind another program for 45 s: 7 processes, private working set 87.2 MB [dogfile 35, msedgewebview2 28, msedgewebview2#1 2, msedgewebview2#2 9, msedgewebview2#3 5, msedgewebview2#4 3, msedgewebview2#5 6]

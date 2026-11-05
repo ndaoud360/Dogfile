@@ -10,6 +10,16 @@
       try { await api('license:startTrial'); const s = await api('license:status'); await log(`licence: trial started on the live server (${s.mode}, ${s.daysLeft} days)`); } catch (e) { await log('FAIL licence: trial: ' + e.message); }
     } else await log('licence: ' + lic.mode);
     const ai = await import(new URL('js/ai.js', location.href).href);
+    // the AI runtime is a downloadable part: the app asks for it before the first use, so do the same here
+    await api('components:install', 'ort');
+    for (let i = 0; ; i++) {
+      await wait(1000);
+      const c = (await api('components:status')).ort;
+      if (c.ready) break;
+      if (c.error) throw new Error('AI runtime: ' + c.error);
+      if (!c.downloading || i > 600) throw new Error('AI runtime did not install');
+    }
+    await log('AI runtime installed');
     const kind = await ai.writerKind();
     await log('webgpu adapter: ' + (kind === 'writer-gpu'));
     for (const k of ['writer', kind === 'writer-gpu' ? 'writer-gpu' : null].filter(Boolean)) {

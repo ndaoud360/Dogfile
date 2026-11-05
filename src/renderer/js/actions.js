@@ -1345,7 +1345,7 @@ export function buildBackgroundMenu(t, e = { clientX: 0, clientY: 0 }) {
   const real = !isVirtual(t.path);
   const vtog = (label, view) => ({ label, radio: true, selected: t.view === view, run: () => import('./pane.js').then((m) => m.setView(t, view)) });
   return (simplifyMenu([
-    { label: 'View', icon: 'viewGrid', submenu: [vtog('Grid', 'grid'), vtog('List', 'list'), vtog('Details', 'details'), vtog('Columns', 'columns')] },
+    { label: 'View', icon: 'viewGrid', submenu: [vtog('Details', 'details'), vtog('Columns', 'columns'), vtog('Grid', 'grid'), vtog('Gallery', 'gallery'), vtog('List', 'list')] },
     { label: 'Sort by', icon: 'sort', run: (ev) => bus.emit('openSortMenu', { t, x: e.clientX, y: e.clientY }) },
     { label: 'Refresh', icon: 'refresh', keys: 'F5', run: () => { clearThumbCache(); loadTab(t); } },
     { separator: true },

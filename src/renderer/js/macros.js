@@ -191,7 +191,7 @@ function stepEditor(s, onChange) {
     case 'newFolder': box.append(inp('name', 'Folder name')); break;
     case 'tag': box.append(sel('tag', state.tags.defs.map((d) => [d.id, d.name]))); break;
     case 'filter': box.append(inp('text', 'Text, *.jpg, or empty to clear')); break;
-    case 'view': box.append(sel('view', [['details', 'Details'], ['grid', 'Grid'], ['gallery', 'Gallery'], ['list', 'List'], ['columns', 'Columns']])); break;
+    case 'view': box.append(sel('view', [['details', 'Details'], ['columns', 'Columns'], ['grid', 'Grid'], ['gallery', 'Gallery'], ['list', 'List']])); break;
     case 'wait': { const x = h('input', { class: 'input sm', type: 'number', min: '0.1', step: '0.5', style: { width: '80px' } }); x.value = String((s.ms || 1000) / 1000); x.oninput = () => { s.ms = Math.round(+x.value * 1000) || 1000; onChange(); }; box.append(x, h('span', { class: 'hint' }, 'seconds')); break; }
     case 'message': box.append(inp('text', 'Message', '300px')); break;
     case 'command': box.append(h('span', { class: 'hint' }, s.id)); break;

@@ -23,6 +23,37 @@ use tauri::{AppHandle, DragDropEvent, Manager, PhysicalPosition, PhysicalSize, R
 /// One renderer process for all of Dogfile's pages (same site), and nothing running in the background.
 const BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,msEdgeTranslate,msImplicitSignin,msWebView2TextureStream,SpareRendererForSitePerProcess,MediaRouter,OptimizationHints,Translate,AutofillServerCommunication --process-per-site --disable-background-networking --disable-component-update --disable-domain-reliability --no-pings";
 
+/// While Dogfile isn't the window in front (someone is in another program), the web view is asked to keep as little
+/// memory as it can after a short while, and this program lets go of what it isn't using. Coming back to the window
+/// puts it back to normal at once.
+#[cfg(windows)]
+fn idle_memory(w: &tauri::Window, focused: bool) {
+    static SEEN: Mutex<Option<HashMap<String, u64>>> = Mutex::new(None);
+    let label = w.label().to_string();
+    let n = {
+        let mut m = SEEN.lock();
+        let c = m.get_or_insert_with(HashMap::new).entry(label.clone()).or_insert(0);
+        *c += 1;
+        *c
+    };
+    if focused {
+        if let Some(wv) = host().win(&label) {
+            winx::webview_memory_low(&wv, wv.is_minimized().unwrap_or(false));
+        }
+        return;
+    }
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(20));
+        if SEEN.lock().as_ref().and_then(|m| m.get(&label)).copied() != Some(n) {
+            return; // it was in front again meanwhile
+        }
+        if let Some(wv) = host().win(&label) {
+            winx::webview_memory_low(&wv, true);
+        }
+        winx::trim_own_memory();
+    });
+}
+
 fn page_url(page: &str, query: &str) -> WebviewUrl {
     let q = if query.is_empty() { String::new() } else { format!("?{query}") };
     let s = if cfg!(any(windows, target_os = "android")) { format!("http://dogfile.localhost/app/{page}{q}") } else { format!("dogfile://localhost/app/{page}{q}") };
@@ -1025,6 +1056,12 @@ fn main() {
                     }
                     h.tray_icon();
                 }
+            }
+            WindowEvent::Focused(on) => {
+                #[cfg(windows)]
+                idle_memory(w, *on);
+                #[cfg(not(windows))]
+                let _ = on;
             }
             WindowEvent::Resized(_) | WindowEvent::Moved(_) => {
                 save_bounds_soon(w.clone());

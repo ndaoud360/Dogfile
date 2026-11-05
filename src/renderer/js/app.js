@@ -263,7 +263,7 @@ const R = {
     ['Windows', [['showInExplorer'], ['winProperties'], ['windowsMenu']]],
   ],
   view: [
-    ['Layout', [['viewGrid', 'Grid', true], ['viewDetails', 'Details', true], ['viewGallery', 'Gallery', true], ['viewList', 'List'], ['viewColumns', 'Columns'], ['zoomIn', 'Bigger'], ['zoomOut', 'Smaller']]],
+    ['Layout', [['viewDetails', 'Details', true], ['viewColumns', 'Columns'], ['viewGrid', 'Grid', true], ['viewGallery', 'Gallery', true], ['viewList', 'List'], ['zoomIn', 'Bigger'], ['zoomOut', 'Smaller']]],
     ['History', [['timeTravel', 'Time travel', true]]],
     ['Sort & group', [['sort_name', 'By name'], ['sort_mtime', 'By date'], ['sort_size', 'By size'], ['sort_type', 'By type'], ['group_type', 'Group by type'], ['group_date', 'Group by date'], ['groupNone', 'No groups'], ['mediaFilter', 'Media filter']]],
     ['Panes', [['togglePreview', 'Preview pane'], ['toggleSidebar', 'Sidebar'], ['layout1', 'One pane'], ['layout2v', 'Side by side'], ['layout2h', 'Stacked'], ['layout3', 'Three'], ['layout4', 'Four'], ['mirrorPane', 'Same folder in other pane'], ['syncNav', 'Sync browsing'], ['swapPanes', 'Swap panes']]],

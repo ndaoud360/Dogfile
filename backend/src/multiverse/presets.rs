@@ -85,6 +85,10 @@ pub fn by_type(t: &Tree, scope: &str) -> Vec<OpKind> {
 }
 pub fn by_month(t: &Tree, scope: &str) -> Vec<OpKind> {
     group(t, scope, |n| {
+        // a file made in the what-if copy has no date yet
+        if n.mtime <= 0 {
+            return "Undated".to_string();
+        }
         let (y, m) = year_month(n.mtime);
         format!("{y}-{m:02}")
     })

@@ -7,10 +7,11 @@ import { icon } from './icons.js';
 import { activeTab, loadTab } from './pane.js';
 
 const NAME_BAD = /[<>:"/\\|?*\u0000-\u001f]/;
-const kindWord = { moved: 'Moved', renamed: 'Renamed', new: 'New', copy: 'Copy' };
+const kindWord = { moved: 'Moved', renamed: 'Renamed', new: 'New', copy: 'Copy', edited: 'Edited' };
 const nameOf = (p) => String(p).split('/').pop();
 const parentOf = (p) => { const i = String(p).lastIndexOf('/'); return i < 0 ? '' : p.slice(0, i); };
 const joinP = (a, b) => (a ? `${a}/${b}` : b);
+const bytes = (n) => (n < 1024 ? `${n} bytes` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(1)} MB`);
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
 /** what a change says, in words */
@@ -21,6 +22,8 @@ export function describe(o) {
     case 'delete': return `Delete “${op.path}” (to the Recycle Bin)`;
     case 'mkdir': return `New folder “${op.path}”`;
     case 'copy': return `Copy “${op.from}” to “${op.to}”`;
+    case 'put': return `New contents for “${op.path}” (${bytes(op.size)}; the old file goes to the Recycle Bin)`;
+    case 'newFile': return `New file “${op.path}” (${bytes(op.size)})`;
     default: return '';
   }
 }
@@ -43,6 +46,8 @@ export async function open(startFolder) {
   const root = h('div', { class: 'mvr' });
   const picker = h('select', { class: 'input mv-pick', title: 'Your what-if copies' });
   const setBusy = (b) => { busy = b; root.classList.toggle('busy', b); };
+  // made real, or only a look back at an earlier step: nothing can be changed
+  const frozen = () => !!(view?.applied || view?.looking);
 
   const call = async (name, ...a) => {
     setBusy(true);
@@ -86,14 +91,14 @@ export async function open(startFolder) {
 
   /** the change commands: each asks the engine, which refuses what can't be done and says why */
   async function addOps(group, ops) {
-    if (!view || view.applied) return;
+    if (!view || frozen()) return;
     const r = await call('mv:addOps', view.id, group, ops);
     if (!r) return;
     if (r.rejected?.length) toast(r.rejected.length === 1 ? r.rejected[0].why : `${plural(r.rejected.length, 'change')} couldn’t be made: ${r.rejected[0].why}`, { error: true, ms: 7000 });
     show(r.view);
   }
   const preset = async (kind) => {
-    if (!view || view.applied) return;
+    if (!view || frozen()) return;
     const scope = sel && view.rows.find((r) => r.p === sel && r.k === 'dir') ? sel : '';
     const r = await call('mv:preset', view.id, kind, scope);
     if (!r) return;
@@ -126,11 +131,24 @@ export async function open(startFolder) {
     async moveTo(p) { const f = await pickFolder(`Move “${nameOf(p)}” to…`, view.rows.find((r) => r.p === p)?.k === 'dir' ? p : null); if (f != null && f !== parentOf(p)) addOps('Move', [{ op: 'move', from: p, to: joinP(f, nameOf(p)) }]); },
     async copyTo(p) { const f = await pickFolder(`Copy “${nameOf(p)}” to…`, view.rows.find((r) => r.p === p)?.k === 'dir' ? p : null); if (f == null) return; const n = f === parentOf(p) ? await ask('Name of the copy', `${nameOf(p)} copy`, 'Name') : nameOf(p); if (n) addOps('Copy', [{ op: 'copy', from: p, to: joinP(f, n) }]); },
     delete(p) { addOps('Delete', [{ op: 'delete', path: p }]); },
+    async newFile(p) {
+      const nameIn = h('input', { class: 'input', value: 'notes.txt', spellcheck: 'false' });
+      const textIn = h('textarea', { class: 'input', rows: 8, spellcheck: 'false', placeholder: 'What goes in it (you can leave it empty)' });
+      const err = h('div', { class: 'field-error' });
+      const got = await modal({ title: 'New file', width: 520, body: h('div', { class: 'stack' }, h('label', { class: 'field-label' }, `A new text file${p ? ` in “${nameOf(p)}”` : ''}. It is only made when you make the what-if copy real.`), nameIn, textIn, err),
+        buttons: [{ label: 'Cancel', value: null }, { label: 'Add', primary: true, run: (close) => { const e = validName(nameIn.value.trim()); if (e) { err.textContent = e; return false; } close({ n: nameIn.value.trim(), text: textIn.value }); } }] });
+      if (!got) return;
+      open_.add(p);
+      const r = await call('mv:newFile', view.id, joinP(p, got.n), got.text);
+      if (!r) return;
+      if (r.rejected?.length) toast(r.rejected[0].why, { error: true, ms: 7000 });
+      show(r.view);
+    },
     async newFolder(p) { const n = await ask('New folder', 'New folder', 'Folder name'); if (n) { open_.add(p); addOps('New folder', [{ op: 'mkdir', path: joinP(p, n) }]); } },
   };
 
-  async function toggle(ids, on) { const v = await call('mv:toggle', view.id, ids, on); if (v) show(v); }
-  async function removeOps(ids) { const v = await call('mv:removeOps', view.id, ids); if (v) show(v); }
+  async function toggle(ids, on) { if (frozen()) return; const v = await call('mv:toggle', view.id, ids, on); if (v) show(v); }
+  async function removeOps(ids) { if (frozen()) return; const v = await call('mv:removeOps', view.id, ids); if (v) show(v); }
 
   // ---------- drawing ----------
   const treeBox = h('div', { class: 'mv-tree', tabindex: '0' });
@@ -160,6 +178,7 @@ export async function open(startFolder) {
           h('span', { class: 'mv-ic', html: icon(isDir ? 'folder' : r.k === 'link' ? 'link' : 'page') }),
           h('span', { class: 'mv-name' }, nameOf(r.p)),
           r.c ? h('span', { class: 'mv-badge ' + r.c, title: r.o ? `Was “${r.o}”` : '' }, kindWord[r.c]) : null,
+          r.e ? h('span', { class: 'mv-badge edited', title: 'Its contents are changed in this what-if copy. The old file goes to the Recycle Bin when you make it real.' }, 'Edited') : null,
           r.k === 'link' ? h('span', { class: 'mv-badge lock', title: 'A link or a folder Dogfile can’t look into. A what-if copy never changes it.' }, 'Left alone') : null);
         wireRow(row, r.p, isDir, r);
         treeBox.append(row);
@@ -173,7 +192,7 @@ export async function open(startFolder) {
     }
   }
   function wireRow(row, p, isDir, r) {
-    const editable = !view.applied;
+    const editable = !frozen();
     row.addEventListener('click', () => { sel = p; treeBox.querySelectorAll('.mv-row.sel').forEach((x) => x.classList.remove('sel')); row.classList.add('sel'); drawQuick(); });
     if (isDir && p) row.addEventListener('dblclick', () => { open_.has(p) ? open_.delete(p) : open_.add(p); drawTree(); });
     if (!editable) return;
@@ -199,7 +218,8 @@ export async function open(startFolder) {
     const { showMenu } = await import('./menu.js');
     const items = [];
     if (p && r?.k !== 'link') items.push({ label: 'Rename…', icon: 'rename', run: () => rowActions.rename(p) }, { label: 'Move to…', icon: 'moveTo', run: () => rowActions.moveTo(p) }, { label: 'Copy to…', icon: 'copyTo', run: () => rowActions.copyTo(p) });
-    if (isDir) items.push({ label: 'New folder inside…', icon: 'newFolder', run: () => rowActions.newFolder(p) });
+    if (isDir) items.push({ label: 'New folder inside…', icon: 'newFolder', run: () => rowActions.newFolder(p) }, { label: 'New file inside…', icon: 'newFile', run: () => rowActions.newFile(p) });
+    if (r?.k === 'file' || isDir) items.push({ label: 'Edit text…', icon: 'edit', run: () => editText(p) });
     if (isDir) items.push({ separator: true }, { label: 'Sort what’s in it by type', icon: 'wand', run: () => { sel = p; preset('type'); } }, { label: 'Sort what’s in it by month', icon: 'calendar', run: () => { sel = p; preset('month'); } });
     if (p && r?.k !== 'link') items.push({ separator: true }, { label: 'Delete (to the Recycle Bin)', icon: 'trash', danger: true, run: () => rowActions.delete(p) });
     showMenu(items, e.clientX, e.clientY);
@@ -207,21 +227,24 @@ export async function open(startFolder) {
 
   function drawQuick() {
     quick.innerHTML = '';
-    if (!view || view.applied) return;
+    if (!view || frozen()) return;
     const scopeName = sel ? `in “${nameOf(sel)}”` : 'in the top folder';
-    const btn = (label, ic, run, title) => h('button', { class: 'btn small', title, html: `${icon(ic)}<span>${esc(label)}</span>`, onclick: run });
+    const btn = (label, ic, run, title, needsSel) => h('button', { class: 'btn small' + (needsSel ? ' needs-sel' : ''), title, html: `${icon(ic)}<span>${esc(label)}</span>`, onclick: run });
     quick.append(
       btn('Sort by type', 'wand', () => preset('type'), `Put the loose files ${scopeName} into Images, Documents, Videos…`),
       btn('Sort by month', 'calendar', () => preset('month'), `Put the loose files ${scopeName} into folders by the month they were changed`),
       btn('Flatten', 'flatten', () => preset('flatten'), `Bring every file out of the folders ${scopeName} into it`),
       h('span', { class: 'mv-sep-v' }),
       btn('New folder', 'newFolder', () => rowActions.newFolder(sel && view.rows.find((x) => x.p === sel && x.k === 'dir') ? sel : sel ? parentOf(sel) : ''), 'Make a folder'),
-      btn('Rename', 'rename', () => sel && rowActions.rename(sel), 'Rename the selected item'),
-      btn('Move to…', 'moveTo', () => sel && rowActions.moveTo(sel), 'Move the selected item'),
-      btn('Copy to…', 'copyTo', () => sel && rowActions.copyTo(sel), 'Copy the selected item'),
-      btn('Delete', 'trash', () => sel && rowActions.delete(sel), 'Delete the selected item (to the Recycle Bin, when it’s made real)'));
+      btn('Rename', 'rename', () => sel && rowActions.rename(sel), 'Rename the selected item', true),
+      btn('Move to…', 'moveTo', () => sel && rowActions.moveTo(sel), 'Move the selected item', true),
+      btn('Copy to…', 'copyTo', () => sel && rowActions.copyTo(sel), 'Copy the selected item', true),
+      btn('Delete', 'trash', () => sel && rowActions.delete(sel), 'Delete the selected item (to the Recycle Bin, when it’s made real)', true),
+      h('span', { class: 'mv-sep-v' }),
+      btn('Edit text…', 'edit', () => editText(sel || ''), `Change the words in text files ${scopeName}: replace text, fix line endings, trim spaces`),
+      btn('New file…', 'newFile', () => rowActions.newFile(sel && view.rows.find((x) => x.p === sel && x.k === 'dir') ? sel : sel ? parentOf(sel) : ''), 'Make a new text file'));
     const has = !!sel;
-    quick.querySelectorAll('button').forEach((b, i) => { if (i >= 4 && !has) b.disabled = true; });
+    quick.querySelectorAll('button.needs-sel').forEach((b) => { if (!has) b.disabled = true; });
   }
 
   function drawChanges() {
@@ -232,13 +255,13 @@ export async function open(startFolder) {
     for (const o of view.ops) { const g = groups[groups.length - 1]; if (g && g.name === o.group) g.ops.push(o); else groups.push({ name: o.group, ops: [o] }); }
     for (const g of groups) {
       const onAll = g.ops.every((o) => o.on);
-      const gcb = h('input', { type: 'checkbox', checked: onAll, disabled: !!view.applied, title: 'Switch all of these on or off' });
+      const gcb = h('input', { type: 'checkbox', checked: onAll, disabled: frozen(), title: 'Switch all of these on or off' });
       gcb.onchange = () => toggle(g.ops.map((o) => o.id), gcb.checked);
-      const del = h('button', { class: 'icon-btn', title: 'Remove these changes', html: icon('close'), disabled: !!view.applied, onclick: () => removeOps(g.ops.map((o) => o.id)) });
+      const del = h('button', { class: 'icon-btn', title: 'Remove these changes', html: icon('close'), disabled: frozen(), onclick: () => removeOps(g.ops.map((o) => o.id)) });
       const det = h('details', { class: 'mv-group', open: g.ops.length <= 12 },
         h('summary', {}, gcb, h('b', {}, g.name), h('span', { class: 'mv-count' }, plural(g.ops.length, 'change')), del),
         ...g.ops.slice(0, 500).map((o) => {
-          const cb = h('input', { type: 'checkbox', checked: o.on, disabled: !!view.applied });
+          const cb = h('input', { type: 'checkbox', checked: o.on, disabled: frozen() });
           cb.onchange = () => toggle([o.id], cb.checked);
           return h('label', { class: 'mv-op ' + o.state, title: o.why || '' }, cb, h('span', {}, describe(o)), o.state === 'blocked' ? h('em', {}, o.why) : null);
         }),
@@ -257,27 +280,51 @@ export async function open(startFolder) {
       return;
     }
     banner.innerHTML = '';
-    if (view.applied) banner.append(h('div', { class: 'mv-note ok' }, `These changes are real. ${view.applied.notes?.length ? view.applied.notes.join(' ') + ' ' : ''}If you change your mind, Undo puts everything back.`));
+    if (view.looking) banner.append(h('div', { class: 'mv-note info' }, view.at === 0 ? 'Looking back: this is the folder as it was before any of the changes. Nothing here can be changed. Drag the slider to the end to come back.' : `Looking back: this is the folder after the first ${plural(view.at, 'change')}. Nothing here can be changed. Drag the slider to the end to come back.`));
+    else if (view.applied) banner.append(h('div', { class: 'mv-note ok' }, `These changes are real. ${view.applied.notes?.length ? view.applied.notes.join(' ') + ' ' : ''}If you change your mind, Undo puts everything back.`));
     else if (!view.canDelete && view.ops.some((o) => o.state === 'blocked' && /Recycle Bin/.test(o.why || ''))) banner.append(h('div', { class: 'mv-note warn' }, 'This drive has no Recycle Bin, so deleting isn’t offered here (nothing is ever deleted for good).'));
     const s = view.stats;
-    const bits = [s.moved && `${s.moved} moved`, s.renamed && `${s.renamed} renamed`, s.new && `${s.new} new folder${s.new === 1 ? '' : 's'}`, s.copies && `${s.copies} cop${s.copies === 1 ? 'y' : 'ies'}`, s.deleted && `${s.deleted} to the Recycle Bin`].filter(Boolean);
+    const bits = [s.moved && `${s.moved} moved`, s.renamed && `${s.renamed} renamed`, s.new && `${s.new} new folder${s.new === 1 ? '' : 's'}`, s.copies && `${s.copies} cop${s.copies === 1 ? 'y' : 'ies'}`, s.edited && `${s.edited} with new contents`, s.newFiles && `${plural(s.newFiles, 'new file')}`, s.deleted && `${s.deleted} to the Recycle Bin`].filter(Boolean);
     status.innerHTML = '';
-    status.append(h('span', {}, bits.length ? bits.join(' · ') : 'No changes'), s.blocked ? h('span', { class: 'mv-bad' }, ` · ${plural(s.blocked, 'change')} can’t be made`) : null);
-    drawTree(); drawChanges(); drawQuick(); refreshButtons();
+    status.append(h('span', {}, bits.length ? bits.join(' · ') : 'No changes'), ...(s.blocked ? [h('span', { class: 'mv-bad' }, ` · ${plural(s.blocked, 'change')} can’t be made`)] : []));
+    drawTree(); drawChanges(); drawQuick(); drawTime(); refreshButtons();
+  }
+
+  // ---------- time travel: scrub through the changes, one at a time ----------
+  const timeBar = h('div', { class: 'mv-time' });
+  function drawTime() {
+    timeBar.innerHTML = '';
+    const total = !view ? 0 : view.looking ? view.total : view.ops.length;
+    timeBar.style.display = total < 1 ? 'none' : '';
+    if (total < 1) return;
+    const at = view.looking ? view.at : total;
+    const rng = h('input', { type: 'range', min: 0, max: total, step: 1, value: at, class: 'mv-range', title: 'Drag back to see the folder after fewer of the changes', 'aria-label': 'Look back through the changes' });
+    const words = (k) => (k === total ? `All ${plural(total, 'change')}` : k === 0 ? 'The folder as it is now' : `After change ${k} of ${total}`);
+    const lab = h('span', { class: 'mv-time-l' }, words(at));
+    rng.oninput = () => { lab.textContent = words(+rng.value); };
+    rng.onchange = async () => {
+      if (busy) return;
+      const k = +rng.value;
+      const v = k >= total ? await call('mv:view', view.id) : await call('mv:viewAt', view.id, k);
+      if (!v) { drawTime(); return; }
+      if (k < total) v.looking = true;
+      show(v);
+    };
+    timeBar.append(h('span', { class: 'mv-time-h' }, 'Look back'), rng, lab);
   }
 
   // ---------- making it real, and undo ----------
   async function makeReal() {
-    if (!view || view.applied || busy) return;
+    if (!view || view.applied || view.looking || busy) return;
     if (!view.stats.on) return toast('There’s nothing switched on to make');
     const c = await call('mv:check', view.id);
     if (!c) return;
     if (!c.ok) return showDrift(c.drift);
     const s = view.stats;
-    const lines = [s.moved + s.renamed ? `${plural(s.moved + s.renamed, 'item')} moved or renamed` : '', s.new ? `${plural(s.new, 'folder')} made` : '', s.copies ? `${s.copies} cop${s.copies === 1 ? 'y' : 'ies'} made` : '', s.deleted ? `${plural(s.deleted, 'item')} sent to the Recycle Bin` : ''].filter(Boolean);
+    const lines = [s.moved + s.renamed ? `${plural(s.moved + s.renamed, 'item')} moved or renamed` : '', s.new ? `${plural(s.new, 'folder')} made` : '', s.newFiles ? `${plural(s.newFiles, 'new file')} made` : '', s.edited ? `${plural(s.edited, 'file')} get new contents (the old ones go to the Recycle Bin)` : '', s.copies ? `${s.copies} cop${s.copies === 1 ? 'y' : 'ies'} made` : '', s.deleted ? `${plural(s.deleted, 'item')} sent to the Recycle Bin` : ''].filter(Boolean);
     const ok = await modal({ title: 'Make it real?', width: 520, body: h('div', { class: 'stack' },
       h('div', { class: 'confirm-msg' }, `This changes the real folder “${basename(view.root) || view.root}”:`), h('ul', { class: 'mv-list' }, ...lines.map((l) => h('li', {}, l))),
-      h('div', { class: 'hint' }, 'Nothing is replaced and nothing is deleted for good. If anything goes wrong part way, everything is put back. Afterwards you can undo it.')),
+      h('div', { class: 'hint' }, 'Nothing is replaced without the old file going to the Recycle Bin, and nothing is deleted for good. If anything goes wrong part way, everything is put back. Afterwards you can undo it.')),
       buttons: [{ label: 'Cancel', value: false }, { label: 'Make it real', primary: true, value: true }] });
     if (!ok) return;
     const r = await call('mv:apply', view.id);
@@ -318,6 +365,96 @@ export async function open(startFolder) {
     if (!ok) return;
     if (await call('mv:discard', view.id, real) != null) { view = null; sel = null; await refreshList(''); draw(); }
   }
+  /** change the words in text files: previewed first, then added as changes that can be switched off like any other */
+  async function editText(scopePath) {
+    if (!view || frozen() || busy) return;
+    const isFile = scopePath && view.rows.find((r) => r.p === scopePath)?.k === 'file';
+    const where = scopePath ? (isFile ? `“${nameOf(scopePath)}”` : `everything in “${nameOf(scopePath)}”`) : 'everything in the folder';
+    const mode = h('select', { class: 'input' }, h('option', { value: 'replace' }, 'Replace some text'), h('option', { value: 'eol' }, 'Fix line endings'), h('option', { value: 'trim' }, 'Remove spaces at the ends of lines'));
+    const find = h('input', { class: 'input', type: 'text', placeholder: 'Find', maxlength: 500 });
+    const withIn = h('input', { class: 'input', type: 'text', placeholder: 'Replace with', maxlength: 5000 });
+    const mcase = h('input', { type: 'checkbox' });
+    const rx = h('input', { type: 'checkbox' });
+    const eol = h('select', { class: 'input' }, h('option', { value: 'lf' }, 'Unix (LF)'), h('option', { value: 'crlf' }, 'Windows (CRLF)'));
+    const out = h('div', { class: 'mve-out hint' }, 'Nothing is changed yet. Look first.');
+    const rows = {
+      replace: h('div', { class: 'stack' }, find, withIn, h('label', { class: 'mve-chk' }, mcase, ' Match upper and lower case'), h('label', { class: 'mve-chk' }, rx, ' Find a pattern (regular expression); the replacement can use $1, $2…')),
+      eol: h('div', { class: 'stack' }, eol),
+      trim: h('div', { class: 'hint' }, 'Takes spaces and tabs off the end of every line. Line endings stay as they are.'),
+    };
+    const specNow = () => (mode.value === 'replace' ? { kind: 'replace', find: find.value, with: withIn.value, matchCase: mcase.checked, regex: rx.checked } : mode.value === 'eol' ? { kind: 'eol', to: eol.value } : { kind: 'trim' });
+    const swap = () => { for (const k of Object.keys(rows)) rows[k].style.display = k === mode.value ? '' : 'none'; out.textContent = 'Nothing is changed yet. Look first.'; };
+    mode.onchange = swap; swap();
+    const look = h('button', { class: 'btn', onclick: async () => {
+      out.textContent = 'Looking…';
+      try {
+        const d = await api('mv:editText', view.id, [scopePath], specNow(), true);
+        out.innerHTML = '';
+        out.append(h('div', {}, d.changed ? `${plural(d.changed, 'file')} would change` : 'No file would change', d.unchanged ? ` · ${d.unchanged} already fine` : ''));
+        if (d.files?.length) out.append(h('ul', { class: 'mv-list' }, ...d.files.slice(0, 8).map((f) => h('li', {}, `${f.path}${f.count > 1 ? ` (${f.count} places)` : ''}`)), d.files.length > 8 ? h('li', {}, `…and ${d.changed - 8} more`) : null));
+        if (d.skipped?.length) out.append(h('div', { class: 'hint' }, `Left alone: ${d.skipped.slice(0, 3).map((x) => `${x.path || 'some files'} (${x.why})`).join('; ')}${d.skipped.length > 3 ? ` …and ${d.skipped.length - 3} more` : ''}`));
+        ready = d.changed > 0;
+      } catch (e) { out.textContent = String(e?.message || e); ready = false; }
+    } }, 'Look');
+    let ready = false;
+    for (const el of [find, withIn, mcase, rx, eol, mode]) el.addEventListener('input', () => { ready = false; });
+    const body = h('div', { class: 'stack' }, h('div', { class: 'confirm-msg' }, `Change text in ${where}. Only plain text files are touched, and only ones that haven’t changed since this what-if copy was made. Nothing on disk changes until you make it real, and the old files go to the Recycle Bin.`), mode, rows.replace, rows.eol, rows.trim, h('div', {}, look), out);
+    await modal({ title: 'Edit text', body, width: 560, buttons: [{ label: 'Close', value: null }, {
+      label: 'Add to the what-if copy', primary: true,
+      run: async (close) => {
+        if (!ready) { out.textContent = 'Press Look first, to see what would change.'; return false; }
+        const r = await call('mv:editText', view.id, [scopePath], specNow(), false);
+        if (!r) return false;
+        toast(r.changed ? `${plural(r.changed, 'file')} will get new contents` : 'Nothing changed', { ms: 5000 });
+        if (r.rejected?.length) toast(`${plural(r.rejected.length, 'change')} couldn’t be added: ${r.rejected[0].why}`, { error: true, ms: 8000 });
+        if (r.view) show(r.view);
+        close(true);
+      } }] });
+  }
+
+  // ---------- sharing ----------
+  async function share() {
+    if (!view || busy) return;
+    if (!view.ops.length) return toast('Make some changes first, then share them');
+    const ok = await modal({ title: 'Share this what-if copy', width: 520, body: h('div', { class: 'stack' },
+      h('div', { class: 'confirm-msg' }, `Save “${view.name}” as a file you can give to someone else, or keep.`),
+      h('div', { class: 'hint' }, 'The file holds the changes and the names of the files and folders they mention, and any new text you wrote. It doesn’t hold the contents of files you didn’t change. Someone who opens it gets their own what-if copy of their own folder, and decides for themselves what to make real.')),
+      buttons: [{ label: 'Cancel', value: false }, { label: 'Choose where to save…', primary: true, value: true }] });
+    if (!ok) return;
+    const dest = await api('dialog:saveFile', { title: 'Share what-if copy', defaultPath: `${view.name.replace(/[\\/:*?"<>|]/g, '_')}.dogverse`, filters: [{ name: 'Multiverse package', extensions: ['dogverse'] }] });
+    if (!dest) return;
+    const r = await call('mv:exportPack', view.id, dest);
+    if (r) toast(`Saved ${plural(r.ops, 'change')} (${bytes(r.bytes)})`, { ms: 5000 });
+  }
+  async function openShared() {
+    if (busy) return;
+    const f = await api('dialog:openFiles', { title: 'Open a shared what-if copy', filters: [{ name: 'Multiverse package', extensions: ['dogverse'] }] });
+    const path = Array.isArray(f) ? f[0] : f;
+    if (!path) return;
+    const info = await call('mv:inspectPack', path);
+    if (!info) return;
+    let folder = here && !String(here).startsWith('atlas:') ? here : '';
+    const folderLabel = h('b', {}, folder || 'no folder chosen');
+    const choose = h('button', { class: 'btn small', onclick: async () => { const p = await api('dialog:pickFolder', 'Choose the folder to bring these changes to'); if (p) { folder = p; folderLabel.textContent = p; go.disabled = false; } } }, 'Choose another folder…');
+    const go = { label: 'Bring them here', primary: true, value: true };
+    const ok = await modal({ title: 'Open a shared what-if copy', width: 560, body: h('div', { class: 'stack' },
+      h('div', { class: 'confirm-msg' }, `“${info.name}” has ${plural(info.ops, 'change')}${info.folderName ? `, made for a folder called “${info.folderName}”` : ''}:`),
+      h('ul', { class: 'mv-list' }, ...info.groups.slice(0, 10).map((g) => h('li', {}, `${g.group} (${plural(g.n, 'change')})`))),
+      h('div', {}, 'Bring them to: ', folderLabel, ' ', choose),
+      h('div', { class: 'hint' }, 'This makes a new what-if copy of that folder. Changes that don’t fit (a file that isn’t there, or has changed) are left out and listed. Nothing in the folder changes until you make it real.')),
+      buttons: [{ label: 'Cancel', value: false }, go] });
+    if (!ok) return;
+    if (!folder) return toast('Choose a folder first');
+    const r = await call('mv:importPack', path, folder, info.name);
+    if (!r) return;
+    await refreshList(r.view.id);
+    open_.clear(); open_.add('');
+    show(r.view);
+    const n = r.rejected?.length || 0;
+    toast(n ? `${r.total - n} of ${r.total} changes fit this folder` : `All ${r.total} changes fit this folder`, { ms: 6000 });
+    if (n) await modal({ title: `${plural(n, 'change')} left out`, width: 560, body: h('div', { class: 'stack' }, h('ul', { class: 'mv-list' }, ...r.rejected.slice(0, 12).map((x) => h('li', {}, `${describe({ op: x.op })} — ${x.why}`)), n > 12 ? h('li', {}, `…and ${n - 12} more`) : null)), buttons: [{ label: 'OK', primary: true, value: true }] });
+  }
+
   const sameFolder = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
   async function duplicate() {
     if (!view || busy) return;
@@ -394,28 +531,32 @@ export async function open(startFolder) {
   }
   async function again() { const v = await call('mv:rebase', view.id); if (v) { show(v); toast('Looked at the folder again'); } }
 
-  const bNew = h('button', { class: 'btn', onclick: create, title: 'Start a what-if copy of the open folder' }, 'New…');
+  const bNew = h('button', { class: 'btn keep', onclick: create, title: 'Start a what-if copy of the open folder' }, 'New…');
   const bRename = h('button', { class: 'btn', title: 'Rename this what-if copy', onclick: async () => { const n = await prompt('Rename', view.name, { label: 'Name' }); if (n) { await call('mv:rename', view.id, n); view.name = n; refreshList(view.id); } } }, 'Rename');
   const bDiscard = h('button', { class: 'btn', onclick: discard, title: 'Remove this what-if copy (the real folder isn’t touched)' }, 'Discard');
   const bAgain = h('button', { class: 'btn', onclick: again, title: 'Look at the real folder again. Your changes stay; any that no longer fit are marked.' }, 'Look again');
   const bDup = h('button', { class: 'btn', onclick: duplicate, title: 'Make a second what-if copy that starts as a copy of this one, to try another way' }, 'Duplicate');
+  const bShare = h('button', { class: 'btn', onclick: share, title: 'Save this what-if copy as a file to give to someone else' }, 'Share…');
+  const bOpenShared = h('button', { class: 'btn keep', onclick: openShared, title: 'Open a what-if copy someone shared with you' }, 'Open shared…');
   const bCompare = h('button', { class: 'btn', onclick: compare, title: 'See how two what-if copies of this folder differ, and bring changes from one into the other' }, 'Compare…');
   const bReal = h('button', { class: 'btn primary', onclick: makeReal }, 'Make it real…');
   const bUndo = h('button', { class: 'btn', onclick: undo }, 'Undo');
   function refreshButtons() {
     const has = !!view;
-    for (const b of [bRename, bDiscard, bDup]) b.style.display = has ? '' : 'none';
+    for (const b of [bRename, bDiscard, bDup, bShare]) b.style.display = has ? '' : 'none';
     bCompare.style.display = has && list.filter((r) => sameFolder(r.root, view.root)).length > 1 ? '' : 'none';
-    bAgain.style.display = has && !view.applied ? '' : 'none';
-    bReal.style.display = has && !view.applied ? '' : 'none';
+    bAgain.style.display = has && !frozen() ? '' : 'none';
+    bReal.style.display = has && !frozen() ? '' : 'none';
     bUndo.style.display = has && view.applied ? '' : 'none';
-    bReal.disabled = !has || !view?.stats?.on;
+    bReal.disabled = !has || !view?.stats?.on || !!view?.looking;
+    for (const b of [bDup, bRename, bShare]) b.disabled = !!view?.looking;
   }
 
   root.append(
-    h('div', { class: 'mv-top' }, picker, bNew, bDup, bCompare, bRename, bDiscard),
+    h('div', { class: 'mv-top' }, picker, bNew, bOpenShared, bDup, bCompare, bShare, bRename, bDiscard),
     banner,
     quick,
+    timeBar,
     h('div', { class: 'mv-main' }, h('div', { class: 'mv-col' }, h('div', { class: 'mv-h' }, 'What it would look like'), treeBox), h('div', { class: 'mv-col' }, h('div', { class: 'mv-h' }, 'Changes'), changesBox)),
     status);
 

@@ -1,6 +1,7 @@
 // Tests for the part of Dogfile that changes people's folders. They run against real folders on disk and against an
 // environment that fails or stops dead on purpose at every single step, because the promise is: a file is never lost.
 use super::api;
+use super::blobs;
 use super::env::{rename_noreplace, Env, Meta, RealEnv};
 use super::exec::{self, STAGE_PREFIX};
 use super::reality::{self, Reality, State};
@@ -324,7 +325,10 @@ fn expected(w: &World) -> BTreeMap<String, String> {
             n.path.clone(),
             match n.kind {
                 Kind::Dir => "D".to_string(),
-                Kind::File => format!("F:{}", w.orig[n.origin.as_ref().unwrap()]),
+                Kind::File => match &n.put {
+                    Some(b) => format!("F:{}", String::from_utf8(blobs::read(&w.data, b).unwrap()).unwrap()),
+                    None => format!("F:{}", w.orig[n.origin.as_ref().unwrap()]),
+                },
                 Kind::Link => "L".into(),
             },
         );
@@ -335,7 +339,33 @@ fn expected_deleted(w: &World) -> BTreeSet<String> {
     let r = reality::load(&w.data, &w.id).unwrap();
     let rp = reality::replay(&r.base, r.ci, &r.ops, true);
     let kept: BTreeSet<String> = rp.tree.nodes().filter(|n| !n.copy).filter_map(|n| n.origin.clone()).collect();
-    r.base.iter().filter(|b| b.kind == Kind::File && !kept.contains(&b.path)).map(|b| w.orig[&b.path].clone()).collect()
+    let mut out: BTreeSet<String> = r.base.iter().filter(|b| b.kind == Kind::File && !kept.contains(&b.path)).map(|b| w.orig[&b.path].clone()).collect();
+    // what new contents replaced goes to the bin too, and so does new content that was deleted again
+    let mut t = Tree::from_base(&r.base, false);
+    for (op, (_, st)) in r.ops.iter().zip(rp.state.iter()) {
+        if *st != State::On {
+            continue;
+        }
+        match &op.kind {
+            OpKind::Put { path, .. } => {
+                if let Some(o) = t.get(path).and_then(|n| n.origin.clone()) {
+                    out.insert(w.orig[&o].clone());
+                }
+            }
+            OpKind::Delete { path } => {
+                let mut all: Vec<&Node> = t.get(path).into_iter().collect();
+                all.extend(t.below(path));
+                for n in all {
+                    if let Some(b) = &n.put {
+                        out.insert(String::from_utf8(blobs::read(&w.data, b).unwrap()).unwrap());
+                    }
+                }
+            }
+            _ => {}
+        }
+        t.apply(&op.kind, None).unwrap();
+    }
+    out
 }
 
 fn ok(v: &Value) -> bool {
@@ -1270,6 +1300,82 @@ fn soak() {
     }
 }
 
+#[test]
+#[ignore]
+fn soak_content() {
+    let n: u64 = std::env::var("MV_SOAK").ok().and_then(|v| v.parse().ok()).unwrap_or(1500);
+    for seed in 70_000..70_000 + n {
+        let nops = 4 + (seed % 20) as usize;
+        let total = {
+            let w = random_content_world(seed, nops);
+            let env = w.env();
+            let v = api::apply(&env, &w.data, &w.id);
+            let Ok(v) = v else { panic!("seed {seed}: {v:?}") };
+            if v["kind"] == "refused" && v["message"].as_str().unwrap_or("").contains("nothing switched") {
+                continue;
+            }
+            if !ok(&v) {
+                // no changes to make
+                continue;
+            }
+            assert_eq!(snap(&w.root), expected(&w), "seed {seed}");
+            assert!(w.wrongly_recycled().is_empty(), "seed {seed}");
+            let u = api::undo(&env, &w.data, &w.id).unwrap();
+            assert!(ok(&u), "seed {seed}: {u}");
+            w.assert_back_as_it_was(&format!("seed {seed}"));
+            env.count()
+        };
+        let mut rng = StdRng::seed_from_u64(seed);
+        for _ in 0..6 {
+            let k = rng.random_range(1..=total.max(1));
+            let after = rng.random_bool(0.5);
+            // a failure
+            {
+                let w = random_content_world(seed, nops);
+                let env = TEnv::failing(w.bin.clone(), k, after);
+                let v = api::apply(&env, &w.data, &w.id).unwrap();
+                let why = format!("seed {seed}: failure at {k}/{total} after={after}: {v}");
+                w.assert_no_loss(&why);
+                if !ok(&v) {
+                    assert!(v["problems"].as_array().map(|a| a.is_empty()).unwrap_or(true), "{why}");
+                    w.assert_back_as_it_was(&why);
+                    assert!(w.journals().is_empty(), "{why}");
+                } else {
+                    assert!(w.wrongly_recycled().is_empty(), "{why}");
+                    let u = api::undo(&w.env(), &w.data, &w.id).unwrap();
+                    if ok(&u) {
+                        w.assert_back_as_it_was(&format!("undo: {why}"));
+                    }
+                    w.assert_no_loss(&format!("undo: {why}"));
+                }
+            }
+            // a stop
+            {
+                let w = random_content_world(seed, nops);
+                let env = TEnv::crashing(w.bin.clone(), k, after);
+                let _ = api::apply(&env, &w.data, &w.id);
+                if !env.crashed() {
+                    continue;
+                }
+                let why = format!("seed {seed}: stop at {k}/{total} after={after}");
+                let began_commit = commit_started(&w);
+                w.assert_no_loss(&why);
+                let report = api::recover(&w.env(), &w.data);
+                w.assert_no_loss(&format!("{why}: {report}"));
+                assert!(w.journals().is_empty(), "{why}: journal left: {report}");
+                if began_commit {
+                    assert!(w.wrongly_recycled().is_empty(), "{why}");
+                    let u = api::undo(&w.env(), &w.data, &w.id).unwrap();
+                    assert!(ok(&u), "{why}: {u}");
+                    w.assert_back_as_it_was(&format!("undo: {why}"));
+                } else if report.as_array().map(|a| !a.is_empty()).unwrap_or(false) {
+                    w.assert_back_as_it_was(&why);
+                }
+            }
+        }
+    }
+}
+
 // ---------- stage 2: several what-if copies of one folder ----------
 /// another reality of the same folder, made from the folder as it is now
 fn another(w: &World, name: &str, ops: Vec<OpKind>) -> String {
@@ -1438,4 +1544,865 @@ fn only_one_of_several_copies_can_be_made_real_and_the_others_are_not_damaged() 
     let v = api::apply(&env, &w.data, &a).unwrap();
     assert!(!ok(&v), "{v}");
     w.assert_no_loss("two copies");
+}
+
+// ---------- stage 3a: time travel ----------
+fn row_paths(v: &Value) -> BTreeSet<String> {
+    v["rows"].as_array().unwrap().iter().map(|r| r["p"].as_str().unwrap().to_string()).collect()
+}
+#[test]
+fn time_travel_shows_the_folder_after_only_the_first_steps() {
+    let w = simple_world();
+    let env = w.env();
+    let total = reality::load(&w.data, &w.id).unwrap().ops.len();
+    // step 0 is the folder as it is now
+    let v0 = api::view_at(&env, &w.data, &w.id, 0).unwrap();
+    assert_eq!(v0["at"], 0);
+    assert_eq!(v0["total"], total);
+    let paths: BTreeSet<String> = snap(&w.root).keys().cloned().collect();
+    assert_eq!(row_paths(&v0), paths.iter().map(|p| p.to_string()).collect::<BTreeSet<_>>(), "step 0 = the folder as it is");
+    assert_eq!(v0["stats"]["on"], 0);
+    // after the first step (New folder "Sorted")
+    let v1 = api::view_at(&env, &w.data, &w.id, 1).unwrap();
+    assert!(row_paths(&v1).contains("Sorted"));
+    assert!(!row_paths(&v1).contains("Sorted/e.txt"));
+    // after the second (e.txt moved)
+    let v2 = api::view_at(&env, &w.data, &w.id, 2).unwrap();
+    assert!(row_paths(&v2).contains("Sorted/e.txt") && !row_paths(&v2).contains("e.txt"));
+    // at the end it matches the normal view; asking for too far stops at the end
+    let end = api::view_at(&env, &w.data, &w.id, 9999).unwrap();
+    let full = api::view(&env, &w.data, &w.id).unwrap();
+    assert_eq!(end["at"], total);
+    assert_eq!(end["rows"], full["rows"]);
+    assert_eq!(end["gone"], full["gone"]);
+    // the list of steps is always whole so a slider can move both ways
+    assert_eq!(v0["steps"].as_array().unwrap().len(), total);
+    assert_eq!(v1["steps"], end["steps"]);
+}
+#[test]
+fn time_travel_is_only_a_picture() {
+    let w = simple_world();
+    let env = w.env();
+    let before_file = std::fs::read(reality::file(&w.data, &w.id)).unwrap();
+    for at in 0..8 {
+        api::view_at(&env, &w.data, &w.id, at).unwrap();
+    }
+    assert_eq!(std::fs::read(reality::file(&w.data, &w.id)).unwrap(), before_file, "nothing saved");
+    w.assert_back_as_it_was("looking back changes nothing");
+    assert!(api::view_at(&env, &w.data, "../x", 1).is_err());
+    assert!(api::view_at(&env, &w.data, "nope", 1).is_err());
+}
+#[test]
+fn time_travel_into_a_reality_made_real_shows_before_and_after() {
+    let w = simple_world();
+    let env = w.env();
+    assert!(ok(&api::apply(&env, &w.data, &w.id).unwrap()));
+    let v0 = api::view_at(&env, &w.data, &w.id, 0).unwrap();
+    assert_eq!(v0["wasApplied"], true);
+    assert!(v0["applied"].is_null(), "a picture of the past isn't 'made real'");
+    // step 0 is the folder as it was before it was made real, not as it is now
+    assert!(row_paths(&v0).contains("e.txt") && !row_paths(&v0).contains("Sorted"));
+    // the real folder is as made
+    assert!(w.root.join("Sorted/e.txt").exists());
+    // and the saved reality still counts as made real
+    assert!(reality::load(&w.data, &w.id).unwrap().applied.is_some());
+}
+#[test]
+fn time_travel_skips_switched_off_steps_and_marks_blocked_ones() {
+    let mut w = World::new();
+    put(&w.root, "a.txt", "A", 1);
+    w.reality(vec![mv("a.txt", "b.txt"), mv("a.txt", "c.txt")]);
+    let env = w.env();
+    let r = reality::load(&w.data, &w.id).unwrap();
+    let v = api::view_at(&env, &w.data, &w.id, 2).unwrap();
+    // the second step can't be made (a.txt has already moved) and is marked
+    let ops = v["ops"].as_array().unwrap();
+    assert_eq!(ops[0]["state"], "on");
+    assert_eq!(ops[1]["state"], "blocked");
+    api::toggle(&env, &w.data, &w.id, &json!([r.ops[0].id]), false).unwrap();
+    let v = api::view_at(&env, &w.data, &w.id, 1).unwrap();
+    assert!(row_paths(&v).contains("a.txt"), "a switched-off step changes nothing");
+}
+
+// ---------- stage 3b: share packages ----------
+fn pack_path(w: &World, name: &str) -> String {
+    w._t.0.join(name).to_string_lossy().to_string()
+}
+fn second_folder(w: &World, name: &str) -> PathBuf {
+    let p = w._t.0.join(name);
+    std::fs::create_dir_all(&p).unwrap();
+    p
+}
+#[test]
+fn a_package_brought_back_to_the_same_folder_makes_the_same_changes() {
+    let w = simple_world();
+    let env = w.env();
+    let pk = pack_path(&w, "plan.dogfile-mv");
+    let e = api::export_pack(&env, &w.data, &w.id, &pk).unwrap();
+    assert_eq!(e["ops"], 6);
+    let ins = api::inspect_pack(&pk).unwrap();
+    assert_eq!(ins["ops"], 6);
+    assert_eq!(ins["folderName"], "root");
+    let r = api::import_pack(&env, &w.data, &pk, &w.root.to_string_lossy(), "").unwrap();
+    assert!(r["rejected"].as_array().unwrap().is_empty(), "{r}");
+    let nid = r["view"]["id"].as_str().unwrap().to_string();
+    assert_ne!(nid, w.id);
+    let a = reality::load(&w.data, &w.id).unwrap();
+    let b = reality::load(&w.data, &nid).unwrap();
+    assert_eq!(a.ops.iter().map(|o| (&o.kind, &o.group, o.on)).collect::<Vec<_>>(), b.ops.iter().map(|o| (&o.kind, &o.group, o.on)).collect::<Vec<_>>());
+    let c = api::compare(&env, &w.data, &w.id, &nid).unwrap();
+    assert_eq!(c["identical"], true, "{c}");
+    // nothing on disk was touched by exporting or importing
+    w.assert_back_as_it_was("sharing only reads");
+    // and the package can be made real on the new copy like any other
+    assert!(ok(&api::apply(&env, &w.data, &nid).unwrap()));
+    assert!(w.root.join("Sorted/e.txt").exists());
+}
+#[test]
+fn switched_off_changes_stay_off_in_a_package() {
+    let mut w = World::new();
+    put(&w.root, "a.txt", "A", 1);
+    put(&w.root, "b.txt", "B", 1);
+    w.reality(vec![mv("a.txt", "a2.txt"), mv("b.txt", "b2.txt")]);
+    let env = w.env();
+    let r = reality::load(&w.data, &w.id).unwrap();
+    api::toggle(&env, &w.data, &w.id, &json!([r.ops[0].id]), false).unwrap();
+    let pk = pack_path(&w, "p.dogfile-mv");
+    api::export_pack(&env, &w.data, &w.id, &pk).unwrap();
+    let out = api::import_pack(&env, &w.data, &pk, &w.root.to_string_lossy(), "Theirs").unwrap();
+    let b = reality::load(&w.data, out["view"]["id"].as_str().unwrap()).unwrap();
+    assert_eq!(b.name, "Theirs");
+    assert_eq!(b.ops.iter().map(|o| o.on).collect::<Vec<_>>(), vec![false, true]);
+}
+#[test]
+fn what_does_not_fit_another_folder_is_left_out_and_explained() {
+    let w = simple_world();
+    let env = w.env();
+    let pk = pack_path(&w, "p.dogfile-mv");
+    api::export_pack(&env, &w.data, &w.id, &pk).unwrap();
+    // a different folder that has only some of the same things
+    let other = second_folder(&w, "other");
+    put(&other, "e.txt", "mine", 9);
+    put(&other, "docs/a.txt", "mine too", 9);
+    let snap_before = snap(&other);
+    let r = api::import_pack(&env, &w.data, &pk, &other.to_string_lossy(), "").unwrap();
+    let rej = r["rejected"].as_array().unwrap();
+    assert!(!rej.is_empty());
+    assert!(rej.iter().all(|x| x["why"].as_str().map(|s| !s.is_empty()).unwrap_or(false)), "every left-out change says why: {r}");
+    let v = &r["view"];
+    // the ones that fit are there (New folder, move e.txt, rename a.txt)
+    let ps = row_paths(v);
+    assert!(ps.contains("Sorted/e.txt") && ps.contains("docs/a-renamed.txt"), "{ps:?}");
+    assert_eq!(r["total"], 6);
+    assert_eq!(snap(&other), snap_before, "importing only makes a what-if copy");
+}
+#[test]
+fn a_hostile_package_cannot_do_anything() {
+    let mut w = World::new();
+    put(&w.root, "a.txt", "A", 1);
+    put(&w.root, "dir/b.txt", "B", 1);
+    w.reality(vec![mv("a.txt", "z.txt")]);
+    let env = w.env();
+    let outside = w._t.0.join("outside.txt");
+    std::fs::write(&outside, "keep").unwrap();
+    let evil = [
+        r#"{"op":"move","from":"a.txt","to":"../outside.txt"}"#,
+        r#"{"op":"move","from":"../outside.txt","to":"in.txt"}"#,
+        r#"{"op":"delete","path":"/etc/passwd"}"#,
+        r#"{"op":"delete","path":"C:\\Windows"}"#,
+        r#"{"op":"mkdir","path":"..\\..\\x"}"#,
+        r#"{"op":"mkdir","path":"a/../../x"}"#,
+        r#"{"op":"copy","from":"a.txt","to":"con"}"#,
+        r#"{"op":"mkdir","path":"bad:name"}"#,
+        r#"{"op":"move","from":"a.txt","to":"dir/b.txt"}"#,
+        r#"{"op":"delete","path":""}"#,
+        r#"{"op":"mkdir","path":".dogfile-multiverse-abc"}"#,
+        r#"{"op":"move","from":"a.txt","to":"a.txt/inside"}"#,
+        r#"{"op":"mkdir","path":"nul\u0000byte"}"#,
+    ];
+    let ops: Vec<String> = evil.iter().map(|k| format!(r#"{{"group":"x","on":true,{}}}"#, &k[1..k.len() - 1])).collect();
+    let body = format!(r#"{{"format":"dogfile-multiverse","version":1,"name":"evil","folderName":"x","created":0,"ops":[{}]}}"#, ops.join(","));
+    let pk = pack_path(&w, "evil.dogfile-mv");
+    std::fs::write(&pk, body).unwrap();
+    let before = snap(&w.root);
+    let r = api::import_pack(&env, &w.data, &pk, &w.root.to_string_lossy(), "").unwrap();
+    let rej = r["rejected"].as_array().unwrap().len();
+    assert_eq!(rej, evil.len(), "every one of them refused: {r}");
+    assert!(r["view"]["ops"].as_array().unwrap().is_empty());
+    assert_eq!(snap(&w.root), before);
+    assert_eq!(std::fs::read_to_string(&outside).unwrap(), "keep");
+}
+#[test]
+fn files_that_are_not_packages_are_refused() {
+    let w = simple_world();
+    let env = w.env();
+    let bad = [
+        "".to_string(),
+        "not json".to_string(),
+        "[]".to_string(),
+        r#"{"format":"something-else","version":1,"name":"x","folderName":"","created":0,"ops":[]}"#.to_string(),
+        r#"{"format":"dogfile-multiverse","version":99,"name":"x","folderName":"","created":0,"ops":[]}"#.to_string(),
+        r#"{"format":"dogfile-multiverse","version":0,"name":"x","folderName":"","created":0,"ops":[]}"#.to_string(),
+        r#"{"format":"dogfile-multiverse","version":1,"name":"x","folderName":"","created":0,"ops":[{"group":"g","on":true,"op":"explode"}]}"#.to_string(),
+        r#"{"format":"dogfile-multiverse","version":1,"name":"x","folderName":"","created":0,"ops":[{"group":"g","on":true,"op":"delete"}]}"#.to_string(),
+        format!(r#"{{"format":"dogfile-multiverse","version":1,"name":"x","folderName":"","created":0,"ops":[{{"group":"{}","on":true,"op":"mkdir","path":"a"}}]}}"#, "g".repeat(500)),
+    ];
+    for (i, b) in bad.iter().enumerate() {
+        let pk = pack_path(&w, &format!("bad{i}.dogfile-mv"));
+        std::fs::write(&pk, b).unwrap();
+        assert!(api::inspect_pack(&pk).is_err(), "bad package {i} accepted");
+        assert!(api::import_pack(&env, &w.data, &pk, &w.root.to_string_lossy(), "").is_err(), "bad package {i} imported");
+    }
+    assert!(api::inspect_pack(&pack_path(&w, "missing.dogfile-mv")).is_err());
+    assert!(api::inspect_pack(&w.root.to_string_lossy()).is_err(), "a folder isn't a package");
+    // too many changes
+    let many: Vec<String> = (0..20_001).map(|i| format!(r#"{{"group":"g","on":true,"op":"mkdir","path":"d{i}"}}"#)).collect();
+    let pk = pack_path(&w, "many.dogfile-mv");
+    std::fs::write(&pk, format!(r#"{{"format":"dogfile-multiverse","version":1,"name":"x","folderName":"","created":0,"ops":[{}]}}"#, many.join(","))).unwrap();
+    assert!(api::inspect_pack(&pk).is_err());
+    // only the realities that were there are there: nothing was made by the refused ones
+    assert_eq!(api::list(&w.data).as_array().unwrap().len(), 1);
+}
+#[test]
+fn a_package_that_is_too_big_is_refused_without_reading_it() {
+    let w = simple_world();
+    let pk = pack_path(&w, "huge.dogfile-mv");
+    let f = std::fs::File::create(&pk).unwrap();
+    f.set_len(super::pack::MAX_PACK_BYTES + 1).unwrap();
+    drop(f);
+    let e = api::inspect_pack(&pk).unwrap_err();
+    assert!(e.contains("too big"), "{e}");
+}
+#[test]
+fn saving_a_package_is_safe() {
+    let w = simple_world();
+    let env = w.env();
+    assert!(api::export_pack(&env, &w.data, &w.id, "relative.dogfile-mv").is_err());
+    assert!(api::export_pack(&env, &w.data, &w.id, "").is_err());
+    assert!(api::export_pack(&env, &w.data, &w.id, &w.root.to_string_lossy()).is_err(), "a folder is not a file name");
+    assert!(api::export_pack(&env, &w.data, "nope", &pack_path(&w, "x.dogfile-mv")).is_err());
+    // nothing to share
+    let mut e = World::new();
+    put(&e.root, "a", "A", 1);
+    e.reality(vec![]);
+    assert!(api::export_pack(&e.env(), &e.data, &e.id, &pack_path(&e, "empty.dogfile-mv")).is_err());
+    // saving over an existing package replaces it whole, and leaves no half-written pieces
+    let pk = pack_path(&w, "plan.dogfile-mv");
+    std::fs::write(&pk, "old").unwrap();
+    api::export_pack(&env, &w.data, &w.id, &pk).unwrap();
+    assert!(api::inspect_pack(&pk).is_ok());
+    let leftovers: Vec<_> = std::fs::read_dir(&w._t.0).unwrap().flatten().map(|e| e.file_name().to_string_lossy().to_string()).filter(|n| n.contains("part") || n.contains("tmp") || n.contains("save")).collect();
+    assert!(leftovers.is_empty(), "{leftovers:?}");
+    // the folder isn't touched
+    w.assert_back_as_it_was("exporting only writes the package");
+}
+
+// ---------- stage 3c: new contents ----------
+fn fp(root: &Path, rel: &str) -> (u64, i64, String) {
+    let p = exec::dp(root, rel);
+    let m = RealEnv.stat(&p).unwrap().unwrap();
+    (m.size, m.mtime, blobs::hash_file(&p).unwrap().0)
+}
+/// new contents for a file that is in the folder (made from what is there now)
+fn edit(w: &World, rel: &str, text: &str) -> OpKind {
+    let (s, m, h) = fp(&w.root, rel);
+    let (blob, size) = blobs::store(&w.data, text.as_bytes()).unwrap();
+    OpKind::Put { path: rel.into(), blob, size, from_size: s, from_mtime: m, from_hash: h }
+}
+fn newf(w: &World, rel: &str, text: &str) -> OpKind {
+    let (blob, size) = blobs::store(&w.data, text.as_bytes()).unwrap();
+    OpKind::NewFile { path: rel.into(), blob, size }
+}
+fn content_world() -> World {
+    let mut w = World::new();
+    put(&w.root, "docs/a.txt", "A", 1000);
+    put(&w.root, "docs/b.txt", "B", 2000);
+    put(&w.root, "docs/old/c.txt", "C", 3000);
+    put(&w.root, "pics/d.jpg", "D", 4000);
+    put(&w.root, "e.txt", "E", 5000);
+    let ops = vec![
+        edit(&w, "docs/a.txt", "A-NEW"),
+        newf(&w, "docs/fresh.txt", "FRESH"),
+        mv("docs/b.txt", "docs/b2.txt"),
+        edit(&w, "e.txt", "E-NEW"),
+        mv("e.txt", "docs/e.txt"),
+        cp("docs/a.txt", "a-copy.txt"),
+        del("docs/old"),
+        edit(&w, "pics/d.jpg", "D-NEW-LONGER"),
+        mv("pics", "pictures"),
+    ];
+    w.reality(ops);
+    w
+}
+
+#[test]
+fn new_contents_replace_a_file_and_the_old_one_is_kept_in_the_recycle_bin() {
+    let w = content_world();
+    let env = w.env();
+    let v = api::apply(&env, &w.data, &w.id).unwrap();
+    assert!(ok(&v), "{v}");
+    assert_eq!(snap(&w.root), expected(&w));
+    let s = snap(&w.root);
+    assert_eq!(s["docs/a.txt"], "F:A-NEW");
+    assert_eq!(s["docs/fresh.txt"], "F:FRESH");
+    assert_eq!(s["docs/e.txt"], "F:E-NEW");
+    assert_eq!(s["a-copy.txt"], "F:A-NEW", "a copy made after the change has the new contents");
+    assert_eq!(s["pictures/d.jpg"], "F:D-NEW-LONGER");
+    // every old version is in the bin, none is lost
+    let bin = w.bin_contents();
+    for old in ["A", "E", "D", "C"] {
+        assert!(bin.contains(&old.to_string()), "{old} missing from the bin: {bin:?}");
+    }
+    assert!(!bin.contains(&"B".to_string()), "a file that was only renamed isn't recycled");
+    assert!(w.wrongly_recycled().is_empty());
+    w.assert_no_loss("after applying");
+    // and nothing is left behind in the folder
+    assert!(!std::fs::read_dir(&w.root).unwrap().flatten().any(|e| e.file_name().to_string_lossy().starts_with(STAGE_PREFIX)));
+    assert!(w.journals().is_empty());
+}
+#[test]
+fn undo_puts_the_old_contents_back() {
+    let w = content_world();
+    let env = w.env();
+    assert!(ok(&api::apply(&env, &w.data, &w.id).unwrap()));
+    let u = api::undo(&w.env(), &w.data, &w.id).unwrap();
+    assert!(ok(&u), "{u}");
+    w.assert_back_as_it_was("undo of new contents");
+    // and it can be made real again, and undone again
+    assert!(ok(&api::apply(&w.env(), &w.data, &w.id).unwrap()));
+    assert!(ok(&api::undo(&w.env(), &w.data, &w.id).unwrap()));
+    w.assert_back_as_it_was("second time");
+}
+#[test]
+fn a_failure_at_any_step_with_new_contents() {
+    check_failure_at_every_step(&content_world);
+}
+#[test]
+fn a_crash_at_any_step_with_new_contents() {
+    check_crash_at_every_step(&content_world);
+}
+fn random_content_world(seed: u64, nops: usize) -> World {
+    let mut rng = StdRng::seed_from_u64(seed);
+    let mut w = World::new();
+    fixture(&w.root, &mut rng);
+    let base = reality::scan(&RealEnv, &w.root).unwrap();
+    let plain = random_ops(&base, &mut rng, nops, true);
+    // new contents mixed in: each made from the file as it is on disk, and valid where it stands in the order
+    let mut sim = Tree::from_base(&base, false);
+    let mut ops = vec![];
+    let mut n = 0;
+    for op in plain {
+        if rng.random_bool(0.4) {
+            let files: Vec<Node> = sim.nodes().filter(|x| x.kind == Kind::File && x.origin.is_some() && !x.copy && x.put.is_none()).cloned().collect();
+            if !files.is_empty() {
+                let f = &files[rng.random_range(0..files.len())];
+                n += 1;
+                let (blob, size) = blobs::store(&w.data, format!("NEW-{seed}-{n}").as_bytes()).unwrap();
+                let (_, _, h) = fp(&w.root, f.origin.as_ref().unwrap());
+                let p = OpKind::Put { path: f.path.clone(), blob, size, from_size: f.size, from_mtime: f.mtime, from_hash: h };
+                if sim.apply(&p, None).is_ok() {
+                    ops.push(p);
+                }
+            }
+        }
+        if rng.random_bool(0.15) {
+            let dirs: Vec<String> = std::iter::once(String::new()).chain(sim.nodes().filter(|x| x.kind == Kind::Dir).map(|x| x.path.clone())).collect();
+            let d = dirs[rng.random_range(0..dirs.len())].clone();
+            n += 1;
+            let (blob, size) = blobs::store(&w.data, format!("FRESH-{seed}-{n}").as_bytes()).unwrap();
+            let f = OpKind::NewFile { path: join(&d, &format!("fresh{n}.txt")), blob, size };
+            if sim.apply(&f, None).is_ok() {
+                ops.push(f);
+            }
+        }
+        if sim.apply(&op, None).is_ok() {
+            ops.push(op);
+        }
+    }
+    w.reality(ops);
+    w
+}
+#[test]
+fn a_failure_at_any_step_random_folders_with_new_contents() {
+    for seed in 300..318u64 {
+        check_failure_at_every_step(&move || random_content_world(seed, 10));
+    }
+}
+#[test]
+fn a_crash_at_any_step_random_folders_with_new_contents() {
+    for seed in 400..415u64 {
+        check_crash_at_every_step(&move || random_content_world(seed, 10));
+    }
+}
+#[test]
+fn random_realities_with_new_contents_come_out_as_planned_and_undo_exactly() {
+    for seed in 500..540u64 {
+        let w = random_content_world(seed, 14);
+        let env = w.env();
+        let v = api::apply(&env, &w.data, &w.id).unwrap();
+        assert!(ok(&v), "seed {seed}: {v}");
+        assert_eq!(snap(&w.root), expected(&w), "seed {seed}");
+        assert!(w.wrongly_recycled().is_empty(), "seed {seed}");
+        w.assert_no_loss(&format!("seed {seed}"));
+        let u = api::undo(&w.env(), &w.data, &w.id).unwrap();
+        assert!(ok(&u), "seed {seed}: {u}");
+        w.assert_back_as_it_was(&format!("seed {seed} after undo"));
+    }
+}
+#[test]
+fn contents_made_from_one_version_are_never_written_over_another() {
+    // the file is changed after the new contents were made, keeping its size and date
+    let mut w = World::new();
+    put(&w.root, "a.txt", "AAAA", 1000);
+    put(&w.root, "b.txt", "B", 1000);
+    let ops = vec![mv("b.txt", "b2.txt"), edit(&w, "a.txt", "NEW")];
+    w.reality(ops);
+    std::fs::write(w.root.join("a.txt"), "ZZZZ").unwrap();
+    filetime::set_file_mtime(w.root.join("a.txt"), filetime::FileTime::from_unix_time(1000, 0)).unwrap();
+    let keep = snap(&w.root);
+    let v = api::apply(&w.env(), &w.data, &w.id).unwrap();
+    assert!(!ok(&v), "{v}");
+    assert_eq!(v["kind"], "failed", "{v}");
+    assert_eq!(snap(&w.root), keep, "everything done before it was put back");
+    assert!(w.bin_contents().is_empty());
+    assert!(w.journals().is_empty());
+}
+#[test]
+fn a_file_that_changed_since_the_copy_was_made_blocks_new_contents_when_looking_again() {
+    let mut w = World::new();
+    put(&w.root, "a.txt", "AAAA", 1000);
+    let ops = vec![edit(&w, "a.txt", "NEW")];
+    w.reality(ops);
+    // edited by someone: different size and date
+    put(&w.root, "a.txt", "AAAA plus more", 2000);
+    let v = api::rebase(&w.env(), &w.data, &w.id).unwrap();
+    assert_eq!(v["ops"][0]["state"], "blocked", "{v}");
+    assert!(v["ops"][0]["why"].as_str().unwrap().contains("changed since"), "{v}");
+    // so nothing can be applied, and the user's edit is never overwritten
+    let a = api::apply(&w.env(), &w.data, &w.id);
+    assert!(a.is_err() || !ok(&a.unwrap()));
+    assert_eq!(std::fs::read_to_string(w.root.join("a.txt")).unwrap(), "AAAA plus more");
+}
+#[test]
+fn missing_or_damaged_contents_stop_everything_before_anything_is_touched() {
+    for damage in ["missing", "damaged", "short"] {
+        let mut w = World::new();
+        put(&w.root, "a.txt", "A", 1000);
+        put(&w.root, "b.txt", "B", 1000);
+        let (blob, size) = blobs::store(&w.data, b"NEWER").unwrap();
+        let ops = vec![mv("b.txt", "b2.txt"), edit(&w, "a.txt", "NEWER")];
+        w.reality(ops);
+        let bp = blobs::path_in(&blobs::dir(&w.data), &blob);
+        match damage {
+            "missing" => std::fs::remove_file(&bp).unwrap(),
+            "damaged" => std::fs::write(&bp, b"NEWEX").unwrap(),
+            _ => std::fs::write(&bp, b"NEW").unwrap(),
+        }
+        let _ = size;
+        let v = api::apply(&w.env(), &w.data, &w.id).unwrap();
+        assert_eq!(v["kind"], "refused", "{damage}: {v}");
+        w.assert_back_as_it_was(damage);
+        assert!(w.journals().is_empty(), "{damage}: nothing was started");
+    }
+}
+#[test]
+fn contents_can_only_be_changed_where_that_makes_sense() {
+    let mut w = World::new();
+    put(&w.root, "a.txt", "A", 1000);
+    put(&w.root, "d/b.txt", "B", 1000);
+    w.reality(vec![cp("a.txt", "a-copy.txt"), mk("new")]);
+    let env = w.env();
+    let (blob, size) = blobs::store(&w.data, b"X").unwrap();
+    let r = reality::load(&w.data, &w.id).unwrap();
+    let (s, m, h) = fp(&w.root, "a.txt");
+    let put_op = |path: &str| json!({ "op": "put", "path": path, "blob": blob, "size": size, "from_size": s, "from_mtime": m, "from_hash": h });
+    let tryit = |ops: Vec<Value>| api::add_ops(&env, &w.data, &w.id, "x", &json!(ops)).unwrap();
+    // fine: a file that is in the folder
+    assert!(tryit(vec![put_op("a.txt")])["rejected"].as_array().unwrap().is_empty());
+    // not fine: again (its contents are already changed), a copy, a folder, something that isn't there, a new folder
+    for bad in ["a.txt", "a-copy.txt", "d", "nothing.txt", "new", ""] {
+        let v = tryit(vec![put_op(bad)]);
+        assert_eq!(v["rejected"].as_array().unwrap().len(), 1, "{bad}: {v}");
+    }
+    // a fingerprint that isn't this file's
+    let wrong = json!({ "op": "put", "path": "d/b.txt", "blob": blob, "size": size, "from_size": 999, "from_mtime": 1000, "from_hash": h });
+    assert_eq!(tryit(vec![wrong])["rejected"].as_array().unwrap().len(), 1);
+    // contents that aren't kept anywhere
+    let ghost = json!({ "op": "newFile", "path": "g.txt", "blob": "a".repeat(64), "size": 3 });
+    let v = tryit(vec![ghost]);
+    assert!(v["rejected"][0]["why"].as_str().unwrap().contains("aren’t available"), "{v}");
+    // a blob name that isn't a hash
+    let bogus = json!({ "op": "newFile", "path": "g2.txt", "blob": "../../etc/passwd", "size": 3 });
+    assert_eq!(tryit(vec![bogus])["rejected"].as_array().unwrap().len(), 1);
+    let _ = r;
+}
+#[test]
+fn a_new_file_never_goes_over_something() {
+    let mut w = World::new();
+    put(&w.root, "a.txt", "A", 1000);
+    let ops = vec![newf(&w, "n.txt", "N"), newf(&w, "a.txt", "X")];
+    w.reality(ops);
+    let v = api::view(&w.env(), &w.data, &w.id).unwrap();
+    assert_eq!(v["ops"][1]["state"], "blocked");
+    // something appears at the new name after the copy was made: refused, and it is untouched
+    let mut w = World::new();
+    let ops = vec![newf(&w, "n.txt", "N")];
+    w.reality(ops);
+    std::fs::write(w.root.join("n.txt"), "someone's").unwrap();
+    let v = api::apply(&w.env(), &w.data, &w.id).unwrap();
+    assert!(!ok(&v), "{v}");
+    assert_eq!(std::fs::read_to_string(w.root.join("n.txt")).unwrap(), "someone's");
+}
+#[test]
+fn undo_refuses_when_the_new_contents_were_changed_afterwards() {
+    let w = content_world();
+    assert!(ok(&api::apply(&w.env(), &w.data, &w.id).unwrap()));
+    // the same size, so only reading it can tell
+    std::fs::write(w.root.join("docs/a.txt"), "A-NEX").unwrap();
+    let before = snap(&w.root);
+    let u = api::undo(&w.env(), &w.data, &w.id).unwrap();
+    assert!(!ok(&u), "{u}");
+    assert_eq!(u["kind"], "blocked");
+    assert_eq!(snap(&w.root), before, "nothing was touched");
+    // the recycled old contents are still in the bin
+    assert!(w.bin_contents().contains(&"A".to_string()));
+}
+#[test]
+fn deleting_and_moving_what_has_new_contents_works_in_any_order() {
+    let mut w = World::new();
+    put(&w.root, "a.txt", "A", 1000);
+    put(&w.root, "b.txt", "B", 1000);
+    put(&w.root, "d/c.txt", "C", 1000);
+    let ops = vec![edit(&w, "a.txt", "A2"), del("a.txt"), edit(&w, "b.txt", "B2"), cp("b.txt", "d/b-copy.txt"), mv("b.txt", "d/b.txt"), edit(&w, "d/c.txt", "C2"), del("d")];
+    w.reality(ops);
+    let v = api::apply(&w.env(), &w.data, &w.id).unwrap();
+    assert!(ok(&v), "{v}");
+    assert_eq!(snap(&w.root), expected(&w));
+    w.assert_no_loss("deleted and changed");
+    assert!(w.wrongly_recycled().is_empty());
+    assert!(ok(&api::undo(&w.env(), &w.data, &w.id).unwrap()));
+    w.assert_back_as_it_was("undone");
+}
+#[test]
+fn the_view_says_which_files_have_new_contents() {
+    let w = content_world();
+    let v = api::view(&w.env(), &w.data, &w.id).unwrap();
+    let rows = v["rows"].as_array().unwrap();
+    let e = |p: &str| rows.iter().find(|r| r["p"] == p).map(|r| r["e"].as_bool().unwrap()).unwrap();
+    assert!(e("docs/a.txt") && e("docs/e.txt") && e("pictures/d.jpg"));
+    assert!(!e("docs/b2.txt") && !e("docs/fresh.txt"), "a new file is new, not 'changed'");
+    assert_eq!(v["stats"]["edited"], 3, "{}", v["stats"]);
+    assert_eq!(v["stats"]["newFiles"], 1, "{}", v["stats"]);
+    assert_eq!(v["stats"]["new"], 0, "a new file isn't counted as a new folder: {}", v["stats"]);
+    // the size shown is the new size
+    let s = |p: &str| rows.iter().find(|r| r["p"] == p).unwrap()["s"].as_u64().unwrap();
+    assert_eq!(s("pictures/d.jpg"), "D-NEW-LONGER".len() as u64);
+}
+#[test]
+fn a_package_carries_new_contents_and_checks_them_when_it_is_opened() {
+    let w = content_world();
+    let env = w.env();
+    let pk = pack_path(&w, "content.dogfile-mv");
+    let e = api::export_pack(&env, &w.data, &w.id, &pk).unwrap();
+    assert_eq!(api::inspect_pack(&pk).unwrap()["blobs"], 4, "{e}");
+    // someone else: a folder with the same files, and no stored contents of its own
+    let other = second_folder(&w, "other");
+    for (p, c) in [("docs/a.txt", "A2"), ("docs/b.txt", "B2"), ("docs/old/c.txt", "C2"), ("pics/d.jpg", "D2"), ("e.txt", "E2")] {
+        put(&other, p, c, 9000);
+    }
+    let data2 = w._t.0.join("data2");
+    let r = api::import_pack(&env, &data2, &pk, &other.to_string_lossy(), "").unwrap();
+    // the edits don't fit (the files there are different versions), the rest does
+    let rej = r["rejected"].as_array().unwrap();
+    assert_eq!(rej.len(), 3, "{r}");
+    assert!(rej.iter().all(|x| x["why"].as_str().unwrap().contains("changed since")), "{r}");
+    // the same files, the same dates and contents as the package was made from: all of it fits
+    let same = second_folder(&w, "same");
+    for (p, c) in [("docs/a.txt", "A"), ("docs/b.txt", "B"), ("docs/old/c.txt", "C"), ("pics/d.jpg", "D"), ("e.txt", "E")] {
+        put(&same, p, c, [("docs/a.txt", 1000), ("docs/b.txt", 2000), ("docs/old/c.txt", 3000), ("pics/d.jpg", 4000), ("e.txt", 5000)].iter().find(|x| x.0 == p).unwrap().1);
+    }
+    let r = api::import_pack(&env, &data2, &pk, &same.to_string_lossy(), "").unwrap();
+    assert!(r["rejected"].as_array().unwrap().is_empty(), "{r}");
+    let nid = r["view"]["id"].as_str().unwrap().to_string();
+    assert!(ok(&api::apply(&env, &data2, &nid).unwrap()));
+    assert_eq!(std::fs::read_to_string(same.join("docs/a.txt")).unwrap(), "A-NEW");
+    assert_eq!(std::fs::read_to_string(same.join("docs/fresh.txt")).unwrap(), "FRESH");
+}
+#[test]
+fn a_package_with_tampered_contents_is_not_trusted() {
+    let w = content_world();
+    let env = w.env();
+    let pk = pack_path(&w, "t.dogfile-mv");
+    api::export_pack(&env, &w.data, &w.id, &pk).unwrap();
+    let text = std::fs::read_to_string(&pk).unwrap();
+    let mut v: Value = serde_json::from_str(&text).unwrap();
+    // swap the contents of every blob for other contents (the names no longer match what is in them)
+    use base64::Engine;
+    let other = base64::engine::general_purpose::STANDARD.encode(b"EVIL");
+    for (_, b) in v["blobs"].as_object_mut().unwrap().iter_mut() {
+        *b = json!(other);
+    }
+    let bad = pack_path(&w, "tampered.dogfile-mv");
+    std::fs::write(&bad, serde_json::to_vec(&v).unwrap()).unwrap();
+    let r = api::import_pack(&env, &w._t.0.join("data3"), &bad, &w.root.to_string_lossy(), "").unwrap();
+    assert!(r["view"]["ops"].as_array().unwrap().iter().all(|o| o["op"]["op"] != "put" && o["op"]["op"] != "newFile"), "no change that writes contents got in: {r}");
+    assert_eq!(r["rejected"].as_array().unwrap().len(), 4, "{r}");
+    // and a change that names contents the package doesn't have
+    let mut v2: Value = serde_json::from_str(&text).unwrap();
+    v2["blobs"] = json!({});
+    let missing = pack_path(&w, "missing.dogfile-mv");
+    std::fs::write(&missing, serde_json::to_vec(&v2).unwrap()).unwrap();
+    let r = api::import_pack(&env, &w._t.0.join("data4"), &missing, &w.root.to_string_lossy(), "").unwrap();
+    assert_eq!(r["rejected"].as_array().unwrap().len(), 4, "{r}");
+    // the real folder was never touched by any of it
+    w.assert_back_as_it_was("importing is only looking");
+}
+
+// ---------- the stored contents ----------
+#[test]
+fn stored_contents_are_named_by_what_is_in_them_and_checked_when_read() {
+    let w = World::new();
+    let (a, n) = blobs::store(&w.data, b"hello").unwrap();
+    let (b, _) = blobs::store(&w.data, b"hello").unwrap();
+    assert_eq!(a, b, "the same contents are one blob");
+    assert_eq!(n, 5);
+    assert_eq!(a, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
+    assert_eq!(blobs::read(&w.data, &a).unwrap(), b"hello");
+    assert!(blobs::verify(&blobs::dir(&w.data), &a, 5));
+    assert!(!blobs::verify(&blobs::dir(&w.data), &a, 4));
+    assert!(!blobs::verify(&blobs::dir(&w.data), "../x", 5));
+    // damaged
+    std::fs::write(blobs::path_in(&blobs::dir(&w.data), &a), b"hellp").unwrap();
+    assert!(blobs::read(&w.data, &a).is_err());
+    assert!(!blobs::verify(&blobs::dir(&w.data), &a, 5));
+    // a damaged one is replaced, not trusted, the next time the same contents are stored
+    let (c, _) = blobs::store(&w.data, b"hello").unwrap();
+    assert_eq!(c, a);
+    assert_eq!(blobs::read(&w.data, &a).unwrap(), b"hello");
+    // too big
+    assert!(blobs::store(&w.data, &vec![0u8; (blobs::MAX_BLOB + 1) as usize]).is_err());
+    assert!(blobs::read(&w.data, "nothex").is_err());
+    // nothing half made is left
+    let left: Vec<_> = std::fs::read_dir(blobs::dir(&w.data)).unwrap().flatten().map(|e| e.file_name().to_string_lossy().to_string()).filter(|n| n.contains("tmp")).collect();
+    assert!(left.is_empty(), "{left:?}");
+}
+#[test]
+fn contents_nobody_uses_any_more_are_cleared_away_and_the_rest_kept() {
+    let mut w = World::new();
+    put(&w.root, "a.txt", "A", 1000);
+    let used = edit(&w, "a.txt", "USED");
+    let unused = blobs::store(&w.data, b"UNUSED").unwrap().0;
+    let used_id = if let OpKind::Put { blob, .. } = &used { blob.clone() } else { unreachable!() };
+    w.reality(vec![used]);
+    // fresh ones are left alone (their change might be about to be added)
+    api::gc_blobs(&w.data, 3600);
+    assert!(blobs::has(&w.data, &unused, 6));
+    api::gc_blobs(&w.data, 0);
+    assert!(!blobs::has(&w.data, &unused, 6), "unused contents are removed");
+    assert!(blobs::has(&w.data, &used_id, 4), "contents a change uses are kept");
+    // after the change is applied, and so can be undone, the contents are still kept
+    assert!(ok(&api::apply(&w.env(), &w.data, &w.id).unwrap()));
+    api::gc_blobs(&w.data, 0);
+    assert!(blobs::has(&w.data, &used_id, 4));
+    assert!(ok(&api::undo(&w.env(), &w.data, &w.id).unwrap()));
+    // when the change is removed, they go
+    let r = reality::load(&w.data, &w.id).unwrap();
+    api::remove_ops(&w.env(), &w.data, &w.id, &json!([r.ops[0].id])).unwrap();
+    api::gc_blobs(&w.data, 0);
+    assert!(!blobs::has(&w.data, &used_id, 4));
+}
+#[test]
+fn a_copy_of_a_what_if_copy_shares_the_contents_and_discarding_one_keeps_them_for_the_other() {
+    let mut w = World::new();
+    put(&w.root, "a.txt", "A", 1000);
+    let e = edit(&w, "a.txt", "SHARED");
+    let id = if let OpKind::Put { blob, .. } = &e { blob.clone() } else { unreachable!() };
+    w.reality(vec![e]);
+    let f = api::fork(&w.data, &w.id, "").unwrap();
+    api::discard(&w.data, &w.id, false).unwrap();
+    api::gc_blobs(&w.data, 0);
+    assert!(blobs::has(&w.data, &id, 6), "the other copy still needs them");
+    api::discard(&w.data, f["id"].as_str().unwrap(), false).unwrap();
+    api::gc_blobs(&w.data, 0);
+    assert!(!blobs::has(&w.data, &id, 6));
+}
+
+// ---------- text edits ----------
+fn text_world() -> World {
+    let mut w = World::new();
+    put(&w.root, "notes/a.txt", "colour and Colour and COLOUR\n", 1000);
+    put(&w.root, "notes/b.txt", "line one  \r\nline two\t\r\nline three\r\n", 1000);
+    put(&w.root, "notes/sub/c.txt", "nothing to see\n", 1000);
+    std::fs::write(w.root.join("notes/bin.dat"), [0u8, 1, 2, 3, b'c', b'o', b'l', b'o', b'u', b'r']).unwrap();
+    std::fs::write(w.root.join("notes/latin1.txt"), [b'c', b'o', b'l', b'o', b'u', b'r', 0xE9]).unwrap();
+    std::fs::write(w.root.join("notes/bom.txt"), [&[0xEF, 0xBB, 0xBF][..], b"colour here\n"].concat()).unwrap();
+    put(&w.root, "price.txt", "cost: $5 and $5\n", 1000);
+    w.reality(vec![]);
+    w
+}
+fn spec_replace(find: &str, with: &str) -> Value {
+    json!({ "kind": "replace", "find": find, "with": with, "matchCase": false })
+}
+#[test]
+fn a_text_edit_says_what_it_would_do_without_doing_it() {
+    let w = text_world();
+    let env = w.env();
+    let d = api::edit_text(&env, &w.data, &w.id, &json!(["notes"]), &spec_replace("colour", "color"), true).unwrap();
+    assert_eq!(d["dry"], true);
+    let files: Vec<String> = d["files"].as_array().unwrap().iter().map(|f| f["path"].as_str().unwrap().to_string()).collect();
+    assert_eq!(files, vec!["notes/a.txt", "notes/bom.txt"]);
+    assert_eq!(d["files"][0]["count"], 3);
+    let sk: Vec<String> = d["skipped"].as_array().unwrap().iter().map(|f| f["path"].as_str().unwrap().to_string()).collect();
+    assert!(sk.contains(&"notes/bin.dat".to_string()) && sk.contains(&"notes/latin1.txt".to_string()), "{d}");
+    assert_eq!(reality::load(&w.data, &w.id).unwrap().ops.len(), 0, "a dry run adds nothing");
+    assert!(std::fs::read_dir(blobs::dir(&w.data)).map(|r| r.count()).unwrap_or(0) == 0, "and stores nothing");
+}
+#[test]
+fn a_text_edit_changes_only_text_files_in_the_chosen_places() {
+    let w = text_world();
+    let env = w.env();
+    let r = api::edit_text(&env, &w.data, &w.id, &json!(["notes"]), &spec_replace("colour", "color"), false).unwrap();
+    assert_eq!(r["changed"], 2, "{r}");
+    assert!(r["rejected"].as_array().unwrap().is_empty());
+    // the file on disk isn't touched until it is made real
+    assert_eq!(std::fs::read_to_string(w.root.join("notes/a.txt")).unwrap(), "colour and Colour and COLOUR\n");
+    assert!(ok(&api::apply(&env, &w.data, &w.id).unwrap()));
+    assert_eq!(std::fs::read_to_string(w.root.join("notes/a.txt")).unwrap(), "color and color and color\n", "case-insensitive by default");
+    // a byte order mark survives
+    let bom = std::fs::read(w.root.join("notes/bom.txt")).unwrap();
+    assert_eq!(&bom[..3], &[0xEF, 0xBB, 0xBF]);
+    assert_eq!(&bom[3..], b"color here\n");
+    // not touched: other kinds of file, other folders, what had nothing to change
+    assert_eq!(std::fs::read(w.root.join("notes/bin.dat")).unwrap().len(), 10);
+    assert_eq!(std::fs::read_to_string(w.root.join("price.txt")).unwrap(), "cost: $5 and $5\n");
+    assert!(ok(&api::undo(&w.env(), &w.data, &w.id).unwrap()));
+    assert_eq!(std::fs::read_to_string(w.root.join("notes/a.txt")).unwrap(), "colour and Colour and COLOUR\n");
+    w.assert_back_as_it_was("undone");
+}
+#[test]
+fn a_text_edit_can_match_case_and_use_patterns_and_takes_dollar_signs_literally() {
+    let w = text_world();
+    let env = w.env();
+    let mut sp = spec_replace("colour", "X");
+    sp["matchCase"] = json!(true);
+    let d = api::edit_text(&env, &w.data, &w.id, &json!(["notes/a.txt"]), &sp, true).unwrap();
+    assert_eq!(d["files"][0]["count"], 1);
+    // a plain replacement is taken as it is: $ means $
+    let r = api::edit_text(&env, &w.data, &w.id, &json!(["price.txt"]), &spec_replace("$5", "$10 ($0)"), false).unwrap();
+    assert_eq!(r["changed"], 1, "{r}");
+    // a pattern may use groups
+    let sp = json!({ "kind": "replace", "find": "(\\w+) and (\\w+)", "with": "$2 and $1", "regex": true, "matchCase": true });
+    let d = api::edit_text(&env, &w.data, &w.id, &json!(["notes/sub/c.txt"]), &json!({ "kind": "replace", "find": "(nothing) to (see)", "with": "$2 to $1", "regex": true }), true).unwrap();
+    assert_eq!(d["changed"], 1);
+    let _ = sp;
+    // a pattern that isn't one, or is far too big, is refused rather than hanging
+    for bad in ["(", "[", "a{1000000}{1000000}"] {
+        let sp = json!({ "kind": "replace", "find": bad, "with": "", "regex": true });
+        assert!(api::edit_text(&env, &w.data, &w.id, &json!(["notes"]), &sp, true).is_err(), "{bad}");
+    }
+    assert!(api::edit_text(&env, &w.data, &w.id, &json!(["notes"]), &json!({ "kind": "replace", "find": "", "with": "x" }), true).is_err());
+    assert!(api::edit_text(&env, &w.data, &w.id, &json!(["notes"]), &json!({ "kind": "nonsense" }), true).is_err());
+    assert!(api::edit_text(&env, &w.data, &w.id, &json!([]), &spec_replace("a", "b"), true).is_err());
+    assert!(ok(&api::apply(&env, &w.data, &w.id).unwrap()));
+    assert_eq!(std::fs::read_to_string(w.root.join("price.txt")).unwrap(), "cost: $10 ($0) and $10 ($0)\n");
+}
+#[test]
+fn line_endings_and_trailing_spaces_can_be_fixed() {
+    let w = text_world();
+    let env = w.env();
+    let clear = |w: &World| {
+        let r = reality::load(&w.data, &w.id).unwrap();
+        let all: Vec<u32> = r.ops.iter().map(|o| o.id).collect();
+        api::remove_ops(&w.env(), &w.data, &w.id, &json!(all)).unwrap();
+    };
+    api::edit_text(&env, &w.data, &w.id, &json!(["notes/b.txt"]), &json!({ "kind": "trim" }), false).unwrap();
+    assert!(ok(&api::apply(&env, &w.data, &w.id).unwrap()));
+    assert_eq!(std::fs::read(w.root.join("notes/b.txt")).unwrap(), b"line one\r\nline two\r\nline three\r\n", "trailing spaces and tabs go, the line endings stay");
+    assert!(ok(&api::undo(&w.env(), &w.data, &w.id).unwrap()));
+    clear(&w);
+    let r = api::edit_text(&w.env(), &w.data, &w.id, &json!(["notes/b.txt"]), &json!({ "kind": "eol", "to": "lf" }), false).unwrap();
+    assert_eq!(r["changed"], 1);
+    assert!(ok(&api::apply(&w.env(), &w.data, &w.id).unwrap()));
+    assert_eq!(std::fs::read(w.root.join("notes/b.txt")).unwrap(), b"line one  \nline two\t\nline three\n");
+    // a file that is already as wanted is left alone
+    assert!(ok(&api::undo(&w.env(), &w.data, &w.id).unwrap()));
+    clear(&w);
+    let r = api::edit_text(&w.env(), &w.data, &w.id, &json!(["notes/a.txt"]), &json!({ "kind": "eol", "to": "lf" }), false).unwrap();
+    assert_eq!(r["changed"], 0);
+    assert_eq!(r["unchanged"], 1);
+}
+#[test]
+fn a_text_edit_skips_a_file_that_changed_and_one_already_changed() {
+    let w = text_world();
+    let env = w.env();
+    put(&w.root, "notes/a.txt", "colour, edited elsewhere", 2000);
+    let r = api::edit_text(&env, &w.data, &w.id, &json!(["notes/a.txt"]), &spec_replace("colour", "color"), false).unwrap();
+    assert_eq!(r["changed"], 0);
+    assert!(r["skipped"][0]["why"].as_str().unwrap().contains("has changed since"), "{r}");
+    assert_eq!(std::fs::read_to_string(w.root.join("notes/a.txt")).unwrap(), "colour, edited elsewhere");
+    // a second edit of a file the first one already changed is left out, with the reason
+    let r = api::edit_text(&env, &w.data, &w.id, &json!(["notes/bom.txt"]), &spec_replace("colour", "color"), false).unwrap();
+    assert_eq!(r["changed"], 1);
+    let r = api::edit_text(&env, &w.data, &w.id, &json!(["notes/bom.txt"]), &spec_replace("color", "kolor"), false).unwrap();
+    assert_eq!(r["changed"], 0);
+    assert!(r["skipped"][0]["why"].as_str().unwrap().contains("already changed"), "{r}");
+}
+#[test]
+fn a_new_file_can_be_made_in_a_what_if_copy() {
+    let w = text_world();
+    let env = w.env();
+    let v = api::new_file(&env, &w.data, &w.id, "notes/readme.txt", "Hello\nthere").unwrap();
+    assert!(v["rejected"].as_array().unwrap().is_empty(), "{v}");
+    assert!(row_paths(&v["view"]).contains("notes/readme.txt"));
+    let bad = api::new_file(&env, &w.data, &w.id, "notes/a.txt", "x").unwrap();
+    assert_eq!(bad["rejected"].as_array().unwrap().len(), 1, "never over something that is there");
+    let bad = api::new_file(&env, &w.data, &w.id, "../out.txt", "x").unwrap();
+    assert_eq!(bad["rejected"].as_array().unwrap().len(), 1);
+    assert!(api::new_file(&env, &w.data, &w.id, "big.txt", &"x".repeat((1 << 20) + 1)).is_err());
+    assert!(ok(&api::apply(&env, &w.data, &w.id).unwrap()));
+    assert_eq!(std::fs::read_to_string(w.root.join("notes/readme.txt")).unwrap(), "Hello\nthere");
+    assert!(ok(&api::undo(&w.env(), &w.data, &w.id).unwrap()));
+    assert!(!w.root.join("notes/readme.txt").exists());
+}
+#[test]
+fn editing_a_reality_that_was_made_real_is_refused() {
+    let w = text_world();
+    api::new_file(&w.env(), &w.data, &w.id, "x.txt", "x").unwrap();
+    assert!(ok(&api::apply(&w.env(), &w.data, &w.id).unwrap()));
+    assert!(api::edit_text(&w.env(), &w.data, &w.id, &json!(["notes"]), &spec_replace("colour", "color"), false).is_err());
+    assert!(api::new_file(&w.env(), &w.data, &w.id, "y.txt", "y").is_err());
+}
+#[test]
+fn a_failure_at_any_step_of_a_text_edit_loses_nothing() {
+    check_failure_at_every_step(&|| {
+        let w = text_world();
+        api::edit_text(&w.env(), &w.data, &w.id, &json!(["notes", "price.txt"]), &spec_replace("colour", "color"), false).unwrap();
+        api::edit_text(&w.env(), &w.data, &w.id, &json!(["price.txt"]), &spec_replace("cost", "price"), false).unwrap();
+        api::new_file(&w.env(), &w.data, &w.id, "notes/new.txt", "hi").unwrap();
+        w
+    });
+}
+
+#[test]
+fn undo_is_not_fooled_by_another_file_that_now_stands_where_a_changed_or_copied_file_was() {
+    // new contents written in a folder, then the folder moved away and another folder moved to its name
+    let mut w = World::new();
+    put(&w.root, "misc/e.pdf", "OLD-E!", 1000);
+    put(&w.root, "pics/e.pdf", "OTHER", 1000);
+    let ops = vec![edit(&w, "misc/e.pdf", "NEWER-E"), mv("misc", "old-misc"), mv("pics", "misc")];
+    w.reality(ops);
+    assert!(ok(&api::apply(&w.env(), &w.data, &w.id).unwrap()));
+    assert_eq!(std::fs::read_to_string(w.root.join("misc/e.pdf")).unwrap(), "OTHER");
+    let u = api::undo(&w.env(), &w.data, &w.id).unwrap();
+    assert!(ok(&u), "{u}");
+    w.assert_back_as_it_was("undone");
+    // the same for a copy
+    let mut w = World::new();
+    put(&w.root, "misc/e.pdf", "E1", 1000);
+    put(&w.root, "pics/e.pdf", "OTHER-LONG", 1000);
+    w.reality(vec![mk("c"), cp("misc/e.pdf", "c/e.pdf"), mv("c", "old"), mv("pics", "c")]);
+    assert!(ok(&api::apply(&w.env(), &w.data, &w.id).unwrap()));
+    let u = api::undo(&w.env(), &w.data, &w.id).unwrap();
+    assert!(ok(&u), "{u}");
+    w.assert_back_as_it_was("undone copy");
 }

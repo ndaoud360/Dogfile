@@ -537,8 +537,7 @@ bus.on('layout', () => {
   const key = (state.layout === 'custom' ? 'custom:' + shape(state.splitTree) : state.layout) + '|' + state.panes.slice(0, paneCount()).join(',');
   if (key.split('|')[0] !== lastLayoutKey.split('|')[0] || !document.querySelector('.pane')) {
     // a new pane layout: the panes glide into place (new ones slide in from the edge)
-    const first = !lastLayoutKey;
-    const snap = first ? null : snapshotPanes($('panes'));
+    const snap = document.querySelector('.pane') ? snapshotPanes($('panes')) : null;
     lastLayoutKey = key; rebuild();
     if (snap) playPaneLayout($('panes'), snap);
     return;

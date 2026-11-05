@@ -2146,3 +2146,18 @@ body.col-resizing, body.col-resizing * { cursor: col-resize !important; user-sel
 .mvr.empty .mv-main, .mvr.empty .mv-status { display: none; }
 .mvr.empty .mv-top .btn:not(:first-of-type) { display: none; }
 .mv-list { margin: 6px 0 6px 18px; padding: 0; font-size: 13px; line-height: 1.55; }
+
+/* Multiverse: comparing two what-if copies */
+.mvc-modal .mvc { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; min-height: 420px; max-height: 70vh; overflow: auto; }
+.mvc-pick { display: flex; align-items: center; gap: 10px; }
+.mvc-pick .input { flex: 1; min-width: 0; }
+.mvc-vs { color: var(--text-3); font-size: 12px; white-space: nowrap; }
+.mvc-sum { font-size: 12.5px; color: var(--text-2); }
+.mvc-scroll { max-height: 240px; overflow: auto; border: 1px solid var(--line); border-radius: var(--r-panel); }
+.mvc-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.mvc-tbl th { position: sticky; top: 0; background: var(--bg-body); text-align: left; padding: 6px 10px; font-weight: 600; color: var(--text-2); border-bottom: 1px solid var(--line); }
+.mvc-tbl td { padding: 4px 10px; border-bottom: 1px solid var(--line); word-break: break-all; }
+.mvc-gone { color: var(--danger); }
+.mvc-ops { border: 1px solid var(--line); border-radius: var(--r-panel); max-height: 200px; overflow: auto; padding: 4px 0; }
+.mvc-ops .mv-op { cursor: pointer; }
+.mvc-out { display: flex; flex-direction: column; gap: 8px; }

@@ -318,17 +318,94 @@ export async function open(startFolder) {
     if (!ok) return;
     if (await call('mv:discard', view.id, real) != null) { view = null; sel = null; await refreshList(''); draw(); }
   }
+  const sameFolder = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+  async function duplicate() {
+    if (!view || busy) return;
+    const name = await prompt('Duplicate', `${view.name} (2)`, { label: 'A second what-if copy that starts with the same changes. Then try something different in it and compare them.' });
+    if (!name) return;
+    const r = await call('mv:fork', view.id, name);
+    if (!r) return;
+    await refreshList(r.id);
+    const v = await call('mv:view', r.id);
+    if (v) show(v);
+    toast('Made a second copy. Change it, then use Compare to see the difference.', { ms: 6000 });
+  }
+
+  /** how two what-if copies of one folder differ, and bringing chosen changes from one into the other */
+  async function compare() {
+    if (!view || busy) return;
+    const mates = list.filter((r) => sameFolder(r.root, view.root));
+    if (mates.length < 2) return toast('Make a second what-if copy of this folder first (Duplicate)');
+    let aId = view.id;
+    let bId = (mates.find((r) => r.id !== aId) || {}).id;
+    const opt = (r, sel2) => h('option', { value: r.id, selected: r.id === sel2 }, r.name + (r.applied ? ' (made real)' : ''));
+    const selA = h('select', { class: 'input' }), selB = h('select', { class: 'input' });
+    for (const r of mates) { selA.append(opt(r, aId)); selB.append(opt(r, bId)); }
+    const out = h('div', { class: 'mvc-out' });
+    const bring = h('button', { class: 'btn primary', disabled: true }, 'Bring selected changes into the left one');
+    let srcView = null, picked = new Set();
+    const upd = () => { bring.disabled = !picked.size || !!srcView?.applied; bring.textContent = picked.size ? `Bring ${plural(picked.size, 'change')} into “${mates.find((r) => r.id === aId)?.name}”` : 'Bring selected changes into the left one'; };
+    const place = (p) => (p == null ? h('span', { class: 'mvc-gone' }, 'deleted') : h('span', {}, p === '' ? 'the top' : p));
+    async function load() {
+      aId = selA.value; bId = selB.value;
+      out.innerHTML = ''; picked = new Set(); srcView = null; upd();
+      if (aId === bId) { out.append(h('div', { class: 'hint' }, 'Choose two different what-if copies.')); return; }
+      const c = await call('mv:compare', aId, bId);
+      if (!c) return;
+      srcView = await call('mv:view', bId);
+      if (c.identical) out.append(h('div', { class: 'mv-note ok' }, 'These two end up exactly the same.'));
+      else {
+        out.append(h('div', { class: 'mvc-sum' }, `${plural(c.differ, 'thing')} end up in a different place`, c.onlyA.length ? `, ${plural(c.onlyA.length, 'new folder or copy')} only in “${c.a.name}”` : '', c.onlyB.length ? `, ${plural(c.onlyB.length, 'new folder or copy')} only in “${c.b.name}”` : '', c.same ? ` · ${c.same} the same in both` : ''));
+        const tb = h('table', { class: 'mvc-tbl' }, h('thead', {}, h('tr', {}, h('th', {}, 'It started at'), h('th', {}, c.a.name), h('th', {}, c.b.name))));
+        const body = h('tbody', {});
+        for (const r of c.rows.slice(0, 300)) body.append(h('tr', {}, h('td', {}, (r.k === 'dir' ? '📁 ' : '') + r.origin), h('td', {}, place(r.a)), h('td', {}, place(r.b))));
+        tb.append(body); out.append(h('div', { class: 'mvc-scroll' }, tb));
+        if (c.rows.length > 300) out.append(h('div', { class: 'hint' }, `…and ${c.rows.length - 300} more`));
+        for (const [list2, who] of [[c.onlyA, c.a.name], [c.onlyB, c.b.name]]) if (list2.length) out.append(h('div', { class: 'hint' }, `Only in “${who}”: ${list2.slice(0, 6).join(', ')}${list2.length > 6 ? `, and ${list2.length - 6} more` : ''}`));
+      }
+      // the changes of the right-hand copy that can be brought over
+      if (srcView?.ops?.length) {
+        out.append(h('div', { class: 'mv-h' }, `Changes in “${srcView.name}”`));
+        const box = h('div', { class: 'mvc-ops' });
+        for (const o of srcView.ops.slice(0, 500)) {
+          const cb = h('input', { type: 'checkbox' });
+          cb.onchange = () => { cb.checked ? picked.add(o.id) : picked.delete(o.id); upd(); };
+          box.append(h('label', { class: 'mv-op ' + o.state, title: o.why || '' }, cb, h('span', {}, describe(o))));
+        }
+        out.append(box);
+      }
+    }
+    selA.onchange = selB.onchange = load;
+    bring.onclick = async () => {
+      if (!picked.size || busy) return;
+      const r = await call('mv:takeOps', aId, bId, [...picked]);
+      if (!r) return;
+      if (r.rejected?.length) toast(`${plural(r.rejected.length, 'change')} didn’t fit and ${r.rejected.length === 1 ? 'was' : 'were'} left out: ${r.rejected[0].why}`, { error: true, ms: 8000 });
+      else toast(`Brought over ${plural(picked.size, 'change')}`);
+      if (view?.id === aId && r.view) show(r.view);
+      await load();
+    };
+    const body = h('div', { class: 'mvc' }, h('div', { class: 'mvc-pick' }, selA, h('span', { class: 'mvc-vs' }, 'compared with'), selB), out);
+    queueMicrotask(load);
+    await modal({ title: 'Compare what-if copies', body, width: 860, className: 'mv-modal mvc-modal', buttons: [{ el: bring, left: true }, { label: 'Close', value: null }] });
+    await refreshList(view?.id);
+    const v = view ? await call('mv:view', view.id) : null;
+    if (v) show(v);
+  }
   async function again() { const v = await call('mv:rebase', view.id); if (v) { show(v); toast('Looked at the folder again'); } }
 
   const bNew = h('button', { class: 'btn', onclick: create, title: 'Start a what-if copy of the open folder' }, 'New…');
   const bRename = h('button', { class: 'btn', title: 'Rename this what-if copy', onclick: async () => { const n = await prompt('Rename', view.name, { label: 'Name' }); if (n) { await call('mv:rename', view.id, n); view.name = n; refreshList(view.id); } } }, 'Rename');
   const bDiscard = h('button', { class: 'btn', onclick: discard, title: 'Remove this what-if copy (the real folder isn’t touched)' }, 'Discard');
   const bAgain = h('button', { class: 'btn', onclick: again, title: 'Look at the real folder again. Your changes stay; any that no longer fit are marked.' }, 'Look again');
+  const bDup = h('button', { class: 'btn', onclick: duplicate, title: 'Make a second what-if copy that starts as a copy of this one, to try another way' }, 'Duplicate');
+  const bCompare = h('button', { class: 'btn', onclick: compare, title: 'See how two what-if copies of this folder differ, and bring changes from one into the other' }, 'Compare…');
   const bReal = h('button', { class: 'btn primary', onclick: makeReal }, 'Make it real…');
   const bUndo = h('button', { class: 'btn', onclick: undo }, 'Undo');
   function refreshButtons() {
     const has = !!view;
-    for (const b of [bRename, bDiscard]) b.style.display = has ? '' : 'none';
+    for (const b of [bRename, bDiscard, bDup]) b.style.display = has ? '' : 'none';
+    bCompare.style.display = has && list.filter((r) => sameFolder(r.root, view.root)).length > 1 ? '' : 'none';
     bAgain.style.display = has && !view.applied ? '' : 'none';
     bReal.style.display = has && !view.applied ? '' : 'none';
     bUndo.style.display = has && view.applied ? '' : 'none';
@@ -336,7 +413,7 @@ export async function open(startFolder) {
   }
 
   root.append(
-    h('div', { class: 'mv-top' }, picker, bNew, bRename, bDiscard),
+    h('div', { class: 'mv-top' }, picker, bNew, bDup, bCompare, bRename, bDiscard),
     banner,
     quick,
     h('div', { class: 'mv-main' }, h('div', { class: 'mv-col' }, h('div', { class: 'mv-h' }, 'What it would look like'), treeBox), h('div', { class: 'mv-col' }, h('div', { class: 'mv-h' }, 'Changes'), changesBox)),

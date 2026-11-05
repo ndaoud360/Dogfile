@@ -2406,23 +2406,3 @@ fn undo_is_not_fooled_by_another_file_that_now_stands_where_a_changed_or_copied_
     assert!(ok(&u), "{u}");
     w.assert_back_as_it_was("undone copy");
 }
-
-#[test]
-#[ignore]
-fn repro_one() {
-    let seed: u64 = std::env::var("MV_SEED").ok().and_then(|v| v.parse().ok()).unwrap();
-    let nops = 4 + (seed % 20) as usize;
-    let w = random_content_world(seed, nops);
-    let r = reality::load(&w.data, &w.id).unwrap();
-    for o in &r.ops {
-        eprintln!("OP {:?}", o.kind);
-    }
-    let v = api::apply(&w.env(), &w.data, &w.id).unwrap();
-    eprintln!("apply ok={}", ok(&v));
-    let r = reality::load(&w.data, &w.id).unwrap();
-    for s in &r.applied.as_ref().unwrap().steps {
-        eprintln!("STEP {:?}", s);
-    }
-    let u = api::undo(&w.env(), &w.data, &w.id).unwrap();
-    eprintln!("undo {u}");
-}

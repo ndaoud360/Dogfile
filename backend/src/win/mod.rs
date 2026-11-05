@@ -432,7 +432,7 @@ fn blank(rgba: &[u8]) -> bool {
 /// The icon Windows shows for this file's type from the system icon list, at the nearest size it keeps (16, 32, 48 or
 /// 256). With `by_type` it goes by the extension alone (the file need not be readable).
 fn system_icon(p: &str, px: i32, by_type: bool) -> Option<(u32, u32, Vec<u8>)> {
-    use windows::Win32::UI::Controls::IImageList;
+    use windows::Win32::UI::Controls::{IImageList, ILD_TRANSPARENT};
     unsafe {
         let wide: Vec<u16> = if by_type {
             let ext = std::path::Path::new(p).extension()?.to_string_lossy().to_string();

@@ -241,6 +241,13 @@ impl World {
             assert!(have.contains(c), "LOST {p} ({c}) — {why}");
         }
     }
+    /// recycled contents that neither were meant to be deleted nor still exist in the folder (deleting a copy recycles a
+    /// copy: the original's content is still in the folder)
+    fn wrongly_recycled(&self) -> Vec<String> {
+        let want = expected_deleted(self);
+        let here: BTreeSet<String> = contents_under(&self.root).into_iter().collect();
+        self.bin_contents().into_iter().filter(|c| !want.contains(c) && !here.contains(c)).collect()
+    }
     fn assert_back_as_it_was(&self, why: &str) {
         assert_eq!(snap(&self.root), self.before, "{why}");
         assert!(self.bin_contents().is_empty(), "something was recycled — {why}");
@@ -751,9 +758,7 @@ fn check_failure_at_every_step(build: &dyn Fn() -> World) {
                 if notes == 0 && !left_over {
                     assert_eq!(snap(&w.root), expected(&w), "{why}");
                 }
-                for c in w.bin_contents() {
-                    assert!(expected_deleted(&w).contains(&c), "something that wasn't to be deleted was recycled: {c} — {why}");
-                }
+                assert!(w.wrongly_recycled().is_empty(), "something that wasn't to be deleted was recycled — {why}");
                 // and it can be undone, completely
                 let u = api::undo(&w.env(), &w.data, &w.id).unwrap();
                 if ok(&u) {
@@ -815,9 +820,7 @@ fn check_crash_at_every_step(build: &dyn Fn() -> World) {
             if began_commit || (first.is_none() && k == total) {
                 // finished: the folder is the reality, and it can be undone
                 assert_eq!(snap(&w.root), expected(&w), "{why}");
-                for c in w.bin_contents() {
-                    assert!(expected_deleted(&w).contains(&c), "{why}");
-                }
+                assert!(w.wrongly_recycled().is_empty(), "{why}");
                 let v = api::view(&w.env(), &w.data, &w.id).unwrap();
                 assert!(v["applied"].is_object(), "{why}: a finished run can be undone");
                 let u = api::undo(&w.env(), &w.data, &w.id).unwrap();
@@ -873,7 +876,8 @@ fn random_realities_come_out_exactly_as_planned_and_undo_exactly() {
         assert!(ok(&v), "seed {seed}: {v}");
         assert_eq!(snap(&w.root), expected(&w), "seed {seed}: the folder isn't what the reality showed");
         let got: BTreeSet<String> = w.bin_contents().into_iter().collect();
-        assert_eq!(got, expected_deleted(&w), "seed {seed}: the wrong things were recycled");
+        assert!(expected_deleted(&w).is_subset(&got), "seed {seed}: something that should have been recycled wasn't");
+        assert!(w.wrongly_recycled().is_empty(), "seed {seed}: the wrong things were recycled");
         w.assert_no_loss(&format!("seed {seed}"));
         let u = api::undo(&env, &w.data, &w.id).unwrap();
         assert!(ok(&u), "seed {seed}: {u}");
@@ -898,7 +902,8 @@ fn random_realities_with_every_change_switched_on_and_off_at_random() {
         assert!(ok(&v), "seed {seed}: {v}");
         assert_eq!(snap(&w0.root), expected(&w0), "seed {seed}");
         w0.assert_no_loss(&format!("seed {seed}"));
-        assert!(ok(&api::undo(&w0.env(), &w0.data, &w0.id).unwrap()));
+        let u = api::undo(&w0.env(), &w0.data, &w0.id).unwrap();
+        assert!(ok(&u), "seed {seed}: {u}");
         w0.assert_back_as_it_was(&format!("seed {seed} after undo"));
     }
 }

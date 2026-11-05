@@ -325,6 +325,9 @@ pub fn apply(c: &Ctx, base: &[BEntry], foot: &Footprint, acts: &[Act]) -> Result
         }
     }
     let _ = c.env.remove_dir(&c.root.join(&stage_name));
+    if c.env.crashed() {
+        return Err(ApplyError::Crashed);
+    }
     let _ = j.line(&json!({ "e": "end" }), true);
     j.remove();
     out.steps = steps;
@@ -342,7 +345,8 @@ fn commit_one(c: &Ctx, orig: &str, staged: &str, kind: Kind, size: u64, mtime: i
                 return match c.env.trash(&o) {
                     Ok(()) => Ok(DelState::Trashed { from: o.to_string_lossy().to_string() }),
                     Err(e) if c.env.crashed() => Err(e),
-                    Err(_) => Ok(DelState::Kept),
+                    // reported as failed: where is it? still in its place means it wasn't recycled
+                    Err(_) => Ok(if exists(c, &o).is_some() { DelState::Kept } else { DelState::Trashed { from: o.to_string_lossy().to_string() } }),
                 };
             }
             if c.env.crashed() {
@@ -351,6 +355,7 @@ fn commit_one(c: &Ctx, orig: &str, staged: &str, kind: Kind, size: u64, mtime: i
             // its own place is taken now: recycle it from where it is
             match c.env.trash(&s) {
                 Ok(()) => Ok(DelState::Trashed { from: s.to_string_lossy().to_string() }),
+                Err(_) if !c.env.crashed() && exists(c, &s).is_none() => Ok(DelState::Trashed { from: s.to_string_lossy().to_string() }),
                 Err(e) => Err(format!("{} is still set aside in {} because it couldn’t be recycled: {e}", shown(orig), shown(staged.rsplit_once('/').map(|x| x.0).unwrap_or(staged)))),
             }
         }
@@ -360,7 +365,7 @@ fn commit_one(c: &Ctx, orig: &str, staged: &str, kind: Kind, size: u64, mtime: i
             Ok(Some(m)) if ok_item(&m) => match c.env.trash(&o) {
                 Ok(()) => Ok(DelState::Trashed { from: o.to_string_lossy().to_string() }),
                 Err(e) if c.env.crashed() => Err(e),
-                Err(_) => Ok(DelState::Kept),
+                Err(_) => Ok(if exists(c, &o).is_some() { DelState::Kept } else { DelState::Trashed { from: o.to_string_lossy().to_string() } }),
             },
             _ => Ok(DelState::Trashed { from: o.to_string_lossy().to_string() }),
         },

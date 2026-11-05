@@ -164,6 +164,35 @@ jobs:
           ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$files`"" -Label tauri-index -Out $out -Seconds 40
           # ...and after a couple of quiet minutes (the index sleeps when nobody searches)
           ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$files`"" -Label tauri-index-idle -Out $out -Seconds 150 -Shot
+      - name: Screenshot with "Use Windows file icons" turned on
+        if: vars.RUNNER != 'pc'
+        shell: pwsh
+        continue-on-error: true
+        timeout-minutes: 8
+        run: |
+          trap { Write-Output "::error title=icons-shot::$_"; continue }
+          $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
+          $d = "$env:RUNNER_TEMP\icons"; New-Item -ItemType Directory -Force $d | Out-Null
+          foreach ($n in 'Reports','Photos') { New-Item -ItemType Directory -Force "$d\$n" | Out-Null }
+          foreach ($n in 'notes.txt','budget.xlsx','letter.docx','slides.pptx','manual.pdf','song.mp3','clip.mp4','data.csv','script.ps1','page.html','readme.md','setup.exe','old.7z','disk.iso','pack.rar','vector.svg','font.ttf','mod.json') { Set-Content "$d\$n" 'x' }
+          Set-Content "$d\inside.txt" 'hello'; Compress-Archive -Path "$d\inside.txt" -DestinationPath "$d\backup.zip" -Force; Remove-Item "$d\inside.txt"
+          Add-Type -AssemblyName System.Drawing
+          $bm = New-Object System.Drawing.Bitmap 256, 256, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+          $g = [System.Drawing.Graphics]::FromImage($bm); $g.Clear([System.Drawing.Color]::Transparent)
+          $g.FillEllipse((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 20, 120, 220))), 30, 30, 196, 196)
+          $bm.Save("$d\see-through.png", [System.Drawing.Imaging.ImageFormat]::Png)
+          Copy-Item "$env:WINDIR\System32\notepad.exe" "$d\Notepad copy.exe" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force target/release/data -ErrorAction SilentlyContinue
+          New-Item -ItemType File -Force target/release/portable.txt | Out-Null
+          New-Item -ItemType Directory -Force target/release/data | Out-Null
+          Set-Content target/release/data/settings.json '{"indexEnabled":false,"welcomed":true,"uiMode":"full","useWindowsIcons":true,"showThumbnails":true,"trialOfferCount":3,"defaultView":"grid","defaultSort":{"key":"name","dir":1}}'
+          ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$d`"" -Label windows-icons -Out $out -Seconds 25 -Shot
+          Set-Location $out
+          git init -q -b ci-shots
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          git add windows-icons.png
+          git commit -q -m "Windows icons screenshot"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-shots
       - name: Startup time (first run, then warm starts)
         if: vars.RUNNER != 'pc'
         shell: pwsh

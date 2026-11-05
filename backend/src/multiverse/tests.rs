@@ -2382,3 +2382,23 @@ fn a_failure_at_any_step_of_a_text_edit_loses_nothing() {
         w
     });
 }
+
+#[test]
+#[ignore]
+fn repro_one() {
+    let seed: u64 = std::env::var("MV_SEED").ok().and_then(|v| v.parse().ok()).unwrap();
+    let nops = 4 + (seed % 20) as usize;
+    let w = random_content_world(seed, nops);
+    let r = reality::load(&w.data, &w.id).unwrap();
+    for o in &r.ops {
+        eprintln!("OP {:?}", o.kind);
+    }
+    let v = api::apply(&w.env(), &w.data, &w.id).unwrap();
+    eprintln!("apply ok={}", ok(&v));
+    let r = reality::load(&w.data, &w.id).unwrap();
+    for s in &r.applied.as_ref().unwrap().steps {
+        eprintln!("STEP {:?}", s);
+    }
+    let u = api::undo(&w.env(), &w.data, &w.id).unwrap();
+    eprintln!("undo {u}");
+}

@@ -154,7 +154,7 @@ jobs:
           $files = "$env:RUNNER_TEMP\files"; New-Item -ItemType Directory -Force $files | Out-Null
           1..300 | ForEach-Object { Set-Content "$files/file $_.txt" "hello $_" }
           New-Item -ItemType File -Force target/release/portable.txt | Out-Null
-          $noIndex = '{"indexEnabled":false,"welcomed":true,"uiMode":"simple"}'
+          $noIndex = '{"welcomed":true,"uiMode":"simple"}'
           # Dogfile 2 without the index
           New-Item -ItemType Directory -Force target/release/data | Out-Null
           Set-Content target/release/data/settings.json $noIndex
@@ -184,7 +184,7 @@ jobs:
           Remove-Item -Recurse -Force target/release/data -ErrorAction SilentlyContinue
           New-Item -ItemType File -Force target/release/portable.txt | Out-Null
           New-Item -ItemType Directory -Force target/release/data | Out-Null
-          Set-Content target/release/data/settings.json '{"indexEnabled":false,"welcomed":true,"uiMode":"full","useWindowsIcons":true,"showThumbnails":true,"trialOfferCount":3,"defaultView":"grid"}'
+          Set-Content target/release/data/settings.json '{"welcomed":true,"uiMode":"full","useWindowsIcons":true,"showThumbnails":true,"trialOfferCount":3,"defaultView":"grid"}'
           Copy-Item "build/ci/focusmem.ps1" "build/ci/focusmem.ps1" -ErrorAction SilentlyContinue
           ./build/ci/focusmem.ps1 -Exe target/release/dogfile.exe -Dir $d -Out $out -Label new
           Set-Location $out

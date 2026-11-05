@@ -18,7 +18,7 @@ Start-Sleep -Seconds 40
 $all += Mem "in front after 40 s"
 Start-Sleep -Seconds 20
 $all += Mem "in front after 60 s"
-$n = Start-Process notepad -PassThru
+$n = Start-Process "$env:WINDIR\System32\notepad.exe" -PassThru
 Note "notepad started"
 Start-Sleep -Seconds 45
 $all += Mem "behind another program for 45 s"

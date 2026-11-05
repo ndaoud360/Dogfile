@@ -164,6 +164,23 @@ jobs:
           ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$files`"" -Label tauri-index -Out $out -Seconds 40
           # ...and after a couple of quiet minutes (the index sleeps when nobody searches)
           ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$files`"" -Label tauri-index-idle -Out $out -Seconds 150 -Shot
+      - name: Screenshot with "Use Windows file icons" turned on
+        if: vars.RUNNER != 'pc'
+        shell: pwsh
+        continue-on-error: true
+        timeout-minutes: 6
+        run: |
+          trap { Write-Output "::error title=icons-shot::$_"; continue }
+          $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
+          $d = "$env:RUNNER_TEMP\icons"; New-Item -ItemType Directory -Force $d | Out-Null
+          foreach ($n in 'Reports','Photos','Music','Projects') { New-Item -ItemType Directory -Force "$d\$n" | Out-Null }
+          foreach ($n in 'notes.txt','budget.xlsx','letter.docx','slides.pptx','manual.pdf','photo.png','photo.jpg','song.mp3','clip.mp4','data.json','script.ps1','backup.zip','page.html','readme.md','setup.exe') { Set-Content "$d\$n" 'x' }
+          Copy-Item "$env:WINDIR\System32\notepad.exe" "$d\Notepad copy.exe" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force target/release/data -ErrorAction SilentlyContinue
+          New-Item -ItemType File -Force target/release/portable.txt | Out-Null
+          New-Item -ItemType Directory -Force target/release/data | Out-Null
+          Set-Content target/release/data/settings.json '{"indexEnabled":false,"welcomed":true,"uiMode":"full","useWindowsIcons":true,"showThumbnails":false}'
+          ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$d`"" -Label windows-icons -Out $out -Seconds 20 -Shot
       - name: Startup time (first run, then warm starts)
         if: vars.RUNNER != 'pc'
         shell: pwsh

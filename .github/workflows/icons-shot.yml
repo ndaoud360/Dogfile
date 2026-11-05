@@ -1,0 +1,35 @@
+name: icons-shot
+# one-off: runs the Dogfile.exe from the app-bin branch with "Use Windows file icons" on and saves a screenshot to the ci-shots branch
+on:
+  push:
+    branches: [windows-icons-screenshot]
+    paths: ['.github/workflows/icons-shot.yml']
+permissions:
+  contents: write
+jobs:
+  shot:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Screenshot with "Use Windows file icons" turned on
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
+          git clone --depth 1 -b app-bin "https://github.com/${{ github.repository }}.git" "$env:RUNNER_TEMP/bin" 2>&1 | Out-Null
+          $app = "$env:RUNNER_TEMP/app"; New-Item -ItemType Directory -Force $app | Out-Null
+          Copy-Item "$env:RUNNER_TEMP/bin/Dogfile.exe" $app/
+          $d = "$env:RUNNER_TEMP\icons"; New-Item -ItemType Directory -Force $d | Out-Null
+          foreach ($n in 'Reports','Photos','Music','Projects') { New-Item -ItemType Directory -Force "$d\$n" | Out-Null }
+          foreach ($n in 'notes.txt','budget.xlsx','letter.docx','slides.pptx','manual.pdf','photo.png','photo.jpg','song.mp3','clip.mp4','data.json','script.ps1','backup.zip','page.html','readme.md','setup.exe') { Set-Content "$d\$n" 'x' }
+          Copy-Item "$env:WINDIR\System32\notepad.exe" "$d\Notepad copy.exe" -ErrorAction SilentlyContinue
+          New-Item -ItemType File -Force $app/portable.txt | Out-Null
+          New-Item -ItemType Directory -Force $app/data | Out-Null
+          Set-Content $app/data/settings.json '{"indexEnabled":false,"welcomed":true,"uiMode":"full","useWindowsIcons":true,"showThumbnails":false}'
+          ./build/ci/measure.ps1 -Exe "$app/Dogfile.exe" -ArgList "`"$d`"" -Label windows-icons -Out $out -Seconds 25 -Shot
+          Set-Location $out
+          git init -q -b ci-shots
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          git add windows-icons.png
+          git commit -q -m "Windows icons screenshot"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-shots

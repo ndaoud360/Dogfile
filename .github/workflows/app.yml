@@ -164,6 +164,35 @@ jobs:
           ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$files`"" -Label tauri-index -Out $out -Seconds 40
           # ...and after a couple of quiet minutes (the index sleeps when nobody searches)
           ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$files`"" -Label tauri-index-idle -Out $out -Seconds 150 -Shot
+      - name: Memory with a folder of big pictures
+        if: vars.RUNNER != 'pc'
+        shell: pwsh
+        continue-on-error: true
+        timeout-minutes: 10
+        run: |
+          trap { Write-Output "::error title=memshot::$_"; continue }
+          $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
+          $d = "$env:RUNNER_TEMP\bigpics"; New-Item -ItemType Directory -Force $d | Out-Null
+          Add-Type -AssemblyName System.Drawing
+          $bm = New-Object System.Drawing.Bitmap 6000, 4000, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+          $g = [System.Drawing.Graphics]::FromImage($bm); $g.Clear([System.Drawing.Color]::Transparent)
+          $br = New-Object System.Drawing.Drawing2D.LinearGradientBrush ([System.Drawing.Point]::new(0,0)), ([System.Drawing.Point]::new(6000,4000)), ([System.Drawing.Color]::FromArgb(255,200,60,20)), ([System.Drawing.Color]::FromArgb(255,20,60,200))
+          $g.FillEllipse($br, 300, 300, 5400, 3400)
+          $bm.Save("$d\master.png", [System.Drawing.Imaging.ImageFormat]::Png)
+          1..40 | ForEach-Object { Copy-Item "$d\master.png" ("$d\picture{0:00}.png" -f $_) }
+          Remove-Item "$d\master.png"
+          Remove-Item -Recurse -Force target/release/data -ErrorAction SilentlyContinue
+          New-Item -ItemType File -Force target/release/portable.txt | Out-Null
+          New-Item -ItemType Directory -Force target/release/data | Out-Null
+          Set-Content target/release/data/settings.json '{"indexEnabled":false,"welcomed":true,"uiMode":"full","useWindowsIcons":true,"showThumbnails":true,"trialOfferCount":3,"defaultView":"grid"}'
+          Copy-Item "build/ci/focusmem.ps1" "build/ci/focusmem.ps1" -ErrorAction SilentlyContinue
+          ./build/ci/focusmem.ps1 -Exe target/release/dogfile.exe -Dir $d -Out $out -Label main
+          Set-Location $out
+          git init -q -b ci-mem-main
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          git add main.txt
+          git commit -q -m "memory"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-mem-main
       - name: Startup time (first run, then warm starts)
         if: vars.RUNNER != 'pc'
         shell: pwsh

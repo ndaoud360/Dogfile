@@ -168,7 +168,7 @@ jobs:
         if: vars.RUNNER != 'pc'
         shell: pwsh
         continue-on-error: true
-        timeout-minutes: 10
+        timeout-minutes: 6
         run: |
           trap { Write-Output "::error title=memshot::$_"; continue }
           $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null

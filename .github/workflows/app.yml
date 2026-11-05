@@ -174,7 +174,7 @@ jobs:
           $out = "$env:RUNNER_TEMP/smoke"; New-Item -ItemType Directory -Force $out | Out-Null
           $d = "$env:RUNNER_TEMP\icons"; New-Item -ItemType Directory -Force $d | Out-Null
           foreach ($n in 'Reports','Photos') { New-Item -ItemType Directory -Force "$d\$n" | Out-Null }
-          foreach ($n in 'notes.txt','budget.xlsx','letter.docx','slides.pptx','manual.pdf','song.mp3','clip.mp4','data.csv','script.ps1','page.html','readme.md','setup.exe','old.7z','disk.iso','pack.rar','vector.svg','font.ttf','mod.json') { Set-Content "$d\$n" 'x' }
+          foreach ($n in 'budget.xlsx','letter.docx','slides.pptx','manual.pdf','song.mp3','script.ps1','page.html','setup.exe','old.7z','pack.rar','vector.svg','mod.json') { Set-Content "$d\$n" 'x' }
           Set-Content "$d\inside.txt" 'hello'; Compress-Archive -Path "$d\inside.txt" -DestinationPath "$d\backup.zip" -Force; Remove-Item "$d\inside.txt"
           Add-Type -AssemblyName System.Drawing
           $bm = New-Object System.Drawing.Bitmap 256, 256, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
@@ -185,7 +185,7 @@ jobs:
           Remove-Item -Recurse -Force target/release/data -ErrorAction SilentlyContinue
           New-Item -ItemType File -Force target/release/portable.txt | Out-Null
           New-Item -ItemType Directory -Force target/release/data | Out-Null
-          Set-Content target/release/data/settings.json '{"indexEnabled":false,"welcomed":true,"uiMode":"full","useWindowsIcons":true,"showThumbnails":true,"trialOfferCount":3,"defaultView":"grid","defaultSort":{"key":"name","dir":1}}'
+          Set-Content target/release/data/settings.json '{"indexEnabled":false,"welcomed":true,"uiMode":"full","useWindowsIcons":true,"showThumbnails":true,"trialOfferCount":3,"defaultView":"grid","gridSize":84,"gridLabels":"always","defaultSort":{"key":"name","dir":1}}'
           ./build/ci/measure.ps1 -Exe target/release/dogfile.exe -ArgList "`"$d`"" -Label windows-icons -Out $out -Seconds 25 -Shot
           Set-Location $out
           git init -q -b ci-shots

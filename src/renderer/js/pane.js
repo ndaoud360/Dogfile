@@ -3,6 +3,7 @@
 import { customIcon, iconRev } from './icontheme.js';
 import { loadWinIcons } from './winicons.js';
 import { playFolderAnim, directionOf } from './folderanim.js';
+import { snapshotView, playViewSlide, viewDirection, buildStackGhost, absorbGhost } from './layoutanim.js';
 import { shownPath, demoRealPath,
   api, state, sys, bus, h, esc, isVirtual, isMtp, isRemote, remoteParts, pjoin, dirname, basename, normalize, samePath, isInside, splitPath, virtualTitle,
   fmtSize, fmtDate, dateBucket, sizeBucket, kindOf, typeLabel, natCmp, debounce, fileUrl, DECODED_IMG, decodedUrl, uid, IS_WIN, addRecent, tagsOf,
@@ -877,9 +878,14 @@ function renderTools(el, t) {
 }
 
 export function setView(t, v) {
+  const from = t.view;
+  // the old view slides out while the new one slides in (skipped for reduced motion, or when nothing changes)
+  const snaps = from !== v ? state.panes.slice(0, paneCount()).map((pid, i) => (pid === t.id && paneEls[i] ? [paneEls[i], snapshotView(paneEls[i])] : null)).filter(Boolean) : [];
   t.view = v; touchView(t);
   recompute(t);
   renderTabPanes(t);
+  const dir = viewDirection(from, v);
+  for (const [el, snap] of snaps) playViewSlide(el, snap, dir);
 }
 
 export function sortMenu(t, r) {
@@ -1884,8 +1890,14 @@ function fakeEvent(ev, el) {
 let dragging = null;
 export const isInternalDragging = () => !!dragging;
 function beginInternalDrag(paths, e0) {
-  const ghost = h('div', { class: 'drag-ghost' }, h('span', { html: icon(paths.length > 1 ? 'stack' : 'page') }), h('span', {}, paths.length > 1 ? `${paths.length} items` : basename(paths[0])), h('span', { class: 'dg-op' }));
+  // several items: a fan of cards that gathers out of the selected items, with a count badge (a single item keeps the plain chip)
+  let ghost;
+  if (paths.length > 1) {
+    const boxes = [...document.querySelectorAll('.pane .cell[aria-selected="true"], .pane .mitem[aria-selected="true"]')].slice(0, 3).map((n) => { const r = n.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
+    ghost = buildStackGhost(paths.length, paths.slice(0, 3).map(basename), boxes, { x: e0.clientX + 14, y: e0.clientY + 12 });
+  } else ghost = h('div', { class: 'drag-ghost' }, h('span', { html: icon('page') }), h('span', {}, basename(paths[0])), h('span', { class: 'dg-op' }));
   document.body.append(ghost);
+  ghost._play?.();
   document.body.classList.add('item-dragging');
   let cur = null, lit = null;
   const place = (ev) => { ghost.style.transform = `translate(${ev.clientX + 14}px, ${ev.clientY + 12}px)`; };
@@ -1917,18 +1929,19 @@ function beginInternalDrag(paths, e0) {
   };
   const up = (ev) => {
     const hit = targetAt(ev.clientX, ev.clientY);
-    stop();
+    const ok = hit && hit.tgt.hover(fakeEvent(ev, hit.el));
+    stop(!!ok);
     if (!hit) { dragPaths = null; return; }
     const fe = fakeEvent(ev, hit.el);
-    if (!hit.tgt.hover(fe)) { dragPaths = null; return; }
+    if (!ok) { dragPaths = null; return; }
     dragPaths = null;
     hit.tgt.drop(fe, paths);
   };
   const key = (ev) => { if (ev.key === 'Escape') { stop(); dragPaths = null; } };
-  const stop = () => {
+  const stop = (absorb) => {
     window.removeEventListener('mousemove', move, true); window.removeEventListener('mouseup', up, true);
     document.removeEventListener('mouseout', out, true); window.removeEventListener('keydown', key, true);
-    cur?.leave?.(); light(null); ghost.remove(); document.body.classList.remove('item-dragging'); dragging = null;
+    cur?.leave?.(); light(null); if (absorb && paths.length > 1) absorbGhost(ghost, () => ghost.remove()); else ghost.remove(); document.body.classList.remove('item-dragging'); dragging = null;
     bus.emit('dragEnded');
   };
   dragging = { paths, stop };

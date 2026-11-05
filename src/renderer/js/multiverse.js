@@ -50,7 +50,16 @@ export async function open(startFolder) {
     catch (e) { toast(String(e?.message || e), { error: true, ms: 8000 }); return null; }
     finally { setBusy(false); }
   };
-  const show = (v) => { if (v) { view = v; if (!open_.size) open_.add(''); } draw(); };
+  let shownId = null;
+  const show = (v) => {
+    if (v) {
+      view = v;
+      // folders holding a change are shown open, so what happened can be seen at once
+      if (shownId !== v.id || v.ops.length) for (const r of v.rows) if (r.c) for (let p = parentOf(r.p); p; p = parentOf(p)) open_.add(p);
+      shownId = v.id;
+    }
+    draw();
+  };
 
   async function refreshList(selectId) {
     list = await api('mv:list');
@@ -212,7 +221,7 @@ export async function open(startFolder) {
       btn('Copy to…', 'copyTo', () => sel && rowActions.copyTo(sel), 'Copy the selected item'),
       btn('Delete', 'trash', () => sel && rowActions.delete(sel), 'Delete the selected item (to the Recycle Bin, when it’s made real)'));
     const has = !!sel;
-    quick.querySelectorAll('button').forEach((b, i) => { if (i >= 5 && i !== 4 && !has) b.disabled = true; });
+    quick.querySelectorAll('button').forEach((b, i) => { if (i >= 4 && !has) b.disabled = true; });
   }
 
   function drawChanges() {
@@ -305,7 +314,7 @@ export async function open(startFolder) {
   async function discard() {
     if (!view) return;
     const real = !!view.applied;
-    const ok = await modal({ title: 'Delete this what-if copy?', width: 460, body: h('div', { class: 'confirm-msg' }, real ? 'Its changes were made real. If you delete it here, they can no longer be undone from the Multiverse (the Recycle Bin still has what was deleted).' : 'This only removes the pretend copy. The real folder isn’t touched.'), buttons: [{ label: 'Cancel', value: false }, { label: 'Delete', danger: true, primary: true, value: true }] });
+    const ok = await modal({ title: 'Discard this what-if copy?', width: 460, body: h('div', { class: 'confirm-msg' }, real ? 'Its changes were made real. If you discard it here, they can no longer be undone from the Multiverse (the Recycle Bin still has what was deleted).' : 'This only removes the pretend copy. The real folder isn’t touched.'), buttons: [{ label: 'Cancel', value: false }, { label: 'Discard', danger: true, primary: true, value: true }] });
     if (!ok) return;
     if (await call('mv:discard', view.id, real) != null) { view = null; sel = null; await refreshList(''); draw(); }
   }
@@ -313,7 +322,7 @@ export async function open(startFolder) {
 
   const bNew = h('button', { class: 'btn', onclick: create, title: 'Start a what-if copy of the open folder' }, 'New…');
   const bRename = h('button', { class: 'btn', title: 'Rename this what-if copy', onclick: async () => { const n = await prompt('Rename', view.name, { label: 'Name' }); if (n) { await call('mv:rename', view.id, n); view.name = n; refreshList(view.id); } } }, 'Rename');
-  const bDiscard = h('button', { class: 'btn', onclick: discard, title: 'Remove this what-if copy' }, 'Delete');
+  const bDiscard = h('button', { class: 'btn', onclick: discard, title: 'Remove this what-if copy (the real folder isn’t touched)' }, 'Discard');
   const bAgain = h('button', { class: 'btn', onclick: again, title: 'Look at the real folder again. Your changes stay; any that no longer fit are marked.' }, 'Look again');
   const bReal = h('button', { class: 'btn primary', onclick: makeReal }, 'Make it real…');
   const bUndo = h('button', { class: 'btn', onclick: undo }, 'Undo');
@@ -336,8 +345,7 @@ export async function open(startFolder) {
   await refreshList('');
   // open the copy of this folder if there is one, otherwise show the start page
   const mine = list.find((r) => r.root === here && !r.applied);
-  if (mine) { picker.value = mine.id; view = await api('mv:view', mine.id).catch(() => null); }
-  draw();
+  if (mine) { picker.value = mine.id; show(await api('mv:view', mine.id).catch(() => null)); } else draw();
   await modal({ title: 'Multiverse', body: root, width: 1100, className: 'mv-modal', noPadding: true, closeOnBackdrop: false, buttons: [{ el: bAgain, left: true }, { el: bUndo }, { label: 'Close', value: null }, { el: bReal }] });
 }
 

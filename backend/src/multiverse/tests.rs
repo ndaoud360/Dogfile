@@ -1191,3 +1191,81 @@ fn a_hundred_thousand_steps_worth_of_names_stay_fast() {
     assert!(rp.state.iter().all(|s| s.1 == State::On));
     assert!(t.elapsed().as_secs() < 20, "replay took {:?}", t.elapsed());
 }
+
+/// A long run for when this code changes: `cargo test --lib multiverse -- --ignored soak`
+/// (set MV_SOAK to the number of random folders; each is applied, undone, and then made to fail and to stop at random steps)
+#[test]
+#[ignore]
+fn soak() {
+    let n: u64 = std::env::var("MV_SOAK").ok().and_then(|v| v.parse().ok()).unwrap_or(1500);
+    for seed in 50_000..50_000 + n {
+        let nops = 4 + (seed % 20) as usize;
+        let total = {
+            let w = random_world(seed, nops, true);
+            let env = w.env();
+            let v = api::apply(&env, &w.data, &w.id);
+            let Ok(v) = v else { panic!("seed {seed}: {v:?}") };
+            if v["kind"] == "refused" && v["message"].as_str().unwrap_or("").contains("nothing switched") {
+                continue;
+            }
+            if !ok(&v) {
+                // no changes to make
+                continue;
+            }
+            assert_eq!(snap(&w.root), expected(&w), "seed {seed}");
+            assert!(w.wrongly_recycled().is_empty(), "seed {seed}");
+            let u = api::undo(&env, &w.data, &w.id).unwrap();
+            assert!(ok(&u), "seed {seed}: {u}");
+            w.assert_back_as_it_was(&format!("seed {seed}"));
+            env.count()
+        };
+        let mut rng = StdRng::seed_from_u64(seed);
+        for _ in 0..6 {
+            let k = rng.random_range(1..=total.max(1));
+            let after = rng.random_bool(0.5);
+            // a failure
+            {
+                let w = random_world(seed, nops, true);
+                let env = TEnv::failing(w.bin.clone(), k, after);
+                let v = api::apply(&env, &w.data, &w.id).unwrap();
+                let why = format!("seed {seed}: failure at {k}/{total} after={after}: {v}");
+                w.assert_no_loss(&why);
+                if !ok(&v) {
+                    assert!(v["problems"].as_array().map(|a| a.is_empty()).unwrap_or(true), "{why}");
+                    w.assert_back_as_it_was(&why);
+                    assert!(w.journals().is_empty(), "{why}");
+                } else {
+                    assert!(w.wrongly_recycled().is_empty(), "{why}");
+                    let u = api::undo(&w.env(), &w.data, &w.id).unwrap();
+                    if ok(&u) {
+                        w.assert_back_as_it_was(&format!("undo: {why}"));
+                    }
+                    w.assert_no_loss(&format!("undo: {why}"));
+                }
+            }
+            // a stop
+            {
+                let w = random_world(seed, nops, true);
+                let env = TEnv::crashing(w.bin.clone(), k, after);
+                let _ = api::apply(&env, &w.data, &w.id);
+                if !env.crashed() {
+                    continue;
+                }
+                let why = format!("seed {seed}: stop at {k}/{total} after={after}");
+                let began_commit = commit_started(&w);
+                w.assert_no_loss(&why);
+                let report = api::recover(&w.env(), &w.data);
+                w.assert_no_loss(&format!("{why}: {report}"));
+                assert!(w.journals().is_empty(), "{why}: journal left: {report}");
+                if began_commit {
+                    assert!(w.wrongly_recycled().is_empty(), "{why}");
+                    let u = api::undo(&w.env(), &w.data, &w.id).unwrap();
+                    assert!(ok(&u), "{why}: {u}");
+                    w.assert_back_as_it_was(&format!("undo: {why}"));
+                } else if report.as_array().map(|a| !a.is_empty()).unwrap_or(false) {
+                    w.assert_back_as_it_was(&why);
+                }
+            }
+        }
+    }
+}

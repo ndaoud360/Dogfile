@@ -272,15 +272,15 @@ pub fn apply(c: &Ctx, base: &[BEntry], foot: &Footprint, acts: &[Act]) -> Result
                     Ok(Some(m)) => m.size,
                     _ => return fail(c, j, &steps, None, format!("{} isn’t there", shown(from))),
                 };
+                // looked at first, so that a file found later at the new name is known to be this step's own
+                if matches!(c.env.stat(&t), Ok(Some(_))) {
+                    return fail(c, j, &steps, None, format!("{} couldn’t be copied to {}: something with that name is already there", shown(from), shown(to)));
+                }
                 let part = format!("{to}.dogfile-part-{}", c.rid);
                 let pp = dp(c.root, &part);
                 step!(
                     Step::Copy { from: from.clone(), to: to.clone(), part: part.clone(), size },
                     (|| {
-                        // never over something that is there
-                        if matches!(c.env.stat(&t), Ok(Some(_))) {
-                            return Err(format!("{} couldn’t be copied to {}: something with that name is already there", shown(from), shown(to)));
-                        }
                         c.env.copy_new(&f, &pp).map_err(|e| format!("{} couldn’t be copied: {}", shown(from), io_msg(&e)))?;
                         c.env.rename_new(&pp, &t).map_err(|e| format!("{} couldn’t be copied to {}: {}", shown(from), shown(to), io_msg(&e)))
                     })()
@@ -341,8 +341,12 @@ fn commit_one(c: &Ctx, orig: &str, staged: &str, kind: Kind, size: u64, mtime: i
             if c.env.rename_new(&s, &o).is_ok() {
                 return match c.env.trash(&o) {
                     Ok(()) => Ok(DelState::Trashed { from: o.to_string_lossy().to_string() }),
+                    Err(e) if c.env.crashed() => Err(e),
                     Err(_) => Ok(DelState::Kept),
                 };
+            }
+            if c.env.crashed() {
+                return Err("stopped".into());
             }
             // its own place is taken now: recycle it from where it is
             match c.env.trash(&s) {
@@ -355,6 +359,7 @@ fn commit_one(c: &Ctx, orig: &str, staged: &str, kind: Kind, size: u64, mtime: i
         Ok(None) => match c.env.stat(&o) {
             Ok(Some(m)) if ok_item(&m) => match c.env.trash(&o) {
                 Ok(()) => Ok(DelState::Trashed { from: o.to_string_lossy().to_string() }),
+                Err(e) if c.env.crashed() => Err(e),
                 Err(_) => Ok(DelState::Kept),
             },
             _ => Ok(DelState::Trashed { from: o.to_string_lossy().to_string() }),
@@ -410,11 +415,20 @@ fn reverse_pending(c: &Ctx, s: &Step, problems: &mut Vec<String>) {
                 }
             }
         }
-        Step::Copy { part, .. } => {
+        Step::Copy { to, part, size, .. } => {
             let pp = dp(c.root, part);
             if exists(c, &pp).is_some() {
                 if let Err(e) = c.env.remove_file(&pp) {
                     problems.push(format!("The half-made copy {} couldn’t be removed: {}", shown(part), io_msg(&e)));
+                }
+            } else {
+                // nothing was at the new name when this was written down, and the half-made copy is gone: the copy was
+                // finished (it is renamed into place last), so it is this step's own
+                let t = dp(c.root, to);
+                if matches!(exists(c, &t), Some(m) if m.kind == Kind::File && m.size == *size) {
+                    if let Err(e) = c.env.remove_file(&t) {
+                        problems.push(format!("The copy {} couldn’t be removed: {}", shown(to), io_msg(&e)));
+                    }
                 }
             }
         }
@@ -474,11 +488,25 @@ fn reverse_step(c: &Ctx, s: &Step, problems: &mut Vec<String>) {
                 }
                 DelState::Kept => {}
                 DelState::Trashed { from } => {
+                    // recycled from the set-aside place (its own place was taken): that place is made again for it
+                    let par = Path::new(from).parent().map(|p| p.to_path_buf());
+                    let aside = *from != o.to_string_lossy();
+                    if aside {
+                        if let Some(p) = &par {
+                            if exists(c, p).is_none() {
+                                let _ = c.env.mkdir(p);
+                            }
+                        }
+                    }
                     if let Err(e) = c.env.bin_restore(&[from.clone()]) {
                         problems.push(format!("{} couldn’t be restored from the Recycle Bin: {e}", shown(orig)));
-                    } else if *from != o.to_string_lossy() {
+                    } else if aside {
                         if let Err(e) = c.env.rename_new(Path::new(from), &o) {
                             problems.push(format!("{} was restored but couldn’t be put back where it was: {}", shown(orig), io_msg(&e)));
+                        } else if let Some(p) = par {
+                            if p.file_name().map(|n| n.to_string_lossy().starts_with(STAGE_PREFIX)).unwrap_or(false) {
+                                let _ = c.env.remove_dir(&p);
+                            }
                         }
                     }
                 }

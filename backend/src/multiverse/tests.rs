@@ -1111,10 +1111,11 @@ fn realities_are_saved_listed_renamed_and_discarded() {
 }
 #[test]
 fn looking_at_the_folder_again_keeps_the_changes_and_marks_the_ones_that_no_longer_fit() {
-    let w = simple_world();
+    let mut w = simple_world();
     std::fs::remove_file(w.root.join("e.txt")).unwrap();
     put(&w.root, "brand-new.txt", "BN", 1);
     let env = w.env();
+    w.orig = snap(&w.root).into_iter().filter_map(|(p, v)| v.strip_prefix("F:").map(|c| (p.clone(), c.to_string()))).collect();
     let v = api::rebase(&env, &w.data, &w.id).unwrap();
     let blocked = v["ops"].as_array().unwrap().iter().filter(|o| o["state"] == "blocked").count();
     assert_eq!(blocked, 1, "the move of e.txt no longer fits: {v}");

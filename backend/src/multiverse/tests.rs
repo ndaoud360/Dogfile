@@ -1269,3 +1269,173 @@ fn soak() {
         }
     }
 }
+
+// ---------- stage 2: several what-if copies of one folder ----------
+/// another reality of the same folder, made from the folder as it is now
+fn another(w: &World, name: &str, ops: Vec<OpKind>) -> String {
+    let env = w.env();
+    let mut r = Reality::new(&env, name, &w.root.to_string_lossy()).unwrap();
+    r.add("g", ops);
+    reality::save(&w.data, &r).unwrap();
+    r.id
+}
+fn replay_of(w: &World, id: &str) -> reality::Replay {
+    let r = reality::load(&w.data, id).unwrap();
+    reality::replay(&r.base, r.ci, &r.ops, true)
+}
+
+#[test]
+fn a_duplicate_starts_the_same_and_then_goes_its_own_way() {
+    let w = simple_world();
+    let env = w.env();
+    assert!(ok(&api::apply(&env, &w.data, &w.id).unwrap()));
+    let f = api::fork(&w.data, &w.id, "").unwrap();
+    let fid = f["id"].as_str().unwrap().to_string();
+    assert_ne!(fid, w.id);
+    let fr = reality::load(&w.data, &fid).unwrap();
+    let orig = reality::load(&w.data, &w.id).unwrap();
+    assert_eq!(fr.ops, orig.ops);
+    assert_eq!(fr.base, orig.base);
+    assert!(fr.applied.is_none(), "a duplicate hasn't been made real");
+    assert!(orig.applied.is_some(), "…and the one it came from still has");
+    assert!(fr.name.ends_with("(copy)"));
+    // independent
+    api::toggle(&env, &w.data, &fid, &json!([fr.ops[0].id]), false).unwrap();
+    assert!(reality::load(&w.data, &w.id).unwrap().ops[0].on);
+    assert_eq!(api::list(&w.data).as_array().unwrap().len(), 2);
+    assert_eq!(api::fork(&w.data, &w.id, "  Plan B ").unwrap()["id"].as_str().map(|_| ()), Some(()));
+    assert!(api::fork(&w.data, "../nope", "").is_err());
+}
+#[test]
+fn two_copies_with_the_same_changes_compare_as_identical() {
+    let w = simple_world();
+    let f = api::fork(&w.data, &w.id, "B").unwrap();
+    let c = api::compare(&w.env(), &w.data, &w.id, f["id"].as_str().unwrap()).unwrap();
+    assert_eq!(c["identical"], true, "{c}");
+    assert_eq!(c["differ"], 0);
+}
+#[test]
+fn compare_lists_what_ends_up_in_different_places() {
+    let mut w = World::new();
+    put(&w.root, "a.txt", "A", 1);
+    put(&w.root, "b.txt", "B", 1);
+    put(&w.root, "c.txt", "C", 1);
+    put(&w.root, "dir/inner.txt", "I", 1);
+    w.reality(vec![mk("X"), mv("a.txt", "X/a.txt"), mv("b.txt", "bee.txt"), cp("c.txt", "c2.txt"), mv("dir", "moved")]);
+    let a = w.id.clone();
+    let b = another(&w, "B", vec![mk("Y"), mv("a.txt", "Y/a.txt"), del("b.txt"), mv("dir", "moved")]);
+    let c = api::compare(&w.env(), &w.data, &a, &b).unwrap();
+    let rows = c["rows"].as_array().unwrap();
+    let row = |o: &str| rows.iter().find(|r| r["origin"] == o).cloned();
+    let ra = row("a.txt").expect("a.txt differs");
+    assert_eq!((ra["a"].as_str(), ra["b"].as_str()), (Some("X/a.txt"), Some("Y/a.txt")));
+    let rb = row("b.txt").expect("b.txt differs");
+    assert_eq!((rb["a"].as_str(), rb["b"].as_str()), (Some("bee.txt"), None), "deleted in B");
+    assert!(row("c.txt").is_none(), "c.txt stays in both");
+    assert!(row("dir").is_none() && row("dir/inner.txt").is_none(), "moved the same way in both, and what's inside came along");
+    let only_a: Vec<&str> = c["onlyA"].as_array().unwrap().iter().map(|x| x.as_str().unwrap()).collect();
+    let only_b: Vec<&str> = c["onlyB"].as_array().unwrap().iter().map(|x| x.as_str().unwrap()).collect();
+    assert_eq!(only_a, vec!["X", "c2.txt"]);
+    assert_eq!(only_b, vec!["Y"]);
+    assert_eq!(c["identical"], false);
+}
+#[test]
+fn compare_is_right_for_random_pairs() {
+    for seed in 0..120u64 {
+        let mut rng = StdRng::seed_from_u64(seed + 9000);
+        let mut w = World::new();
+        fixture(&w.root, &mut rng);
+        let base = reality::scan(&RealEnv, &w.root).unwrap();
+        let ops_a = random_ops(&base, &mut rng, 8, true);
+        let ops_b = random_ops(&base, &mut rng, 8, true);
+        w.reality(ops_a);
+        let a = w.id.clone();
+        let b = another(&w, "B", ops_b);
+        let (ra, rb) = (replay_of(&w, &a), replay_of(&w, &b));
+        let c = api::compare(&w.env(), &w.data, &a, &b).unwrap();
+        // what it says is true
+        let find = |rp: &reality::Replay, origin: &str| rp.tree.nodes().find(|n| !n.copy && n.origin.as_deref() == Some(origin)).map(|n| n.path.clone());
+        for r in c["rows"].as_array().unwrap() {
+            let o = r["origin"].as_str().unwrap();
+            assert_eq!(r["a"].as_str().map(String::from), find(&ra, o), "seed {seed} {o}");
+            assert_eq!(r["b"].as_str().map(String::from), find(&rb, o), "seed {seed} {o}");
+            assert_ne!(r["a"], r["b"], "seed {seed}");
+        }
+        // and it is complete: the two end up the same exactly when it says identical
+        let shape = |rp: &reality::Replay| -> BTreeSet<(String, Option<String>, bool)> { rp.tree.nodes().map(|n| (n.path.clone(), if n.copy { None } else { n.origin.clone() }, n.copy)).collect() };
+        let paths = |rp: &reality::Replay| -> BTreeSet<String> { rp.tree.nodes().map(|n| n.path.clone()).collect() };
+        if paths(&ra) != paths(&rb) {
+            assert_eq!(c["identical"], false, "seed {seed}: different folders reported as identical");
+        }
+        if shape(&ra) == shape(&rb) {
+            assert_eq!(c["identical"], true, "seed {seed}: the same folder reported as different: {c}");
+        }
+    }
+}
+#[test]
+fn compare_refuses_different_folders() {
+    let w = simple_world();
+    let w2 = simple_world();
+    // (the second world is another folder, in the same data folder)
+    let r2 = reality::load(&w2.data, &w2.id).unwrap();
+    reality::save(&w.data, &r2).unwrap();
+    assert!(api::compare(&w.env(), &w.data, &w.id, &r2.id).is_err());
+    assert!(api::take_ops(&w.env(), &w.data, &w.id, &r2.id, &json!([1])).is_err());
+}
+#[test]
+fn changes_can_be_brought_over_from_another_copy_and_the_ones_that_dont_fit_say_why() {
+    let mut w = World::new();
+    put(&w.root, "a.txt", "A", 1);
+    put(&w.root, "b.txt", "B", 1);
+    w.reality(vec![mv("a.txt", "renamed.txt")]);
+    let a = w.id.clone();
+    let b = another(&w, "B", vec![mk("dir"), mv("a.txt", "dir/a.txt"), mv("b.txt", "dir/b.txt")]);
+    let env = w.env();
+    let br = reality::load(&w.data, &b).unwrap();
+    let all: Vec<u32> = br.ops.iter().map(|o| o.id).collect();
+    let r = api::take_ops(&env, &w.data, &a, &b, &json!(all)).unwrap();
+    assert_eq!(r["added"].as_array().unwrap().len(), 2, "the folder and the move of b.txt: {r}");
+    let rej = r["rejected"].as_array().unwrap();
+    assert_eq!(rej.len(), 1);
+    assert!(rej[0]["why"].as_str().unwrap().contains("a.txt"), "{rej:?}");
+    let ar = reality::load(&w.data, &a).unwrap();
+    assert_eq!(ar.ops.len(), 3);
+    assert!(ar.ops.iter().skip(1).all(|o| o.group.starts_with("From “B”")));
+    // B is untouched
+    assert_eq!(reality::load(&w.data, &b).unwrap().ops, br.ops);
+    assert!(api::take_ops(&env, &w.data, &a, &b, &json!([999])).is_err());
+    assert!(api::take_ops(&env, &w.data, &a, &a, &json!([1])).is_err());
+    // and the result can be made real
+    assert!(ok(&api::apply(&env, &w.data, &a).unwrap()));
+    let s = snap(&w.root);
+    assert_eq!(s["renamed.txt"], "F:A");
+    assert_eq!(s["dir/b.txt"], "F:B");
+}
+#[test]
+fn only_one_of_several_copies_can_be_made_real_and_the_others_are_not_damaged() {
+    let mut w = World::new();
+    put(&w.root, "a.txt", "A", 1);
+    put(&w.root, "b.txt", "B", 1);
+    w.reality(vec![mv("a.txt", "x.txt")]);
+    let a = w.id.clone();
+    let b = another(&w, "B", vec![del("a.txt"), mv("b.txt", "y.txt")]);
+    let env = w.env();
+    assert!(ok(&api::apply(&env, &w.data, &a).unwrap()));
+    let after_a = snap(&w.root);
+    // B was made from the folder as it was: it must not be applied to what A made
+    let v = api::apply(&env, &w.data, &b).unwrap();
+    assert!(!ok(&v) && v["kind"] == "drift", "{v}");
+    assert_eq!(snap(&w.root), after_a);
+    assert!(w.bin_contents().is_empty());
+    // undo A, and B works again
+    assert!(ok(&api::undo(&env, &w.data, &a).unwrap()));
+    assert!(ok(&api::apply(&env, &w.data, &b).unwrap()));
+    let s = snap(&w.root);
+    assert_eq!(s["y.txt"], "F:B");
+    assert!(!s.contains_key("a.txt") && !s.contains_key("x.txt"));
+    assert_eq!(w.bin_contents(), vec!["A".to_string()]);
+    // A can no longer be made real or undone by accident: it was never applied this time
+    let v = api::apply(&env, &w.data, &a).unwrap();
+    assert!(!ok(&v), "{v}");
+    w.assert_no_loss("two copies");
+}

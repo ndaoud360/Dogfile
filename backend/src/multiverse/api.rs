@@ -33,6 +33,9 @@ pub fn run(env: &dyn Env, data: &Path, cmd: &str, a: &Args) -> R {
         "rename" => rename(data, &a.s(0)?, &a.s(1)?),
         "discard" => discard(data, &a.s(0)?, a.r(1).as_bool().unwrap_or(false)),
         "recover" => Ok(recover(env, data)),
+        "fork" => fork(data, &a.s(0)?, &a.s_or(1, "")),
+        "compare" => compare(env, data, &a.s(0)?, &a.s(1)?),
+        "takeOps" => take_ops(env, data, &a.s(0)?, &a.s(1)?, a.r(2)),
         _ => Err(format!("unknown command {cmd}")),
     }
 }
@@ -319,4 +322,130 @@ pub fn recover(env: &dyn Env, data: &Path) -> Value {
         out.push(json!({ "root": x.root, "owner": x.owner, "result": x.result, "problems": x.problems }));
     }
     json!(out)
+}
+
+// ---------- several realities of one folder ----------
+
+/// A second what-if copy that starts as a copy of this one: same starting point, same changes, then it goes its own way.
+pub fn fork(data: &Path, id: &str, name: &str) -> R {
+    let _g = BUSY.lock();
+    let r = load(data, id)?;
+    let mut f = r.clone();
+    f.id = reality::new_id();
+    f.name = if name.trim().is_empty() { format!("{} (copy)", r.name) } else { name.trim().chars().take(80).collect() };
+    f.created = reality::now();
+    // a copy has not been made real, whatever the one it came from did
+    f.applied = None;
+    reality::save(data, &f)?;
+    Ok(json!({ "id": f.id }))
+}
+
+fn same_folder(a: &Reality, b: &Reality) -> bool {
+    if a.ci || b.ci { a.root.to_lowercase() == b.root.to_lowercase() } else { a.root == b.root }
+}
+
+/// Where each thing from the starting folder ends up in a reality (None = gone), keyed by where it started
+fn placement(r: &Reality, can_del: bool) -> (reality::Replay, std::collections::HashMap<String, String>) {
+    let rp = reality::replay(&r.base, r.ci, &r.ops, can_del);
+    let mut m = std::collections::HashMap::new();
+    for n in rp.tree.nodes() {
+        if !n.copy {
+            if let Some(o) = &n.origin {
+                m.insert(if r.ci { o.to_lowercase() } else { o.clone() }, n.path.clone());
+            }
+        }
+    }
+    (rp, m)
+}
+
+/// How two what-if copies of the same folder differ: for each thing that was in the folder, where it ends up in each.
+/// What simply came along inside a moved folder is not listed on its own.
+pub fn compare(env: &dyn Env, data: &Path, a_id: &str, b_id: &str) -> R {
+    let a = load(data, a_id)?;
+    let b = load(data, b_id)?;
+    if !same_folder(&a, &b) {
+        return Err("Those are what-if copies of different folders".into());
+    }
+    let (ra, ma) = placement(&a, can_delete(env, &a));
+    let (rb, mb) = placement(&b, can_delete(env, &b));
+    let ci = a.ci;
+    let key = |p: &str| if ci { p.to_lowercase() } else { p.to_string() };
+    // everything that was in the folder in either starting point
+    let mut starts: std::collections::BTreeMap<String, (String, Kind)> = std::collections::BTreeMap::new();
+    for e in a.base.iter().chain(b.base.iter()) {
+        starts.entry(key(&e.path)).or_insert((e.path.clone(), e.kind));
+    }
+    let came_along = |m: &std::collections::HashMap<String, String>, origin: &str, pos: &Option<&String>| -> bool {
+        let Some(pos) = pos else { return false };
+        match m.get(&key(parent_of(origin))) {
+            Some(pp) => **pos == join(pp, name_of(origin)),
+            // the parent is the folder itself
+            None => parent_of(origin).is_empty() && **pos == name_of(origin),
+        }
+    };
+    let mut rows = vec![];
+    let mut same = 0usize;
+    for (k, (origin, kind)) in &starts {
+        let (pa, pb) = (ma.get(k), mb.get(k));
+        let (xa, xb) = (pa.map(|s| key(s)), pb.map(|s| key(s)));
+        if xa == xb {
+            same += 1;
+            continue;
+        }
+        // inside a folder that went somewhere else in one or both: it came along
+        let ca = came_along(&ma, origin, &pa);
+        let cb = came_along(&mb, origin, &pb);
+        if ca && cb {
+            continue;
+        }
+        // a thing in a deleted folder is gone along with it
+        let parent_gone = |m: &std::collections::HashMap<String, String>| !parent_of(origin).is_empty() && !m.contains_key(&key(parent_of(origin)));
+        if pa.is_none() && pb.is_none() {
+            continue;
+        }
+        if (pa.is_none() && parent_gone(&ma)) && cb {
+            continue;
+        }
+        if (pb.is_none() && parent_gone(&mb)) && ca {
+            continue;
+        }
+        rows.push(json!({ "origin": origin, "k": kind, "a": pa, "b": pb }));
+    }
+    rows.truncate(2000);
+    // what only one of them makes: new folders and copies
+    let made = |rp: &reality::Replay| -> std::collections::BTreeMap<String, String> {
+        rp.tree
+            .nodes()
+            // a new folder, or the top of a copy (what is inside a copy came with it)
+            .filter(|n| if n.copy { !rp.tree.get(parent_of(&n.path)).map(|p| p.copy).unwrap_or(false) } else { n.origin.is_none() })
+            .map(|n| (key(&n.path), n.path.clone()))
+            .collect()
+    };
+    let (xa, xb) = (made(&ra), made(&rb));
+    let only_a: Vec<&String> = xa.iter().filter(|(k, _)| !xb.contains_key(*k)).map(|(_, v)| v).collect();
+    let only_b: Vec<&String> = xb.iter().filter(|(k, _)| !xa.contains_key(*k)).map(|(_, v)| v).collect();
+    Ok(json!({
+        "a": { "id": a.id, "name": a.name, "ops": a.ops.len() }, "b": { "id": b.id, "name": b.name, "ops": b.ops.len() },
+        "same": same, "differ": rows.len(), "rows": rows, "onlyA": only_a, "onlyB": only_b,
+        "identical": rows.is_empty() && only_a.is_empty() && only_b.is_empty(),
+    }))
+}
+
+/// Bring some of the changes of another what-if copy of the same folder into this one (each is checked, and one that doesn't
+/// fit here is left out and says why).
+pub fn take_ops(env: &dyn Env, data: &Path, into: &str, from: &str, which: &Value) -> R {
+    let to = load(data, into)?;
+    let src = load(data, from)?;
+    if to.id == src.id {
+        return Err("That is the same what-if copy".into());
+    }
+    if !same_folder(&to, &src) {
+        return Err("Those are what-if copies of different folders".into());
+    }
+    let w = ids(which);
+    let kinds: Vec<Value> = src.ops.iter().filter(|o| w.contains(&o.id)).map(|o| json!(o.kind)).collect();
+    if kinds.is_empty() {
+        return Err("Choose the changes to bring over".into());
+    }
+    add_ops(env, data, into, &format!("From “{}”", src.name), &json!(kinds))
 }

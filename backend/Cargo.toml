@@ -26,6 +26,7 @@ md-5 = "0.10"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream", "http2"] }
 trash = "5"
 arboard = { version = "3", default-features = false, features = ["image-data"] }
+png = "0.17"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "tga", "exr", "hdr", "tiff", "bmp", "ico", "pnm", "qoi", "webp", "gif", "ff"] }
 psd = "0.3"
 qrcode = { version = "0.14", default-features = false, features = ["svg"] }

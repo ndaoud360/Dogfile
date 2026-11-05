@@ -1429,6 +1429,7 @@ dependencies = [
  "md-5 0.10.6",
  "notify",
  "parking_lot",
+ "png 0.17.16",
  "portable-pty",
  "psd",
  "qrcode",

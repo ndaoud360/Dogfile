@@ -198,6 +198,7 @@ def('cleanup', 'Storage cleanup…', { icon: 'broom', cat: 'Tools', run: () => i
 def('folderRules', 'Automate this folder…', { icon: 'automation', cat: 'Tools', run: () => import('./rules.js').then((m) => m.automationDialog(T_()?.path)) });
 def('automations', 'Folder automations…', { icon: 'automation', cat: 'Tools', run: () => import('./rules.js').then((m) => m.automationsManager()) });
 def('newCollection', 'New smart collection…', { icon: 'collection', cat: 'Tools', run: () => import('./collections.js').then((m) => m.editCollection(null)) });
+def('multiverse', 'Multiverse: try changes first…', { icon: 'layout4', cat: 'Tools', run: () => import('./multiverse.js').then((m) => m.open()) });
 def('declutter', 'Tidy up this folder…', { icon: 'wand', cat: 'Tools', run: () => import('./declutter.js').then((m) => m.declutter()) });
 def('renameWords', 'Rename by describing it…', { icon: 'rename', cat: 'Edit', run: () => A.batchRename(S_()) });
 def('aiModels', 'AI models…', { icon: 'wand', cat: 'Tools', run: () => import('./ai.js').then((m) => m.modelsDialog()) });

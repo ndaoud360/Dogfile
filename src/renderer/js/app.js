@@ -377,7 +377,7 @@ function fileMenu(btn) {
     full && { label: 'Open terminal', icon: 'terminal', submenu: [C('terminal', 'Dogfile terminal'), C('psHere', 'PowerShell window'), C('cmdHere', 'Command Prompt window'), C('terminalAdmin', 'Window as administrator')] },
     full && C('editor'),
     { separator: true },
-    { label: 'Tools', icon: 'wand', submenu: [{ header: 'Tidy & clean' }, C('declutter'), C('cleanup'), C('automations'), C('analyze'), { separator: true }, { header: 'Find' }, C('dupes'), C('similarImages'), C('similarMedia'), C('compare'), C('newCollection'), { separator: true }, { header: 'Safety' }, C('history'), C('allVersions'), C('makeChecksums'), C('verifyChecksums'), { separator: true }, { header: 'Phone' }, C('phoneTransfer')] },
+    { label: 'Tools', icon: 'wand', submenu: [{ header: 'Tidy & clean' }, C('declutter'), C('multiverse'), C('cleanup'), C('automations'), C('analyze'), { separator: true }, { header: 'Find' }, C('dupes'), C('similarImages'), C('similarMedia'), C('compare'), C('newCollection'), { separator: true }, { header: 'Safety' }, C('history'), C('allVersions'), C('makeChecksums'), C('verifyChecksums'), { separator: true }, { header: 'Phone' }, C('phoneTransfer')] },
     { label: 'Features', icon: 'puzzle', submenu: () => { const f = featureCmds(); return [...f, f.length && { separator: true }, C('features', 'Manage features…'), C('createFeature'), C('featureStore', 'Browse & share features…')].filter(Boolean); } },
     full && { label: 'Macros', icon: 'record', submenu: [C('startMacro'), C('macros'), ...[...commands.values()].filter((c) => c.id.startsWith('macro:')).map((c) => ({ label: c.title.replace(/^Macro: /, ''), icon: 'record', run: c.run }))] },
     { separator: true },
@@ -580,6 +580,7 @@ async function boot() {
     state.pinned = [];
   }
   applyTheme();
+  if (!info.test) setTimeout(() => import('./multiverse.js').then((m) => m.recoverAtStart()).catch(() => {}), 2500); // finish or reverse a Multiverse change an earlier run left half done
   setTimeout(() => import('./readability.js').then((m) => m.guardReadability()).catch(() => {}), 3000); // colours that came from an import or another PC may be hard to read
   // the interface language (translates as things appear)
   if ((state.settings.language || 'auto') !== 'en') await import('./i18n.js').then((m) => m.initI18n(state.settings.language || 'auto')).catch(() => {});

@@ -733,6 +733,17 @@ unsafe extern "system" fn progress(_total: i64, done: i64, _st: i64, _sd: i64, _
 }
 /// whether deleting here can go to the Recycle Bin: drives fixed in the computer have one; USB sticks, memory cards,
 /// network drives and shared folders don't (Windows would delete for good there)
+/// Move or rename without replacing: fails with AlreadyExists when something is at the target (the standard library's
+/// rename would replace a file there)
+pub fn move_no_replace(from: &std::path::Path, to: &std::path::Path) -> std::io::Result<()> {
+    let f = HSTRING::from(from.as_os_str());
+    let t = HSTRING::from(to.as_os_str());
+    unsafe { MoveFileExW(&f, &t, MOVE_FILE_FLAGS(0)) }.map_err(|e| {
+        let code = (e.code().0 as u32) & 0xFFFF;
+        std::io::Error::from_raw_os_error(code as i32)
+    })
+}
+
 pub fn has_recycle_bin(p: &str) -> bool {
     if p.starts_with("\\\\") || p.len() < 2 || p.as_bytes()[1] != b':' {
         return false;

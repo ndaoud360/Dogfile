@@ -1,5 +1,6 @@
 // App shell: boot, theme, tab strip, File/Home/Organize/Tools/View ribbon, split-layout picker, status bar,
 // session restore, IPC events and global keyboard handling.
+import { snapshotPanes, playPaneLayout } from './layoutanim.js';
 import { panelClass, animatePanel } from './panelanim.js';
 import { shownPath, api, onMain, sys, state, bus, h, esc, DEFAULT_SETTINGS, DEFAULT_TAGS, defaultSort, saveSettings, fmtSize, isVirtual, basename, virtualTitle, toast, isMtp, IS_WIN, debounce, setNativeDialogs } from './core.js';
 import { icon } from './icons.js';
@@ -534,7 +535,14 @@ bus.on('layout', () => {
   // a free layout is rebuilt when its shape changes (a split added or closed), not when a divider moves
   const shape = (n) => (!n ? '' : n.pane != null ? String(n.pane) : `${n.dir}(${shape(n.a)},${shape(n.b)})`);
   const key = (state.layout === 'custom' ? 'custom:' + shape(state.splitTree) : state.layout) + '|' + state.panes.slice(0, paneCount()).join(',');
-  if (key.split('|')[0] !== lastLayoutKey.split('|')[0] || !document.querySelector('.pane')) { lastLayoutKey = key; rebuild(); return; }
+  if (key.split('|')[0] !== lastLayoutKey.split('|')[0] || !document.querySelector('.pane')) {
+    // a new pane layout: the panes glide into place (new ones slide in from the edge)
+    const first = !lastLayoutKey;
+    const snap = first ? null : snapshotPanes($('panes'));
+    lastLayoutKey = key; rebuild();
+    if (snap) playPaneLayout($('panes'), snap);
+    return;
+  }
   lastLayoutKey = key;
   for (let i = 0; i < paneCount(); i++) { const t = paneTab(i); if (t) { ensureLoaded(t); } }
   renderAll();

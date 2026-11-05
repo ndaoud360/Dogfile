@@ -1498,6 +1498,14 @@ body.big-targets .side-item { min-height: 36px; }
 .drag-ghost .dg-op { color: #fff; background: var(--accent); border-radius: 5px; padding: 1px 6px; font-size: 11px; }
 .drag-ghost .dg-op:empty { display: none; }
 .drag-ghost.none { opacity: .75; }
+/* several items: a fan of cards with a count badge */
+.drag-ghost.multi { padding: 0; background: none; border: 0; box-shadow: none; display: block; width: 168px; height: 34px; }
+.drag-ghost.multi .dg-stack { position: relative; width: 150px; height: 28px; }
+.drag-ghost.multi .dg-card { position: absolute; inset: 0; border-radius: 8px; background: var(--bg-elev); border: 1px solid var(--line); box-shadow: var(--shadow); font-size: 12.5px; line-height: 26px; padding: 0 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); transform: translate(var(--fx, 0), var(--fy, 0)) rotate(var(--fr, 0)); transform-origin: 0 100%; }
+.drag-ghost.multi .dg-card:not([data-k='0']) { background: color-mix(in srgb, var(--bg-elev) 88%, var(--accent)); }
+.drag-ghost.multi .dg-count { position: absolute; top: -9px; right: 10px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--accent); color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; box-shadow: 0 2px 6px rgba(0,0,0,.3); z-index: 5; }
+.drag-ghost.multi .dg-op { position: absolute; left: 0; top: 36px; z-index: 5; }
+.view-ghost { position: absolute; inset: 0; pointer-events: none; z-index: 3; background: var(--bg-body); }
 body.item-dragging, body.item-dragging * { cursor: default !important; }
 body.item-dragging iframe { pointer-events: none !important; }
 .tab.drop-on { background: color-mix(in srgb, var(--accent) 16%, var(--bg)); }

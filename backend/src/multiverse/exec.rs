@@ -38,7 +38,10 @@ pub enum Step {
     Mv { from: String, to: String },
     Mkdir { path: String },
     Copy { from: String, to: String, part: String, size: u64 },
-    Del { orig: String, staged: String, kind: Kind, size: u64, mtime: i64, state: DelState },
+    /// `aside`: the file was replaced by new contents, so it is recycled from where it is set aside (its own name is taken)
+    Del { orig: String, staged: String, kind: Kind, size: u64, mtime: i64, state: DelState, #[serde(default)] aside: bool },
+    /// a file written from a blob: to a temporary name first, checked, then renamed into place
+    Put { to: String, part: String, size: u64, blob: String },
 }
 
 pub struct Ctx<'a> {
@@ -207,7 +210,7 @@ pub fn apply(c: &Ctx, base: &[BEntry], foot: &Footprint, acts: &[Act]) -> Result
     if acts.is_empty() {
         return Ok(Outcome::default());
     }
-    let has_del = acts.iter().any(|a| matches!(a, Act::Stage { .. }));
+    let has_del = acts.iter().any(|a| matches!(a, Act::Stage { .. } | Act::Put { replace: true, .. }));
     if has_del && !c.env.has_bin(c.root) {
         return Err(ApplyError::Refused("This drive has no Recycle Bin, so nothing can be deleted safely here. Switch off the deletes to go ahead.".into()));
     }
@@ -218,6 +221,15 @@ pub fn apply(c: &Ctx, base: &[BEntry], foot: &Footprint, acts: &[Act]) -> Result
     let drift = preflight(c.env, c.root, base, foot);
     if !drift.is_empty() {
         return Err(ApplyError::Drift(drift));
+    }
+    // all the new content must be there and whole before anything is touched
+    let blobs = super::blobs::dir_of_jdir(c.jdir);
+    for a in acts {
+        if let Act::Put { path, blob, size, .. } = a {
+            if !super::blobs::verify(&blobs, blob, *size) {
+                return Err(ApplyError::Refused(format!("The new contents for {} are missing or damaged, so nothing was changed. Make that change again.", shown(path))));
+            }
+        }
     }
     let stage_name = format!("{STAGE_PREFIX}{}", c.rid);
     let mut j = Journal::open(c.jdir, c.rid).map_err(|e| ApplyError::Refused(format!("The journal couldn’t be started: {e}")))?;
@@ -286,6 +298,51 @@ pub fn apply(c: &Ctx, base: &[BEntry], foot: &Footprint, acts: &[Act]) -> Result
                     })()
                 );
             }
+            Act::Put { path, blob, size, replace, from_hash } => {
+                let t = dp(c.root, path);
+                if *replace {
+                    // the file that is there is set aside first, exactly as a delete would, and is recycled last. It keeps its name
+                    // (after a number) so that it can be found in the Recycle Bin.
+                    let (kind, osize, mtime) = match c.env.stat(&t) {
+                        Ok(Some(m)) if m.kind == Kind::File => (m.kind, m.size, m.mtime),
+                        _ => return fail(c, j, &steps, None, format!("{} isn’t there", shown(path))),
+                    };
+                    // the new contents were made from one version of this file: it must still be that one
+                    match super::blobs::hash_file(&t) {
+                        Ok((h, n)) if h == *from_hash && n == osize => {}
+                        _ => return fail(c, j, &steps, None, format!("{} has been changed since the new contents were made, so nothing was changed", shown(path))),
+                    }
+                    let staged = format!("{stage_name}/{stage_n}-{}", super::tree::name_of(path));
+                    stage_n += 1;
+                    let st = dp(c.root, &staged);
+                    step!(
+                        Step::Del { orig: path.clone(), staged: staged.clone(), kind, size: osize, mtime, state: DelState::Staged, aside: true },
+                        c.env.rename_new(&t, &st).map_err(|e| format!("{} couldn’t be set aside: {}", shown(path), io_msg(&e)))
+                    );
+                }
+                // looked at first, so that a file found later at this name is known to be this step's own
+                if matches!(c.env.stat(&t), Ok(Some(_))) {
+                    return fail(c, j, &steps, None, format!("The file {} couldn’t be made: something with that name is already there", shown(path)));
+                }
+                let part = format!("{path}.dogfile-part-{}", c.rid);
+                let pp = dp(c.root, &part);
+                let src = super::blobs::path_in(&blobs, blob);
+                step!(
+                    Step::Put { to: path.clone(), part: part.clone(), size: *size, blob: blob.clone() },
+                    (|| {
+                        c.env.copy_new(&src, &pp).map_err(|e| format!("The new contents of {} couldn’t be written: {}", shown(path), io_msg(&e)))?;
+                        // what was written must be exactly the new contents
+                        match super::blobs::hash_file(&pp) {
+                            Ok((h, n)) if h == *blob && n == *size => {}
+                            _ => {
+                                let _ = c.env.remove_file(&pp);
+                                return Err(format!("The new contents of {} weren’t written correctly, so nothing was changed", shown(path)));
+                            }
+                        }
+                        c.env.rename_new(&pp, &t).map_err(|e| format!("The new contents of {} couldn’t be put in place: {}", shown(path), io_msg(&e)))
+                    })()
+                );
+            }
             Act::Stage { path } => {
                 let (kind, size, mtime) = match c.env.stat(&dp(c.root, path)) {
                     Ok(Some(m)) => (m.kind, m.size, m.mtime),
@@ -295,7 +352,7 @@ pub fn apply(c: &Ctx, base: &[BEntry], foot: &Footprint, acts: &[Act]) -> Result
                 stage_n += 1;
                 let (f, t) = (dp(c.root, path), dp(c.root, &staged));
                 step!(
-                    Step::Del { orig: path.clone(), staged: staged.clone(), kind, size, mtime, state: DelState::Staged },
+                    Step::Del { orig: path.clone(), staged: staged.clone(), kind, size, mtime, state: DelState::Staged, aside: false },
                     c.env.rename_new(&f, &t).map_err(|e| format!("{} couldn’t be set aside: {}", shown(path), io_msg(&e)))
                 );
             }
@@ -306,8 +363,8 @@ pub fn apply(c: &Ctx, base: &[BEntry], foot: &Footprint, acts: &[Act]) -> Result
     let _ = j.line(&json!({ "e": "commit" }), true);
     let mut out = Outcome::default();
     for (i, s) in steps.iter_mut().enumerate() {
-        if let Step::Del { orig, staged, kind, size, mtime, state } = s {
-            match commit_one(c, orig, staged, *kind, *size, *mtime) {
+        if let Step::Del { orig, staged, kind, size, mtime, state, aside } = s {
+            match commit_one(c, orig, staged, *kind, *size, *mtime, *aside) {
                 Ok(st) => {
                     if let DelState::Kept = st {
                         out.notes.push(format!("{} couldn’t be sent to the Recycle Bin, so it was left where it was", shown(orig)));
@@ -336,8 +393,23 @@ pub fn apply(c: &Ctx, base: &[BEntry], foot: &Footprint, acts: &[Act]) -> Result
 
 /// One item from "set aside" to the Recycle Bin. It goes back to its own place first so that the Recycle Bin knows where
 /// it came from (that is what "Restore" and Undo use).
-fn commit_one(c: &Ctx, orig: &str, staged: &str, kind: Kind, size: u64, mtime: i64) -> Result<DelState, String> {
+fn commit_one(c: &Ctx, orig: &str, staged: &str, kind: Kind, size: u64, mtime: i64, aside: bool) -> Result<DelState, String> {
     let (o, s) = (dp(c.root, orig), dp(c.root, staged));
+    if aside {
+        // replaced by new contents: recycled from where it is set aside, under that name, never from its own place
+        return match c.env.stat(&s) {
+            Ok(Some(m)) if m.kind == kind && m.size == size && m.mtime == mtime => match c.env.trash(&s) {
+                Ok(()) => Ok(DelState::Trashed { from: s.to_string_lossy().to_string() }),
+                Err(e) if c.env.crashed() => Err(e),
+                Err(_) if exists(c, &s).is_none() => Ok(DelState::Trashed { from: s.to_string_lossy().to_string() }),
+                Err(e) => Err(format!("The old {} is still set aside in {} because it couldn’t be recycled: {e}", shown(orig), shown(staged.rsplit_once('/').map(|x| x.0).unwrap_or(staged)))),
+            },
+            Ok(Some(_)) => Err(format!("The old {} was changed while it was set aside, so it was left alone", shown(orig))),
+            // gone from the set-aside place: it was recycled by an earlier, interrupted run
+            Ok(None) => Ok(DelState::Trashed { from: s.to_string_lossy().to_string() }),
+            Err(e) => Err(format!("{} couldn’t be checked: {e}", shown(orig))),
+        };
+    }
     let ok_item = |m: &Meta| m.kind == kind && (kind != Kind::File || (m.size == size && m.mtime == mtime));
     match c.env.stat(&s) {
         Ok(Some(m)) if ok_item(&m) => {
@@ -423,6 +495,18 @@ fn reverse_pending(c: &Ctx, s: &Step, problems: &mut Vec<String>) {
                 }
             }
         }
+        Step::Put { to, part, size, blob } => {
+            let pp = dp(c.root, part);
+            if exists(c, &pp).is_some() {
+                if let Err(e) = c.env.remove_file(&pp) {
+                    problems.push(format!("The half-written file {} couldn’t be removed: {}", shown(part), io_msg(&e)));
+                }
+            } else {
+                // nothing was at the name when this was written down, and the half-written file is gone: it was renamed
+                // into place last, so a file there with these contents is this step's own
+                remove_put(c, to, *size, blob, problems);
+            }
+        }
         Step::Copy { to, part, size, .. } => {
             let pp = dp(c.root, part);
             if exists(c, &pp).is_some() {
@@ -443,8 +527,39 @@ fn reverse_pending(c: &Ctx, s: &Step, problems: &mut Vec<String>) {
     }
 }
 
+/// take away a file written by a Put, if it is still exactly what was written
+fn remove_put(c: &Ctx, to: &str, size: u64, blob: &str, problems: &mut Vec<String>) {
+    let t = dp(c.root, to);
+    match exists(c, &t) {
+        Some(m) if m.kind == Kind::File && m.size == size => {
+            if !same_as_blob(c, &t, blob, size) {
+                problems.push(format!("{} was changed, so it was left", shown(to)));
+            } else if let Err(e) = c.env.remove_file(&t) {
+                problems.push(format!("{} couldn’t be removed: {}", shown(to), io_msg(&e)));
+            }
+        }
+        Some(_) => problems.push(format!("{} was changed, so it was left", shown(to))),
+        None => {}
+    }
+}
+/// is the file what the blob holds (when the blob is gone, the size has to do)
+fn same_as_blob(c: &Ctx, p: &Path, blob: &str, size: u64) -> bool {
+    let b = super::blobs::path_in(&super::blobs::dir_of_jdir(c.jdir), blob);
+    if std::fs::metadata(&b).is_err() {
+        return true;
+    }
+    matches!(super::blobs::hash_file(p), Ok((h, n)) if h == blob && n == size)
+}
+
 fn reverse_step(c: &Ctx, s: &Step, problems: &mut Vec<String>) {
     match s {
+        Step::Put { to, part, size, blob } => {
+            let pp = dp(c.root, part);
+            if exists(c, &pp).is_some() {
+                let _ = c.env.remove_file(&pp);
+            }
+            remove_put(c, to, *size, blob, problems);
+        }
         Step::Mv { from, to } => {
             let (f, t) = (dp(c.root, from), dp(c.root, to));
             let same = from.to_lowercase() == to.to_lowercase();
@@ -569,6 +684,16 @@ pub fn undo_check(c: &Ctx, steps: &[Step]) -> Vec<String> {
             }
             Step::Mkdir { path } => {
                 sim.over.insert(path.clone(), false);
+            }
+            Step::Put { to, size, blob, .. } => {
+                if sim.over.get(to).is_none() {
+                    if let Some(m) = exists(c, &dp(c.root, to)) {
+                        if m.kind != Kind::File || m.size != *size || !same_as_blob(c, &dp(c.root, to), blob, *size) {
+                            bad.push(format!("{} has been changed since", shown(to)));
+                        }
+                    }
+                }
+                sim.over.insert(to.clone(), false);
             }
             Step::Copy { to, size, .. } => {
                 if sim.over.get(to).is_none() {
@@ -711,12 +836,12 @@ fn recover_one(env: &dyn Env, jdir: &Path, file: &Path) -> Option<Recovery> {
         // the deleted items were already set aside and everything else was done: carry on to the Recycle Bin
         let mut notes = vec![];
         for (i, s) in steps.iter_mut().enumerate() {
-            if let Step::Del { orig, staged, kind, size, mtime, state } = s {
+            if let Step::Del { orig, staged, kind, size, mtime, state, aside } = s {
                 if let Some(t) = trashed.get(&i) {
                     *state = t.clone();
                     continue;
                 }
-                match commit_one(&ctx, orig, staged, *kind, *size, *mtime) {
+                match commit_one(&ctx, orig, staged, *kind, *size, *mtime, *aside) {
                     Ok(st) => *state = st,
                     Err(e) => notes.push(e),
                 }

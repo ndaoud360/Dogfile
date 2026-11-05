@@ -36,6 +36,12 @@ pub enum OpKind {
     Delete { path: String },
     Mkdir { path: String },
     Copy { from: String, to: String },
+    /// new contents for a file that is in the folder. The new contents are kept as a blob (named by its SHA-256);
+    /// the old file goes to the Recycle Bin, last. `from_*` say which contents the new ones were made from (the size, date and
+    /// SHA-256 of the file as it was), so that new contents made from one version are never written over another.
+    Put { path: String, blob: String, size: u64, from_size: u64, from_mtime: i64, from_hash: String },
+    /// a new file with these contents
+    NewFile { path: String, blob: String, size: u64 },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -58,6 +64,8 @@ pub struct Node {
     pub origin: Option<String>,
     /// made by a Copy
     pub copy: bool,
+    /// the blob holding its new contents (a file whose contents were changed here, or a new file)
+    pub put: Option<String>,
 }
 
 /// One thing done to the disk, in the order it is done. A change in the reality becomes one or more of these.
@@ -69,6 +77,8 @@ pub enum Act {
     CopyFile { from: String, to: String },
     /// delete: set aside (reversible) and only recycled when everything else has worked
     Stage { path: String },
+    /// write a file's contents from a blob. `replace`: there is a file there now, which is set aside first (and recycled last)
+    Put { path: String, blob: String, size: u64, replace: bool, from_hash: String },
 }
 
 /// What a change relies on in the folder as it was: if any of this is different on disk when the changes are applied,
@@ -86,6 +96,16 @@ pub struct Footprint {
 const RESERVED: [&str; 22] = ["CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"];
 pub const MAX_PATH_CHARS: usize = 220;
 
+fn check_blob(blob: &str, size: u64) -> Result<(), String> {
+    if !super::blobs::valid(blob) {
+        return Err("That new content isn’t valid".into());
+    }
+    if size > super::blobs::MAX_BLOB {
+        return Err("That is too much new content for one file".into());
+    }
+    Ok(())
+}
+
 /// One part of a name: nothing Windows would refuse (the rules are the same everywhere so a reality works on any PC)
 pub fn check_name(n: &str) -> Result<(), String> {
     if n.is_empty() {
@@ -102,6 +122,10 @@ pub fn check_name(n: &str) -> Result<(), String> {
     }
     if n.chars().count() > 200 {
         return Err("That name is too long".into());
+    }
+    // names Dogfile uses for its own set-aside folders and half-made files are never given to anything
+    if n.starts_with(super::exec::STAGE_PREFIX) || n.contains(".dogfile-part-") {
+        return Err(format!("“{n}” is a name Dogfile keeps for itself"));
     }
     let stem = n.split('.').next().unwrap_or("").trim_end().to_uppercase();
     if RESERVED.contains(&stem.as_str()) {
@@ -152,7 +176,7 @@ impl Tree {
         let mut t = Tree::new(ci);
         for e in base {
             let p = norm_loose(&e.path);
-            t.map.insert(t.key(&p), Node { path: p.clone(), kind: e.kind, size: e.size, mtime: e.mtime, origin: Some(p), copy: false });
+            t.map.insert(t.key(&p), Node { path: p.clone(), kind: e.kind, size: e.size, mtime: e.mtime, origin: Some(p), copy: false, put: None });
         }
         t
     }
@@ -240,7 +264,7 @@ impl Tree {
                 }
                 self.check_parent(&p)?;
                 acts = vec![Act::Mkdir { path: p.clone() }];
-                self.insert(Node { path: p, kind: Kind::Dir, size: 0, mtime: 0, origin: None, copy: false });
+                self.insert(Node { path: p, kind: Kind::Dir, size: 0, mtime: 0, origin: None, copy: false, put: None });
             }
             OpKind::Move { from, to } => {
                 let (from, to) = (norm_loose(from), norm(to)?);
@@ -287,6 +311,50 @@ impl Tree {
                 }
                 acts = vec![Act::Stage { path: node.path.clone() }];
                 self.remove_subtree(&p);
+            }
+            OpKind::Put { path, blob, size, from_size, from_mtime, from_hash } => {
+                let p = norm_loose(path);
+                if p.is_empty() {
+                    return Err("The folder itself has no contents to change".into());
+                }
+                check_blob(blob, *size)?;
+                let node = self.need(&p)?.clone();
+                if node.kind != Kind::File {
+                    return Err(format!("“{p}” isn’t a file"));
+                }
+                if node.copy {
+                    return Err(format!("“{p}” is a copy. Change the original before copying it."));
+                }
+                let Some(origin) = node.origin.clone() else {
+                    return Err(format!("“{p}” is a new file here. Its contents can’t be changed again."));
+                };
+                if node.put.is_some() {
+                    return Err(format!("The contents of “{p}” are already changed here. Remove that change to change them again."));
+                }
+                if node.size != *from_size || node.mtime != *from_mtime || !super::blobs::valid(from_hash) {
+                    return Err(format!("“{p}” has changed since this change was made"));
+                }
+                if let Some(f) = fp.as_deref_mut() {
+                    f.files.push(origin);
+                }
+                acts = vec![Act::Put { path: node.path.clone(), blob: blob.clone(), size: *size, replace: true, from_hash: from_hash.clone() }];
+                let mut n = node;
+                n.put = Some(blob.clone());
+                n.size = *size;
+                self.insert(n);
+            }
+            OpKind::NewFile { path, blob, size } => {
+                let p = norm(path)?;
+                if p.is_empty() {
+                    return Err("That is the folder itself".into());
+                }
+                check_blob(blob, *size)?;
+                if self.get(&p).is_some() {
+                    return Err(format!("“{p}” already exists"));
+                }
+                self.check_parent(&p)?;
+                acts = vec![Act::Put { path: p.clone(), blob: blob.clone(), size: *size, replace: false, from_hash: String::new() }];
+                self.insert(Node { path: p, kind: Kind::File, size: *size, mtime: 0, origin: None, copy: false, put: Some(blob.clone()) });
             }
             OpKind::Copy { from, to } => {
                 let (from, to) = (norm_loose(from), norm(to)?);

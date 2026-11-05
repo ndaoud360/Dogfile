@@ -341,16 +341,19 @@ fn commit_one(c: &Ctx, orig: &str, staged: &str, kind: Kind, size: u64, mtime: i
     let ok_item = |m: &Meta| m.kind == kind && (kind != Kind::File || (m.size == size && m.mtime == mtime));
     match c.env.stat(&s) {
         Ok(Some(m)) if ok_item(&m) => {
-            if c.env.rename_new(&s, &o).is_ok() {
+            let moved_back = match c.env.rename_new(&s, &o) {
+                Ok(()) => true,
+                Err(_) if c.env.crashed() => return Err("stopped".into()),
+                // reported as failed: if it is gone from the set-aside place and is at its own place, it was moved
+                Err(_) => exists(c, &s).is_none() && matches!(exists(c, &o), Some(m) if ok_item(&m)),
+            };
+            if moved_back {
                 return match c.env.trash(&o) {
                     Ok(()) => Ok(DelState::Trashed { from: o.to_string_lossy().to_string() }),
                     Err(e) if c.env.crashed() => Err(e),
                     // reported as failed: where is it? still in its place means it wasn't recycled
                     Err(_) => Ok(if exists(c, &o).is_some() { DelState::Kept } else { DelState::Trashed { from: o.to_string_lossy().to_string() } }),
                 };
-            }
-            if c.env.crashed() {
-                return Err("stopped".into());
             }
             // its own place is taken now: recycle it from where it is
             match c.env.trash(&s) {
@@ -528,18 +531,16 @@ struct Sim<'a, 'b> {
     over: HashMap<String, bool>,
 }
 impl Sim<'_, '_> {
-    fn has(&self, p: &str) -> bool {
+    /// is something at the path. `inside`: what to assume for a path inside a folder that the steps so far bring back
+    /// (what it holds isn't known until it is back; the steps themselves check each thing as they go)
+    fn has(&self, p: &str, inside: bool) -> bool {
         if let Some(v) = self.over.get(p) {
             return *v;
         }
-        // inside something that is sent away
         let mut q = p;
         while let Some((par, _)) = q.rsplit_once('/') {
             if let Some(v) = self.over.get(par) {
-                if !*v {
-                    return false;
-                }
-                break;
+                return if *v { inside } else { false };
             }
             q = par;
         }
@@ -555,10 +556,10 @@ pub fn undo_check(c: &Ctx, steps: &[Step]) -> Vec<String> {
         match s {
             Step::Mv { from, to } => {
                 let same = from.to_lowercase() == to.to_lowercase();
-                if !sim.has(to) {
+                if !sim.has(to, true) {
                     bad.push(format!("{} isn’t there any more", shown(to)));
                 }
-                if !same && sim.has(from) {
+                if !same && sim.has(from, false) {
                     bad.push(format!("Something is now at {}", shown(from)));
                 }
                 if !same {
@@ -582,14 +583,14 @@ pub fn undo_check(c: &Ctx, steps: &[Step]) -> Vec<String> {
             Step::Del { orig, staged, state, .. } => match state {
                 DelState::Kept => {}
                 DelState::Staged => {
-                    if sim.has(orig) {
+                    if sim.has(orig, false) {
                         bad.push(format!("Something is now at {}", shown(orig)));
                     }
                     sim.over.insert(staged.clone(), false);
                     sim.over.insert(orig.clone(), true);
                 }
                 DelState::Trashed { from } => {
-                    if sim.has(orig) {
+                    if sim.has(orig, false) {
                         bad.push(format!("Something is now at {}", shown(orig)));
                     }
                     if !c.env.bin_has(Path::new(from)) {

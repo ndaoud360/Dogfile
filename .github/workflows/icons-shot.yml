@@ -25,7 +25,7 @@ jobs:
           Copy-Item "$env:WINDIR\System32\notepad.exe" "$d\Notepad copy.exe" -ErrorAction SilentlyContinue
           New-Item -ItemType File -Force $app/portable.txt | Out-Null
           New-Item -ItemType Directory -Force $app/data | Out-Null
-          Set-Content $app/data/settings.json '{"indexEnabled":false,"welcomed":true,"uiMode":"full","useWindowsIcons":true,"showThumbnails":false}'
+          Set-Content $app/data/settings.json '{"indexEnabled":false,"welcomed":true,"uiMode":"full","useWindowsIcons":true,"showThumbnails":false,"trialOfferCount":3,"defaultView":"details","defaultSort":{"key":"name","dir":1}}'
           ./build/ci/measure.ps1 -Exe "$app/Dogfile.exe" -ArgList "`"$d`"" -Label windows-icons -Out $out -Seconds 25 -Shot
           Set-Location $out
           git init -q -b ci-shots

@@ -269,7 +269,7 @@ export async function openSettings(section = 'general', opts = {}) {
     }],
     views: ['Files & views', 'viewGrid', (el) => {
       _append(el,
-        row('Default view', select('defaultView', [['grid', 'Grid'], ['details', 'Details'], ['list', 'List'], ['columns', 'Columns']])),
+        row('Default view', select('defaultView', [['details', 'Details'], ['columns', 'Columns'], ['grid', 'Grid'], ['gallery', 'Gallery'], ['list', 'List']])),
         row('Default sort', (() => {
           const cur = S.defaultSort || { key: 'ctime', dir: -1 };
           const opts = [['ctime:-1', 'Date created (newest first)'], ['ctime:1', 'Date created (oldest first)'], ['mtime:-1', 'Date modified (newest first)'], ['name:1', 'Name (A to Z)'], ['name:-1', 'Name (Z to A)'], ['size:-1', 'Size (largest first)'], ['type:1', 'Type']];

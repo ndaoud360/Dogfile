@@ -39,3 +39,11 @@ pub fn webview_memory_low(w: &tauri::WebviewWindow, low: bool) {
         }
     });
 }
+
+/// Hand back the memory this program isn't using right now (its pages stay available: Windows brings back the ones
+/// that are needed again). Used a little after Dogfile stops being the window in front.
+pub fn trim_own_memory() {
+    unsafe {
+        let _ = windows::Win32::System::ProcessStatus::EmptyWorkingSet(windows::Win32::System::Threading::GetCurrentProcess());
+    }
+}

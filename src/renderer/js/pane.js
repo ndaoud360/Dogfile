@@ -907,7 +907,7 @@ export function viewMenu(t, r) {
   const sz = (n, label) => ({ label, checked: t.view === 'grid' && (t.gridSize || state.settings.gridSize) === n, run: () => { t.view = 'grid'; t.gridSize = n; touchView(t); renderTabPanes(t); } });
   const tog = (k, label) => ({ label, checked: !!state.settings[k], run: () => { state.settings[k] = !state.settings[k]; saveSettings(); state.tabs.forEach(recompute); renderAll(); bus.emit('settings'); } });
   showMenu([
-    v('grid', 'Grid', 'viewGrid', 'Ctrl+Shift+2'), v('gallery', 'Gallery', 'gallery', 'Ctrl+Shift+8'), v('list', 'List', 'viewDetails', 'Ctrl+Shift+5'), v('details', 'Details', 'viewList', 'Ctrl+Shift+6'), v('columns', 'Columns', 'viewColumns', 'Ctrl+Shift+7'),
+    v('details', 'Details', 'viewList', 'Ctrl+Shift+6'), v('columns', 'Columns', 'viewColumns', 'Ctrl+Shift+7'), v('grid', 'Grid', 'viewGrid', 'Ctrl+Shift+2'), v('gallery', 'Gallery', 'gallery', 'Ctrl+Shift+8'), v('list', 'List', 'viewDetails', 'Ctrl+Shift+5'),
     { separator: true },
     { label: 'Thumbnail size', submenu: [sz(96, 'Small'), sz(128, 'Medium'), sz(160, 'Large'), sz(224, 'Extra large'), sz(300, 'Huge')] },
     { label: 'Grid labels', submenu: ['smart', 'always', 'hover'].map((k) => ({ label: { smart: 'Smart (hide on photos)', always: 'Always', hover: 'On hover only' }[k], radio: true, selected: state.settings.gridLabels === k, run: () => { state.settings.gridLabels = k; saveSettings(); renderAll(); } })) },

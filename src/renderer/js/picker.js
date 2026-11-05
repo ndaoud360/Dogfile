@@ -15,7 +15,8 @@ const lastDir = (mode) => { try { return JSON.parse(localStorage.getItem(LAST_KE
 const rememberDir = (mode, dir) => { try { const o = JSON.parse(localStorage.getItem(LAST_KEY) || '{}'); o[mode] = dir; localStorage.setItem(LAST_KEY, JSON.stringify(o)); } catch { /* storage unavailable: the last folder just isn't remembered */ } };
 const ROOT = 'atlas:pc';
 // how the list is shown: Grid, Details, Columns or Gallery (remembered, and the same in every picker)
-const VIEWS = [['grid', 'viewGrid', 'Grid'], ['details', 'viewDetails', 'Details'], ['columns', 'viewColumns', 'Columns'], ['gallery', 'gallery', 'Gallery']];
+// the same order and pictures as the view buttons in the main window
+const VIEWS = [['details', 'viewList', 'Details'], ['columns', 'viewColumns', 'Columns'], ['grid', 'viewGrid', 'Grid'], ['gallery', 'gallery', 'Gallery']];
 const getView = () => { try { const v = localStorage.getItem('pickerView'); return VIEWS.some((x) => x[0] === v) ? v : 'details'; } catch { return 'details'; } };
 const setView = (v) => { try { localStorage.setItem('pickerView', v); } catch { /* storage unavailable: the view just isn't remembered */ } };
 const PIC_EXT = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'avif', 'ico']);

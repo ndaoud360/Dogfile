@@ -663,6 +663,23 @@ impl Sim<'_, '_> {
     }
 }
 
+impl Sim<'_, '_> {
+    /// has an earlier step of this undo changed this path, or a folder above it (so what is on disk there now isn't what
+    /// will be there when this step is reached; the step itself checks it then)
+    fn moved(&self, p: &str) -> bool {
+        let mut q = p;
+        loop {
+            if self.over.contains_key(q) {
+                return true;
+            }
+            match q.rsplit_once('/') {
+                Some((par, _)) => q = par,
+                None => return false,
+            }
+        }
+    }
+}
+
 /// What stands in the way of undoing; empty means it can go ahead.
 pub fn undo_check(c: &Ctx, steps: &[Step]) -> Vec<String> {
     let mut bad = vec![];
@@ -686,7 +703,7 @@ pub fn undo_check(c: &Ctx, steps: &[Step]) -> Vec<String> {
                 sim.over.insert(path.clone(), false);
             }
             Step::Put { to, size, blob, .. } => {
-                if sim.over.get(to).is_none() {
+                if !sim.moved(to) {
                     if let Some(m) = exists(c, &dp(c.root, to)) {
                         if m.kind != Kind::File || m.size != *size || !same_as_blob(c, &dp(c.root, to), blob, *size) {
                             bad.push(format!("{} has been changed since", shown(to)));
@@ -696,7 +713,7 @@ pub fn undo_check(c: &Ctx, steps: &[Step]) -> Vec<String> {
                 sim.over.insert(to.clone(), false);
             }
             Step::Copy { to, size, .. } => {
-                if sim.over.get(to).is_none() {
+                if !sim.moved(to) {
                     if let Some(m) = exists(c, &dp(c.root, to)) {
                         if m.kind != Kind::File || m.size != *size {
                             bad.push(format!("The copy {} has been changed", shown(to)));

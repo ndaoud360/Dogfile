@@ -2384,6 +2384,30 @@ fn a_failure_at_any_step_of_a_text_edit_loses_nothing() {
 }
 
 #[test]
+fn undo_is_not_fooled_by_another_file_that_now_stands_where_a_changed_or_copied_file_was() {
+    // new contents written in a folder, then the folder moved away and another folder moved to its name
+    let mut w = World::new();
+    put(&w.root, "misc/e.pdf", "OLD-E!", 1000);
+    put(&w.root, "pics/e.pdf", "OTHER", 1000);
+    let ops = vec![edit(&w, "misc/e.pdf", "NEWER-E"), mv("misc", "old-misc"), mv("pics", "misc")];
+    w.reality(ops);
+    assert!(ok(&api::apply(&w.env(), &w.data, &w.id).unwrap()));
+    assert_eq!(std::fs::read_to_string(w.root.join("misc/e.pdf")).unwrap(), "OTHER");
+    let u = api::undo(&w.env(), &w.data, &w.id).unwrap();
+    assert!(ok(&u), "{u}");
+    w.assert_back_as_it_was("undone");
+    // the same for a copy
+    let mut w = World::new();
+    put(&w.root, "misc/e.pdf", "E1", 1000);
+    put(&w.root, "pics/e.pdf", "OTHER-LONG", 1000);
+    w.reality(vec![mk("c"), cp("misc/e.pdf", "c/e.pdf"), mv("c", "old"), mv("pics", "c")]);
+    assert!(ok(&api::apply(&w.env(), &w.data, &w.id).unwrap()));
+    let u = api::undo(&w.env(), &w.data, &w.id).unwrap();
+    assert!(ok(&u), "{u}");
+    w.assert_back_as_it_was("undone copy");
+}
+
+#[test]
 #[ignore]
 fn repro_one() {
     let seed: u64 = std::env::var("MV_SEED").ok().and_then(|v| v.parse().ok()).unwrap();

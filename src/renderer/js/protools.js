@@ -178,12 +178,15 @@ export async function removeImageBackground() {
       const frame = ctx.getImageData(0, 0, w, hh), pixels = frame.data;
       const md = mask.data, mw = mask.width, mh = mask.height;
       const channels = Math.max(1, Math.round(md.length / (mw * mh)));
+      let lo = Infinity, hi = -Infinity;
+      for (let i = 0; i < mw * mh; i++) { const v = Number(md[i * channels]); if (v < lo) lo = v; if (v > hi) hi = v; }
+      const span = hi - lo;
       for (let y = 0; y < hh; y++) {
         const my = Math.min(mh - 1, Math.floor((y / hh) * mh));
         for (let x = 0; x < w; x++) {
           const mx = Math.min(mw - 1, Math.floor((x / w) * mw));
           const v = Number(md[(my * mw + mx) * channels]);
-          pixels[(y * w + x) * 4 + 3] = v <= 1 ? Math.round(v * 255) : Math.max(0, Math.min(255, Math.round(v)));
+          pixels[(y * w + x) * 4 + 3] = span > 0 ? Math.max(0, Math.min(255, Math.round(((v - lo) / span) * 255))) : 255;
         }
       }
       ctx.putImageData(frame, 0, 0);

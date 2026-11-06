@@ -254,6 +254,8 @@ const R = {
     ['Share', [['sendToPhone', 'Send to phone'], ['copyPath', 'Copy path'], ['copyName'], ['createShortcut'], ['symlink'], ['addToShelf', 'Add to Drop Shelf']]],
   ],
   tools: [
+    ['Create', [['qrCode', 'QR code', true], ['blankFile', 'Blank file…']]],
+    ['Convert & generate', [['csvJson', 'CSV / TSV to JSON', true], ['loremIpsum', 'Lorem Ipsum']]],
     ['Clean up', [['cleanup', 'Cleanup', true], ['analyze', 'Disk space'], ['emptyRecycle'], ['similarMedia', 'Similar media']]],
     ['Compare', [['compare', 'Compare & sync', true], ['compareFiles', 'Two files…']]],
     ['Protect', [['timeTravel', 'Time travel', true], ['history', 'File history'], ['allVersions', 'Versions'], ['makeChecksums', 'Checksums'], ['verifyChecksums', 'Verify'], ['hashes'], ['whoLocks', 'What’s locking it?'], ['lock', 'Lock'], ['unlock', 'Unlock']]],

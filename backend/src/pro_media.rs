@@ -23,16 +23,21 @@ pub async fn process_image(a: &Args) -> R {
             image = image.resize_exact(nw, nh, FilterType::Lanczos3);
         }
         let mut file = std::fs::File::create(&out).map_err(|e| format!("Couldn’t create output: {e}"))?;
-        match format.as_str() {
-            "jpg" | "jpeg" => {
-                let rgb = image.to_rgb8();
-                image::codecs::jpeg::JpegEncoder::new_with_quality(&mut file, quality)
-                    .encode_image(&rgb).map_err(|e| format!("Couldn’t encode JPEG: {e}"))?;
+        let wrote: Result<(), String> = (|| {
+            match format.as_str() {
+                "jpg" | "jpeg" => {
+                    let rgb = image.to_rgb8();
+                    image::codecs::jpeg::JpegEncoder::new_with_quality(&mut file, quality)
+                        .encode_image(&rgb).map_err(|e| format!("Couldn’t encode JPEG: {e}"))?;
+                }
+                "png" => image.write_to(&mut file, image::ImageFormat::Png).map_err(|e| e.to_string())?,
+                "webp" => image.write_to(&mut file, image::ImageFormat::WebP).map_err(|e| e.to_string())?,
+                _ => return Err("Choose JPG, PNG or WebP".into()),
             }
-            "png" => image.write_to(&mut file, image::ImageFormat::Png).map_err(|e| e.to_string())?,
-            "webp" => image.write_to(&mut file, image::ImageFormat::WebP).map_err(|e| e.to_string())?,
-            _ => return Err("Choose JPG, PNG or WebP".into()),
-        }
+            Ok(())
+        })();
+        drop(file);
+        if let Err(e) = wrote { let _ = std::fs::remove_file(&out); return Err(e); }
         let size = std::fs::metadata(&out).map(|m| m.len()).unwrap_or(0);
         Ok(json!({"path": out, "width": image.width(), "height": image.height(), "bytes": size, "originalWidth": w, "originalHeight": h}))
     }).await.map_err(|e| e.to_string())?
@@ -56,9 +61,13 @@ pub async fn create_gif(a: &Args) -> R {
             decoded.push(Frame::from_parts(rgba, 0, 0, Delay::from_numer_denom_ms(delay, 1)));
         }
         let file = std::fs::File::create(&out).map_err(|e| format!("Couldn’t create GIF: {e}"))?;
-        let mut enc = GifEncoder::new(file);
-        enc.set_repeat(Repeat::Infinite).map_err(|e| e.to_string())?;
-        enc.encode_frames(decoded).map_err(|e| format!("Couldn’t encode GIF: {e}"))?;
+        let wrote: Result<(), String> = (move || {
+            let mut enc = GifEncoder::new(file);
+            enc.set_repeat(Repeat::Infinite).map_err(|e| e.to_string())?;
+            enc.encode_frames(decoded).map_err(|e| format!("Couldn’t encode GIF: {e}"))?;
+            Ok(())
+        })();
+        if let Err(e) = wrote { let _ = std::fs::remove_file(&out); return Err(e); }
         let bytes = std::fs::metadata(&out).map(|m| m.len()).unwrap_or(0);
         Ok(json!({"path": out, "frames": files.len(), "bytes": bytes}))
     }).await.map_err(|e| e.to_string())?

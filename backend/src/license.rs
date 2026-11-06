@@ -581,6 +581,7 @@ pub fn start_background() {
 
 /// The calls only Dogfile Pro may make (a call is free unless it is named here or in QUIET_CALLS).
 const PRO_CALLS: &[&str] = &[
+    "pro:authorize", "media:processImage", "media:createGif",
     "versions:save", "versions:list", "versions:restore", "versions:remove", "versions:overview",
     "remote:signIn", "remote:get", "remote:put", "remote:mkdir", "remote:rename", "remote:copy", "remote:open", "remote:test",
     "ext:install", "ai:download", "media:export", "media:contactSheet", "llm:plan", "llm:warm",

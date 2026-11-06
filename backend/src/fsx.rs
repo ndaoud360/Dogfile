@@ -188,6 +188,26 @@ pub async fn mkdir(a: &Args) -> R {
     tokio::fs::create_dir(&p).await.map_err(|e| if e.kind() == std::io::ErrorKind::AlreadyExists { format!("\"{}\" already exists", basename(&p)) } else { friendly(&e) })?;
     Ok(json!(p))
 }
+/// fs:createSized(path, bytes): create a new zero-filled test file without sending its contents through the webview.
+pub async fn create_sized(a: &Args) -> R {
+    let p = a.s(0)?;
+    let size = a.u(1, 0);
+    const MAX_SIZE: u64 = 1024 * 1024 * 1024;
+    if size > MAX_SIZE {
+        return Err("For safety, the blank-file generator is limited to 1 GiB per file".into());
+    }
+    let f = tokio::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&p)
+        .await
+        .map_err(|e| if e.kind() == std::io::ErrorKind::AlreadyExists {
+            format!("\"{}\" already exists", basename(&p))
+        } else { friendly(&e) })?;
+    f.set_len(size).await.map_err(|e| friendly(&e))?;
+    Ok(json!({ "path": p, "size": size }))
+}
+
 pub async fn new_file(a: &Args) -> R {
     let p = a.s(0)?;
     let content = a.s_or(1, "");

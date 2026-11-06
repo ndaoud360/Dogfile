@@ -24,6 +24,7 @@ pub mod watch;
 pub mod ops;
 pub mod archive;
 pub mod media;
+pub mod pro_media;
 pub mod doc;
 pub mod tags;
 pub mod keywords;

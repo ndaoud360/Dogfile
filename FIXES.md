@@ -15,3 +15,7 @@ Do not apply the old .patch file on top; this ZIP already includes everything.
 - WebP output is lossless only (image crate); the quality slider affects JPG only.
 - Not compiled here; build via your normal Windows CI and smoke-test the model downloads.
 - Your repo's commit 7276a61 reverted the wiring in 14 files; extracting this ZIP restores it.
+
+## Fix 4 (CI)
+src/renderer/js/protools.js: build/test-renderer.mjs requires the literal text requirePro('proUtilities') in the source.
+The helper now calls requirePro('proUtilities') directly. Renderer tests: 1567 passed, 0 failed; ESLint undef check clean.

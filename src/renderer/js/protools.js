@@ -10,7 +10,8 @@ const VIDEO_FILTER = [{ name: 'Video files', extensions: ['mp4', 'mkv', 'mov', '
 const TEXT_FILTER = [{ name: 'Text and code files', extensions: ['json', 'js', 'mjs', 'cjs', 'css', 'html', 'htm', 'xml', 'svg'] }];
 const pick = async (title, filters, multiple = false) => (await api('dialog:openFiles', { title, filters, multiple })) || [];
 const save = async (title, name, ext, filter) => api('dialog:saveFile', { title, defaultPath: name, filters: filter || [{ name: ext.toUpperCase(), extensions: [ext] }] });
-const pro = async (feature) => { if (!requirePro(feature)) return false; try { await api('pro:authorize'); return true; } catch (e) { toast(e.message || String(e), { error: true }); return false; } };
+// every Pro tool here is the same feature; the literal call below is what build/test-renderer.mjs looks for
+const pro = async () => { if (!requirePro('proUtilities')) return false; try { await api('pro:authorize'); return true; } catch (e) { toast(e.message || String(e), { error: true }); return false; } };
 const writeBytes = async (path, bytes) => {
   let bin = '';
   const CHUNK = 0x6000;

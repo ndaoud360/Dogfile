@@ -1301,8 +1301,6 @@ export function buildItemsMenu(t, items) {
     one && !one.isDir && t.links?.[one.path] && { label: 'See what’s linked', redDot: !!t.links[one.path].outside, icon: 'pageLinked', run: () => import('./links.js').then((m) => m.showLinks(one)) },
     real.length && { label: 'Tags', icon: 'tag', submenu: tagMenu(paths) },
     allDirs && real.length && { label: isPinned(real[0].path) ? 'Unpin from sidebar' : 'Pin to sidebar', icon: isPinned(real[0]?.path) ? 'unpin' : 'pin', run: () => (isPinned(real[0].path) ? unpin(real[0].path) : pin(paths)) },
-    one && !one.isDir && isImageFile(one) && { label: 'Extract image color palette…', icon: 'palette', run: () => import('./utilities.js').then((m) => m.openUtilities('palette', { path: one.path })) },
-    one && !one.isDir && isImageFile(one) && { label: 'Create folder cover artwork…', icon: 'image', run: () => import('./utilities.js').then((m) => m.openUtilities('cover', { path: one.path })) },
     real.length && { label: 'More', icon: 'more', submenu: [
       !real.some((i) => i.mtp) && { label: 'Send to phone', icon: 'phone', simple: true, run: () => import('./phonelink.js').then((m) => m.sendToPhone(paths)) },
       { label: 'Add to Drop Shelf', icon: 'shelf', run: () => bus.emit('addToShelf', paths) },
@@ -1358,7 +1356,6 @@ export function buildBackgroundMenu(t, e = { clientX: 0, clientY: 0 }) {
     real && { label: 'New', icon: 'plus', submenu: [
       { label: 'Folder', icon: 'newFolder', keys: 'Ctrl+Shift+N', run: () => newFolder(t) },
       { label: 'File…', icon: 'newFile', keys: 'Ctrl+Alt+N', run: () => newFileNamed(t) },
-      { label: 'Exact-size blank file…', icon: 'newFile', run: () => import('./utilities.js').then((m) => m.openUtilities('blank', { folder: t.path })) },
       { separator: true },
       ...templates().map((tp) => ({ label: tp.label, icon: 'page', run: () => newFile(t, tp) })),
     ] },

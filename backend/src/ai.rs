@@ -1,5 +1,6 @@
-// Private on-device AI models: CLIP, Whisper, MiniLM, CLAP, local writing, background segmentation and translation.
-// Models are downloaded once from Hugging Face and run in the window; files being analyzed stay on this PC.
+// Free, private AI search: open models (CLIP for pictures, Whisper for speech, MiniLM for text, CLAP for sound)
+// downloaded once from Hugging Face and run in the window. This serves the model files and keeps an
+// embedding cache so each file is only looked at once.
 use crate::args::{Args, R};
 use crate::http::Resp;
 use crate::{st, util};
@@ -17,7 +18,7 @@ struct Model {
     files: &'static [&'static str],
     optional: &'static [&'static str],
 }
-const MODELS: [(&str, Model); 11] = [
+const MODELS: [(&str, Model); 9] = [
     ("clip", Model { repo: "Xenova/clip-vit-base-patch32", label: "Pictures & video (CLIP)", files: &["config.json", "preprocessor_config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "onnx/text_model_quantized.onnx", "onnx/vision_model_quantized.onnx"], optional: &["special_tokens_map.json"] }),
     ("whisper", Model { repo: "Xenova/whisper-base", label: "Speech to text (Whisper)", files: &["config.json", "generation_config.json", "preprocessor_config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "added_tokens.json", "onnx/encoder_model_quantized.onnx", "onnx/decoder_model_merged_quantized.onnx"], optional: &["special_tokens_map.json", "added_tokens.json"] }),
     ("minilm", Model { repo: "Xenova/all-MiniLM-L6-v2", label: "Text understanding (MiniLM)", files: &["config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "onnx/model_quantized.onnx"], optional: &["special_tokens_map.json"] }),
@@ -30,10 +31,6 @@ const MODELS: [(&str, Model); 11] = [
     ("brain-small", Model { repo: "unsloth/Qwen3.5-2B-GGUF", label: "Assistant, smaller (Qwen3.5 2B)", files: &["Qwen3.5-2B-Q4_K_M.gguf"], optional: &[] }),
     ("stems", Model { repo: "StemSplitio/htdemucs-6s-onnx", label: "Stem separation (HT-Demucs)", files: &["htdemucs_6s_fp16weights.onnx"], optional: &[] }),
     ("clap", Model { repo: "Xenova/clap-htsat-unfused", label: "Music & sounds (CLAP)", files: &["config.json", "preprocessor_config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "onnx/text_model_quantized.onnx", "onnx/audio_model_quantized.onnx"], optional: &["special_tokens_map.json"] }),
-    // General-purpose ISNet background segmentation (Apache-2.0), run locally through Transformers.js.
-    ("removebg", Model { repo: "Ko033/isnet-general-use-onnx", label: "Background removal (ISNet, 134 MB)", files: &["config.json", "preprocessor_config.json", "onnx/model_quantized.onnx"], optional: &[] }),
-    // M2M100 multilingual translation (MIT model), quantized ONNX encoder/decoder.
-    ("translate", Model { repo: "Xenova/m2m100_418M", label: "Offline translation (M2M100, about 650 MB)", files: &["config.json", "generation_config.json", "sentencepiece.bpe.model", "special_tokens_map.json", "tokenizer.json", "tokenizer_config.json", "vocab.json", "onnx/encoder_model_quantized.onnx", "onnx/decoder_model_merged_quantized.onnx"], optional: &["generation_config.json"] }),
 ];
 /// the file of a downloaded single-file model (the assistant's GGUF), when it's all there
 pub fn ready_file(k: &str) -> Option<PathBuf> {

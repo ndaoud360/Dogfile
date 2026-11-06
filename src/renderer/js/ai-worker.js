@@ -1,5 +1,5 @@
-// On-device AI worker: search embeddings, speech recognition, writing, image segmentation and translation.
-// Models load from /models/ (downloaded once); inference runs locally in this worker.
+// AI search worker: turns text, pictures and sounds into comparable vectors with open models running locally.
+// CLIP (pictures, video frames) and CLAP (music, sounds). Models load from /models/ (downloaded once).
 import { env, pipeline, AutoTokenizer, AutoProcessor, RawImage, CLIPTextModelWithProjection, CLIPVisionModelWithProjection, ClapTextModelWithProjection, ClapAudioModelWithProjection, TextStreamer } from '../vendor/transformers.min.js';
 
 env.allowRemoteModels = false;
@@ -9,7 +9,7 @@ env.useBrowserCache = false;
 env.backends.onnx.wasm.wasmPaths = '/app/vendor/ort/';
 env.backends.onnx.wasm.numThreads = 1;
 
-const REPO = { clip: 'Xenova/clip-vit-base-patch32', clap: 'Xenova/clap-htsat-unfused', whisper: 'Xenova/whisper-base', minilm: 'Xenova/all-MiniLM-L6-v2', writer: 'onnx-community/Qwen2.5-0.5B-Instruct', removebg: 'Ko033/isnet-general-use-onnx', translate: 'Xenova/m2m100_418M' };
+const REPO = { clip: 'Xenova/clip-vit-base-patch32', clap: 'Xenova/clap-htsat-unfused', whisper: 'Xenova/whisper-base', minilm: 'Xenova/all-MiniLM-L6-v2', writer: 'onnx-community/Qwen2.5-0.5B-Instruct' };
 const loaded = {};
 const opts = { dtype: 'q8', device: 'wasm' };
 async function load(kind, part) {
@@ -88,23 +88,6 @@ async function embedSentences(texts) {
 
 // writing (Notepad assistant): a small chat model, streamed back as it writes
 let gen = null, genDevice = '';
-let segmenter = null, translator = null;
-async function removeBackground(url) {
-  if (!segmenter) segmenter = pipeline('image-segmentation', REPO.removebg, { dtype: 'q8', device: 'wasm' });
-  const p = await segmenter.catch((e) => { segmenter = null; throw e; });
-  const image = await RawImage.read(url);
-  const result = await p(image);
-  const mask = result?.[0]?.mask;
-  if (!mask?.data || !mask.width || !mask.height) throw new Error('The segmentation model did not return a usable mask.');
-  return { width: mask.width, height: mask.height, data: mask.data };
-}
-async function translateText(text, srcLang, tgtLang) {
-  if (!translator) translator = pipeline('translation', REPO.translate, { dtype: 'q8', device: 'wasm' });
-  const p = await translator.catch((e) => { translator = null; throw e; });
-  const out = await p(text, { src_lang: srcLang, tgt_lang: tgtLang, max_new_tokens: 512 });
-  return out?.[0]?.translation_text || '';
-}
-
 async function generate(id, messages, opts = {}) {
   const device = opts.device === 'webgpu' ? 'webgpu' : 'wasm';
   if (!gen || genDevice !== device) { gen = pipeline('text-generation', REPO.writer, { dtype: device === 'webgpu' ? 'q4f16' : 'q8', device }); genDevice = device; }
@@ -127,8 +110,6 @@ self.onmessage = async (e) => {
     else if (type === 'transcribe') result = await transcribe(e.data.buffer, e.data.language);
     else if (type === 'sentences') result = await embedSentences(texts);
     else if (type === 'generate') result = await generate(id, e.data.messages, e.data.opts);
-    else if (type === 'removeBackground') result = await removeBackground(e.data.url);
-    else if (type === 'translate') result = await translateText(e.data.text, e.data.srcLang, e.data.tgtLang);
     self.postMessage({ id, result });
   } catch (err) {
     self.postMessage({ id, error: String((err && err.message) || err) });

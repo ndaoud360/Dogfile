@@ -18,7 +18,6 @@ export const FEATURES = {
   features: 'Custom features',
   timetravel: 'Time travel',
   stems: 'The stem separator',
-  proUtilities: 'Dogfile Pro utilities',
 };
 export const PLURAL = new Set(['panes', 'dupes', 'space', 'automation', 'versions', 'remote', 'features', 'reminders', 'model3d']);
 export const PRO_COMMANDS = {
@@ -32,9 +31,6 @@ export const PRO_COMMANDS = {
   versions: 'versions', allVersions: 'versions',
   connections: 'remote', addConnection: 'remote',
   contactSheet: 'convert',
-  compressImages: 'proUtilities', upscaleImages: 'proUtilities', mergePdfs: 'proUtilities', splitPdf: 'proUtilities',
-  extractAudio: 'proUtilities', createGif: 'proUtilities', minifyCode: 'proUtilities', diffChecker: 'proUtilities',
-  removeImageBackground: 'proUtilities', translateText: 'proUtilities',
   features: 'features', createFeature: 'features', featureStore: 'features',
   reminders: 'reminders', remindAbout: 'reminders',
   photoDetails: 'metadata',
@@ -53,8 +49,6 @@ const PRO_LABELS = [
   [/^(ask the (file )?assistant|ask dogfile)/i, 'assistant'],
   [/^(document reminders|remind me)/i, 'reminders'],
   [/^edit photo details/i, 'metadata'],
-  [/^(remove|erase) (the )?(image )?background/i, 'proUtilities'],
-  [/^translate text/i, 'proUtilities'],
   [/^time travel/i, 'timetravel'],
 ];
 export const proForLabel = (label) => (PRO_LABELS.find(([re]) => re.test(label || '')) || [])[1] || null;

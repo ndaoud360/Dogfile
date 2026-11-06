@@ -6,8 +6,8 @@ use crate::*;
 use serde_json::{json, Value};
 
 pub const NAMES: &[&str] = &[
-    "license:status", "pro:authorize", "media:processImage", "media:createGif", "llm:status", "llm:warm", "llm:plan", "llm:stop", "reminders:list", "reminders:status", "reminders:apply", "reminders:scanNow", "reminders:analyze", "reminders:add", "reminders:update", "reminders:snooze", "reminders:remove", "reminders:test", "license:startTrial", "license:activate", "license:offlineRequest", "license:offlineApply", "license:deactivate", "license:checkout", "license:claim", "license:refresh",
-    "util:qrSvg", "sys:info", "fs:list", "fs:subdirs", "fs:stat", "fs:exists", "fs:isDir", "fs:mkdir", "fs:newFile", "fs:createSized", "fs:rename", "fs:uniqueName", "fs:readText", "fs:readBytes", "fs:compareBinary", "fs:writeText", "fs:writeImage", "fs:hash",
+    "license:status", "llm:status", "llm:warm", "llm:plan", "llm:stop", "reminders:list", "reminders:status", "reminders:apply", "reminders:scanNow", "reminders:analyze", "reminders:add", "reminders:update", "reminders:snooze", "reminders:remove", "reminders:test", "license:startTrial", "license:activate", "license:offlineRequest", "license:offlineApply", "license:deactivate", "license:checkout", "license:claim", "license:refresh",
+    "sys:info", "fs:list", "fs:subdirs", "fs:stat", "fs:exists", "fs:isDir", "fs:mkdir", "fs:newFile", "fs:rename", "fs:uniqueName", "fs:readText", "fs:readBytes", "fs:compareBinary", "fs:writeText", "fs:writeImage", "fs:hash",
     "fs:attributes", "fs:setAttributes", "fs:setTimes", "fs:symlink", "fs:shortcut", "fs:readLink", "fs:drives", "fs:eject", "fs:mapped", "fs:recentWindows", "fs:statMany", "thumb:get", "icon:get",
     "shell:open", "shell:openExternal", "shell:openWith", "shell:runAs", "shell:showInExplorer", "shell:terminal", "shell:properties", "shell:verbs", "shell:invokeVerb", "shell:beep", "shell:launch",
     "shell:runCommand", "fs:findUnder", "sys:findEditor", "clip:writeFiles", "clip:readFiles", "clip:writeText", "clip:readText", "clip:hasImage", "clip:formats", "clip:watch", "ops:start",
@@ -45,9 +45,6 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
     match name {
         // ---------- Dogfile Pro ----------
         "license:status" => license::status(&a),
-        "pro:authorize" => Ok(json!(true)),
-        "media:processImage" => pro_media::process_image(&a).await,
-        "media:createGif" => pro_media::create_gif(&a).await,
         "llm:status" => llm::status(&a),
         "llm:warm" => llm::warm(&a),
         "llm:plan" => llm::plan(&a).await,
@@ -70,20 +67,6 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
         "license:checkout" => license::checkout(&a).await,
         "license:claim" => license::claim(&a).await,
         "license:refresh" => license::refresh(true).await,
-        // ---------- free utilities ----------
-        "util:qrSvg" => {
-            let value = a.s(0)?;
-            if value.is_empty() { return Err("Enter text or a URL for the QR code".into()); }
-            if value.len() > 4096 { return Err("QR content is too long (maximum 4,096 bytes)".into()); }
-            let qr = qrcode::QrCode::new(value.as_bytes()).map_err(|e| format!("Couldn’t make that QR code: {e}"))?;
-            let svg = qr.render::<qrcode::render::svg::Color>()
-                .min_dimensions(360, 360)
-                .quiet_zone(true)
-                .dark_color(qrcode::render::svg::Color("#111111"))
-                .light_color(qrcode::render::svg::Color("#ffffff"))
-                .build();
-            Ok(json!(svg))
-        }
         // ---------- system ----------
         "sys:info" => sys::info(win),
         "bug:report" => bugreport::send(&a).await,
@@ -150,7 +133,6 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
         "fs:isDir" => fsx::is_dir(&a).await,
         "fs:mkdir" => fsx::mkdir(&a).await,
         "fs:newFile" => fsx::new_file(&a).await,
-        "fs:createSized" => fsx::create_sized(&a).await,
         "fs:rename" => fsx::rename(&a).await,
         "fs:uniqueName" => fsx::unique_name(&a).await,
         "fs:readText" => fsx::read_text(&a).await,

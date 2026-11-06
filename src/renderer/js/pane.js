@@ -13,6 +13,7 @@ import { icon, folderArt, fileArt } from './icons.js';
 import { showMenu } from './menu.js';
 import * as MM from './mediameta.js';
 import { requirePro } from './license.js';
+import { mvActive, mvInside, mvStayMessage } from './mvstate.js';
 
 let A = null; // actions module (late bound to avoid circular init)
 export function bindActions(actions) { A = actions; }
@@ -270,6 +271,8 @@ export async function navigate(t, rawPath, { push = true, select = null, keepScr
       select = p; p = dirname(p);
     }
   }
+  // a Multiverse only covers the folder it was opened in and what is inside it
+  if (mvActive() && !isVirtual(p) && !mvInside(p)) { toast(mvStayMessage(), { error: true }); return false; }
   if (t.searchJob && !p.startsWith('atlas:search')) { api('work:cancel', t.searchJob); t.searchJob = null; }
   if (!p.startsWith('atlas:search')) t.searchInfo = null;
   const prev = t.path;

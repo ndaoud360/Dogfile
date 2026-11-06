@@ -8,6 +8,7 @@ import { prompt, confirm, propertiesDialog, compressDialog, archivePasswordDialo
 import { openTool } from './apptabs.js';
 import { icon } from './icons.js';
 import { featureMenuItems } from './features.js';
+import { mvActive, mvJobBlocked } from './mvstate.js';
 
 const NO_SEL = () => toast('Select one or more items first');
 const realItems = (items) => items.filter((i) => !i.virtual && !i.archive && !i.recycle && !i.share && !i.mtp);
@@ -124,6 +125,12 @@ let undoing = false;
 // operations features may watch and change (dogfile.on('beforeMove'…)), by job type
 const HOOKED = { copy: 'Copy', move: 'Move', trash: 'Delete', delete: 'Delete', compress: 'Compress', extract: 'Extract' };
 export function runJob(spec) {
+  // Multiverse Mode: only inside the folder; deleting goes to its temporary trash, not the Recycle Bin
+  if (mvActive()) {
+    const why = mvJobBlocked(spec);
+    if (why) { toast(why, { error: true }); return Promise.resolve({ status: 'cancelled', title: spec.type, error: why }); }
+    if (spec.type === 'trash' || spec.type === 'delete') return mvTrash(spec);
+  }
   if (spec.network == null) { const net = (p) => p && (/^\\\\/.test(p) || (state.drives || []).some((d) => d.type === 'network' && d.path && String(p).toUpperCase().startsWith(d.path.toUpperCase().slice(0, 2)))); spec = { ...spec, network: net(spec.dest) || (spec.sources || []).some(net) }; }
   return new Promise((resolve0) => { (async () => {
     const kind = HOOKED[spec.type];
@@ -146,6 +153,22 @@ export function runJob(spec) {
     toast(errText(e), { error: true });
     resolve0({ status: 'error', title: spec.type, error: errText(e), errors: [errText(e)] });
   }); });
+}
+
+let mvSeq = 0;
+async function mvTrash(spec) {
+  const started = Date.now();
+  let r;
+  try { r = await api('mvs:trash', spec.sources || []); } catch (e) { toast(errText(e), { error: true }); return { status: 'error', title: spec.type, error: errText(e), errors: [errText(e)] }; }
+  const pairs = r.pairs || [];
+  const problems = r.problems || [];
+  const j = {
+    id: `mv-${++mvSeq}`, type: 'mvtrash', status: 'done', started, finished: Date.now(), sourceCount: pairs.length, filesDone: pairs.length,
+    title: pairs.length === 1 ? `Move \"${basename(pairs[0][0])}\" to the Multiverse trash` : `Move ${pairs.length} items to the Multiverse trash`,
+    undo: pairs.length ? { type: 'moved', pairs } : null, errors: problems,
+  };
+  onJobFinished(j);
+  return j;
 }
 const finishedEarly = new Map();
 const asking = { password: 0 };
@@ -403,8 +426,8 @@ export async function remove(items, permanent = false) {
   items = realItems(items);
   if (!items.length) return NO_SEL();
   if (!(await (await import('./links.js')).linkGuard(items.map((i) => i.path), 'delete'))) return;
-  const forever = permanent || !state.settings.deleteToRecycle;
-  if (forever || state.settings.confirmDelete) {
+  const forever = !mvActive() && (permanent || !state.settings.deleteToRecycle);
+  if (!mvActive() && (forever || state.settings.confirmDelete)) {
     const what = items.length === 1 ? `<b>${h('i', {}, items[0].name).innerHTML}</b>` : `these <b>${items.length}</b> items`;
     const ok = await confirm(forever ? 'Permanently delete?' : 'Move to Recycle Bin?', forever ? `Are you sure you want to permanently delete ${what}? This can't be undone.` : `Move ${what} to the Recycle Bin?`, { ok: forever ? 'Delete' : 'Move to Recycle Bin', danger: forever });
     if (!ok) return;
@@ -604,9 +627,19 @@ export async function createSymlink(items) {
 // ======================================================================
 // Undo / redo
 // ======================================================================
+// work made of several steps (Tidy up makes folders and moves files into each) is one step in the undo list
+let undoGroup = null;
+export function beginUndoGroup() { undoGroup = []; }
+export function endUndoGroup(title) {
+  const steps = undoGroup; undoGroup = null;
+  if (!steps?.length) return null;
+  const pairs = steps.flatMap((x) => (x.type === 'moved' || x.type === 'renamed' ? x.pairs : []));
+  return pushUndo({ type: 'batch', steps, pairs: pairs.length ? pairs : undefined, paths: pairs.length ? undefined : steps.flatMap((x) => x.paths || []) }, title);
+}
 export function pushUndo(rec, title) {
   if (!rec) return null;
   if ((rec.paths && !rec.paths.length) || (rec.pairs && !rec.pairs.length)) return null;
+  if (undoGroup) { undoGroup.push({ ...rec }); return null; }
   const entry = { ...rec, title, at: Date.now() };
   state.undo.push(entry);
   if (state.undo.length > 100) state.undo.shift();
@@ -631,7 +664,7 @@ async function undoEntry(entry) {
 // ---- "it's done": every copy, move, delete, extract and zip says so when it finishes ----
 // In the window: a short message with Show (the files where they went) and Undo. When Dogfile isn't in front and the
 // work took a while: a Windows notification as well, so nobody has to keep checking whether it went through.
-const FINISHED_VERB = { copy: 'Copied', move: 'Moved', delete: 'Deleted', trash: 'Moved to the Recycle Bin', extract: 'Extracted', compress: 'Zipped', convert: 'Converted' };
+const FINISHED_VERB = { copy: 'Copied', move: 'Moved', delete: 'Deleted', trash: 'Moved to the Recycle Bin', mvtrash: 'Moved to the Multiverse trash', extract: 'Extracted', compress: 'Zipped', convert: 'Converted' };
 // the message in parts ("Copied" · "40 files" · "7.6 MB" · "to “Backup”" · "3 s"), so each part can be translated
 function finishedParts(j) {
   const n = j.filesDone || j.filesTotal || j.sourceCount || 0;
@@ -695,31 +728,35 @@ function announceFinished(j, entries) {
 // put things back the way they were before a recorded operation (used by Undo and by File history)
 export async function reverseRecord(r) {
   undoing = true;
-  try {
-    if (r.type === 'renamed') { for (const [a, b] of [...r.pairs].reverse()) { await api('fs:rename', b, a); moveTags(b, a); } }
-    else if (r.type === 'moved') {
-      const failed = [];
-      for (const [a, b] of [...r.pairs].reverse()) {
-        try { await api('fs:rename', b, a); moveTags(b, a); continue; } catch { /* not a plain rename (another drive, or the name is taken): a full move below */ }
-        // another drive, or the old name is taken again: a normal move (which asks about name clashes)
-        const j = await runJob({ type: 'move', sources: [b], dest: dirname(a) });
-        if (j?.status === 'done' && !j.errors?.length) moveTags(b, a); else failed.push(b);
-      }
-      if (failed.length) throw new Error(`${failed.length} of ${r.pairs.length} couldn’t go back (${basename(failed[0])}${failed.length > 1 ? '…' : ''})`);
-    } else if (r.type === 'created') {
-      const j = await runJob({ type: 'trash', sources: r.paths });
-      if (j?.status !== 'done' || j.errors?.length) throw new Error(j?.errors?.[0] || j?.error || 'couldn’t remove what was made');
-    }
-    else if (r.type === 'trashed') {
-      const res = await api('recycle:restoreOriginal', r.paths);
-      if (res?.problems?.length) throw new Error(`${res.problems.length} of ${r.paths.length} couldn’t go back. ${res.problems[0].split(': ').slice(1).join(': ')}`);
-    }
-    // photo details: each file gets back the values it had
-    else if (r.type === 'metadata') { for (const f of r.files || []) await api('meta:write', [f.path], f.values, {}); }
-  } finally { undoing = false; }
+  try { await reverseSteps(r); } finally { undoing = false; }
   r.undone = true;
   bus.emit('historyUndone', r);
 }
+// the work of putting back one recorded operation (a batch puts back its steps, last first)
+async function reverseSteps(r) {
+  if (r.type === 'batch') { for (const st of [...r.steps].reverse()) await reverseSteps(st); return; }
+  if (r.type === 'renamed') { for (const [a, b] of [...r.pairs].reverse()) { await api('fs:rename', b, a); moveTags(b, a); } }
+  else if (r.type === 'moved') {
+    const failed = [];
+    for (const [a, b] of [...r.pairs].reverse()) {
+      try { await api('fs:rename', b, a); moveTags(b, a); continue; } catch { /* not a plain rename (another drive, or the name is taken): a full move below */ }
+      // another drive, or the old name is taken again: a normal move (which asks about name clashes)
+      const j = await runJob({ type: 'move', sources: [b], dest: dirname(a) });
+      if (j?.status === 'done' && !j.errors?.length) moveTags(b, a); else failed.push(b);
+    }
+    if (failed.length) throw new Error(`${failed.length} of ${r.pairs.length} couldn’t go back (${basename(failed[0])}${failed.length > 1 ? '…' : ''})`);
+  } else if (r.type === 'created') {
+    const j = await runJob({ type: 'trash', sources: r.paths });
+    if (j?.status !== 'done' || j.errors?.length) throw new Error(j?.errors?.[0] || j?.error || 'couldn’t remove what was made');
+  }
+  else if (r.type === 'trashed') {
+    const res = await api('recycle:restoreOriginal', r.paths);
+    if (res?.problems?.length) throw new Error(`${res.problems.length} of ${r.paths.length} couldn’t go back. ${res.problems[0].split(': ').slice(1).join(': ')}`);
+  }
+  // photo details: each file gets back the values it had
+  else if (r.type === 'metadata') { for (const f of r.files || []) await api('meta:write', [f.path], f.values, {}); }
+}
+
 export async function undo() {
   const r = state.undo.pop();
   if (!r) return toast('Nothing to undo');
@@ -739,17 +776,7 @@ export async function redo() {
   if (!r) return toast('Nothing to redo');
   undoing = true;
   try {
-    if (r.type === 'renamed') for (const [a, b] of r.pairs) { await api('fs:rename', a, b); moveTags(a, b); }
-    else if (r.type === 'moved') for (const [a, b] of r.pairs) { try { await api('fs:rename', a, b); } catch { await runJob({ type: 'move', sources: [a], dest: dirname(b) }); } moveTags(a, b); }
-    else if (r.type === 'trashed') { await runJob({ type: 'trash', sources: r.paths }); }
-    else if (r.type === 'created') {
-      const res = await api('recycle:restoreOriginal', r.paths);
-      if (res?.problems?.length) throw new Error(`${res.problems.length} of ${r.paths.length} couldn’t come back. ${res.problems[0].split(': ').slice(1).join(': ')}`);
-    }
-    // photo details: written again as they were after the edit
-    else if (r.type === 'metadata' && r.after && r.paths) await api('meta:write', r.paths, r.after, {});
-    // anything else can't be redone: said plainly (not "Redid"), and taken off the list so Redo isn't stuck on it
-    else throw new Error(`“${r.title || r.type}” can’t be redone`);
+    await redoSteps(r);
     state.undo.push(r);
     r.undone = false; bus.emit('historyUndone', r);
     toast(`Redid: ${r.title || r.type}`);
@@ -757,6 +784,21 @@ export async function redo() {
   undoing = false;
   bus.emit('undo');
   refreshAffected();
+}
+// the work of doing one recorded operation again (a batch does its steps in order)
+async function redoSteps(r) {
+  if (r.type === 'batch') { for (const st of r.steps) await redoSteps(st); return; }
+  if (r.type === 'renamed') for (const [a, b] of r.pairs) { await api('fs:rename', a, b); moveTags(a, b); }
+  else if (r.type === 'moved') for (const [a, b] of r.pairs) { try { await api('fs:rename', a, b); } catch { await runJob({ type: 'move', sources: [a], dest: dirname(b) }); } moveTags(a, b); }
+  else if (r.type === 'trashed') { await runJob({ type: 'trash', sources: r.paths }); }
+  else if (r.type === 'created') {
+    const res = await api('recycle:restoreOriginal', r.paths);
+    if (res?.problems?.length) throw new Error(`${res.problems.length} of ${r.paths.length} couldn’t come back. ${res.problems[0].split(': ').slice(1).join(': ')}`);
+  }
+  // photo details: written again as they were after the edit
+  else if (r.type === 'metadata' && r.after && r.paths) await api('meta:write', r.paths, r.after, {});
+  // anything else can't be redone: said plainly (not "Redid"), and taken off the list so Redo isn't stuck on it
+  else throw new Error(`“${r.title || r.type}” can’t be redone`);
 }
 
 // ======================================================================

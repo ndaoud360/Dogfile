@@ -59,6 +59,7 @@ pub mod components;
 pub mod alpha_thumb;
 pub mod lock;
 pub mod multiverse;
+pub mod snapshot;
 #[cfg(windows)]
 pub mod win;
 

@@ -15,7 +15,7 @@ const save = debounce(() => api('store:set', 'history', log.slice(0, limit())), 
 // one read shared by every early caller: entries added while it is loading are kept, not replaced by the saved list
 let loading = null;
 function ensure() { return (loading ||= api('store:get', 'history').catch(() => null).then((saved) => (log = saved || []))); }
-const KIND = { renamed: ['rename', 'Renamed'], moved: ['cut', 'Moved'], created: ['copy', 'Created / copied'], trashed: ['trash', 'Recycled'], copy: ['copy', 'Copied'], move: ['cut', 'Moved'], delete: ['trash', 'Deleted'], trash: ['trash', 'Recycled'], extract: ['extract', 'Extracted'], compress: ['zip', 'Compressed'], automation: ['automation', 'Automation'], version: ['history', 'Version saved'], restore: ['history', 'Version restored'] };
+const KIND = { batch: ['wand', 'Tidied up'], renamed: ['rename', 'Renamed'], moved: ['cut', 'Moved'], created: ['copy', 'Created / copied'], trashed: ['trash', 'Recycled'], copy: ['copy', 'Copied'], move: ['cut', 'Moved'], delete: ['trash', 'Deleted'], trash: ['trash', 'Recycled'], extract: ['extract', 'Extracted'], compress: ['zip', 'Compressed'], automation: ['automation', 'Automation'], version: ['history', 'Version saved'], restore: ['history', 'Version restored'] };
 async function add(e) {
   await ensure();
   log.unshift({ id: uid(), at: Date.now(), ...e });
@@ -34,7 +34,7 @@ bus.on('jobDone', (j) => {
 bus.on('history', (e) => add(e));
 // for the assistant: the log (newest first), and undoing one entry
 export async function historyEntries() { return (await ensure()).slice(); }
-export const canUndoEntry = (e) => !!(e.rec && !e.undone && ['renamed', 'moved', 'created', 'trashed'].includes(e.rec.type));
+export const canUndoEntry = (e) => !!(e.rec && !e.undone && ['renamed', 'moved', 'created', 'trashed', 'batch'].includes(e.rec.type));
 export async function undoEntry(e) {
   await A.reverseRecord(e.rec);
   state.undo = state.undo.filter((x) => !(x.at === e.rec.at && x.title === e.rec.title));
@@ -64,7 +64,7 @@ export async function historyDialog() {
       const d = new Date(e.at).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
       if (d !== day) { day = d; list.append(h('div', { class: 'hi-day' }, d)); }
       const [ic] = KIND[e.kind] || ['history'];
-      const canUndo = e.rec && !e.undone && ['renamed', 'moved', 'created', 'trashed'].includes(e.rec.type);
+      const canUndo = e.rec && !e.undone && ['renamed', 'moved', 'created', 'trashed', 'batch'].includes(e.rec.type);
       const detail = h('div', { class: 'hi-detail' });
       const row = h('div', { class: 'hi-row' + (e.undone ? ' undone' : '') + (e.errors?.length || e.status === 'error' ? ' bad' : '') },
         h('span', { class: 'hi-ic', html: icon(ic) }),

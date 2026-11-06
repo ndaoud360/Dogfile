@@ -143,14 +143,21 @@ export async function declutter(t = activeTab()) {
   if (!ok) return;
   const byDest = groupBy(files.filter((f) => S.dest.get(f) !== LEAVE), (f) => S.dest.get(f));
   let moved = 0;
-  for (const [g, list] of byDest) {
-    const name = (S.names.get(g) || g).trim().replace(/[<>:"/\\|?*]/g, '_');
-    if (!name) continue;
-    const dir = pjoin(t.path, name);
-    if (!(await api('fs:stat', dir))) await api('fs:mkdir', dir).catch(() => {});
-    const j = await A.transfer(list.map((f) => f.path), dir, 'move');
-    if (j?.status === 'done') moved += list.length;
-  }
+  // the folders it makes and every move are one step in the undo list, so one Ctrl+Z puts everything back
+  A.beginUndoGroup();
+  try {
+    for (const [g, list] of byDest) {
+      const name = (S.names.get(g) || g).trim().replace(/[<>:"/\\|?*]/g, '_');
+      if (!name) continue;
+      const dir = pjoin(t.path, name);
+      if (!(await api('fs:stat', dir))) {
+        const made = await api('fs:mkdir', dir).then(() => true, () => false);
+        if (made) A.pushUndo({ type: 'created', paths: [dir] }, 'New folder');
+      }
+      const j = await A.transfer(list.map((f) => f.path), dir, 'move');
+      if (j?.status === 'done') moved += list.length;
+    }
+  } finally { A.endUndoGroup(`Tidy up “${basename(t.path)}”`); }
   await loadTab(t, { soft: true });
   toast(`Moved ${moved} file${moved === 1 ? '' : 's'} into folders. Ctrl+Z undoes it.`);
 }

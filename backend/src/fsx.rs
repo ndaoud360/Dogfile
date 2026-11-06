@@ -110,6 +110,10 @@ pub async fn list(a: &Args) -> R {
     }
     match crate::engine::list(&dir).await {
         Ok(mut r) => {
+            // the hidden snapshot folder of a Multiverse is never listed
+            if let Some(items) = r["items"].as_array_mut() {
+                items.retain(|it| !it["name"].as_str().unwrap_or("").to_lowercase().starts_with(crate::snapshot::STORE));
+            }
             if crate::demo::active() && crate::demo::inside(Path::new(&dir)) {
                 if let Some(items) = r["items"].as_array_mut() {
                     for it in items.iter_mut().filter(|it| !it["isDir"].as_bool().unwrap_or(false)) {
@@ -141,6 +145,7 @@ pub async fn subdirs(a: &Args) -> R {
                 let name = e.file_name().to_string_lossy().into_owned();
                 let Ok(md) = std::fs::metadata(e.path()) else { continue };
                 if !md.is_dir() { continue }
+                if name.to_lowercase().starts_with(crate::snapshot::STORE) { continue }
                 if !include_hidden {
                     let lmd = e.metadata().unwrap_or(md);
                     if is_hidden(&lmd, &name) { continue }
@@ -613,6 +618,11 @@ pub async fn find_under(a: &Args) -> R {
 
 pub async fn trash(a: &Args) -> R {
     let p = a.s(0)?;
+    // while a Multiverse is open, a delete inside it goes to its temporary trash
+    if let Some(r) = crate::snapshot::divert(&p) {
+        r?;
+        return Ok(json!(true));
+    }
     #[cfg(windows)]
     if !crate::win::has_recycle_bin(&p) {
         return Err("This drive has no Recycle Bin, so it wasn’t deleted".into());

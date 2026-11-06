@@ -6,7 +6,7 @@ import { commands, keysFor } from './commands.js';
 import { modal } from './dialogs.js';
 import { showMenu } from './menu.js';
 
-const BUILTIN = [['btn-assistant', 'Assistant'], ['btn-search', 'Search'], ['btn-layout', 'Split view'], ['btn-newwin', 'New window']];
+const BUILTIN = [['btn-assistant', 'Assistant'], ['btn-search', 'Search'], ['btn-layout', 'Split view'], ['btn-multiverse', 'Multiverse'], ['btn-newwin', 'New window']];
 const $ = (id) => document.getElementById(id);
 
 export function renderToolbar() {

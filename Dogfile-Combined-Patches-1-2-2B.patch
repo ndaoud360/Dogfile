@@ -1,0 +1,1127 @@
+diff --git a/PATCH-1-README.md b/PATCH-1-README.md
+new file mode 100644
+index 0000000..322f04d
+--- /dev/null
++++ b/PATCH-1-README.md
+@@ -0,0 +1,31 @@
++# Dogfile Patch 1 — Contextual tools and picture actions
++
++Patch 1 adds the following capabilities in the places users naturally expect to find them. There is no standalone “Free Utilities” button, tab, or toolbox.
++
++## Tools ribbon
++
++- **QR code:** generate and save a 640 × 640 PNG from text, URLs, or contact details.
++- **Exact-size blank file:** create a zero-filled file in the current folder, up to 1 GiB. Existing files are never overwritten.
++- **CSV / TSV to JSON:** convert delimited text into an array of objects; quoted commas, escaped quotes, and quoted newlines are supported.
++- **Lorem Ipsum:** generate 10–2,000 words of placeholder text and copy it to the clipboard.
++
++## Image context menu and Dogfile Photos
++
++- **Extract image color palette:** right-click an image in the file browser or use the palette action in Dogfile Photos. Extracts up to eight distinct colors with HEX and RGB values, and supports copying or saving the palette.
++- **Folder cover artwork:** right-click an image or use the cover action in Dogfile Photos. Creates a 1200 × 800 PNG and saves it in the image's containing folder (or a chosen folder).
++
++## Blank file context action
++
++- The exact-size blank file generator is also available in the file browser background context menu under **New**.
++
++## Implementation notes
++
++- Reuses Dogfile's existing `qrcode` Rust dependency and file APIs.
++- Adds backend operations `util:qrSvg` and `fs:createSized`.
++- No new third-party dependencies.
++
++## Validation
++
++- JavaScript syntax checks passed for modified renderer modules.
++- CSV parser edge-case tests passed in the original Patch 1 implementation (quoted commas, doubled quotes, and embedded newlines).
++- A full Rust compile/build was not run in this environment because the Rust toolchain (`cargo`) is not installed. Please run the project's normal Windows build/CI before shipping.
+diff --git a/PATCH-2-README.md b/PATCH-2-README.md
+new file mode 100644
+index 0000000..2a7f8bb
+--- /dev/null
++++ b/PATCH-2-README.md
+@@ -0,0 +1,30 @@
++# Dogfile Patch 2 — Pro utilities
++
++This patch builds on the Patch 1 contextual-features project. The new commands are individual entries in **Tools**; there is no general-purpose utilities button or toolbox.
++
++## Added / surfaced
++
++- **Compress pictures** — backend image conversion to WebP, JPG or PNG with adjustable JPG/WebP quality. Saves a copy beside the source.
++- **Upscale pictures** — high-quality Lanczos resampling to a chosen longest-edge size. This is conventional resampling, not AI super-resolution.
++- **Merge PDF files** — combines selected PDFs in their selection order.
++- **Split PDF pages** — extracts selected page ranges to individual PDF files in a chosen folder.
++- **Create animated GIF** — backend GIF encoding from a selected ordered image sequence, with adjustable frame delay.
++- **Extract audio from video** — uses Dogfile's existing FFmpeg conversion pipeline and saves MP3 copies.
++- **Minify code or data** — safe minification for JSON, CSS, HTML, XML and SVG. JavaScript is intentionally not regex-minified because that can silently break strings, regular expressions and syntax; a proper JS parser/minifier is needed.
++- **Diff checker** — exposes the existing text/document/image comparison engine as a dedicated Tools command.
++
++## Licensing
++
++The new image and GIF processing commands are registered in the backend Pro gate. PDF and local text-processing actions call a backend Pro authorization check before operating. Audio extraction uses the existing Pro-gated `media:export` backend command. The command palette and Tools entries also use Dogfile's standard Pro marks and checks.
++
++## Not included yet
++
++- **Automatic background removal** needs a supported segmentation model and model lifecycle (download, cache, cancellation, offline behavior). A color-key filter would not be a reliable substitute.
++- **Translation** needs a defined local-model or translation-provider flow, including language selection and privacy/network behavior. No external translation service is silently called by this patch.
++
++These are left out rather than presented as completed features. They remain the two outstanding Patch 2 roadmap items.
++
++## Validation
++
++- JavaScript syntax checks passed for the new module and modified command/license modules.
++- Rust compilation was not run in this environment because Cargo is unavailable. Build the backend on the normal Dogfile Windows build environment before release.
+diff --git a/PATCH-2B-README.md b/PATCH-2B-README.md
+new file mode 100644
+index 0000000..207eef4
+--- /dev/null
++++ b/PATCH-2B-README.md
+@@ -0,0 +1,35 @@
++# Dogfile Patch 2B — Background Removal & Offline Translation
++
++This patch builds on `Dogfile-Patch-2-Pro-Utilities.zip`. It adds the two remaining Patch 2 Pro utility features as separate Tools commands.
++
++## 1. Remove image background
++- Tools → Remove image background…
++- Accepts multiple common image files.
++- Uses the general-purpose ISNet segmentation model through the existing Transformers.js / ONNX Runtime stack.
++- Downloads the model once (about 134 MB), then runs inference locally.
++- Saves a new transparent PNG copy beside each original; originals are not overwritten.
++- Model source: `Ko033/isnet-general-use-onnx`, Apache-2.0. The source model card describes general-use ISNet segmentation.
++
++## 2. Translate text offline
++- Tools → Translate text offline…
++- Supports source and target language selection, text pasted directly or opened from a text file, and copying the result.
++- Uses Meta M2M100 418M via the Transformers.js ONNX model.
++- Downloads the quantized model once (approximately 650 MB), then translates locally. Text is not sent to a translation service.
++- The selector exposes 48 common languages from the model's 100-language coverage.
++- Model source: `Xenova/m2m100_418M` ONNX conversion of Meta's M2M100 418M, MIT model license.
++
++## Pro access
++Both commands use the existing `proUtilities` feature gate and `pro:authorize` check. The new model downloads use the existing AI model manager, including its progress display and on-device storage.
++
++## Files changed
++- `backend/src/ai.rs` — registers the two model bundles with the local AI model manager.
++- `src/renderer/js/ai-worker.js` — adds local background segmentation and translation worker tasks.
++- `src/renderer/js/ai.js` — includes approximate one-time model download sizes in the model prompt.
++- `src/renderer/js/protools.js` — adds the two user-facing workflows.
++- `src/renderer/js/commands.js` — adds separate Tools entries.
++- `src/renderer/js/pro-marks.js` — marks both commands as Dogfile Pro.
++
++## Validation and limitations
++- `node --check` passed for all modified JavaScript files.
++- Full Rust compilation was not run because Cargo is not installed in the patch environment.
++- The actual model downloads and inference must be smoke-tested on a Windows Dogfile build. The ISNet model is a general-purpose segmentation model; results vary with subject/background complexity. Translation quality varies by language pair and is intended as a convenient offline translation, not certified/legal translation.
+diff --git a/backend/src/ai.rs b/backend/src/ai.rs
+index 5448add..b023e52 100644
+--- a/backend/src/ai.rs
++++ b/backend/src/ai.rs
+@@ -1,6 +1,5 @@
+-// Free, private AI search: open models (CLIP for pictures, Whisper for speech, MiniLM for text, CLAP for sound)
+-// downloaded once from Hugging Face and run in the window. This serves the model files and keeps an
+-// embedding cache so each file is only looked at once.
++// Private on-device AI models: CLIP, Whisper, MiniLM, CLAP, local writing, background segmentation and translation.
++// Models are downloaded once from Hugging Face and run in the window; files being analyzed stay on this PC.
+ use crate::args::{Args, R};
+ use crate::http::Resp;
+ use crate::{st, util};
+@@ -18,7 +17,7 @@ struct Model {
+     files: &'static [&'static str],
+     optional: &'static [&'static str],
+ }
+-const MODELS: [(&str, Model); 9] = [
++const MODELS: [(&str, Model); 11] = [
+     ("clip", Model { repo: "Xenova/clip-vit-base-patch32", label: "Pictures & video (CLIP)", files: &["config.json", "preprocessor_config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "onnx/text_model_quantized.onnx", "onnx/vision_model_quantized.onnx"], optional: &["special_tokens_map.json"] }),
+     ("whisper", Model { repo: "Xenova/whisper-base", label: "Speech to text (Whisper)", files: &["config.json", "generation_config.json", "preprocessor_config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "added_tokens.json", "onnx/encoder_model_quantized.onnx", "onnx/decoder_model_merged_quantized.onnx"], optional: &["special_tokens_map.json", "added_tokens.json"] }),
+     ("minilm", Model { repo: "Xenova/all-MiniLM-L6-v2", label: "Text understanding (MiniLM)", files: &["config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "onnx/model_quantized.onnx"], optional: &["special_tokens_map.json"] }),
+@@ -31,6 +30,10 @@ const MODELS: [(&str, Model); 9] = [
+     ("brain-small", Model { repo: "unsloth/Qwen3.5-2B-GGUF", label: "Assistant, smaller (Qwen3.5 2B)", files: &["Qwen3.5-2B-Q4_K_M.gguf"], optional: &[] }),
+     ("stems", Model { repo: "StemSplitio/htdemucs-6s-onnx", label: "Stem separation (HT-Demucs)", files: &["htdemucs_6s_fp16weights.onnx"], optional: &[] }),
+     ("clap", Model { repo: "Xenova/clap-htsat-unfused", label: "Music & sounds (CLAP)", files: &["config.json", "preprocessor_config.json", "tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "onnx/text_model_quantized.onnx", "onnx/audio_model_quantized.onnx"], optional: &["special_tokens_map.json"] }),
++    // General-purpose ISNet background segmentation (Apache-2.0), run locally through Transformers.js.
++    ("removebg", Model { repo: "Ko033/isnet-general-use-onnx", label: "Background removal (ISNet, 134 MB)", files: &["config.json", "preprocessor_config.json", "onnx/model_quantized.onnx"], optional: &[] }),
++    // M2M100 multilingual translation (MIT model), quantized ONNX encoder/decoder.
++    ("translate", Model { repo: "Xenova/m2m100_418M", label: "Offline translation (M2M100, about 650 MB)", files: &["config.json", "generation_config.json", "sentencepiece.bpe.model", "special_tokens_map.json", "tokenizer.json", "tokenizer_config.json", "vocab.json", "onnx/encoder_model_quantized.onnx", "onnx/decoder_model_merged_quantized.onnx"], optional: &["generation_config.json"] }),
+ ];
+ /// the file of a downloaded single-file model (the assistant's GGUF), when it's all there
+ pub fn ready_file(k: &str) -> Option<PathBuf> {
+diff --git a/backend/src/dispatch.rs b/backend/src/dispatch.rs
+index a77a6a1..e87d85d 100644
+--- a/backend/src/dispatch.rs
++++ b/backend/src/dispatch.rs
+@@ -6,8 +6,8 @@ use crate::*;
+ use serde_json::{json, Value};
+ 
+ pub const NAMES: &[&str] = &[
+-    "license:status", "llm:status", "llm:warm", "llm:plan", "llm:stop", "reminders:list", "reminders:status", "reminders:apply", "reminders:scanNow", "reminders:analyze", "reminders:add", "reminders:update", "reminders:snooze", "reminders:remove", "reminders:test", "license:startTrial", "license:activate", "license:offlineRequest", "license:offlineApply", "license:deactivate", "license:checkout", "license:claim", "license:refresh",
+-    "sys:info", "fs:list", "fs:subdirs", "fs:stat", "fs:exists", "fs:isDir", "fs:mkdir", "fs:newFile", "fs:rename", "fs:uniqueName", "fs:readText", "fs:readBytes", "fs:compareBinary", "fs:writeText", "fs:writeImage", "fs:hash",
++    "license:status", "pro:authorize", "media:processImage", "media:createGif", "llm:status", "llm:warm", "llm:plan", "llm:stop", "reminders:list", "reminders:status", "reminders:apply", "reminders:scanNow", "reminders:analyze", "reminders:add", "reminders:update", "reminders:snooze", "reminders:remove", "reminders:test", "license:startTrial", "license:activate", "license:offlineRequest", "license:offlineApply", "license:deactivate", "license:checkout", "license:claim", "license:refresh",
++    "util:qrSvg", "sys:info", "fs:list", "fs:subdirs", "fs:stat", "fs:exists", "fs:isDir", "fs:mkdir", "fs:newFile", "fs:createSized", "fs:rename", "fs:uniqueName", "fs:readText", "fs:readBytes", "fs:compareBinary", "fs:writeText", "fs:writeImage", "fs:hash",
+     "fs:attributes", "fs:setAttributes", "fs:setTimes", "fs:symlink", "fs:shortcut", "fs:readLink", "fs:drives", "fs:eject", "fs:mapped", "fs:recentWindows", "fs:statMany", "thumb:get", "icon:get",
+     "shell:open", "shell:openExternal", "shell:openWith", "shell:runAs", "shell:showInExplorer", "shell:terminal", "shell:properties", "shell:verbs", "shell:invokeVerb", "shell:beep", "shell:launch",
+     "shell:runCommand", "fs:findUnder", "sys:findEditor", "clip:writeFiles", "clip:readFiles", "clip:writeText", "clip:readText", "clip:hasImage", "clip:formats", "clip:watch", "ops:start",
+@@ -45,6 +45,9 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
+     match name {
+         // ---------- Dogfile Pro ----------
+         "license:status" => license::status(&a),
++        "pro:authorize" => Ok(json!(true)),
++        "media:processImage" => pro_media::process_image(&a).await,
++        "media:createGif" => pro_media::create_gif(&a).await,
+         "llm:status" => llm::status(&a),
+         "llm:warm" => llm::warm(&a),
+         "llm:plan" => llm::plan(&a).await,
+@@ -67,6 +70,20 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
+         "license:checkout" => license::checkout(&a).await,
+         "license:claim" => license::claim(&a).await,
+         "license:refresh" => license::refresh(true).await,
++        // ---------- free utilities ----------
++        "util:qrSvg" => {
++            let value = a.s(0)?;
++            if value.is_empty() { return Err("Enter text or a URL for the QR code".into()); }
++            if value.len() > 4096 { return Err("QR content is too long (maximum 4,096 bytes)".into()); }
++            let qr = qrcode::QrCode::new(value.as_bytes()).map_err(|e| format!("Couldn’t make that QR code: {e}"))?;
++            let svg = qr.render::<qrcode::render::svg::Color>()
++                .min_dimensions(360, 360)
++                .quiet_zone(true)
++                .dark_color(qrcode::render::svg::Color("#111111"))
++                .light_color(qrcode::render::svg::Color("#ffffff"))
++                .build();
++            Ok(json!(svg))
++        }
+         // ---------- system ----------
+         "sys:info" => sys::info(win),
+         "bug:report" => bugreport::send(&a).await,
+@@ -133,6 +150,7 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
+         "fs:isDir" => fsx::is_dir(&a).await,
+         "fs:mkdir" => fsx::mkdir(&a).await,
+         "fs:newFile" => fsx::new_file(&a).await,
++        "fs:createSized" => fsx::create_sized(&a).await,
+         "fs:rename" => fsx::rename(&a).await,
+         "fs:uniqueName" => fsx::unique_name(&a).await,
+         "fs:readText" => fsx::read_text(&a).await,
+diff --git a/backend/src/fsx.rs b/backend/src/fsx.rs
+index 7c4da91..23b8a5c 100644
+--- a/backend/src/fsx.rs
++++ b/backend/src/fsx.rs
+@@ -188,6 +188,26 @@ pub async fn mkdir(a: &Args) -> R {
+     tokio::fs::create_dir(&p).await.map_err(|e| if e.kind() == std::io::ErrorKind::AlreadyExists { format!("\"{}\" already exists", basename(&p)) } else { friendly(&e) })?;
+     Ok(json!(p))
+ }
++/// fs:createSized(path, bytes): create a new zero-filled test file without sending its contents through the webview.
++pub async fn create_sized(a: &Args) -> R {
++    let p = a.s(0)?;
++    let size = a.u(1, 0);
++    const MAX_SIZE: u64 = 1024 * 1024 * 1024;
++    if size > MAX_SIZE {
++        return Err("For safety, the blank-file generator is limited to 1 GiB per file".into());
++    }
++    let f = tokio::fs::OpenOptions::new()
++        .write(true)
++        .create_new(true)
++        .open(&p)
++        .await
++        .map_err(|e| if e.kind() == std::io::ErrorKind::AlreadyExists {
++            format!("\\"{}\\" already exists", basename(&p))
++        } else { friendly(&e) })?;
++    f.set_len(size).await.map_err(|e| friendly(&e))?;
++    Ok(json!({ "path": p, "size": size }))
++}
++
+ pub async fn new_file(a: &Args) -> R {
+     let p = a.s(0)?;
+     let content = a.s_or(1, "");
+diff --git a/backend/src/lib.rs b/backend/src/lib.rs
+index 80fa4e9..e9460a5 100644
+--- a/backend/src/lib.rs
++++ b/backend/src/lib.rs
+@@ -24,6 +24,7 @@ pub mod watch;
+ pub mod ops;
+ pub mod archive;
+ pub mod media;
++pub mod pro_media;
+ pub mod doc;
+ pub mod tags;
+ pub mod keywords;
+diff --git a/backend/src/license.rs b/backend/src/license.rs
+index 84a26f9..a3ef48d 100644
+--- a/backend/src/license.rs
++++ b/backend/src/license.rs
+@@ -581,6 +581,7 @@ pub fn start_background() {
+ 
+ /// The calls only Dogfile Pro may make (a call is free unless it is named here or in QUIET_CALLS).
+ const PRO_CALLS: &[&str] = &[
++    "pro:authorize", "media:processImage", "media:createGif",
+     "versions:save", "versions:list", "versions:restore", "versions:remove", "versions:overview",
+     "remote:signIn", "remote:get", "remote:put", "remote:mkdir", "remote:rename", "remote:copy", "remote:open", "remote:test",
+     "ext:install", "ai:download", "media:export", "media:contactSheet", "llm:plan", "llm:warm",
+diff --git a/backend/src/pro_media.rs b/backend/src/pro_media.rs
+new file mode 100644
+index 0000000..ea73419
+--- /dev/null
++++ b/backend/src/pro_media.rs
+@@ -0,0 +1,65 @@
++// Dogfile Pro image utilities. These operations run in the backend so the licence gate is enforced
++// on the operation itself, not just by hiding its buttons in the renderer.
++use crate::args::{Args, R};
++use serde_json::json;
++use std::path::Path;
++
++pub async fn process_image(a: &Args) -> R {
++    let o = a.v(0);
++    let src = o["src"].as_str().ok_or("Choose an image")?.to_string();
++    let out = o["out"].as_str().ok_or("Choose where to save the image")?.to_string();
++    let max_side = o["maxSide"].as_u64().unwrap_or(0).min(20000) as u32;
++    let upscale_only = o["upscaleOnly"].as_bool().unwrap_or(false);
++    let quality = o["quality"].as_u64().unwrap_or(88).clamp(1, 100) as u8;
++    let format = o["format"].as_str().unwrap_or_else(|| Path::new(&out).extension().and_then(|x| x.to_str()).unwrap_or("jpg")).to_ascii_lowercase();
++    tokio::task::spawn_blocking(move || -> Result<serde_json::Value, String> {
++        use image::imageops::FilterType;
++        let mut image = image::open(&src).map_err(|e| format!("Couldn’t open image: {e}"))?;
++        let (w, h) = (image.width(), image.height());
++        if max_side > 0 && w.max(h) != max_side && (!upscale_only || max_side > w.max(h)) {
++            let scale = max_side as f64 / w.max(h) as f64;
++            let nw = ((w as f64 * scale).round() as u32).max(1);
++            let nh = ((h as f64 * scale).round() as u32).max(1);
++            image = image.resize_exact(nw, nh, FilterType::Lanczos3);
++        }
++        let mut file = std::fs::File::create(&out).map_err(|e| format!("Couldn’t create output: {e}"))?;
++        match format.as_str() {
++            "jpg" | "jpeg" => {
++                let rgb = image.to_rgb8();
++                image::codecs::jpeg::JpegEncoder::new_with_quality(&mut file, quality)
++                    .encode_image(&rgb).map_err(|e| format!("Couldn’t encode JPEG: {e}"))?;
++            }
++            "png" => image.write_to(&mut file, image::ImageFormat::Png).map_err(|e| e.to_string())?,
++            "webp" => image.write_to(&mut file, image::ImageFormat::WebP).map_err(|e| e.to_string())?,
++            _ => return Err("Choose JPG, PNG or WebP".into()),
++        }
++        let size = std::fs::metadata(&out).map(|m| m.len()).unwrap_or(0);
++        Ok(json!({"path": out, "width": image.width(), "height": image.height(), "bytes": size, "originalWidth": w, "originalHeight": h}))
++    }).await.map_err(|e| e.to_string())?
++}
++
++pub async fn create_gif(a: &Args) -> R {
++    let o = a.v(0);
++    let files = o["inputs"].as_array().ok_or("Choose at least two pictures")?.iter().filter_map(|v| v.as_str().map(str::to_string)).collect::<Vec<_>>();
++    if files.len() < 2 { return Err("Choose at least two pictures to make a GIF".into()); }
++    if files.len() > 300 { return Err("A GIF can contain up to 300 pictures".into()); }
++    let out = o["out"].as_str().ok_or("Choose where to save the GIF")?.to_string();
++    let delay = o["delayMs"].as_u64().unwrap_or(120).clamp(20, 5000) as u32;
++    tokio::task::spawn_blocking(move || -> Result<serde_json::Value, String> {
++        use image::{codecs::gif::{GifEncoder, Repeat}, Delay, Frame};
++        let mut decoded = Vec::with_capacity(files.len());
++        let mut size = None;
++        for p in &files {
++            let im = image::open(p).map_err(|e| format!("Couldn’t open {}: {e}", Path::new(p).file_name().unwrap_or_default().to_string_lossy()))?;
++            let target = *size.get_or_insert((im.width(), im.height()));
++            let rgba = if (im.width(), im.height()) == target { im.into_rgba8() } else { im.resize_exact(target.0, target.1, image::imageops::FilterType::Lanczos3).into_rgba8() };
++            decoded.push(Frame::from_parts(rgba, 0, 0, Delay::from_numer_denom_ms(delay, 1)));
++        }
++        let file = std::fs::File::create(&out).map_err(|e| format!("Couldn’t create GIF: {e}"))?;
++        let mut enc = GifEncoder::new(file);
++        enc.set_repeat(Repeat::Infinite).map_err(|e| e.to_string())?;
++        enc.encode_frames(decoded).map_err(|e| format!("Couldn’t encode GIF: {e}"))?;
++        let bytes = std::fs::metadata(&out).map(|m| m.len()).unwrap_or(0);
++        Ok(json!({"path": out, "frames": files.len(), "bytes": bytes}))
++    }).await.map_err(|e| e.to_string())?
++}
+diff --git a/src/renderer/js/actions.js b/src/renderer/js/actions.js
+index 9a01166..36051f2 100644
+--- a/src/renderer/js/actions.js
++++ b/src/renderer/js/actions.js
+@@ -1301,6 +1301,8 @@ export function buildItemsMenu(t, items) {
+     one && !one.isDir && t.links?.[one.path] && { label: 'See what’s linked', redDot: !!t.links[one.path].outside, icon: 'pageLinked', run: () => import('./links.js').then((m) => m.showLinks(one)) },
+     real.length && { label: 'Tags', icon: 'tag', submenu: tagMenu(paths) },
+     allDirs && real.length && { label: isPinned(real[0].path) ? 'Unpin from sidebar' : 'Pin to sidebar', icon: isPinned(real[0]?.path) ? 'unpin' : 'pin', run: () => (isPinned(real[0].path) ? unpin(real[0].path) : pin(paths)) },
++    one && !one.isDir && isImageFile(one) && { label: 'Extract image color palette…', icon: 'palette', run: () => import('./utilities.js').then((m) => m.openUtilities('palette', { path: one.path })) },
++    one && !one.isDir && isImageFile(one) && { label: 'Create folder cover artwork…', icon: 'image', run: () => import('./utilities.js').then((m) => m.openUtilities('cover', { path: one.path })) },
+     real.length && { label: 'More', icon: 'more', submenu: [
+       !real.some((i) => i.mtp) && { label: 'Send to phone', icon: 'phone', simple: true, run: () => import('./phonelink.js').then((m) => m.sendToPhone(paths)) },
+       { label: 'Add to Drop Shelf', icon: 'shelf', run: () => bus.emit('addToShelf', paths) },
+@@ -1356,6 +1358,7 @@ export function buildBackgroundMenu(t, e = { clientX: 0, clientY: 0 }) {
+     real && { label: 'New', icon: 'plus', submenu: [
+       { label: 'Folder', icon: 'newFolder', keys: 'Ctrl+Shift+N', run: () => newFolder(t) },
+       { label: 'File…', icon: 'newFile', keys: 'Ctrl+Alt+N', run: () => newFileNamed(t) },
++      { label: 'Exact-size blank file…', icon: 'newFile', run: () => import('./utilities.js').then((m) => m.openUtilities('blank', { folder: t.path })) },
+       { separator: true },
+       ...templates().map((tp) => ({ label: tp.label, icon: 'page', run: () => newFile(t, tp) })),
+     ] },
+diff --git a/src/renderer/js/ai-worker.js b/src/renderer/js/ai-worker.js
+index 0e7918b..d92f22e 100644
+--- a/src/renderer/js/ai-worker.js
++++ b/src/renderer/js/ai-worker.js
+@@ -1,5 +1,5 @@
+-// AI search worker: turns text, pictures and sounds into comparable vectors with open models running locally.
+-// CLIP (pictures, video frames) and CLAP (music, sounds). Models load from /models/ (downloaded once).
++// On-device AI worker: search embeddings, speech recognition, writing, image segmentation and translation.
++// Models load from /models/ (downloaded once); inference runs locally in this worker.
+ import { env, pipeline, AutoTokenizer, AutoProcessor, RawImage, CLIPTextModelWithProjection, CLIPVisionModelWithProjection, ClapTextModelWithProjection, ClapAudioModelWithProjection, TextStreamer } from '../vendor/transformers.min.js';
+ 
+ env.allowRemoteModels = false;
+@@ -9,7 +9,7 @@ env.useBrowserCache = false;
+ env.backends.onnx.wasm.wasmPaths = '/app/vendor/ort/';
+ env.backends.onnx.wasm.numThreads = 1;
+ 
+-const REPO = { clip: 'Xenova/clip-vit-base-patch32', clap: 'Xenova/clap-htsat-unfused', whisper: 'Xenova/whisper-base', minilm: 'Xenova/all-MiniLM-L6-v2', writer: 'onnx-community/Qwen2.5-0.5B-Instruct' };
++const REPO = { clip: 'Xenova/clip-vit-base-patch32', clap: 'Xenova/clap-htsat-unfused', whisper: 'Xenova/whisper-base', minilm: 'Xenova/all-MiniLM-L6-v2', writer: 'onnx-community/Qwen2.5-0.5B-Instruct', removebg: 'Ko033/isnet-general-use-onnx', translate: 'Xenova/m2m100_418M' };
+ const loaded = {};
+ const opts = { dtype: 'q8', device: 'wasm' };
+ async function load(kind, part) {
+@@ -88,6 +88,23 @@ async function embedSentences(texts) {
+ 
+ // writing (Notepad assistant): a small chat model, streamed back as it writes
+ let gen = null, genDevice = '';
++let segmenter = null, translator = null;
++async function removeBackground(url) {
++  if (!segmenter) segmenter = pipeline('image-segmentation', REPO.removebg, { dtype: 'q8', device: 'wasm' });
++  const p = await segmenter.catch((e) => { segmenter = null; throw e; });
++  const image = await RawImage.read(url);
++  const result = await p(image);
++  const mask = result?.[0]?.mask;
++  if (!mask?.data || !mask.width || !mask.height) throw new Error('The segmentation model did not return a usable mask.');
++  return { width: mask.width, height: mask.height, data: mask.data };
++}
++async function translateText(text, srcLang, tgtLang) {
++  if (!translator) translator = pipeline('translation', REPO.translate, { dtype: 'q8', device: 'wasm' });
++  const p = await translator.catch((e) => { translator = null; throw e; });
++  const out = await p(text, { src_lang: srcLang, tgt_lang: tgtLang, max_new_tokens: 512 });
++  return out?.[0]?.translation_text || '';
++}
++
+ async function generate(id, messages, opts = {}) {
+   const device = opts.device === 'webgpu' ? 'webgpu' : 'wasm';
+   if (!gen || genDevice !== device) { gen = pipeline('text-generation', REPO.writer, { dtype: device === 'webgpu' ? 'q4f16' : 'q8', device }); genDevice = device; }
+@@ -110,6 +127,8 @@ self.onmessage = async (e) => {
+     else if (type === 'transcribe') result = await transcribe(e.data.buffer, e.data.language);
+     else if (type === 'sentences') result = await embedSentences(texts);
+     else if (type === 'generate') result = await generate(id, e.data.messages, e.data.opts);
++    else if (type === 'removeBackground') result = await removeBackground(e.data.url);
++    else if (type === 'translate') result = await translateText(e.data.text, e.data.srcLang, e.data.tgtLang);
+     self.postMessage({ id, result });
+   } catch (err) {
+     self.postMessage({ id, error: String((err && err.message) || err) });
+diff --git a/src/renderer/js/ai.js b/src/renderer/js/ai.js
+index e6715c9..efaeea1 100644
+--- a/src/renderer/js/ai.js
++++ b/src/renderer/js/ai.js
+@@ -94,7 +94,7 @@ export async function ensureModels(need) {
+   if (!missing.length) return true;
+   const names = missing.map((k) => st[k].label).join(' and ');
+   if (!st[missing[0]].downloading) {
+-    const ok = await confirm('Download free AI models?', `This runs privately on this PC. It needs a one-time download of <b>${esc(names)}</b> (about ${missing.map((k) => ({ clip: 150, clap: 190, whisper: 80, minilm: 25, writer: 520, 'writer-gpu': 490, brain: 2740, 'brain-small': 1300, stems: 140 }[k] || 50)).reduce((a, b) => a + b, 0)} MB) Your files never leave your PC.`, { ok: 'Download' });
++    const ok = await confirm('Download free AI models?', `This runs privately on this PC. It needs a one-time download of <b>${esc(names)}</b> (about ${missing.map((k) => ({ clip: 150, clap: 190, whisper: 80, minilm: 25, writer: 520, 'writer-gpu': 490, brain: 2740, 'brain-small': 1300, stems: 140, removebg: 134, translate: 650 }[k] || 50)).reduce((a, b) => a + b, 0)} MB) Your files never leave your PC.`, { ok: 'Download' });
+     if (!ok) return false;
+     for (const k of missing) await api('ai:download', k);
+   }
+diff --git a/src/renderer/js/app.js b/src/renderer/js/app.js
+index 5b43c38..bbcb0dc 100644
+--- a/src/renderer/js/app.js
++++ b/src/renderer/js/app.js
+@@ -254,6 +254,8 @@ const R = {
+     ['Share', [['sendToPhone', 'Send to phone'], ['copyPath', 'Copy path'], ['copyName'], ['createShortcut'], ['symlink'], ['addToShelf', 'Add to Drop Shelf']]],
+   ],
+   tools: [
++    ['Create', [['qrCode', 'QR code', true], ['blankFile', 'Blank file…']]],
++    ['Convert & generate', [['csvJson', 'CSV / TSV to JSON', true], ['loremIpsum', 'Lorem Ipsum']]],
+     ['Clean up', [['cleanup', 'Cleanup', true], ['analyze', 'Disk space'], ['emptyRecycle'], ['similarMedia', 'Similar media']]],
+     ['Compare', [['compare', 'Compare & sync', true], ['compareFiles', 'Two files…']]],
+     ['Protect', [['timeTravel', 'Time travel', true], ['history', 'File history'], ['allVersions', 'Versions'], ['makeChecksums', 'Checksums'], ['verifyChecksums', 'Verify'], ['hashes'], ['whoLocks', 'What’s locking it?'], ['lock', 'Lock'], ['unlock', 'Unlock']]],
+diff --git a/src/renderer/js/commands.js b/src/renderer/js/commands.js
+index d8ce1ec..0ce73d6 100644
+--- a/src/renderer/js/commands.js
++++ b/src/renderer/js/commands.js
+@@ -159,6 +159,10 @@ def('compareFiles', 'Compare two files…', { icon: 'compare', cat: 'Tools', run
+ } });
+ def('compare', 'Compare / sync folders', { icon: 'compare', keys: ['Ctrl+Alt+M'], cat: 'Tools', run: T.compareFolders });
+ def('dupes', 'Find duplicate files', { icon: 'dupes', cat: 'Tools', run: T.findDuplicates });
++def('qrCode', 'Generate QR code…', { icon: 'scan', cat: 'Tools', run: () => import('./utilities.js').then((m) => m.openUtilities('qr')) });
++def('blankFile', 'Create exact-size blank file…', { icon: 'newFile', cat: 'Tools', run: () => import('./utilities.js').then((m) => m.openUtilities('blank')) });
++def('csvJson', 'Convert CSV / TSV to JSON…', { icon: 'convert', cat: 'Tools', run: () => import('./utilities.js').then((m) => m.openUtilities('csv')) });
++def('loremIpsum', 'Generate Lorem Ipsum…', { icon: 'page', cat: 'Tools', run: () => import('./utilities.js').then((m) => m.openUtilities('lorem')) });
+ def('analyze', 'Analyze disk space', { icon: 'chart', keys: ['Ctrl+Alt+A'], cat: 'Tools', run: () => T.analyzeSpace() });
+ def('analyzeSelection', 'Calculate selection size', { icon: 'chart', cat: 'Tools', run: T.analyzeSelection });
+ def('terminal', 'Open terminal here', { icon: 'terminal', keys: ['Ctrl+Alt+T'], cat: 'Tools', run: () => A.openTerminalHere(undefined, T_()) });
+@@ -166,6 +170,17 @@ def('terminalDrawer', 'Toggle built-in terminal', { icon: 'terminal', keys: ['Ct
+ def('shelf', 'Toggle Drop Shelf', { icon: 'shelf', keys: ['Ctrl+Shift+J'], cat: 'Tools', run: () => bus.emit('toggleShelf') });
+ def('addToShelf', 'Add selection to Drop Shelf', { icon: 'shelf', keys: ['Ctrl+Alt+J'], cat: 'Tools', run: () => { const s = S_().filter((i) => !i.virtual); if (s.length) bus.emit('addToShelf', s.map((i) => i.path)); } });
+ def('similarImages', 'Find similar pictures', { icon: 'photos', cat: 'Tools', run: () => T.findSimilarImages() });
++// Dogfile Pro utilities: each action has its own Tools entry (no catch-all toolbox).
++def('compressImages', 'Compress pictures…', { icon: 'image', cat: 'Tools', run: () => import('./protools.js').then((m) => m.compressImages()) });
++def('upscaleImages', 'Upscale pictures…', { icon: 'image', cat: 'Tools', run: () => import('./protools.js').then((m) => m.upscaleImages()) });
++def('mergePdfs', 'Merge PDF files…', { icon: 'page', cat: 'Tools', run: () => import('./protools.js').then((m) => m.mergePdfs()) });
++def('splitPdf', 'Split PDF pages…', { icon: 'page', cat: 'Tools', run: () => import('./protools.js').then((m) => m.splitPdf()) });
++def('extractAudio', 'Extract audio from video…', { icon: 'music', cat: 'Tools', run: () => import('./protools.js').then((m) => m.extractAudio()) });
++def('createGif', 'Create animated GIF…', { icon: 'image', cat: 'Tools', run: () => import('./protools.js').then((m) => m.makeGif()) });
++def('minifyCode', 'Minify code or data…', { icon: 'code', cat: 'Tools', run: () => import('./protools.js').then((m) => m.minifyCode()) });
++def('diffChecker', 'Diff checker…', { icon: 'compare', cat: 'Tools', run: async () => { try { await api('pro:authorize'); } catch (e) { toast(e.message || String(e), { error: true }); return; } const s = S_().filter((i) => !i.isDir && !i.virtual); if (s.length >= 2) return import('./compare.js').then((m) => m.compareFiles(s[0].path, s[1].path)); const p = await api('dialog:openFiles', { title: 'Choose two files to compare', multiple: true }); if (p?.length >= 2) return import('./compare.js').then((m) => m.compareFiles(p[0], p[1])); toast('Choose two files to compare'); } });
++def('removeImageBackground', 'Remove image background…', { icon: 'image', cat: 'Tools', run: () => import('./protools.js').then((m) => m.removeImageBackground()) });
++def('translateText', 'Translate text offline…', { icon: 'languages', cat: 'Tools', run: () => import('./protools.js').then((m) => m.translateText()) });
+ def('folderNote', 'Add or edit folder note', { icon: 'rename', cat: 'Tools', run: () => bus.emit('addFolderNote', T_()) });
+ def('contactSheet', 'Make video contact sheet', { icon: 'viewGrid', cat: 'Media', run: () => import('./gallery.js').then((m) => m.contactSheets(S_())) });
+ def('similarMedia', 'Find similar videos & songs', { icon: 'dupes', cat: 'Media', run: () => import('./gallery.js').then((m) => m.findSimilarMedia()) });
+diff --git a/src/renderer/js/license.js b/src/renderer/js/license.js
+index c845762..a63c4be 100644
+--- a/src/renderer/js/license.js
++++ b/src/renderer/js/license.js
+@@ -178,6 +178,7 @@ const COMPARE = [
+   ['Cloud (S3, B2, Google Cloud…), SFTP and FTP', 0],
+   ['Document reminders and photo details', 0],
+   ['Convert media, read text in images, custom features, 3D textures', 0],
++  ['Pro utilities: image compression and upscaling, PDF merge/split, GIF creation, audio extraction and code minification', 0],
+ ];
+ export function compareDialog() {
+   const mode = L.status?.mode;
+diff --git a/src/renderer/js/pro-marks.js b/src/renderer/js/pro-marks.js
+index 37f1528..f19156a 100644
+--- a/src/renderer/js/pro-marks.js
++++ b/src/renderer/js/pro-marks.js
+@@ -18,6 +18,7 @@ export const FEATURES = {
+   features: 'Custom features',
+   timetravel: 'Time travel',
+   stems: 'The stem separator',
++  proUtilities: 'Dogfile Pro utilities',
+ };
+ export const PLURAL = new Set(['panes', 'dupes', 'space', 'automation', 'versions', 'remote', 'features', 'reminders', 'model3d']);
+ export const PRO_COMMANDS = {
+@@ -31,6 +32,9 @@ export const PRO_COMMANDS = {
+   versions: 'versions', allVersions: 'versions',
+   connections: 'remote', addConnection: 'remote',
+   contactSheet: 'convert',
++  compressImages: 'proUtilities', upscaleImages: 'proUtilities', mergePdfs: 'proUtilities', splitPdf: 'proUtilities',
++  extractAudio: 'proUtilities', createGif: 'proUtilities', minifyCode: 'proUtilities', diffChecker: 'proUtilities',
++  removeImageBackground: 'proUtilities', translateText: 'proUtilities',
+   features: 'features', createFeature: 'features', featureStore: 'features',
+   reminders: 'reminders', remindAbout: 'reminders',
+   photoDetails: 'metadata',
+@@ -49,6 +53,8 @@ const PRO_LABELS = [
+   [/^(ask the (file )?assistant|ask dogfile)/i, 'assistant'],
+   [/^(document reminders|remind me)/i, 'reminders'],
+   [/^edit photo details/i, 'metadata'],
++  [/^(remove|erase) (the )?(image )?background/i, 'proUtilities'],
++  [/^translate text/i, 'proUtilities'],
+   [/^time travel/i, 'timetravel'],
+ ];
+ export const proForLabel = (label) => (PRO_LABELS.find(([re]) => re.test(label || '')) || [])[1] || null;
+diff --git a/src/renderer/js/protools.js b/src/renderer/js/protools.js
+new file mode 100644
+index 0000000..7a45d5e
+--- /dev/null
++++ b/src/renderer/js/protools.js
+@@ -0,0 +1,271 @@
++// Individual Dogfile Pro utilities. Each command is listed separately in Tools so it is easy to discover.
++import { api, basename, dirname, stem, toast, bus, h, fileUrl } from './core.js';
++import { prompt, modal } from './dialogs.js';
++import { ensureModels, call } from './ai.js';
++import { requirePro } from './license.js';
++
++const PDF_FILTER = [{ name: 'PDF documents', extensions: ['pdf'] }];
++const IMAGE_FILTER = [{ name: 'Pictures', extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif', 'tif', 'tiff'] }];
++const VIDEO_FILTER = [{ name: 'Video files', extensions: ['mp4', 'mkv', 'mov', 'avi', 'webm', 'm4v', 'mpeg', 'mpg'] }];
++const TEXT_FILTER = [{ name: 'Text and code files', extensions: ['json', 'js', 'mjs', 'cjs', 'css', 'html', 'htm', 'xml', 'svg'] }];
++const pick = async (title, filters, multiple = false) => (await api('dialog:openFiles', { title, filters, multiple })) || [];
++const save = async (title, name, ext, filter) => api('dialog:saveFile', { title, defaultPath: name, filters: filter || [{ name: ext.toUpperCase(), extensions: [ext] }] });
++const pro = async (feature) => { if (!requirePro(feature)) return false; try { await api('pro:authorize'); return true; } catch (e) { toast(e.message || String(e), { error: true }); return false; } };
++const writeBytes = async (path, bytes) => {
++  let bin = '';
++  const CHUNK = 0x6000;
++  for (let i = 0; i < bytes.length; i += CHUNK) bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
++  const b64 = btoa(bin), STEP = 512 * 1024;
++  for (let i = 0; i < b64.length; i += STEP) await api('fs:writePart', path, b64.slice(i, i + STEP), i > 0);
++  await api('fs:finishPart', path);
++};
++const readBytes = async (path) => {
++  const r = await api('fs:readBuffer', path, 256 * 1024 * 1024);
++  const b = atob(r.data), out = new Uint8Array(b.length);
++  for (let i = 0; i < b.length; i++) out[i] = b.charCodeAt(i);
++  return out;
++};
++
++export async function compressImages() {
++  if (!(await pro('proUtilities'))) return;
++  const files = await pick('Choose pictures to compress', IMAGE_FILTER, true);
++  if (!files.length) return;
++  const fmt = (await prompt('Image compression', 'webp', { label: 'Output format: webp, jpg or png' }))?.trim().toLowerCase();
++  if (!fmt) return;
++  if (!['webp', 'jpg', 'jpeg', 'png'].includes(fmt)) return toast('Choose WebP, JPG or PNG', { error: true });
++  const q = Number(await prompt('Image quality', '82', { label: 'Quality from 1 to 100 (JPG/WebP)' }));
++  const quality = Number.isFinite(q) ? Math.max(1, Math.min(100, Math.round(q))) : 82;
++  let done = 0;
++  for (const src of files) {
++    try {
++      const ext = fmt === 'jpeg' ? 'jpg' : fmt;
++      const out = await api('fs:uniqueName', dirname(src), `${stem(basename(src))} (compressed).${ext}`, 'number');
++      const r = await api('media:processImage', { src, out, format: ext, quality });
++      done++;
++      toast(`${basename(src)} → ${Math.round(r.bytes / 1024)} KB`);
++    } catch (e) { toast(`${basename(src)}: ${e.message || e}`, { error: true }); }
++  }
++  if (done) { toast(`Compressed ${done} picture${done === 1 ? '' : 's'}`); bus.emit('refreshPanes'); }
++}
++
++export async function upscaleImages() {
++  if (!(await pro('proUtilities'))) return;
++  const files = await pick('Choose pictures to upscale', IMAGE_FILTER, true);
++  if (!files.length) return;
++  const n = Number(await prompt('Upscale pictures', '4000', { label: 'Target longest edge in pixels (up to 20,000)' }));
++  if (!Number.isFinite(n) || n < 2 || n > 20000) return toast('Enter a target between 2 and 20,000 pixels', { error: true });
++  let done = 0;
++  for (const src of files) {
++    try {
++      const ext = 'png';
++      const out = await api('fs:uniqueName', dirname(src), `${stem(basename(src))} (${Math.round(n)}px).${ext}`, 'number');
++      await api('media:processImage', { src, out, format: ext, maxSide: Math.round(n), upscaleOnly: true });
++      done++;
++    } catch (e) { toast(`${basename(src)}: ${e.message || e}`, { error: true }); }
++  }
++  if (done) { toast(`Upscaled ${done} picture${done === 1 ? '' : 's'} using high-quality Lanczos resampling`); bus.emit('refreshPanes'); }
++}
++
++export async function makeGif() {
++  if (!(await pro('proUtilities'))) return;
++  const files = await pick('Choose pictures in animation order', IMAGE_FILTER, true);
++  if (files.length < 2) return toast('Choose at least two pictures', { error: true });
++  const delay = Number(await prompt('GIF frame duration', '120', { label: 'Milliseconds per picture (20–5000)' }));
++  if (!Number.isFinite(delay) || delay < 20 || delay > 5000) return toast('Enter a frame duration from 20 to 5000 ms', { error: true });
++  const out = await save('Save animated GIF', `${stem(basename(files[0]))}.gif`, 'gif');
++  if (!out) return;
++  try {
++    const r = await api('media:createGif', { inputs: files, out, delayMs: Math.round(delay) });
++    toast(`Created GIF · ${r.frames} frames`); bus.emit('refreshPanes');
++  } catch (e) { toast(e.message || String(e), { error: true }); }
++}
++
++export async function extractAudio() {
++  if (!(await pro('proUtilities'))) return;
++  const files = await pick('Choose videos to extract audio from', VIDEO_FILTER, true);
++  if (!files.length) return;
++  const { convertMedia } = await import('./mediatools.js');
++  await convertMedia(files, 'mp3', { audioOnly: true, bitrate: 192 });
++}
++
++export async function mergePdfs() {
++  if (!(await pro('proUtilities'))) return;
++  const files = await pick('Choose PDFs to merge (in order)', PDF_FILTER, true);
++  if (files.length < 2) return toast('Choose at least two PDF files', { error: true });
++  try {
++    const { PDFLib } = await import('../vendor/office.js');
++    const out = await PDFLib.PDFDocument.create();
++    for (const path of files) {
++      const src = await PDFLib.PDFDocument.load(await readBytes(path), { ignoreEncryption: true });
++      const pages = await out.copyPages(src, src.getPageIndices());
++      for (const page of pages) out.addPage(page);
++    }
++    const dest = await save('Save merged PDF', `${stem(basename(files[0]))} (merged).pdf`, 'pdf', PDF_FILTER);
++    if (!dest) return;
++    await writeBytes(dest, await out.save());
++    toast(`Merged ${files.length} PDFs`); bus.emit('refreshPanes');
++  } catch (e) { toast(`Couldn’t merge PDFs: ${e.message || e}`, { error: true }); }
++}
++
++export async function splitPdf() {
++  if (!(await pro('proUtilities'))) return;
++  const [path] = await pick('Choose a PDF to split', PDF_FILTER);
++  if (!path) return;
++  try {
++    const { PDFLib } = await import('../vendor/office.js');
++    const src = await PDFLib.PDFDocument.load(await readBytes(path), { ignoreEncryption: true });
++    const count = src.getPageCount();
++    const ranges = await prompt('Split PDF', `1-${count}`, { label: `Pages to extract (e.g. 1, 3-5, 8). This creates one PDF per selected page.` });
++    if (!ranges) return;
++    const pages = new Set();
++    for (const part of ranges.split(',')) {
++      const m = part.trim().match(/^(\d+)\s*(?:-\s*(\d+))?$/);
++      if (!m) return toast(`Invalid page range: ${part}`, { error: true });
++      const a = Number(m[1]), b = Number(m[2] || m[1]);
++      if (a < 1 || b < a || b > count) return toast(`Page range must be between 1 and ${count}`, { error: true });
++      for (let i = a; i <= b; i++) pages.add(i - 1);
++    }
++    const dir = await api('dialog:pickFolder', 'Choose a folder for the split pages');
++    if (!dir) return;
++    for (const index of [...pages].sort((a, b) => a - b)) {
++      const one = await PDFLib.PDFDocument.create();
++      const [page] = await one.copyPages(src, [index]); one.addPage(page);
++      const dest = await api('fs:uniqueName', dir, `${stem(basename(path))} - page ${index + 1}.pdf`, 'number');
++      await writeBytes(dest, await one.save());
++    }
++    toast(`Saved ${pages.size} PDF page${pages.size === 1 ? '' : 's'}`); bus.emit('refreshPanes');
++  } catch (e) { toast(`Couldn’t split PDF: ${e.message || e}`, { error: true }); }
++}
++
++export async function minifyCode() {
++  if (!(await pro('proUtilities'))) return;
++  const [path] = await pick('Choose a code or data file to minify', TEXT_FILTER);
++  if (!path) return;
++  const ext = (path.split('.').pop() || '').toLowerCase();
++  try {
++    const read = await api('fs:readText', path, 8 * 1024 * 1024);
++    const raw = read?.text ?? '';
++    if (read?.truncated) return toast('This file is larger than the 8 MB minifier limit', { error: true });
++    let min;
++    if (ext === 'json') min = JSON.stringify(JSON.parse(raw));
++    else if (['css', 'svg'].includes(ext)) min = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s*([{}:;,>])\s*/g, '$1').replace(/;}/g, '}').trim();
++    else if (['html', 'htm', 'xml'].includes(ext)) min = raw.replace(/<!--[\s\S]*?-->/g, '').replace(/>\s+</g, '><').replace(/[\t\r\n ]+/g, ' ').trim();
++    else return toast('Safe minification is currently available for JSON, CSS, HTML, XML and SVG. JavaScript minification needs a dedicated parser.', { error: true });
++    const out = await api('fs:uniqueName', dirname(path), `${stem(basename(path))}.min.${ext}`, 'number');
++    await api('fs:writeEncoded', out, min, 'utf8');
++    toast(`Minified copy saved: ${basename(out)}`); bus.emit('refreshPanes');
++  } catch (e) { toast(`Couldn’t minify: ${e.message || e}`, { error: true }); }
++}
++
++
++// General-purpose local AI background removal. The image and mask stay on this PC.
++export async function removeImageBackground() {
++  if (!(await pro('proUtilities'))) return;
++  const files = await pick('Choose pictures for background removal', IMAGE_FILTER, true);
++  if (!files.length) return;
++  if (!(await ensureModels(['removebg']))) return;
++  let done = 0;
++  for (const src of files) {
++    try {
++      const mask = await call({ type: 'removeBackground', url: fileUrl(src) });
++      const img = new Image(); img.decoding = 'async'; img.src = fileUrl(src);
++      await img.decode();
++      const w = img.naturalWidth, hh = img.naturalHeight;
++      if (!w || !hh) throw new Error('Could not read the source image dimensions.');
++      const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = hh;
++      const ctx = canvas.getContext('2d', { willReadFrequently: true });
++      ctx.drawImage(img, 0, 0, w, hh);
++      const frame = ctx.getImageData(0, 0, w, hh), pixels = frame.data;
++      const md = mask.data, mw = mask.width, mh = mask.height;
++      const channels = Math.max(1, Math.round(md.length / (mw * mh)));
++      for (let y = 0; y < hh; y++) {
++        const my = Math.min(mh - 1, Math.floor((y / hh) * mh));
++        for (let x = 0; x < w; x++) {
++          const mx = Math.min(mw - 1, Math.floor((x / w) * mw));
++          const v = Number(md[(my * mw + mx) * channels]);
++          pixels[(y * w + x) * 4 + 3] = v <= 1 ? Math.round(v * 255) : Math.max(0, Math.min(255, Math.round(v)));
++        }
++      }
++      ctx.putImageData(frame, 0, 0);
++      const blob = await new Promise((resolve, reject) => canvas.toBlob((b) => b ? resolve(b) : reject(new Error('Could not encode the transparent PNG.')), 'image/png'));
++      const out = await api('fs:uniqueName', dirname(src), `${stem(basename(src))} (no background).png`, 'number');
++      await writeBytes(out, new Uint8Array(await blob.arrayBuffer()));
++      done++;
++    } catch (e) { toast(`${basename(src)}: ${e.message || e}`, { error: true }); }
++  }
++  if (done) { toast(`Removed backgrounds from ${done} picture${done === 1 ? '' : 's'} · saved transparent PNG copies`); bus.emit('refreshPanes'); }
++}
++
++const TRANSLATION_LANGUAGES = [
++  ['en', 'English'], ['ar', 'Arabic'], ['zh', 'Chinese'], ['fr', 'French'], ['es', 'Spanish'], ['de', 'German'],
++  ['it', 'Italian'], ['pt', 'Portuguese'], ['ru', 'Russian'], ['ja', 'Japanese'], ['ko', 'Korean'], ['hi', 'Hindi'],
++  ['tr', 'Turkish'], ['nl', 'Dutch'], ['pl', 'Polish'], ['uk', 'Ukrainian'], ['fa', 'Persian'], ['ur', 'Urdu'],
++  ['vi', 'Vietnamese'], ['th', 'Thai'], ['id', 'Indonesian'], ['ms', 'Malay'], ['sv', 'Swedish'], ['no', 'Norwegian'],
++  ['da', 'Danish'], ['fi', 'Finnish'], ['cs', 'Czech'], ['ro', 'Romanian'], ['hu', 'Hungarian'], ['el', 'Greek'],
++  ['he', 'Hebrew'], ['sw', 'Swahili'], ['ta', 'Tamil'], ['bn', 'Bengali'], ['tl', 'Filipino / Tagalog'], ['ca', 'Catalan'],
++  ['hr', 'Croatian'], ['sk', 'Slovak'], ['bg', 'Bulgarian'], ['sr', 'Serbian'], ['sl', 'Slovenian'], ['et', 'Estonian'],
++  ['lv', 'Latvian'], ['lt', 'Lithuanian'], ['af', 'Afrikaans'], ['az', 'Azerbaijani'], ['kk', 'Kazakh'], ['uz', 'Uzbek'],
++];
++const languageSelect = (value) => h('select', { class: 'input' }, ...TRANSLATION_LANGUAGES.map(([code, name]) => h('option', { value: code, selected: code === value }, name)));
++
++export async function translateText() {
++  if (!(await pro('proUtilities'))) return;
++  const source = h('textarea', { class: 'input', rows: 7, placeholder: 'Type or paste text to translate…', spellcheck: 'true' });
++  const target = h('textarea', { class: 'input', rows: 7, readonly: true, placeholder: 'Your translation will appear here.' });
++  const from = languageSelect('en'), to = languageSelect('es');
++  const status = h('div', { class: 'hint' }, 'Runs locally on your PC. The first use downloads the translation model (about 650 MB).');
++  const swap = h('button', { class: 'btn small', type: 'button', onclick: () => { const v = from.value; from.value = to.value; to.value = v; } }, 'Swap languages');
++  const loadFile = h('button', { class: 'btn small', type: 'button', onclick: async () => {
++    const [path] = await pick('Open a text file to translate', [{ name: 'Text documents', extensions: ['txt', 'md', 'csv', 'json', 'html', 'xml'] }]);
++    if (!path) return;
++    try { const r = await api('fs:readText', path, 1024 * 1024); if (r?.truncated) throw new Error('This file is larger than 1 MB.'); source.value = r?.text || ''; }
++    catch (e) { toast(e.message || String(e), { error: true }); }
++  } }, 'Open text file…');
++  const copy = h('button', { class: 'btn small', type: 'button', onclick: async () => {
++    if (!target.value) return;
++    try { await navigator.clipboard.writeText(target.value); toast('Translation copied'); }
++    catch { target.focus(); target.select(); toast('Select the translation and copy it.'); }
++  } }, 'Copy translation');
++  const body = h('div', { class: 'stack' },
++    h('div', { class: 'row', style: { gap: '8px', alignItems: 'end' } }, h('div', { class: 'grow' }, h('div', { class: 'field-label' }, 'From'), from), h('div', { class: 'grow' }, h('div', { class: 'field-label' }, 'To'), to), swap),
++    h('div', { class: 'row', style: { gap: '8px' } }, loadFile),
++    h('div', {}, h('div', { class: 'field-label' }, 'Original text'), source),
++    h('div', {}, h('div', { class: 'field-label' }, 'Translation'), target),
++    h('div', { class: 'row', style: { justifyContent: 'space-between', alignItems: 'center' } }, status, copy));
++  await modal({ title: 'Translate text', width: 760, className: 'translate-modal', body, buttons: [
++    { label: 'Close', value: null },
++    { label: 'Translate', primary: true, run: async () => {
++      const text = source.value.trim();
++      if (!text) { status.textContent = 'Enter or open some text first.'; return false; }
++      if (text.length > 12000) { status.textContent = 'Please keep each translation under 12,000 characters.'; return false; }
++      if (from.value === to.value) { target.value = text; status.textContent = 'Source and target languages are the same.'; return false; }
++      status.textContent = 'Preparing the offline translation model…';
++      if (!(await ensureModels(['translate']))) { status.textContent = 'Model download was cancelled or failed. You can try again.'; return false; }
++      try {
++        const paragraphs = text.split(/(\n\s*\n)/);
++        const chunks = [];
++        for (const part of paragraphs) {
++          if (/^\n\s*\n$/.test(part) || part.length <= 1100) { chunks.push(part); continue; }
++          const sentences = part.match(/[^.!?。！？]+[.!?。！？]?\s*/g) || [part];
++          let chunk = '';
++          for (const sentence of sentences) {
++            if (chunk && (chunk.length + sentence.length > 1100)) { chunks.push(chunk); chunk = ''; }
++            chunk += sentence;
++          }
++          if (chunk) chunks.push(chunk);
++        }
++        const translated = [];
++        let count = 0;
++        for (const chunk of chunks) {
++          if (!chunk.trim()) { translated.push(chunk); continue; }
++          translated.push(await call({ type: 'translate', text: chunk, srcLang: from.value, tgtLang: to.value }));
++          count++;
++          status.textContent = `Translating locally… ${count} of ${chunks.filter((x) => x.trim()).length}`;
++        }
++        target.value = translated.join('');
++        status.textContent = 'Translation complete. Your text stayed on this PC.';
++      } catch (e) { status.textContent = `Translation failed: ${e.message || e}`; }
++      return false;
++    } },
++  ] });
++}
+diff --git a/src/renderer/js/utilities.js b/src/renderer/js/utilities.js
+new file mode 100644
+index 0000000..01a71e1
+--- /dev/null
++++ b/src/renderer/js/utilities.js
+@@ -0,0 +1,279 @@
++// Contextual generators and media actions, opened from their native Dogfile locations.
++import { api, h, state, toast, basename, dirname, isVirtual, fileUrl } from './core.js';
++import { modal } from './dialogs.js';
++import { activeTab } from './pane.js';
++
++const $ = (tag, attrs = {}, ...children) => h(tag, attrs, ...children);
++const field = (label, control, hint = '') => $('label', { class: 'util-field' },
++  $('span', { class: 'util-label' }, label), control, hint ? $('span', { class: 'hint' }, hint) : null);
++const btn = (label, run, primary = false) => $('button', { class: `btn${primary ? ' primary' : ''}`, onclick: run }, label);
++const setStatus = (el, text, error = false) => { el.textContent = text; el.classList.toggle('util-error', error); };
++const activeFolder = () => {
++  const t = activeTab();
++  return t?.path && !isVirtual(t.path) ? t.path : '';
++};
++const savePath = async (title, defaultPath, ext, label) => api('dialog:saveFile', {
++  title, defaultPath, filters: [{ name: label, extensions: [ext] }],
++});
++
++async function imageToPng(svg, size = 512) {
++  const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
++  try {
++    const img = new Image();
++    await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = url; });
++    const canvas = document.createElement('canvas');
++    canvas.width = canvas.height = size;
++    const ctx = canvas.getContext('2d');
++    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size);
++    ctx.drawImage(img, 0, 0, size, size);
++    return canvas.toDataURL('image/png');
++  } finally { URL.revokeObjectURL(url); }
++}
++
++function csvRows(text, delimiter) {
++  const rows = [];
++  let row = [], cell = '', quoted = false;
++  for (let i = 0; i < text.length; i++) {
++    const ch = text[i];
++    if (quoted) {
++      if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; }
++      else if (ch === '"') quoted = false;
++      else cell += ch;
++    } else if (ch === '"' && cell.length === 0) quoted = true;
++    else if (ch === delimiter) { row.push(cell); cell = ''; }
++    else if (ch === '\n' || ch === '\r') {
++      if (ch === '\r' && text[i + 1] === '\n') i++;
++      row.push(cell); rows.push(row); row = []; cell = '';
++    } else cell += ch;
++  }
++  row.push(cell);
++  if (row.some((v) => v !== '') || !rows.length) rows.push(row);
++  return rows;
++}
++function parseCsv(text) {
++  const first = text.split(/\r?\n/, 1)[0] || '';
++  const count = (ch) => [...first].filter((c) => c === ch).length;
++  const delimiter = count('\t') > count(',') ? '\t' : ',';
++  const rows = csvRows(text.replace(/^\uFEFF/, ''), delimiter).filter((r) => r.some((v) => v.trim() !== ''));
++  if (!rows.length) return [];
++  const headers = [];
++  const used = new Set();
++  rows[0].forEach((raw, i) => {
++    let name = raw.trim() || `column_${i + 1}`, base = name, n = 2;
++    while (used.has(name)) name = `${base}_${n++}`;
++    used.add(name); headers.push(name);
++  });
++  return rows.slice(1).map((r) => Object.fromEntries(headers.map((k, i) => [k, r[i] ?? ''])));
++}
++function extractPalette(img, limit = 8) {
++  const c = document.createElement('canvas'), size = 96;
++  c.width = c.height = size;
++  const g = c.getContext('2d', { willReadFrequently: true });
++  g.drawImage(img, 0, 0, size, size);
++  const d = g.getImageData(0, 0, size, size).data, buckets = new Map();
++  for (let i = 0; i < d.length; i += 4) {
++    if (d[i + 3] < 128) continue;
++    const key = ((d[i] >> 4) << 8) | ((d[i + 1] >> 4) << 4) | (d[i + 2] >> 4);
++    const b = buckets.get(key) || [0, 0, 0, 0];
++    b[0] += d[i]; b[1] += d[i + 1]; b[2] += d[i + 2]; b[3]++;
++    buckets.set(key, b);
++  }
++  const sorted = [...buckets.values()].sort((a, b) => b[3] - a[3]).map((b) => b.slice(0, 3).map((v) => v / b[3]));
++  const out = [];
++  for (const color of sorted) {
++    if (out.every((o) => Math.hypot(o[0] - color[0], o[1] - color[1], o[2] - color[2]) > 42)) out.push(color);
++    if (out.length >= limit) break;
++  }
++  return out.map((rgb) => ({ rgb: rgb.map((v) => Math.round(v)), hex: '#' + rgb.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('') }));
++}
++function drawCover(title, subtitle) {
++  const canvas = document.createElement('canvas');
++  canvas.width = 1200; canvas.height = 800;
++  const c = canvas.getContext('2d');
++  const grad = c.createLinearGradient(0, 800, 1200, 0);
++  grad.addColorStop(0, '#101b32'); grad.addColorStop(.55, '#273f63'); grad.addColorStop(1, '#816b9c');
++  c.fillStyle = grad; c.fillRect(0, 0, 1200, 800);
++  c.globalAlpha = .14; c.strokeStyle = '#fff'; c.lineWidth = 2;
++  for (let i = -800; i < 1600; i += 70) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i + 800, 800); c.stroke(); }
++  c.globalAlpha = .12; c.fillStyle = '#fff';
++  [[980,150,180],[1040,650,250],[180,700,170]].forEach(([x,y,r]) => { c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fill(); });
++  c.globalAlpha = 1;
++  // simple folder mark
++  c.fillStyle = 'rgba(255,255,255,.9)';
++  c.beginPath(); c.moveTo(110,180); c.lineTo(300,180); c.lineTo(350,230); c.lineTo(520,230); c.lineTo(520,390); c.lineTo(110,390); c.closePath(); c.fill();
++  c.fillStyle = 'rgba(255,255,255,.17)';
++  c.beginPath(); c.roundRect(110,250,410,240,26); c.fill();
++  c.fillStyle = '#fff'; c.font = '600 24px Inter, Segoe UI, sans-serif'; c.fillText('DOGFILE  /  COLLECTION', 110, 565);
++  c.font = '700 68px Inter, Segoe UI, sans-serif';
++  const safeTitle = String(title || 'My Collection').slice(0, 34);
++  c.fillText(safeTitle, 110, 650, 960);
++  c.font = '400 28px Inter, Segoe UI, sans-serif'; c.globalAlpha = .85;
++  c.fillText(String(subtitle || 'A place for the things that matter').slice(0, 70), 114, 710, 950);
++  return canvas.toDataURL('image/png');
++}
++
++export function openUtilities(kind = 'all', options = {}) {
++  const body = $('div', { class: 'util-hub' });
++  const include = (name) => kind === 'all' || kind === name;
++  if (kind === 'all') body.append($('p', { class: 'hint' }, 'Small, offline-first tools for everyday file work. Generated files are saved locally.'));
++
++  // QR code
++  const qrCard = $('section', { class: 'util-card' },
++    $('div', { class: 'util-card-head' }, $('span', { class: 'util-icon' }, '▦'), $('div', {}, $('b', {}, 'QR code to PNG'), $('div', { class: 'hint' }, 'Turn text, a URL, or contact details into a shareable QR image.'))));
++  const qrInput = $('textarea', { class: 'input util-area', rows: 3, placeholder: 'https://example.com' });
++  const qrPreview = $('div', { class: 'util-preview' }, $('span', { class: 'hint' }, 'Your QR code will appear here'));
++  const qrStatus = $('div', { class: 'hint util-status' });
++  let qrPng = null;
++  qrCard.append(field('Content', qrInput), $('div', { class: 'util-actions' },
++    btn('Generate QR', async () => {
++      const value = qrInput.value.trim();
++      if (!value) return setStatus(qrStatus, 'Enter something to encode.', true);
++      try {
++        setStatus(qrStatus, 'Generating…');
++        const svg = await api('util:qrSvg', value);
++        qrPng = await imageToPng(svg, 640);
++        qrPreview.innerHTML = '';
++        const img = $('img', { class: 'util-qr-img', src: qrPng, alt: 'Generated QR code' });
++        qrPreview.append(img);
++        setStatus(qrStatus, 'Ready · 640 × 640 PNG');
++      } catch (e) { setStatus(qrStatus, e.message || String(e), true); }
++    }, true),
++    btn('Save PNG', async () => {
++      if (!qrPng) return setStatus(qrStatus, 'Generate a QR code first.', true);
++      const path = await savePath('Save QR code', 'qr-code.png', 'png', 'PNG image');
++      if (path) { await api('fs:writeDataUrl', path, qrPng); setStatus(qrStatus, `Saved ${basename(path)}`); }
++    })),
++    qrPreview, qrStatus);
++  if (include('qr')) body.append(qrCard);
++
++  // Palette extractor
++  const paletteCard = $('section', { class: 'util-card' },
++    $('div', { class: 'util-card-head' }, $('span', { class: 'util-icon' }, '◉'), $('div', {}, $('b', {}, 'Image color palette'), $('div', { class: 'hint' }, 'Extract a larger palette with HEX and RGB values.'))));
++  const palPreview = $('div', { class: 'util-palette' }, $('span', { class: 'hint' }, 'Choose an image to extract its colors'));
++  const palStatus = $('div', { class: 'hint util-status' });
++  let palette = [];
++  const loadPalette = async (path) => {
++    if (!path) return;
++    try {
++      const img = new Image();
++      await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = fileUrl(path); });
++      palette = extractPalette(img);
++      palPreview.innerHTML = '';
++      palette.forEach((p) => palPreview.append($('button', { class: 'util-swatch', title: `Copy ${p.hex}`, style: { background: p.hex }, onclick: async () => { await api('clip:writeText', p.hex); toast(`Copied ${p.hex}`); } }, $('span', {}, p.hex), $('small', {}, p.rgb.join(', ')))));
++      setStatus(palStatus, `${basename(path)} · ${palette.length} colors · click a swatch to copy HEX`);
++    } catch (e) { setStatus(palStatus, `Couldn’t read that image: ${e.message || e}`, true); }
++  };
++  paletteCard.append($('div', { class: 'util-actions' },
++    btn('Choose image', async () => {
++      const files = await api('dialog:openFiles', { title: 'Choose an image', filters: [{ name: 'Pictures', extensions: ['png','jpg','jpeg','webp','bmp','gif','tif','tiff','avif','ico'] }] });
++      await loadPalette(files?.[0]);
++    }, true),
++    btn('Copy palette', async () => {
++      if (!palette.length) return setStatus(palStatus, 'Choose an image first.', true);
++      await api('clip:writeText', palette.map((p) => `${p.hex}  RGB(${p.rgb.join(', ')})`).join('\n'));
++      setStatus(palStatus, 'Palette copied to clipboard.');
++    }),
++    btn('Save .txt', async () => {
++      if (!palette.length) return setStatus(palStatus, 'Choose an image first.', true);
++      const path = await savePath('Save color palette', 'image-palette.txt', 'txt', 'Text file');
++      if (path) { await api('fs:writeText', path, palette.map((p) => `${p.hex}  RGB(${p.rgb.join(', ')})`).join('\n')); setStatus(palStatus, `Saved ${basename(path)}`); }
++    })),
++    palPreview, palStatus);
++  if (include('palette')) { body.append(paletteCard); if (options.path) setTimeout(() => loadPalette(options.path), 0); }
++
++  // Exact-size file generator
++  const sizeCard = $('section', { class: 'util-card' },
++    $('div', { class: 'util-card-head' }, $('span', { class: 'util-icon' }, '▤'), $('div', {}, $('b', {}, 'Exact-size blank file'), $('div', { class: 'hint' }, 'Create zero-filled test files up to 1 GiB.'))));
++  const sizeName = $('input', { class: 'input', value: 'test-file.bin', placeholder: 'test-file.bin' });
++  const sizeBytes = $('input', { class: 'input', type: 'number', min: '0', max: String(1024 ** 3), value: '1048576' });
++  const sizeStatus = $('div', { class: 'hint util-status' });
++  sizeCard.append(field('File name', sizeName), field('Size in bytes', sizeBytes, '1 MiB = 1,048,576 bytes · maximum 1 GiB'), $('div', { class: 'util-actions' },
++    btn('Create in current folder', async () => {
++      const folder = options.folder || activeFolder(), name = sizeName.value.trim(), bytes = Number(sizeBytes.value);
++      if (!folder) return setStatus(sizeStatus, 'Open a real folder in Dogfile first.', true);
++      if (!name || /[\\/]/.test(name) || name === '.' || name === '..') return setStatus(sizeStatus, 'Enter a file name, not a path.', true);
++      if (!Number.isSafeInteger(bytes) || bytes < 0 || bytes > 1024 ** 3) return setStatus(sizeStatus, 'Enter a whole number from 0 to 1,073,741,824.', true);
++      try {
++        const path = await api('fs:uniqueName', folder, name, 'number');
++        const result = await api('fs:createSized', path, bytes);
++        setStatus(sizeStatus, `Created ${basename(result.path)} · ${Number(result.size).toLocaleString()} bytes`);
++      } catch (e) { setStatus(sizeStatus, e.message || String(e), true); }
++    }, true)), sizeStatus);
++  if (include('blank')) body.append(sizeCard);
++
++  // CSV to JSON
++  const csvCard = $('section', { class: 'util-card' },
++    $('div', { class: 'util-card-head' }, $('span', { class: 'util-icon' }, '⇄'), $('div', {}, $('b', {}, 'CSV to JSON'), $('div', { class: 'hint' }, 'Use the first row as object keys; quoted commas and newlines are supported.'))));
++  const csvStatus = $('div', { class: 'hint util-status' });
++  let csvJson = null;
++  csvCard.append($('div', { class: 'util-actions' },
++    btn('Choose CSV / TSV', async () => {
++      const files = await api('dialog:openFiles', { title: 'Choose a CSV or TSV file', filters: [{ name: 'Delimited text', extensions: ['csv','tsv','txt'] }] });
++      const path = files?.[0]; if (!path) return;
++      try {
++        const r = await api('fs:readText', path, 20 * 1024 * 1024);
++        csvJson = JSON.stringify(parseCsv(r.text || ''), null, 2);
++        setStatus(csvStatus, `Converted ${basename(path)} · ${JSON.parse(csvJson).length} rows`);
++      } catch (e) { csvJson = null; setStatus(csvStatus, e.message || String(e), true); }
++    }, true),
++    btn('Save JSON', async () => {
++      if (!csvJson) return setStatus(csvStatus, 'Choose a CSV file first.', true);
++      const path = await savePath('Save converted JSON', 'converted.json', 'json', 'JSON file');
++      if (path) { await api('fs:writeText', path, csvJson + '\n'); setStatus(csvStatus, `Saved ${basename(path)}`); }
++    }),
++    btn('Copy JSON', async () => {
++      if (!csvJson) return setStatus(csvStatus, 'Choose a CSV file first.', true);
++      await api('clip:writeText', csvJson); setStatus(csvStatus, 'JSON copied to clipboard.');
++    })), csvStatus);
++  if (include('csv')) body.append(csvCard);
++
++  // Lorem Ipsum
++  const loremCard = $('section', { class: 'util-card' },
++    $('div', { class: 'util-card-head' }, $('span', { class: 'util-icon' }, '¶'), $('div', {}, $('b', {}, 'Lorem Ipsum'), $('div', { class: 'hint' }, 'Generate placeholder copy and copy it in one click.'))));
++  const loremCount = $('input', { class: 'input', type: 'number', min: '10', max: '2000', value: '120' });
++  const loremOutput = $('textarea', { class: 'input util-area', rows: 4, placeholder: 'Generated text appears here' });
++  const loremStatus = $('div', { class: 'hint util-status' });
++  const words = 'lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure dolor in reprehenderit voluptate velit esse cillum dolore eu fugiat nulla pariatur'.split(' ');
++  loremCard.append(field('Word count', loremCount, '10–2,000 words'), $('div', { class: 'util-actions' },
++    btn('Generate', () => {
++      const n = Math.max(10, Math.min(2000, Math.floor(Number(loremCount.value) || 120)));
++      const out = Array.from({ length: n }, (_, i) => words[i % words.length]).join(' ');
++      loremOutput.value = out.charAt(0).toUpperCase() + out.slice(1) + '.';
++      setStatus(loremStatus, `${n} words generated.`);
++    }, true),
++    btn('Copy text', async () => { if (!loremOutput.value) return setStatus(loremStatus, 'Generate text first.', true); await api('clip:writeText', loremOutput.value); setStatus(loremStatus, 'Copied to clipboard.'); })),
++    loremOutput, loremStatus);
++  if (include('lorem')) body.append(loremCard);
++
++  // Folder cover artwork
++  const coverCard = $('section', { class: 'util-card' },
++    $('div', { class: 'util-card-head' }, $('span', { class: 'util-icon' }, '▣'), $('div', {}, $('b', {}, 'Folder cover artwork'), $('div', { class: 'hint' }, 'Create a polished 1200 × 800 cover image and save it inside a folder.'))));
++  const initialFolder = options.folder || (options.path ? dirname(options.path) : activeFolder());
++  const coverFolder = $('input', { class: 'input', value: initialFolder, placeholder: 'Choose a folder…', readonly: true });
++  const coverTitle = $('input', { class: 'input', value: initialFolder ? basename(initialFolder) : 'My Collection' });
++  const coverSub = $('input', { class: 'input', value: 'A place for the things that matter' });
++  const coverPreview = $('div', { class: 'util-cover-preview' });
++  const coverStatus = $('div', { class: 'hint util-status' });
++  let coverPng = null;
++  const renderCover = () => { coverPng = drawCover(coverTitle.value, coverSub.value); coverPreview.innerHTML = ''; coverPreview.append($('img', { src: coverPng, alt: 'Folder cover artwork preview' })); };
++  coverCard.append(field('Destination folder', $('div', { class: 'util-actions' }, coverFolder, btn('Choose…', async () => {
++    const folder = await api('dialog:pickFolder', 'Choose a folder for the cover artwork');
++    if (folder) { coverFolder.value = folder; if (!coverTitle.value || coverTitle.value === 'My Collection') coverTitle.value = basename(folder); renderCover(); }
++  }))),
++    field('Cover title', coverTitle), field('Subtitle', coverSub),
++    $('div', { class: 'util-actions' }, btn('Preview', renderCover), btn('Save cover.png', async () => {
++      if (!coverFolder.value) return setStatus(coverStatus, 'Choose a destination folder.', true);
++      renderCover();
++      try {
++        const target = await api('fs:uniqueName', coverFolder.value, 'folder-cover.png', 'number');
++        await api('fs:writeDataUrl', target, coverPng);
++        setStatus(coverStatus, `Saved ${basename(target)} in the selected folder.`);
++      } catch (e) { setStatus(coverStatus, e.message || String(e), true); }
++    }, true)),
++    coverPreview, coverStatus);
++  if (include('cover')) body.append(coverCard);
++  renderCover();
++
++  const titles = { all: 'Tools', qr: 'QR code generator', palette: 'Image color palette', blank: 'Create blank file', csv: 'CSV / TSV to JSON', lorem: 'Lorem Ipsum generator', cover: 'Folder cover artwork' };
++  return modal({ title: titles[kind] || 'Tools', body, width: kind === 'all' ? 900 : 620, className: 'util-modal', buttons: [{ label: 'Close', value: true }] });
++}
+diff --git a/src/renderer/js/viewer.js b/src/renderer/js/viewer.js
+index 8d8d85b..dc89b61 100644
+--- a/src/renderer/js/viewer.js
++++ b/src/renderer/js/viewer.js
+@@ -683,6 +683,8 @@ function renderBar() {
+     ...(vwFeatures?.commands() || []).filter((c) => c.toolbar).map((c) => B(c.icon || 'puzzle', `${c.title} (${c.feature.name})`, () => c.run({}), 'hide-sm')),
+     B('puzzle', 'Features: your own photo tools', (e) => featureMenuVw(e), 'hide-xs'),
+     B('scan', 'Copy text from image (T)', runOcr, (OCR ? 'on ' : '') + 'hide-xs'),
++    B('palette', 'Extract color palette', () => import('./utilities.js').then((m) => m.openUtilities('palette', { path: V.list[V.idx]?.path })), 'hide-sm'),
++    B('image', 'Create folder cover artwork', () => import('./utilities.js').then((m) => m.openUtilities('cover', { path: V.list[V.idx]?.path })), 'hide-sm'),
+     B('info', 'Info (I)', () => { V.showInfo = !V.showInfo; renderInfo(); renderBar(); }, (V.showInfo ? 'on ' : '') + 'hide-xs'),
+     h('span', { class: 'bar-sep hide-xs' }),
+     B('trash', 'Delete (Del)', del, 'hide-xs'),
+@@ -767,6 +769,8 @@ function wire() {
+       { label: 'Rotate right', icon: 'redo', keys: 'R', run: () => rotate(90) }, { label: 'Rotate left', icon: 'undo', keys: 'Shift+R', run: () => rotate(-90) }, { label: 'Flip', icon: 'swap', keys: 'H', run: flip },
+       { separator: true },
+       { label: 'Copy text from image', icon: 'scan', keys: 'T', run: runOcr },
++      { label: 'Extract color palette…', icon: 'palette', run: () => import('./utilities.js').then((m) => m.openUtilities('palette', { path: it.path })) },
++      { label: 'Create folder cover artwork…', icon: 'image', run: () => import('./utilities.js').then((m) => m.openUtilities('cover', { path: it.path })) },
+       { label: 'Copy image', icon: 'copy', run: async () => { try { const c = document.createElement('canvas'); c.width = V.nat.w; c.height = V.nat.h; c.getContext('2d').drawImage(curImg(), 0, 0); const blob = await new Promise((r) => c.toBlob(r)); await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); toast('Image copied'); } catch { toast('Couldn’t copy this image', { error: true }); } } },
+       { label: 'Copy path', icon: 'link', run: () => api('clip:writeText', it.path) },
+       { label: 'Show in Dogfile', icon: 'folder', run: () => showInFiles(it.path) },
+diff --git a/src/renderer/styles.css b/src/renderer/styles.css
+index bb2a400..a6e0530 100644
+--- a/src/renderer/styles.css
++++ b/src/renderer/styles.css
+@@ -2182,3 +2182,34 @@ body.col-resizing, body.col-resizing * { cursor: col-resize !important; user-sel
+ :root[data-theme='dark'] .mv-badge.edited { color: #f9a8d4; }
+ .mve-chk { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-2); }
+ .mve-out { min-height: 60px; font-size: 12.5px; }
++
++
++/* Free utilities */
++.util-modal .modal-body { max-height: min(78vh, 860px); overflow: auto; }
++.util-hub { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
++.util-hub > .hint { grid-column: 1 / -1; margin: 0 0 2px; }
++.util-card { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); display: flex; flex-direction: column; gap: 10px; }
++.util-card-head { display: flex; align-items: center; gap: 10px; min-height: 38px; }
++.util-card-head b { display: block; font-size: 14px; }
++.util-card-head .hint { margin-top: 2px; }
++.util-icon { width: 34px; height: 34px; flex: 0 0 34px; display: grid; place-items: center; border-radius: 9px; background: var(--surface-3); color: var(--accent); font-size: 20px; }
++.util-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
++.util-label { font-size: 12px; color: var(--text-2); font-weight: 600; }
++.util-field .hint { font-size: 11px; }
++.util-area { min-height: 72px; resize: vertical; }
++.util-actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
++.util-actions > .input { flex: 1; min-width: 0; }
++.util-status { min-height: 16px; overflow-wrap: anywhere; }
++.util-error { color: var(--danger, #e05b62) !important; }
++.util-preview { min-height: 100px; display: grid; place-items: center; border: 1px dashed var(--line); border-radius: 9px; background: var(--surface); padding: 10px; }
++.util-qr-img { width: min(100%, 190px); height: auto; image-rendering: pixelated; }
++.util-palette { display: flex; gap: 6px; flex-wrap: wrap; }
++.util-swatch { flex: 1 1 68px; min-width: 68px; border: 1px solid var(--line); border-radius: 8px; padding: 28px 5px 7px; color: #fff; text-shadow: 0 1px 3px #000; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 2px; font-size: 11px; }
++.util-swatch small { font-size: 10px; opacity: .9; }
++.util-cover-preview { overflow: hidden; border-radius: 9px; border: 1px solid var(--line); }
++.util-cover-preview img { display: block; width: 100%; height: auto; }
++.util-card .input { width: 100%; }
++@media (max-width: 760px) {
++  .util-hub { grid-template-columns: 1fr; }
++  .util-modal { width: min(96vw, 560px) !important; }
++}

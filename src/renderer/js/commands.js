@@ -159,6 +159,10 @@ def('compareFiles', 'Compare two files…', { icon: 'compare', cat: 'Tools', run
 } });
 def('compare', 'Compare / sync folders', { icon: 'compare', keys: ['Ctrl+Alt+M'], cat: 'Tools', run: T.compareFolders });
 def('dupes', 'Find duplicate files', { icon: 'dupes', cat: 'Tools', run: T.findDuplicates });
+def('qrCode', 'Generate QR code…', { icon: 'scan', cat: 'Tools', run: () => import('./utilities.js').then((m) => m.openUtilities('qr')) });
+def('blankFile', 'Create exact-size blank file…', { icon: 'newFile', cat: 'Tools', run: () => import('./utilities.js').then((m) => m.openUtilities('blank')) });
+def('csvJson', 'Convert CSV / TSV to JSON…', { icon: 'convert', cat: 'Tools', run: () => import('./utilities.js').then((m) => m.openUtilities('csv')) });
+def('loremIpsum', 'Generate Lorem Ipsum…', { icon: 'page', cat: 'Tools', run: () => import('./utilities.js').then((m) => m.openUtilities('lorem')) });
 def('analyze', 'Analyze disk space', { icon: 'chart', keys: ['Ctrl+Alt+A'], cat: 'Tools', run: () => T.analyzeSpace() });
 def('analyzeSelection', 'Calculate selection size', { icon: 'chart', cat: 'Tools', run: T.analyzeSelection });
 def('terminal', 'Open terminal here', { icon: 'terminal', keys: ['Ctrl+Alt+T'], cat: 'Tools', run: () => A.openTerminalHere(undefined, T_()) });
@@ -166,6 +170,17 @@ def('terminalDrawer', 'Toggle built-in terminal', { icon: 'terminal', keys: ['Ct
 def('shelf', 'Toggle Drop Shelf', { icon: 'shelf', keys: ['Ctrl+Shift+J'], cat: 'Tools', run: () => bus.emit('toggleShelf') });
 def('addToShelf', 'Add selection to Drop Shelf', { icon: 'shelf', keys: ['Ctrl+Alt+J'], cat: 'Tools', run: () => { const s = S_().filter((i) => !i.virtual); if (s.length) bus.emit('addToShelf', s.map((i) => i.path)); } });
 def('similarImages', 'Find similar pictures', { icon: 'photos', cat: 'Tools', run: () => T.findSimilarImages() });
+// Dogfile Pro utilities: each action has its own Tools entry (no catch-all toolbox).
+def('compressImages', 'Compress pictures…', { icon: 'image', cat: 'Tools', run: () => import('./protools.js').then((m) => m.compressImages()) });
+def('upscaleImages', 'Upscale pictures…', { icon: 'image', cat: 'Tools', run: () => import('./protools.js').then((m) => m.upscaleImages()) });
+def('mergePdfs', 'Merge PDF files…', { icon: 'page', cat: 'Tools', run: () => import('./protools.js').then((m) => m.mergePdfs()) });
+def('splitPdf', 'Split PDF pages…', { icon: 'page', cat: 'Tools', run: () => import('./protools.js').then((m) => m.splitPdf()) });
+def('extractAudio', 'Extract audio from video…', { icon: 'music', cat: 'Tools', run: () => import('./protools.js').then((m) => m.extractAudio()) });
+def('createGif', 'Create animated GIF…', { icon: 'image', cat: 'Tools', run: () => import('./protools.js').then((m) => m.makeGif()) });
+def('minifyCode', 'Minify code or data…', { icon: 'code', cat: 'Tools', run: () => import('./protools.js').then((m) => m.minifyCode()) });
+def('diffChecker', 'Diff checker…', { icon: 'compare', cat: 'Tools', run: async () => { try { await api('pro:authorize'); } catch (e) { toast(e.message || String(e), { error: true }); return; } const s = S_().filter((i) => !i.isDir && !i.virtual); if (s.length >= 2) return import('./compare.js').then((m) => m.compareFiles(s[0].path, s[1].path)); const p = await api('dialog:openFiles', { title: 'Choose two files to compare', multiple: true }); if (p?.length >= 2) return import('./compare.js').then((m) => m.compareFiles(p[0], p[1])); toast('Choose two files to compare'); } });
+def('removeImageBackground', 'Remove image background…', { icon: 'image', cat: 'Tools', run: () => import('./protools.js').then((m) => m.removeImageBackground()) });
+def('translateText', 'Translate text offline…', { icon: 'languages', cat: 'Tools', run: () => import('./protools.js').then((m) => m.translateText()) });
 def('folderNote', 'Add or edit folder note', { icon: 'rename', cat: 'Tools', run: () => bus.emit('addFolderNote', T_()) });
 def('contactSheet', 'Make video contact sheet', { icon: 'viewGrid', cat: 'Media', run: () => import('./gallery.js').then((m) => m.contactSheets(S_())) });
 def('similarMedia', 'Find similar videos & songs', { icon: 'dupes', cat: 'Media', run: () => import('./gallery.js').then((m) => m.findSimilarMedia()) });

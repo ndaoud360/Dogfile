@@ -178,6 +178,7 @@ const COMPARE = [
   ['Cloud (S3, B2, Google Cloud…), SFTP and FTP', 0],
   ['Document reminders and photo details', 0],
   ['Convert media, read text in images, custom features, 3D textures', 0],
+  ['Pro utilities: image compression and upscaling, PDF merge/split, GIF creation, audio extraction and code minification', 0],
 ];
 export function compareDialog() {
   const mode = L.status?.mode;

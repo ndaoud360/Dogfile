@@ -1,0 +1,18 @@
+big: 1 file, 3 GB · medium: 40 files, 1400 MB · small: 5,000 files, 138 MB · write cache emptied before each run
+Dogfile                  big     done   1.61 s   1910 MB/s   on disk  11.95 s
+robocopy /MT:8           big     done   1.31 s   2349 MB/s   on disk  12.08 s
+robocopy /MT:1           big     done   1.21 s   2535 MB/s   on disk  11.98 s
+Copy-Item                big     done   3.97 s    774 MB/s   on disk  12.12 s
+File Explorer            big     done   6.10 s    503 MB/s   on disk  12.11 s
+Dogfile                  medium  done   0.65 s   2167 MB/s   on disk   5.81 s
+robocopy /MT:8           medium  done   0.24 s   5924 MB/s   on disk   5.64 s
+robocopy /MT:1           medium  done   1.07 s   1309 MB/s   on disk   5.49 s
+Copy-Item                medium  done   2.80 s    500 MB/s   on disk   5.31 s
+File Explorer            medium  done   3.23 s    434 MB/s   on disk   5.48 s
+Dogfile                  small   done   1.45 s     95 MB/s   on disk   1.82 s
+Dogfile, 4 at a time     small   done   1.17 s    118 MB/s   on disk   1.88 s
+Dogfile, 16 at a time    small   done   1.00 s    137 MB/s   on disk   1.87 s
+robocopy /MT:8           small   done   0.79 s    175 MB/s   on disk   1.48 s
+robocopy /MT:1           small   done   1.00 s    138 MB/s   on disk   1.65 s
+Copy-Item                small   done   1.39 s     99 MB/s   on disk   2.04 s
+File Explorer            small   done   6.88 s     20 MB/s   on disk   7.24 s

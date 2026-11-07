@@ -46,6 +46,31 @@ export async function renderOffice(stage, it, { large, alive, addRows }) {
   stage.append(wrap);
   return d;
 }
+/** words, characters and reading time for plain text, Word and PDF files (shown in the details pane) */
+export async function wordRows(it) {
+  const ext = String(it.ext || '').toLowerCase();
+  let text = '', more = false;
+  try {
+    if (['txt', 'md', 'markdown', 'log', 'text'].includes(ext)) {
+      if (it.size > 8 * 1048576) return [];
+      const r = await api('fs:readText', it.path, 8 * 1048576);
+      if (r.binary) return [];
+      text = r.text || ''; more = !!r.truncated;
+    } else if (['pdf', 'docx', 'odt', 'rtf'].includes(ext)) {
+      if (it.size > 60 * 1048576) return [];
+      text = (await api('doc:text', it.path, 3000000)) || '';
+    } else return [];
+  } catch { return []; }
+  const words = (text.match(/\S+/g) || []).length;
+  if (!words) return [];
+  const approx = ext === 'pdf' ? '~' : '';
+  const mins = Math.max(1, Math.round(words / 230));
+  return [
+    ['Words', `${approx}${words.toLocaleString()}${more ? '+' : ''}`],
+    ['Characters', `${approx}${text.length.toLocaleString()}${more ? '+' : ''}`],
+    ['Reading time', mins < 60 ? `${approx}${mins} min` : `${approx}${Math.floor(mins / 60)} h ${mins % 60} min`],
+  ];
+}
 export async function pdfRows(it) {
   try { const d = await api('doc:read', it.path, { maxChars: 4000 }); const p = d.props || {}; return [p.pages && ['Pages', String(p.pages)], p.title && ['Title', p.title], p.author && ['Author', p.author], p.subject && ['Subject', p.subject], p.creator && ['Made with', p.creator]]; } catch { return []; }
 }

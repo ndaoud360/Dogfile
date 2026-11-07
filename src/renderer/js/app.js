@@ -247,23 +247,26 @@ const R = {
     ['Undo', [['undo'], ['redo'], ['history', 'File history'], ['clipHistory', 'Clipboard list']]],
   ],
   organize: [
-    ['Sort files', [['declutter', 'Tidy up', true], ['folderRules', 'Automate', true], ['automations', 'All automations']]],
-    ['Rename', [['batchRename', 'Rename Studio', true]]],
+    ['Sort & tidy', [['declutter', 'Tidy up (auto-sort)', true], ['multiverse', 'Multiverse (try changes first)', true], ['folderRules', 'Automate this folder'], ['automations', 'All automations']]],
+    ['Rename', [['batchRename', 'Rename Studio', true], ['renameWords', 'Rename by describing it']]],
     ['Compress', [['quickZip', 'Zip', true], ['compress', 'Compress…'], ['extract'], ['extractTo']]],
-    ['Find', [['newCollection', 'New collection'], ['dupes', 'Duplicates'], ['similarImages', 'Similar pictures']]],
-    ['Share', [['sendToPhone', 'Send to phone'], ['copyPath', 'Copy path'], ['copyName'], ['createShortcut'], ['symlink'], ['addToShelf', 'Add to Drop Shelf']]],
+    ['Find', [['dupes', 'Duplicates', true], ['similarImages', 'Similar pictures'], ['similarMedia', 'Similar media'], ['newCollection', 'New collection']]],
+    ['Folder', [['folderNote', 'Folder note'], ['createShortcut'], ['symlink']]],
+    ['Share', [['sendToPhone', 'Send to phone'], ['copyPath', 'Copy path'], ['copyName'], ['addToShelf', 'Add to Drop Shelf']]],
   ],
   tools: [
-    ['Create', [['qrCode', 'QR code', true], ['blankFile', 'Blank file…']]],
-    ['Convert & generate', [['csvJson', 'CSV / TSV to JSON', true], ['loremIpsum', 'Lorem Ipsum']]],
-    ['Clean up', [['cleanup', 'Cleanup', true], ['analyze', 'Disk space'], ['emptyRecycle'], ['similarMedia', 'Similar media']]],
+    ['Make & convert', [['qrCode', 'QR code', true], ['csvJson', 'CSV → JSON'], ['minifyCode', 'Minify code'], ['loremIpsum', 'Lorem Ipsum'], ['blankFile', 'Blank file…']]],
+    ['Pictures', [['compressImages', 'Compress', true], ['upscaleImages', 'Upscale'], ['removeImageBackground', 'Remove background'], ['createGif', 'Make a GIF'], ['removeExif', 'Remove photo details'], ['removeLocation', 'Remove location']]],
+    ['PDF & text', [['mergePdfs', 'Merge PDFs', true], ['splitPdf', 'Split a PDF'], ['translateText', 'Translate offline'], ['reminders', 'Document reminders']]],
+    ['Audio & video', [['extractAudio', 'Extract audio', true], ['contactSheet', 'Video contact sheet'], ['analyzeFolderAudio', 'BPM & key of a folder']]],
+    ['Clean up', [['cleanup', 'Cleanup', true], ['analyze', 'Disk space'], ['emptyRecycle']]],
     ['Compare', [['compare', 'Compare & sync', true], ['compareFiles', 'Two files…']]],
     ['Protect', [['timeTravel', 'Time travel', true], ['history', 'File history'], ['allVersions', 'Versions'], ['makeChecksums', 'Checksums'], ['verifyChecksums', 'Verify'], ['hashes'], ['whoLocks', 'What’s locking it?'], ['lock', 'Lock'], ['unlock', 'Unlock']]],
     ['Connect', [['phoneTransfer', 'Phone', true], ['connections', 'Servers', true], ['addConnection', 'Add server']]],
     ['Apps', [['notepad', 'Notepad', true], ['photos', 'Photos', true], ['player', 'Player', true], ['music', 'Music', true], ['viewer3d', '3D viewer'], ['office', 'Office'], ['terminalDrawer', 'Terminal'], ['shelf', 'Drop Shelf'], ['gotoFile', 'Go to file']]],
     ['Automate', [['features', 'Features', true], ['startMacro', 'Record macro'], ['macros', 'Macros'], ['featureStore', 'Get features']]],
     ['AI', [['aiModels', 'AI models', true]]],
-    ['Windows', [['showInExplorer'], ['winProperties'], ['windowsMenu']]],
+    ['Windows', [['showInExplorer'], ['winProperties'], ['windowsMenu'], ['fileTypes', 'File types']]],
   ],
   view: [
     ['Layout', [['viewDetails', 'Details', true], ['viewColumns', 'Columns'], ['viewGrid', 'Grid', true], ['viewGallery', 'Gallery', true], ['viewList', 'List'], ['zoomIn', 'Bigger'], ['zoomOut', 'Smaller']]],
@@ -359,7 +362,7 @@ function renderRibbon() {
       if (!c || (c.when && !c.when())) continue;
       const k = keysFor(id)[0];
       const on = c.check?.() || (id === 'theme' + state.settings.theme[0].toUpperCase() + state.settings.theme.slice(1)) || (id === 'layout' + state.layout) || (id.startsWith('view') && activeTab()?.view === id.slice(4).toLowerCase());
-      entries.push({ id, icon: c.icon || 'command', label: label || c.title, title: `${c.title}${c.pro ? ' (Dogfile Pro)' : ''}${k ? ` (${k})` : ''}`, big: isBig, on, run: c.run, pro: c.pro });
+      entries.push({ id, icon: c.icon || 'command', label: label || c.title, title: `${c.title}${c.pro ? ' (Dogfile Pro)' : ''}${k ? ` (${k})` : ''}${c.desc ? `\n${c.desc}` : ''}`, big: isBig, on, run: c.run, pro: c.pro });
     }
     if (entries.length) r.append(ribbonGroup(gname, entries));
   }
@@ -384,7 +387,7 @@ function fileMenu(btn) {
     { label: 'Features', icon: 'puzzle', submenu: () => { const f = featureCmds(); return [...f, f.length && { separator: true }, C('features', 'Manage features…'), C('createFeature'), C('featureStore', 'Browse & share features…')].filter(Boolean); } },
     full && { label: 'Macros', icon: 'record', submenu: [C('startMacro'), C('macros'), ...[...commands.values()].filter((c) => c.id.startsWith('macro:')).map((c) => ({ label: c.title.replace(/^Macro: /, ''), icon: 'record', run: c.run }))] },
     { separator: true },
-    C('settings'),
+    C('settings'), C('fileTypes', 'File types…'),
     U.menuItem(),
     { label: 'Help', icon: 'info', submenu: [C('shortcuts'), C('reportBug'), { label: 'Welcome tour', icon: 'info', run: () => import('./welcome.js').then((m) => m.showWelcome()) }, { label: 'Feature guide (for making features)', icon: 'book', run: async () => { const p = await api('docs:featureGuide'); (await import('./apptabs.js')).openTool('editor', [p]); } }] },
     IS_WIN() && C('setDefault'),
@@ -593,6 +596,7 @@ async function boot() {
   applyTheme();
   if (!info.test) setTimeout(() => import('./multiverse.js').then((m) => m.recoverAtStart()).catch(() => {}), 2500); // finish or reverse a Multiverse change an earlier run left half done
   if (!info.test) setTimeout(() => import('./mvmode.js').then((m) => m.recover()).catch(() => {}), 1500); // a Multiverse left open last time
+  import('./foldericon.js').then((m) => m.loadFolderIcons()).catch(() => {});
   setTimeout(() => import('./readability.js').then((m) => m.guardReadability()).catch(() => {}), 3000); // colours that came from an import or another PC may be hard to read
   // the interface language (translates as things appear)
   if ((state.settings.language || 'auto') !== 'en') await import('./i18n.js').then((m) => m.initI18n(state.settings.language || 'auto')).catch(() => {});

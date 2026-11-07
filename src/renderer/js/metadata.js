@@ -186,6 +186,22 @@ export async function removeLocation(items) {
   catch (e) { toast(e.message, { error: true }); }
 }
 
+/** take every hidden detail (EXIF: camera, date taken, location, software…) out of photos */
+export async function removeAllDetails(items) {
+  if (!requirePro('metadata')) return; // like the rest of editing photo details
+  items = items.filter(isPhoto);
+  if (!items.length) return toast('Select photos');
+  const what = items.length === 1 ? 'this photo' : `these ${items.length} photos`;
+  if (!(await confirm('Remove all hidden photo details?', `The camera, date taken, location and other hidden details (EXIF) come out of ${what}. The picture itself does not change. This can’t be undone, so keep a copy first if you want the details.`, { ok: 'Remove details', danger: true }))) return;
+  if (!(await ensureTool())) return;
+  try {
+    const r = await api('meta:stripAll', items.map((i) => i.path));
+    const parts = [r.updated ? `Hidden details removed from ${r.updated} photo${r.updated === 1 ? '' : 's'}` : 'Nothing to remove', r.skippedRaw ? `${r.skippedRaw} camera RAW file${r.skippedRaw === 1 ? ' was' : 's were'} left alone` : ''].filter(Boolean);
+    toast(parts.join('. '), { ok: !!r.updated });
+    bus.emit('refreshPanes');
+  } catch (e) { toast(e.message, { error: true }); }
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // alternate data streams
 

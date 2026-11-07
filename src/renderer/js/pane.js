@@ -14,6 +14,7 @@ import { showMenu } from './menu.js';
 import * as MM from './mediameta.js';
 import { requirePro } from './license.js';
 import { mvActive, mvInside, mvStayMessage } from './mvstate.js';
+import { folderIconUrl } from './foldericon.js';
 
 let A = null; // actions module (late bound to avoid circular init)
 export function bindActions(actions) { A = actions; }
@@ -1193,7 +1194,7 @@ const winOn = (it) => state.settings.useWindowsIcons && IS_WIN() && !it?.archive
 function smallIcon(it) {
   if (it.drive) return icon(it.drive.type === 'portable' ? 'phone' : it.drive.type === 'removable' ? 'usb' : it.drive.type === 'network' ? 'network' : it.drive.type === 'optical' ? 'disc' : 'drive');
   if (it.icon) return icon(it.icon);
-  if (it.isDir) return `<span class="fico folder">${icon('folder')}</span>`;
+  if (it.isDir) { const fi = it.path && !it.virtual ? folderIconUrl(it.path) : null; return fi ? `<img class="cicon" src="${fi}" alt="" draggable="false">` : `<span class="fico folder">${icon('folder')}</span>`; }
   const own = customIcon(it.ext);
   if (own) return `<img class="cicon" src="${own}" alt="" draggable="false">`;
   if (winOn(it)) return `<img class="wicon" data-icon="${esc(it.path)}" alt="">`;
@@ -1219,6 +1220,7 @@ function gridCell(t, it, ix, y, x, L) {
   const labelCls = labels === 'hover' || (labels === 'smart' && isPhoto) ? ' label-hover' : '';
   let art;
   if (it.drive) art = driveArt(it.drive, S);
+  else if (it.isDir && !it.icon && !it.virtual && folderIconUrl(it.path)) art = `<img class="cicon big" src="${folderIconUrl(it.path)}" alt="" draggable="false">`;
   else if (it.isDir) art = it.icon && !it.path.startsWith('atlas:') ? folderArt() : it.icon ? `<div class="virt-art">${icon(it.icon)}</div>` : folderArt(it.color);
   else if (!it.isDir && customIcon(it.ext)) art = `<img class="cicon big" src="${customIcon(it.ext)}" alt="" draggable="false">`;
   else if (thumb && thumbCache.get(it.path + '|' + (it.mtime || 0))) art = `<img class="thumb-img" src="${thumbCache.get(it.path + '|' + (it.mtime || 0))}" alt="" draggable="false" decoding="sync">`;

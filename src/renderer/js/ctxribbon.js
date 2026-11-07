@@ -10,6 +10,7 @@ const B = (icon, label, run, big = false) => ({ icon, label, run, big });
 const isAudio = (i) => !i.isDir && KINDS.audio.includes(i.ext);
 const isVideo = (i) => !i.isDir && (KINDS.video.includes(i.ext) || ['mkv', 'm2ts', 'mts', 'vob', 'ts'].includes(i.ext));
 const isPic = (i) => !i.isDir && KINDS.image.includes(i.ext);
+const isPdf = (i) => !i.isDir && i.ext === 'pdf';
 const isArc = (i) => !i.isDir && KINDS.archive.includes(i.ext);
 
 export function contextRibbon() {
@@ -94,11 +95,21 @@ export function contextRibbon() {
     ['Edit', [B('scissors', 'Trim…', () => A.openAllIn('player', [paths[0]]), true), B('viewGrid', 'Contact sheet', () => import('./gallery.js').then((m) => m.contactSheets(sel)))]],
     ['Find', [B('dupes', 'Similar videos', () => import('./gallery.js').then((m) => m.findSimilarMedia()))]],
   ] };
+  if (sel.every(isPdf)) return { key: 'pdf', label: 'PDF', groups: [
+    ['Open', [B('open', sel.length > 1 ? 'Open all' : 'Open', () => A.openItems(sel), true)]],
+    ['Pages', [
+      sel.length > 1 && B('page', 'Merge into one PDF', () => import('./protools.js').then((m) => m.mergePdfs(paths)), true),
+      sel.length === 1 && B('page', 'Merge with other PDFs…', () => import('./protools.js').then((m) => m.mergePdfs(paths)), true),
+      sel.length === 1 && B('scissors', 'Split pages…', () => import('./protools.js').then((m) => m.splitPdf(paths[0])), true),
+    ].filter(Boolean)],
+  ] };
   if (sel.every(isPic)) return { key: 'pictures', label: 'Pictures', groups: [
     ['View', [B('image', sel.length > 1 ? 'View all' : 'View', () => A.openAllIn('viewer', paths), true), B('pplay', 'Slideshow', () => A.openAllIn('viewer', paths.length > 1 ? paths : paths, { slideshow: true, autoPlaylist: paths.length === 1 }))]],
     ['Convert', [B('convert', 'To JPG', () => convertImages(paths, 'jpg')), B('convert', 'To PNG', () => convertImages(paths, 'png')), B('convert', 'To WebP', () => convertImages(paths, 'webp')), B('zoomOut', 'Resize to 1920px', () => convertImages(paths, 'jpg', { maxSide: 1920 }))]],
+    ['Optimize', [B('zoomOut', 'Compress', () => import('./protools.js').then((m) => m.compressImages(paths)), true), B('zoomIn', 'Upscale', () => import('./protools.js').then((m) => m.upscaleImages(paths)), true), B('image', 'Remove background', () => import('./protools.js').then((m) => m.removeImageBackground(paths))), sel.length > 1 && B('pplay', 'Make a GIF', () => import('./protools.js').then((m) => m.makeGif(paths)))].filter(Boolean)],
     ['Browse', [B('gallery', 'Gallery view', () => import('./pane.js').then((m) => m.setView(t, 'gallery')), true), B('filter', 'Filter by colour…', () => document.querySelector('.pane.active .mf-btn')?.click())]],
-    ['Use', [sel.length === 1 && B('desktop', 'Set as background', () => setWallpaper(paths[0]), true), B('zip', 'Add to zip', () => A.quickZip(sel))]],
+    ['Use', [sel.length === 1 && B('desktop', 'Set as background', () => setWallpaper(paths[0]), true), B('zip', 'Add to zip', () => A.quickZip(sel)), sel.length === 1 && B('folder', 'Set as folder icon', () => import('./foldericon.js').then((m) => m.setFolderIcon(dirname(paths[0]), paths[0])))].filter(Boolean)],
+    ['Privacy', [B('broom', 'Remove photo details (EXIF)', () => import('./metadata.js').then((m) => m.removeAllDetails(sel)), true), B('globe', 'Remove location only', () => import('./metadata.js').then((m) => m.removeLocation(sel))), B('camera', 'Edit photo details…', () => import('./metadata.js').then((m) => m.editPhotoDetails(sel)))]],
   ] };
   return null;
 }
@@ -130,6 +141,7 @@ function officeRibbon(st) {
   if (st.doc === 'pdf') return { key: 'pdf', label: 'PDF', groups: [
     file,
     sum,
+    ['Pages', [B('page', 'Split pages…', () => { const p = activeAppTab()?.appPath; if (p) import('./protools.js').then((m) => m.splitPdf(p)); }, true), B('page', 'Merge with other PDFs…', () => { const p = activeAppTab()?.appPath; if (p) import('./protools.js').then((m) => m.mergePdfs([p])); })]],
     ['Zoom', [B('zoomIn', 'Zoom in', C('zoomIn')), B('zoomOut', 'Zoom out', C('zoomOut')), { ...B('max', 'Fit width', C('fit')), on: st.fit }]],
     ['Mark up', [{ ...B('rename', 'Add text', C('markText'), true), on: st.tool === 'text' }, { ...B('marker', 'Highlight', C('markHl'), true), on: st.tool === 'hl' }, { ...B('pen', 'Draw', C('markPen'), true), on: st.tool === 'pen' }, B('undo', 'Undo mark', C('undo'))]],
   ] };

@@ -60,6 +60,7 @@ pub mod alpha_thumb;
 pub mod lock;
 pub mod multiverse;
 pub mod snapshot;
+pub mod foldericon;
 #[cfg(windows)]
 pub mod win;
 

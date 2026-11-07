@@ -27,9 +27,10 @@ const readBytes = async (path) => {
   return out;
 };
 
-export async function compressImages() {
+// `given`: files already chosen (the selection); the picker opens only when there are none
+export async function compressImages(given = []) {
   if (!(await pro('proUtilities'))) return;
-  const files = await pick('Choose pictures to compress', IMAGE_FILTER, true);
+  const files = given.length ? given : await pick('Choose pictures to compress', IMAGE_FILTER, true);
   if (!files.length) return;
   const fmt = (await prompt('Image compression', 'webp', { label: 'Output format: webp, jpg or png' }))?.trim().toLowerCase();
   if (!fmt) return;
@@ -49,9 +50,9 @@ export async function compressImages() {
   if (done) { toast(`Compressed ${done} picture${done === 1 ? '' : 's'}`); bus.emit('refreshPanes'); }
 }
 
-export async function upscaleImages() {
+export async function upscaleImages(given = []) {
   if (!(await pro('proUtilities'))) return;
-  const files = await pick('Choose pictures to upscale', IMAGE_FILTER, true);
+  const files = given.length ? given : await pick('Choose pictures to upscale', IMAGE_FILTER, true);
   if (!files.length) return;
   const n = Number(await prompt('Upscale pictures', '4000', { label: 'Target longest edge in pixels (up to 20,000)' }));
   if (!Number.isFinite(n) || n < 2 || n > 20000) return toast('Enter a target between 2 and 20,000 pixels', { error: true });
@@ -67,9 +68,9 @@ export async function upscaleImages() {
   if (done) { toast(`Upscaled ${done} picture${done === 1 ? '' : 's'} using high-quality Lanczos resampling`); bus.emit('refreshPanes'); }
 }
 
-export async function makeGif() {
+export async function makeGif(given = []) {
   if (!(await pro('proUtilities'))) return;
-  const files = await pick('Choose pictures in animation order', IMAGE_FILTER, true);
+  const files = given.length >= 2 ? given : await pick('Choose pictures in animation order', IMAGE_FILTER, true);
   if (files.length < 2) return toast('Choose at least two pictures', { error: true });
   const delay = Number(await prompt('GIF frame duration', '120', { label: 'Milliseconds per picture (20–5000)' }));
   if (!Number.isFinite(delay) || delay < 20 || delay > 5000) return toast('Enter a frame duration from 20 to 5000 ms', { error: true });
@@ -81,17 +82,19 @@ export async function makeGif() {
   } catch (e) { toast(e.message || String(e), { error: true }); }
 }
 
-export async function extractAudio() {
+export async function extractAudio(given = []) {
   if (!(await pro('proUtilities'))) return;
-  const files = await pick('Choose videos to extract audio from', VIDEO_FILTER, true);
+  const files = given.length ? given : await pick('Choose videos to extract audio from', VIDEO_FILTER, true);
   if (!files.length) return;
   const { convertMedia } = await import('./mediatools.js');
   await convertMedia(files, 'mp3', { audioOnly: true, bitrate: 192 });
 }
 
-export async function mergePdfs() {
+// `given`: PDFs already chosen (selected in the folder, or the one that is open); more are asked for when there is only one
+export async function mergePdfs(given = []) {
   if (!(await pro('proUtilities'))) return;
-  const files = await pick('Choose PDFs to merge (in order)', PDF_FILTER, true);
+  let files = [...given];
+  if (files.length < 2) files = [...files, ...(await pick(files.length ? `Choose the PDFs to add after “${basename(files[0])}”` : 'Choose PDFs to merge (in order)', PDF_FILTER, true))];
   if (files.length < 2) return toast('Choose at least two PDF files', { error: true });
   try {
     const { PDFLib } = await import('../vendor/office.js');
@@ -108,9 +111,9 @@ export async function mergePdfs() {
   } catch (e) { toast(`Couldn’t merge PDFs: ${e.message || e}`, { error: true }); }
 }
 
-export async function splitPdf() {
+export async function splitPdf(given = null) {
   if (!(await pro('proUtilities'))) return;
-  const [path] = await pick('Choose a PDF to split', PDF_FILTER);
+  const path = given || (await pick('Choose a PDF to split', PDF_FILTER))[0];
   if (!path) return;
   try {
     const { PDFLib } = await import('../vendor/office.js');
@@ -138,9 +141,9 @@ export async function splitPdf() {
   } catch (e) { toast(`Couldn’t split PDF: ${e.message || e}`, { error: true }); }
 }
 
-export async function minifyCode() {
+export async function minifyCode(given = null) {
   if (!(await pro('proUtilities'))) return;
-  const [path] = await pick('Choose a code or data file to minify', TEXT_FILTER);
+  const path = given || (await pick('Choose a code or data file to minify', TEXT_FILTER))[0];
   if (!path) return;
   const ext = (path.split('.').pop() || '').toLowerCase();
   try {
@@ -160,9 +163,9 @@ export async function minifyCode() {
 
 
 // General-purpose local AI background removal. The image and mask stay on this PC.
-export async function removeImageBackground() {
+export async function removeImageBackground(given = []) {
   if (!(await pro('proUtilities'))) return;
-  const files = await pick('Choose pictures for background removal', IMAGE_FILTER, true);
+  const files = given.length ? given : await pick('Choose pictures for background removal', IMAGE_FILTER, true);
   if (!files.length) return;
   if (!(await ensureModels(['removebg']))) return;
   let done = 0;

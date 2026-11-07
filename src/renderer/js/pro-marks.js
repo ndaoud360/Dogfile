@@ -37,7 +37,7 @@ export const PRO_COMMANDS = {
   removeImageBackground: 'proUtilities', translateText: 'proUtilities',
   features: 'features', createFeature: 'features', featureStore: 'features',
   reminders: 'reminders', remindAbout: 'reminders',
-  photoDetails: 'metadata',
+  photoDetails: 'metadata', removeExif: 'metadata', removeLocation: 'metadata',
   timeTravel: 'timetravel',
 };
 // menu items built without a command id get their star from the label

@@ -16,6 +16,9 @@ export const commands = new Map();
 const def = (id, title, opts = {}) => commands.set(id, { id, title, ...opts });
 const T_ = () => activeTab();
 const S_ = () => selectedItems(activeTab());
+const imgPaths = () => S_().filter((i) => !i.isDir && !i.virtual && !i.archive && isImageFile(i)).map((i) => i.path);
+const vidPaths = () => S_().filter((i) => !i.isDir && !i.virtual && !i.archive && (KINDS.video.includes(i.ext) || ['mkv', 'm2ts', 'mts', 'vob', 'ts'].includes(i.ext))).map((i) => i.path);
+const pdfPaths = () => S_().filter((i) => !i.isDir && !i.virtual && !i.archive && i.ext === 'pdf').map((i) => i.path);
 
 // ---------------- navigation ----------------
 def('back', 'Go back', { icon: 'back', keys: ['Alt+Left', 'Backspace', 'BrowserBack'], cat: 'Navigate', run: () => goBack(T_()) });
@@ -146,6 +149,7 @@ for (const [k, l] of [['name', 'Name'], ['mtime', 'Date modified'], ['size', 'Si
 def('search', 'Search', { icon: 'search', keys: ['Ctrl+E', 'Ctrl+Shift+F'], cat: 'Tools', run: () => T.openSearchBar() });
 def('advSearch', 'Advanced search…', { icon: 'filter', keys: ['Ctrl+Alt+F'], cat: 'Tools', run: () => T.advancedSearch() });
 def('photoDetails', 'Edit photo details…', { icon: 'camera', cat: 'File', run: () => import('./metadata.js').then((m) => m.editPhotoDetails(S_())) });
+def('removeExif', 'Remove all hidden photo details (EXIF)…', { icon: 'broom', cat: 'File', run: () => import('./metadata.js').then((m) => m.removeAllDetails(S_())) });
 def('removeLocation', 'Remove location from photos', { icon: 'globe', cat: 'File', run: () => import('./metadata.js').then((m) => m.removeLocation(S_())) });
 def('streams', 'Hidden streams (alternate data streams)…', { icon: 'stack', cat: 'File', run: () => import('./metadata.js').then((m) => m.streamsDialog(S_())) });
 def('compareFiles', 'Compare two files…', { icon: 'compare', cat: 'Tools', run: async () => {
@@ -171,15 +175,15 @@ def('shelf', 'Toggle Drop Shelf', { icon: 'shelf', keys: ['Ctrl+Shift+J'], cat: 
 def('addToShelf', 'Add selection to Drop Shelf', { icon: 'shelf', keys: ['Ctrl+Alt+J'], cat: 'Tools', run: () => { const s = S_().filter((i) => !i.virtual); if (s.length) bus.emit('addToShelf', s.map((i) => i.path)); } });
 def('similarImages', 'Find similar pictures', { icon: 'photos', cat: 'Tools', run: () => T.findSimilarImages() });
 // Dogfile Pro utilities: each action has its own Tools entry (no catch-all toolbox).
-def('compressImages', 'Compress pictures…', { icon: 'image', cat: 'Tools', run: () => import('./protools.js').then((m) => m.compressImages()) });
-def('upscaleImages', 'Upscale pictures…', { icon: 'image', cat: 'Tools', run: () => import('./protools.js').then((m) => m.upscaleImages()) });
-def('mergePdfs', 'Merge PDF files…', { icon: 'page', cat: 'Tools', run: () => import('./protools.js').then((m) => m.mergePdfs()) });
-def('splitPdf', 'Split PDF pages…', { icon: 'page', cat: 'Tools', run: () => import('./protools.js').then((m) => m.splitPdf()) });
-def('extractAudio', 'Extract audio from video…', { icon: 'music', cat: 'Tools', run: () => import('./protools.js').then((m) => m.extractAudio()) });
-def('createGif', 'Create animated GIF…', { icon: 'image', cat: 'Tools', run: () => import('./protools.js').then((m) => m.makeGif()) });
-def('minifyCode', 'Minify code or data…', { icon: 'code', cat: 'Tools', run: () => import('./protools.js').then((m) => m.minifyCode()) });
+def('compressImages', 'Compress pictures…', { icon: 'image', cat: 'Tools', run: () => import('./protools.js').then((m) => m.compressImages(imgPaths())) });
+def('upscaleImages', 'Upscale pictures…', { icon: 'image', cat: 'Tools', run: () => import('./protools.js').then((m) => m.upscaleImages(imgPaths())) });
+def('mergePdfs', 'Merge PDF files…', { icon: 'page', cat: 'Tools', run: () => import('./protools.js').then((m) => m.mergePdfs(pdfPaths())) });
+def('splitPdf', 'Split PDF pages…', { icon: 'page', cat: 'Tools', run: () => import('./protools.js').then((m) => m.splitPdf(pdfPaths().length === 1 ? pdfPaths()[0] : null)) });
+def('extractAudio', 'Extract audio from video…', { icon: 'music', cat: 'Tools', run: () => import('./protools.js').then((m) => m.extractAudio(vidPaths())) });
+def('createGif', 'Create animated GIF…', { icon: 'image', cat: 'Tools', run: () => import('./protools.js').then((m) => m.makeGif(imgPaths())) });
+def('minifyCode', 'Minify code or data…', { icon: 'code', cat: 'Tools', run: () => import('./protools.js').then((m) => m.minifyCode(S_().filter((i) => !i.isDir && !i.virtual && !i.archive).map((i) => i.path)[0] || null)) });
 def('diffChecker', 'Diff checker…', { icon: 'compare', cat: 'Tools', run: async () => { try { await api('pro:authorize'); } catch (e) { toast(e.message || String(e), { error: true }); return; } const s = S_().filter((i) => !i.isDir && !i.virtual); if (s.length >= 2) return import('./compare.js').then((m) => m.compareFiles(s[0].path, s[1].path)); const p = await api('dialog:openFiles', { title: 'Choose two files to compare', multiple: true }); if (p?.length >= 2) return import('./compare.js').then((m) => m.compareFiles(p[0], p[1])); toast('Choose two files to compare'); } });
-def('removeImageBackground', 'Remove image background…', { icon: 'image', cat: 'Tools', run: () => import('./protools.js').then((m) => m.removeImageBackground()) });
+def('removeImageBackground', 'Remove image background…', { icon: 'image', cat: 'Tools', run: () => import('./protools.js').then((m) => m.removeImageBackground(imgPaths())) });
 def('translateText', 'Translate text offline…', { icon: 'languages', cat: 'Tools', run: () => import('./protools.js').then((m) => m.translateText()) });
 def('folderNote', 'Add or edit folder note', { icon: 'rename', cat: 'Tools', run: () => bus.emit('addFolderNote', T_()) });
 def('contactSheet', 'Make video contact sheet', { icon: 'viewGrid', cat: 'Media', run: () => import('./gallery.js').then((m) => m.contactSheets(S_())) });
@@ -499,3 +503,49 @@ function filePalette() {
   const drawSoon = debounce(draw, 120);
 }
 
+// What each tool does, in a few plain words. Shown when you hover its button in the ribbon.
+const DESC = {
+  multiverse: 'Save a snapshot of this folder, then try anything (sort, rename, delete). Make it real, or go back to the snapshot.',
+  whatif: 'Plan a reorganisation in a what-if copy of the folder before touching any files.',
+  declutter: 'Sort the loose files in this folder into folders by kind, date or name. One Ctrl+Z puts it all back.',
+  folderRules: 'Make Dogfile sort or clean this folder by itself whenever new files arrive.',
+  automations: 'See and edit every folder automation.',
+  batchRename: 'Rename many files at once with a live preview.',
+  renameWords: 'Describe the new names in your own words and Dogfile does the renaming.',
+  folderNote: 'Pin a note to this folder that shows up whenever you open it.',
+  qrCode: 'Make a QR code picture from a link, text or contact details.',
+  blankFile: 'Make an empty file of an exact size (for testing).',
+  csvJson: 'Turn a spreadsheet export (CSV or TSV) into JSON.',
+  loremIpsum: 'Make placeholder text for mock-ups.',
+  minifyCode: 'Shrink a code or data file (JS, CSS, JSON, HTML) by taking out spaces and comments.',
+  compressImages: 'Make pictures smaller (WebP, JPG or PNG). Your originals stay as they are.',
+  upscaleImages: 'Make pictures bigger with smooth resizing. Your originals stay as they are.',
+  removeImageBackground: 'Cut the background out of a picture and save it as a PNG with a see-through background.',
+  createGif: 'Join two or more pictures into an animated GIF.',
+  removeExif: 'Take the hidden details (camera, date, location) out of photos.',
+  removeLocation: 'Take only the GPS location out of photos.',
+  photoDetails: 'See and edit a photo’s hidden details (camera, date, location, caption).',
+  mergePdfs: 'Join PDFs into one, in the order they are listed.',
+  splitPdf: 'Save chosen pages of a PDF as separate PDFs.',
+  translateText: 'Translate text between 48 languages on this PC. Nothing is sent anywhere.',
+  reminders: 'Dogfile reads your documents for due dates and reminds you.',
+  extractAudio: 'Save the sound of a video as an MP3.',
+  fileTypes: 'Choose which app opens each kind of file.',
+  cleanup: 'Find big and old files taking up space.',
+  analyze: 'A map of what is using your disk space.',
+  dupes: 'Find files that are exact copies of each other.',
+  similarImages: 'Find pictures that look alike, even at different sizes.',
+  similarMedia: 'Find songs and videos that are the same or very close.',
+  compare: 'Compare two folders and sync them.',
+  compareFiles: 'See what is different between two files.',
+  timeTravel: 'Browse a folder as it was in the past and bring things back.',
+  history: 'A log of what happened to your files, with Undo.',
+  makeChecksums: 'Save a fingerprint of each file so you can prove later it did not change.',
+  verifyChecksums: 'Check files against saved fingerprints.',
+  hashes: 'Work out a file’s checksum (MD5, SHA-1, SHA-256).',
+  lock: 'Protect files with a password.',
+  unlock: 'Open files you locked with a password.',
+  aiModels: 'Download or remove the small AI models Dogfile uses on this PC.',
+  customizeToolbar: 'Choose which buttons show in the top bar.',
+};
+for (const [id, d] of Object.entries(DESC)) { const c = commands.get(id); if (c) c.desc = d; }

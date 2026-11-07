@@ -8,6 +8,7 @@ import { readExif } from './exif.js';
 export { markdown };
 import { activeTab, selectedItems, paneEls, selectOnly, renderTabPanes } from './pane.js';
 import * as A from './actions.js';
+import { folderIconUrl } from './foldericon.js';
 import { OFFICE, renderOffice, pdfRows, editDocProps, notesSection, previewMenu } from './docpreview.js';
 
 const TEXT_EXT = new Set([...KINDS.code, 'txt', 'md', 'markdown', 'csv', 'tsv', 'log', 'nfo', 'srt', 'vtt', 'reg', 'inf', 'ini', 'cfg', 'properties', 'gitattributes', 'license', 'readme', 'sln', 'csproj', 'vcxproj', 'plist', 'lock', 'toml', 'diff', 'patch', 'tex', 'bib', 'rst', 'adoc', 'svg']);
@@ -24,7 +25,10 @@ export async function renderPreview(box, it, { large = false } = {}) {
   if (it.ext == null && !it.isDir) { const i = (it.name || '').lastIndexOf('.'); it.ext = i > 0 ? it.name.slice(i + 1).toLowerCase() : ''; }
   const k = kindOf(it);
   const url = fileUrl(it.path);
-  const addMeta = (rows) => { meta.innerHTML = ''; meta.append(h('div', { class: 'pv-name', title: it.name }, it.name), h('div', { class: 'kv' }, ...rows.filter(Boolean).flatMap(([a, b]) => [h('div', { class: 'k' }, a), h('div', { class: 'v' }, b)]))); };
+  // rows that arrive later (word count) stay when the others are drawn again
+  let extraRows = [];
+  const addMeta = (rows) => { meta.innerHTML = ''; meta.append(h('div', { class: 'pv-name', title: it.name }, it.name), h('div', { class: 'kv' }, ...[...rows, ...extraRows].filter(Boolean).flatMap(([a, b]) => [h('div', { class: 'k' }, a), h('div', { class: 'v' }, b)]))); };
+  const addExtra = (rows) => { extraRows = rows; meta.querySelector('.kv')?.append(...rows.flatMap(([a, b]) => [h('div', { class: 'k' }, a), h('div', { class: 'v' }, b)])); };
   const baseRows = () => [
     ['Type', it.drive ? 'Drive' : typeLabel(it)],
     !it.isDir && ['Size', `${fmtSize(it.size)}${it.size >= 1024 ? ` (${(it.size || 0).toLocaleString()} bytes)` : ''}`],
@@ -35,6 +39,7 @@ export async function renderPreview(box, it, { large = false } = {}) {
   ];
   addMeta(baseRows());
   if (!large) box.append(h('button', { class: 'icon-btn small pv-menu', title: 'Choose what the preview pane shows', html: icon('more'), onclick: (e) => previewMenu(e.clientX, e.clientY) }));
+  if (!large && !it.isDir && !it.virtual && !it.recycle && !it.archive && !isVirtual(it.path)) import('./docpreview.js').then((m) => m.wordRows(it)).then((r) => { if (my === seq && r.length) addExtra(r); }).catch(() => {});
   if (!large && !it.isDir && !it.virtual && !it.recycle && !it.archive && !isVirtual(it.path)) notesSection(it).then((n) => { if (my === seq) box.append(n); });
   if (!large && !it.virtual && !it.recycle && !it.archive) {
     const actions = h('div', { class: 'pv-actions' },
@@ -49,7 +54,7 @@ export async function renderPreview(box, it, { large = false } = {}) {
     return;
   }
   if (it.isDir) {
-    stage.append(h('div', { class: 'pv-folder', html: folderArt() }));
+    { const fi = !it.virtual && !isVirtual(it.path) ? folderIconUrl(it.path) : null; stage.append(h('div', { class: 'pv-folder', html: fi ? `<img class="cicon big" src="${fi}" alt="" draggable="false">` : folderArt() })); }
     if (it.virtual || isVirtual(it.path)) return;
     const r = await api('fs:list', it.path);
     if (my !== seq) return;

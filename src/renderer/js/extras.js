@@ -5,7 +5,7 @@ import { api, onMain, state, sys, bus, h, esc, isVirtual, isMtp, basename, dirna
 import { icon } from './icons.js';
 import { activeTab, navigate, paneEls, currentDrag } from './pane.js';
 import { showMenu } from './menu.js';
-import { modal } from './dialogs.js';
+import { modal, confirm } from './dialogs.js';
 import * as A from './actions.js';
 
 const $ = (id) => document.getElementById(id);
@@ -358,17 +358,68 @@ function lockedToast(j) {
 }
 export async function showLocks(paths, job) {
   if (!IS_WIN()) return toast('Lock detection is available on Windows');
-  const body = h('div', { class: 'stack' }, h('div', { class: 'hint' }, 'Checking which programs have these files open…'));
+  const body = h('div', { class: 'stack' });
+  let admin = false; // after "Look again as administrator" the answers come from the elevated check
+  const HOW = {
+    open: 'has it open',
+    cwd: 'is working inside this folder (its current folder), which is what stops a folder from being moved or deleted',
+    exe: 'is running from this folder',
+  };
+  const plural = (n, w) => `${n.toLocaleString()} ${w}${n === 1 ? '' : 's'}`;
+  const killable = (p) => !p.self;
   const draw = async () => {
-    const list = await api('locks:who', paths).catch(() => []);
+    body.innerHTML = '';
+    body.append(h('div', { class: 'hint' }, 'Checking which programs are using this…'));
+    let r;
+    try { r = await api(admin ? 'locks:inspectAdmin' : 'locks:inspect', paths); } catch (e) { body.innerHTML = ''; body.append(h('p', {}, `Couldn’t check: ${e.message || e}`)); return; }
     body.innerHTML = '';
     body.append(h('div', { class: 'hint' }, paths.length === 1 ? paths[0] : `${paths.length} items`));
-    if (!list.length) body.append(h('p', {}, 'Nothing seems to be using these files. They might be read-only or need administrator rights. Try again in a moment.'));
-    for (const p of list) body.append(h('div', { class: 'lock-row' }, h('div', { class: 'grow' }, h('b', {}, p.name || 'Unknown program'), h('div', { class: 'hint' }, `PID ${p.pid}${p.exe ? ' · ' + p.exe : ''}`)),
-      h('button', { class: 'btn small danger', onclick: async () => { await api('locks:kill', p.pid); toast(`Ended ${p.name}`); draw(); } }, 'End task')));
+    const d = r.diagnosis || [];
+    const inUse = d.filter((x) => x.state === 'in_use');
+    const denied = d.filter((x) => x.state === 'denied');
+    const missing = d.filter((x) => x.state === 'missing');
+    const holders = r.holders || [];
+    const canAdmin = !r.admin && !r.elevated;
+    const asAdmin = canAdmin ? h('button', { class: 'btn small', onclick: () => { admin = true; draw(); } }, 'Look again as administrator') : null;
+    if (holders.length) {
+      body.append(h('p', {}, holders.length === 1 ? 'This program is using it:' : `${holders.length} programs are using it:`));
+      for (const p of holders) {
+        body.append(h('div', { class: 'lock-row' }, h('div', { class: 'grow' },
+          h('b', {}, p.name || 'Unknown program'), h('span', { class: 'hint' }, ` · PID ${p.pid}${p.service ? ' · Windows service “' + p.service + '”' : ''}`),
+          ...p.how.map((x) => h('div', { class: 'hint' }, `${p.self ? 'Dogfile itself' : 'It'} ${HOW[x.kind] || x.kind}${x.where ? ': ' + x.where : ''}`)),
+          p.self ? h('div', { class: 'hint' }, 'This is Dogfile, usually a preview or a thumbnail. Closing the preview lets go of it.') : null,
+          p.exe ? h('div', { class: 'hint' }, p.exe) : null),
+        killable(p) ? h('button', { class: 'btn small danger', onclick: async () => {
+          const sys = p.service || /^[a-z]:\\windows\\/i.test(p.exe || '');
+          if (sys && !(await confirm('End a Windows program?', `“${p.name}” is part of Windows. Ending it can make Windows or other programs misbehave.`, { ok: 'End it', danger: true }))) return;
+          await api('locks:kill', p.pid); toast(`Ended ${p.name}`); draw();
+        } }, 'End task') : null));
+      }
+      if (r.hiddenPrograms && canAdmin) body.append(h('p', { class: 'hint' }, `${plural(r.hiddenPrograms, 'program')} couldn’t be checked from a normal window, so there may be more. `, asAdmin));
+    } else if (inUse.length) {
+      body.append(h('p', {}, h('b', {}, 'Windows says it is in use'), ', but the program holding it can’t be seen from here.'),
+        h('p', { class: 'hint' }, r.elevated || r.admin
+          ? 'Even with administrator rights no program was found. It is probably held by Windows itself or a driver (an antivirus scan, the search indexer, cloud sync or a backup). Wait a moment and try again, or restart the PC if it stays.'
+          : `It is probably held by a Windows service, another user’s program, or an elevated program (${plural(r.hiddenPrograms || 0, 'program')} couldn’t be checked).`),
+        asAdmin);
+    } else if (denied.length) {
+      body.append(h('p', {}, h('b', {}, 'Nothing is using it'), '. Windows refuses access, which is a permission problem, not a lock.'),
+        h('p', { class: 'hint' }, denied.some((x) => x.readonly) ? 'It is marked read-only (right-click it, Properties, untick Read-only). ' : '', 'You may not own it, or it is protected. Try the action as administrator (Ctrl+Shift+Enter on a program), or take ownership in Properties › Security.'), asAdmin);
+    } else if (missing.length && missing.length === d.length) {
+      body.append(h('p', {}, h('b', {}, 'It isn’t there'), '. It was moved, renamed or deleted since the list was drawn.'));
+    } else {
+      body.append(h('p', {}, h('b', {}, 'Nothing is using it right now'), '. I opened it exclusively, which only works when nothing else has it open.'),
+        h('p', { class: 'hint' }, 'If Windows said it was in use a moment ago, the program has let go since. Try the action again.'));
+    }
+    if (d.length > 1) {
+      const n = { in_use: inUse.length, denied: denied.length, missing: missing.length };
+      body.append(h('div', { class: 'hint' }, [n.in_use && `${n.in_use} in use`, n.denied && `${n.denied} not allowed`, n.missing && `${n.missing} not found`, `${d.length - n.in_use - n.denied - n.missing} free`].filter(Boolean).join(' · ')));
+    }
+    const l = r.looked;
+    if (l) body.append(h('div', { class: 'hint' }, `Looked at ${plural(l.files, 'file')}${l.folders ? ` in ${plural(l.folders, 'folder')}` : ''} and ${plural(l.programs, 'running program')}${l.capped ? ' (a big folder, so only the first files)' : ''}${r.elevated ? ' · checked as administrator' : ''}.`));
   };
   draw();
   const buttons = [{ label: 'Refresh', left: true, run: () => { draw(); return false; } }, { label: 'Close', value: null }];
   if (job && ['delete', 'trash', 'move', 'copy'].includes(job.type)) buttons.push({ label: 'Retry', primary: true, run: (c) => { c(true); A.runJob({ type: job.type, sources: paths, dest: job.dest }); } });
-  await modal({ title: 'What’s using these files?', body, width: 540, buttons });
+  await modal({ title: 'What’s using this?', body, width: 600, buttons });
 }

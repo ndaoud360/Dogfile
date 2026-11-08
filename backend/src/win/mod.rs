@@ -586,14 +586,25 @@ pub fn who_locks(paths: &[String]) -> Vec<Value> {
         if RmRegisterResources(session, Some(&ps), None, None) == ERROR_SUCCESS {
             let (mut needed, mut n, mut reasons) = (0u32, 0u32, 0u32);
             let r = RmGetList(session, &mut needed, &mut n, None, &mut reasons);
-            if r == ERROR_MORE_DATA && needed > 0 {
-                let mut info: Vec<RM_PROCESS_INFO> = (0..needed).map(|_| RM_PROCESS_INFO::default()).collect();
-                n = needed;
-                if RmGetList(session, &mut needed, &mut n, Some(info.as_mut_ptr()), &mut reasons) == ERROR_SUCCESS {
-                    for i in info.iter().take(n as usize) {
-                        let pid = i.Process.dwProcessId;
-                        out.push(json!({ "pid": pid, "name": from_wide(&i.strAppName), "exe": process_exe(pid).unwrap_or_default() }));
+            if r == ERROR_MORE_DATA || (r == ERROR_SUCCESS && needed > 0) {
+                // the list can grow between the two calls (a program opens the file just then): ask again with room to spare
+                let mut cap = needed.max(8);
+                for _ in 0..6 {
+                    let mut info: Vec<RM_PROCESS_INFO> = (0..cap).map(|_| RM_PROCESS_INFO::default()).collect();
+                    let (mut n2, mut need2) = (cap, 0u32);
+                    let rr = RmGetList(session, &mut need2, &mut n2, Some(info.as_mut_ptr()), &mut reasons);
+                    if rr == ERROR_SUCCESS {
+                        for i in info.iter().take(n2 as usize) {
+                            let pid = i.Process.dwProcessId;
+                            out.push(json!({ "pid": pid, "name": from_wide(&i.strAppName), "exe": process_exe(pid).unwrap_or_default(), "service": from_wide(&i.strServiceShortName) }));
+                        }
+                        break;
                     }
+                    if rr == ERROR_MORE_DATA {
+                        cap = need2.max(cap) + 8;
+                        continue;
+                    }
+                    break;
                 }
             }
         }
@@ -611,6 +622,118 @@ fn process_exe(pid: u32) -> Option<String> {
         let _ = CloseHandle(h);
         r.ok().map(|_| String::from_utf16_lossy(&buf[..n as usize]))
     }
+}
+// ---------------- what the running programs are doing in a folder ----------------
+// Declared by hand (not through the windows crate) so it doesn't depend on which crate features are on.
+mod rawproc {
+    #[repr(C)]
+    pub struct Pbi {
+        pub exit_status: isize,
+        pub peb: usize,
+        pub affinity: usize,
+        pub priority: isize,
+        pub pid: usize,
+        pub parent: usize,
+    }
+    #[link(name = "ntdll")]
+    unsafe extern "system" {
+        pub fn NtQueryInformationProcess(h: isize, class: u32, info: *mut core::ffi::c_void, len: u32, ret: *mut u32) -> i32;
+    }
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        pub fn OpenProcess(access: u32, inherit: i32, pid: u32) -> isize;
+        pub fn CloseHandle(h: isize) -> i32;
+        pub fn ReadProcessMemory(h: isize, base: usize, buf: *mut core::ffi::c_void, size: usize, read: *mut usize) -> i32;
+    }
+}
+
+/// the folder a program is working in (the one a command prompt "is in"): the thing that most often stops a folder from being
+/// renamed, moved or deleted. None when it can't be read (another user's or an elevated program, when Dogfile isn't elevated).
+#[cfg(target_pointer_width = "64")]
+fn process_cwd(pid: u32) -> Option<String> {
+    use core::ffi::c_void;
+    unsafe {
+        let h = rawproc::OpenProcess(0x0400 | 0x0010, 0, pid); // query information + read memory
+        if h == 0 {
+            return None;
+        }
+        let read = |addr: usize, buf: &mut [u8]| {
+            let mut n = 0usize;
+            rawproc::ReadProcessMemory(h, addr, buf.as_mut_ptr() as *mut c_void, buf.len(), &mut n) != 0 && n == buf.len()
+        };
+        let r = (|| {
+            let mut pbi = rawproc::Pbi { exit_status: 0, peb: 0, affinity: 0, priority: 0, pid: 0, parent: 0 };
+            let mut ret = 0u32;
+            if rawproc::NtQueryInformationProcess(h, 0, &mut pbi as *mut _ as *mut c_void, std::mem::size_of::<rawproc::Pbi>() as u32, &mut ret) != 0 || pbi.peb == 0 {
+                return None;
+            }
+            let mut p8 = [0u8; 8];
+            if !read(pbi.peb + 0x20, &mut p8) {
+                return None; // PEB.ProcessParameters
+            }
+            let params = usize::from_le_bytes(p8);
+            if params == 0 {
+                return None;
+            }
+            let mut us = [0u8; 16];
+            if !read(params + 0x38, &mut us) {
+                return None; // ProcessParameters.CurrentDirectory.DosPath (a UNICODE_STRING)
+            }
+            let len = u16::from_le_bytes([us[0], us[1]]) as usize;
+            let buf = usize::from_le_bytes(us[8..16].try_into().ok()?);
+            if len == 0 || buf == 0 || len > 65_536 || len % 2 != 0 {
+                return None;
+            }
+            let mut raw = vec![0u8; len];
+            if !read(buf, &mut raw) {
+                return None;
+            }
+            let w: Vec<u16> = raw.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect();
+            Some(String::from_utf16_lossy(&w))
+        })();
+        rawproc::CloseHandle(h);
+        r
+    }
+}
+#[cfg(not(target_pointer_width = "64"))]
+fn process_cwd(_pid: u32) -> Option<String> {
+    None
+}
+
+pub struct ProcInfo {
+    pub pid: u32,
+    pub name: String,
+    pub exe: String,
+    pub cwd: Option<String>,
+    /// false when Windows wouldn't let Dogfile look at this program (it belongs to another user, or is elevated or protected)
+    pub inspectable: bool,
+}
+/// every running program, with the folder it works in
+pub fn process_snapshot() -> Vec<ProcInfo> {
+    use windows::Win32::System::Diagnostics::ToolHelp::*;
+    let mut list = vec![];
+    unsafe {
+        let Ok(snap) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) else { return list };
+        let mut e = PROCESSENTRY32W { dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32, ..Default::default() };
+        if Process32FirstW(snap, &mut e).is_ok() {
+            loop {
+                let pid = e.th32ProcessID;
+                if pid > 4 {
+                    let h = rawproc::OpenProcess(0x0400, 0, pid);
+                    let inspectable = h != 0;
+                    if h != 0 {
+                        rawproc::CloseHandle(h);
+                    }
+                    list.push(ProcInfo { pid, name: from_wide(&e.szExeFile), exe: process_exe(pid).unwrap_or_default(), cwd: if inspectable { process_cwd(pid) } else { None }, inspectable });
+                }
+                if Process32NextW(snap, &mut e).is_err() {
+                    break;
+                }
+            }
+        }
+        let _ = CloseHandle(snap);
+    }
+    list
 }
 /// the full path of a running program (Everything, portable copies included)
 pub fn process_path(names: &[&str]) -> Option<PathBuf> {

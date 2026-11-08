@@ -63,6 +63,7 @@ pub mod snapshot;
 pub mod foldericon;
 pub mod selfdestruct;
 pub mod psd;
+pub mod inuse;
 #[cfg(windows)]
 pub mod win;
 

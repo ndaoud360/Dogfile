@@ -930,6 +930,10 @@ fn main() {
         dogfile_core::init_threads();
         std::process::exit(dogfile_core::index::build_cli(&argv[2], &argv[3]));
     }
+    // the elevated helper that looks for the programs using a file or folder
+    if argv.get(1).map(|s| s.as_str()) == Some("--who-locks") && argv.len() >= 4 {
+        std::process::exit(dogfile_backend::inuse::cli(&argv[2], &argv[3]));
+    }
     let test_mode = std::env::var("ATLAS_TEST").as_deref() == Ok("1");
     if !test_mode {
         startup_log(&format!("--- starting Dogfile {} (process {})", env!("CARGO_PKG_VERSION"), std::process::id()));

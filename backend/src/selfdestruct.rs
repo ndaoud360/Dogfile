@@ -438,7 +438,8 @@ fn finish(r: &Rule, out: &Run, now: i64) {
         }
         ((), !out.removed.is_empty() || out.paused || r.last_run_ms == now)
     });
-    if !out.removed.is_empty() || out.paused {
+    // (the unit tests run without the app, so they have no windows to tell)
+    if !cfg!(test) && (!out.removed.is_empty() || out.paused) {
         crate::events::to_main("sd:ran", json!({ "folder": r.folder, "removed": out.removed.len(), "paused": out.paused, "failed": out.failed }));
     }
 }

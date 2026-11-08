@@ -39,11 +39,12 @@ pub fn bundled() -> Option<PathBuf> {
 fn now_ms() -> u128 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
 }
+// DOGFILE_PSD_CACHE / DOGFILE_PSD_BACKUPS move the working and backup folders (the unit tests run without the app)
 fn cache_root() -> PathBuf {
-    st().data_dir.join("psd-cache")
+    std::env::var("DOGFILE_PSD_CACHE").map(PathBuf::from).unwrap_or_else(|_| st().data_dir.join("psd-cache"))
 }
 fn backup_root() -> PathBuf {
-    st().data_dir.join("psd-backups")
+    std::env::var("DOGFILE_PSD_BACKUPS").map(PathBuf::from).unwrap_or_else(|_| st().data_dir.join("psd-backups"))
 }
 
 /// a fresh folder for one open file's pictures; folders from a day ago are cleared
@@ -237,7 +238,14 @@ mod tests {
     #[test]
     fn only_psd_files_and_the_working_folder_are_allowed() {
         assert!(is_psd("C:\\a\\b.PSD") && is_psd("x.psb") && !is_psd("x.png") && !is_psd("x"));
+        let work = std::env::temp_dir().join(format!("dogfile-psdcache-{}", std::process::id()));
+        std::fs::create_dir_all(work.join("a")).unwrap();
+        unsafe { std::env::set_var("DOGFILE_PSD_CACHE", &work) };
+        assert!(in_cache(&work.join("a").join("x")));
         assert!(!in_cache(Path::new("/definitely/not/here/x")));
+        assert!(!in_cache(&std::env::temp_dir().join("x")));
+        unsafe { std::env::remove_var("DOGFILE_PSD_CACHE") };
+        let _ = std::fs::remove_dir_all(&work);
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -249,6 +257,10 @@ mod tests {
         let work = std::env::temp_dir().join(format!("dogfile-psdtest-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&work);
         std::fs::create_dir_all(&work).unwrap();
+        unsafe {
+            std::env::set_var("DOGFILE_PSD_CACHE", work.join("cache"));
+            std::env::set_var("DOGFILE_PSD_BACKUPS", work.join("backups"));
+        }
         let file = work.join("a.psd");
         std::fs::copy(&sample, &file).unwrap();
         let f = file.to_string_lossy().to_string();

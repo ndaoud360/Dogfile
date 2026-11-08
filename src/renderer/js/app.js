@@ -380,7 +380,7 @@ function fileMenu(btn) {
     C('search'), full && C('advSearch'), C('assistant'), C('palette'),
     { separator: true },
     { label: 'Workspaces & profiles', icon: 'workspace', submenu: [C('workspaces'), C('saveWorkspace'), C('profiles')] },
-    full && { label: 'Open terminal', icon: 'terminal', submenu: [C('terminal', 'Dogfile terminal'), C('psHere', 'PowerShell window'), C('cmdHere', 'Command Prompt window'), C('terminalAdmin', 'Window as administrator')] },
+    full && { label: 'Open terminal', icon: 'terminal', submenu: [C('terminal', 'Dogfile terminal'), C('psHere', 'PowerShell window'), C('cmdHere', 'Command Prompt window'), C('psAdmin', 'PowerShell as administrator'), C('cmdAdmin', 'Command Prompt as administrator'), C('terminalAdmin', 'Default terminal as administrator')] },
     full && C('editor'),
     { separator: true },
     { label: 'Tools', icon: 'wand', submenu: [{ header: 'Tidy & clean' }, C('declutter'), C('multiverse'), C('whatif'), C('selfDestruct'), C('cleanup'), C('automations'), C('analyze'), { separator: true }, { header: 'Find' }, C('dupes'), C('similarImages'), C('similarMedia'), C('compare'), C('newCollection'), { separator: true }, { header: 'Safety' }, C('history'), C('allVersions'), C('makeChecksums'), C('verifyChecksums'), { separator: true }, { header: 'Phone' }, C('phoneTransfer')] },

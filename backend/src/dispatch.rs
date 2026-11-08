@@ -20,7 +20,7 @@ pub const NAMES: &[&str] = &[
     "default:set", "win:new", "win:control", "win:overlay", "win:zoom", "theme:get", "dialog:pickFolder", "dialog:openFiles", "dialog:saveFile", "dialog:confirm", "tool:open", "tool:pending", "media:probe",
     "media:imgMeta", "media:quickProbe", "media:lyrics", "media:sheetCancel", "media:contactSheet", "media:encoder", "media:shotDir", "media:export", "ai:status", "ai:download", "ai:remove", "ai:cacheGet", "ai:cacheSet",
     "tags:read", "tags:write", "keywords:read", "keywords:write", "tags:lookup", "tags:identify", "tags:fetchArt", "media:job", "media:cancel", "fs:trash", "fs:copyFile", "fs:writeDataUrl", "fs:writePart", "fs:finishPart", "fs:readBuffer", "fs:writeEncoded",
-    "archive:watchEdit", "fs:watchFile", "mtp:list", "mtp:copyOut", "mtp:copyIn", "mtp:delete", "mtp:mkdir", "mtp:rename", "mtp:fetch", "mtp:origin", "win:corners", "net:discover", "net:open", "locks:who", "locks:kill",
+    "archive:watchEdit", "fs:watchFile", "mtp:list", "mtp:copyOut", "mtp:copyIn", "mtp:delete", "mtp:mkdir", "mtp:rename", "mtp:fetch", "mtp:origin", "win:corners", "net:discover", "net:open", "locks:who", "locks:inspect", "locks:inspectAdmin", "locks:kill",
     "shellverbs:set", "pty:available", "pty:spawn", "pty:write", "pty:resize", "pty:kill", "test:capture", "win:startDrag", "win:dragOut", "win:startResize", "test:log", "sys:uptime", "dialogjump:folders", "dialogjump:test", "update:check", "update:status", "update:notes", "bug:report", "notify:show", "ops:busy", "log:error",
 ];
 
@@ -213,6 +213,8 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
         "recycle:deleteForever" => shell::recycle_delete_forever(&a).await,
         "recycle:empty" => shell::recycle_empty().await,
         "locks:who" => shell::who_locks(&a).await,
+        "locks:inspect" => inuse::inspect(&a).await,
+        "locks:inspectAdmin" => inuse::inspect_admin(&a).await,
         "locks:kill" => shell::kill_process(&a).await,
         "net:discover" => shell::net_discover(&a).await,
         "net:open" => shell::net_open(&a).await,

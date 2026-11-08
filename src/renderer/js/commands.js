@@ -234,6 +234,8 @@ def('office', 'Open Dogfile Office', { icon: 'page', cat: 'Tools', run: () => { 
 def('player', 'Open Dogfile Player', { icon: 'film', cat: 'Tools', run: () => { const s = S_().filter((i) => !i.isDir && !i.virtual); openTool('player', s.map((i) => i.path), { play: true }); } });
 def('whoLocks', 'What’s locking this?', { icon: 'lock', cat: 'Tools', run: () => { const s = S_(); if (s.length) bus.emit('whoLocks', s.map((i) => i.path)); } });
 def('terminalAdmin', 'Open terminal window as administrator', { icon: 'admin', keys: ['Ctrl+Shift+`'], cat: 'Tools', run: () => A.openTerminal(T_(), null, true) });
+def('psAdmin', 'Open PowerShell as administrator here', { icon: 'admin', cat: 'Tools', run: () => A.openTerminal(T_(), 'powershell', true) });
+def('cmdAdmin', 'Open Command Prompt as administrator here', { icon: 'admin', cat: 'Tools', run: () => A.openTerminal(T_(), 'cmd', true) });
 def('cmdHere', 'Open Command Prompt window here', { icon: 'terminal', cat: 'Tools', run: () => A.openTerminal(T_(), 'cmd') });
 def('psHere', 'Open PowerShell window here', { icon: 'terminal', cat: 'Tools', run: () => A.openTerminal(T_(), 'powershell') });
 def('editor', 'Open in code editor', { icon: 'code', keys: ['Ctrl+Shift+O'], cat: 'Tools', run: () => A.openInEditor(S_(), T_()) });
@@ -532,6 +534,9 @@ const DESC = {
   translateText: 'Translate text between 48 languages on this PC. Nothing is sent anywhere.',
   reminders: 'Dogfile reads your documents for due dates and reminds you.',
   extractAudio: 'Save the sound of a video as an MP3.',
+  psAdmin: 'Open PowerShell in this folder with administrator rights. Windows asks for permission each time; Dogfile itself stays a normal program.',
+  cmdAdmin: 'Open Command Prompt in this folder with administrator rights. Windows asks for permission each time; Dogfile itself stays a normal program.',
+  whoLocks: 'Find out which program is using a file or folder (or why it can’t be changed), and end it.',
   fileTypes: 'Choose which app opens each kind of file.',
   cleanup: 'Find big and old files taking up space.',
   analyze: 'A map of what is using your disk space.',

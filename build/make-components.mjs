@@ -3,7 +3,7 @@
 //   node build/make-components.mjs <out dir> [--ffmpeg <ffmpeg-win64-shared.zip>] [--psd <dogfile-psd.zip>] [--web-only]
 // Writes <out dir>/<name>-<first 12 of sha256>.zip and <out dir>/components.json { name: { file, sha256, size } }.
 // CI uploads the zips to the "components" release and puts each address, checksum and size into the build's environment
-// (DOGFILE_FFMPEG_URL / _SHA256 / _SIZE, DOGFILE_OCR_…, DOGFILE_ORT_…).
+// (DOGFILE_FFMPEG_…, DOGFILE_OCR_…, DOGFILE_ORT_…, DOGFILE_PSD_…).
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';

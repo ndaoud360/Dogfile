@@ -1,0 +1,2 @@
+psd-tools==1.10.9
+pyinstaller==6.13.0

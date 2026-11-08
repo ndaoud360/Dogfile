@@ -117,6 +117,14 @@ export function openUtilities(kind = 'all', options = {}) {
   const include = (name) => kind === 'all' || kind === name;
   if (kind === 'all') body.append($('p', { class: 'hint' }, 'Small, offline-first tools for everyday file work. Generated files are saved locally.'));
 
+  // a web address typed without https:// gets it, so scanning opens the site instead of searching for the text
+  const qrContent = (v) => {
+    if (/^[a-z][a-z0-9+.-]*:/i.test(v)) return v; // already https:, mailto:, tel:, WIFI:, BEGIN:VCARD…
+    if (/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(v)) return v; // an email address stays as it is
+    if (/^(www\.)?([a-z0-9-]+\.)+[a-z]{2,}(:\d+)?([/?#]\S*)?$/i.test(v)) return 'https://' + v;
+    if (/^localhost(:\d+)?([/?#]\S*)?$/i.test(v)) return 'http://' + v;
+    return v;
+  };
   // QR code
   const qrCard = $('section', { class: 'util-card' },
     $('div', { class: 'util-card-head' }, $('span', { class: 'util-icon' }, '▦'), $('div', {}, $('b', {}, 'QR code to PNG'), $('div', { class: 'hint' }, 'Turn text, a URL, or contact details into a shareable QR image.'))));
@@ -130,12 +138,15 @@ export function openUtilities(kind = 'all', options = {}) {
       if (!value) return setStatus(qrStatus, 'Enter something to encode.', true);
       try {
         setStatus(qrStatus, 'Generating…');
-        const svg = await api('util:qrSvg', value);
+        // "example.com" alone is just text to a phone, which then searches for it. With https:// in front it opens the site.
+        const content = qrContent(value);
+        qrInput.value = content;
+        const svg = await api('util:qrSvg', content);
         qrPng = await imageToPng(svg, 640);
         qrPreview.innerHTML = '';
         const img = $('img', { class: 'util-qr-img', src: qrPng, alt: 'Generated QR code' });
         qrPreview.append(img);
-        setStatus(qrStatus, 'Ready · 640 × 640 PNG');
+        setStatus(qrStatus, `Ready · 640 × 640 PNG · opens ${content.length > 48 ? content.slice(0, 46) + '…' : content}`);
       } catch (e) { setStatus(qrStatus, e.message || String(e), true); }
     }, true),
     btn('Save PNG', async () => {

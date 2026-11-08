@@ -62,11 +62,14 @@ export async function openItems(items, { pane = state.activePane, newTab = false
   const local = files.filter((f) => !f.archive && !f.recycle && !f.mtp);
   const texts = state.settings.useAtlasEditor !== false ? local.filter((f) => isTextFile(f) && !(state.settings.useAtlasViewer !== false && isImageFile(f)) && !(state.settings.useAtlas3D !== false && isModelFile(f))) : [];
   const medias = state.settings.useAtlasPlayer !== false ? local.filter(isMediaFile) : [];
-  const photos = state.settings.useAtlasViewer !== false ? local.filter(isImageFile) : [];
+  // Photoshop files open with their layers (the one-time download of the helper is asked for inside Dogfile PSD)
+  const psds = state.settings.useAtlasPsd !== false ? local.filter(isPsdFile) : [];
+  const photos = state.settings.useAtlasViewer !== false ? local.filter((f) => isImageFile(f) && !psds.includes(f)) : [];
   const models = state.settings.useAtlas3D !== false ? local.filter(isModelFile) : [];
   const offices = state.settings.useAtlasOffice !== false ? local.filter((f) => isOfficeFile(f) && !isTextFile(f)) : [];
   if (offices.length) { openTool('office', offices.map((f) => f.path)); offices.forEach((f) => addRecentFile(f.path)); }
   if (models.length) { openTool('model', models.map((f) => f.path), { autoPlaylist: models.length === 1 }); models.forEach((f) => addRecentFile(f.path)); }
+  if (psds.length) { openTool('psd', psds.map((f) => f.path), { newTab: true }); psds.forEach((f) => addRecentFile(f.path)); }
   if (photos.length) { openTool('viewer', photos.map((f) => f.path), { autoPlaylist: photos.length === 1 }); photos.forEach((f) => addRecentFile(f.path)); }
   if (texts.length) { openTool('editor', texts.map((f) => f.path)); texts.forEach((f) => addRecentFile(f.path)); }
   if (medias.length) { openTool('player', medias.map((f) => f.path), { play: true, autoPlaylist: medias.length === 1 }); medias.forEach((f) => addRecentFile(f.path)); }
@@ -627,6 +630,26 @@ export async function createSymlink(items) {
 // ======================================================================
 // Undo / redo
 // ======================================================================
+export const isPsdFile = (i) => !i.isDir && /^(psd|psb)$/i.test(i.ext || '');
+
+// Self-destruct: the rule (if any) that covers this file, and the menu items for keeping a file from it
+const sdFlat = (p) => String(p || '').replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+function sdRuleFor(path) {
+  const p = sdFlat(path);
+  return (state.sdFolders || []).find((r) => { const f = sdFlat(r.folder); return p.startsWith(f + '/') && (r.subfolders || !p.slice(f.length + 1).includes('/')); });
+}
+function sdMenu(real, one) {
+  const out = [];
+  const files = real.filter((i) => !i.isDir && !i.archive && !i.mtp && !i.virtual && sdRuleFor(i.path));
+  if (files.length && files.length === real.length) {
+    const kept = (i) => sdRuleFor(i.path).keep.some((k) => sdFlat(k) === sdFlat(i.path));
+    const all = files.every(kept);
+    out.push({ label: all ? 'Allow self-destruct again' : 'Keep from self-destruct', icon: 'clock', run: () => import('./selfdestruct.js').then((m) => m.keepFiles(files.filter((i) => (all ? kept(i) : !kept(i))), !all)) });
+  }
+  if (one && one.isDir && !one.virtual && !one.archive && !one.mtp && !isVirtual(one.path)) out.push({ label: 'Self-destruct this folder…', icon: 'clock', run: () => import('./selfdestruct.js').then((m) => m.open(one.path)) });
+  return out;
+}
+
 // work made of several steps (Tidy up makes folders and moves files into each) is one step in the undo list
 let undoGroup = null;
 export function beginUndoGroup() { undoGroup = []; }
@@ -1344,6 +1367,9 @@ export function buildItemsMenu(t, items) {
     real.length && { label: 'Tags', icon: 'tag', submenu: tagMenu(paths) },
     allDirs && real.length && { label: isPinned(real[0].path) ? 'Unpin from sidebar' : 'Pin to sidebar', icon: isPinned(real[0]?.path) ? 'unpin' : 'pin', run: () => (isPinned(real[0].path) ? unpin(real[0].path) : pin(paths)) },
     one && !one.isDir && isImageFile(one) && { label: 'Extract image color palette…', icon: 'palette', run: () => import('./utilities.js').then((m) => m.openUtilities('palette', { path: one.path })) },
+    ...sdMenu(real, one),
+    one && isPsdFile(one) && !one.archive && !one.mtp && { label: 'Open with layers (Dogfile PSD)', icon: 'stack', run: () => openTool('psd', [one.path], { newTab: true }) },
+    one && isPsdFile(one) && !one.archive && !one.mtp && { label: 'Open as a flat picture (Dogfile Photos)', icon: 'image', run: () => openTool('viewer', [one.path], {}) },
     real.length > 1 && real.every((i) => !i.isDir && i.ext === 'pdf' && !i.archive && !i.mtp) && { label: 'Merge PDFs…', icon: 'page', run: () => import('./protools.js').then((m) => m.mergePdfs(paths)) },
     one && !one.isDir && one.ext === 'pdf' && !one.archive && !one.mtp && { label: 'Split PDF pages…', icon: 'scissors', run: () => import('./protools.js').then((m) => m.splitPdf(one.path)) },
     one && !one.isDir && isImageFile(one) && !one.archive && !one.mtp && !isVirtual(dirname(one.path)) && { label: 'Set as folder icon', icon: 'image', run: () => import('./foldericon.js').then((m) => m.setFolderIcon(dirname(one.path), one.path)) },

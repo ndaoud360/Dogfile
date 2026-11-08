@@ -61,6 +61,8 @@ pub mod lock;
 pub mod multiverse;
 pub mod snapshot;
 pub mod foldericon;
+pub mod selfdestruct;
+pub mod psd;
 #[cfg(windows)]
 pub mod win;
 
@@ -156,6 +158,8 @@ pub fn start(cfg: Config, host: Arc<dyn Host>) -> Result<(), String> {
     }
     // document reminders: watched folders and the hourly date check
     reminders::start();
+    // self-destruct: files in chosen folders go to the Recycle Bin after the time set (checked every minute)
+    selfdestruct::start();
     // linked files: who uses what (web pages, music and video projects, playlists…), looked through in the background
     links::start();
     // time travel: what folders looked like before (recorded from now on)

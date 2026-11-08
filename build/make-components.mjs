@@ -1,6 +1,6 @@
 // Makes the downloadable parts of Dogfile (backend/src/components.rs): zips of the media engine, text recognition and
 // the AI runtime, named after their checksums so an old program always finds the exact file it was built with.
-//   node build/make-components.mjs <out dir> [--ffmpeg <ffmpeg-win64-shared.zip>] [--web-only]
+//   node build/make-components.mjs <out dir> [--ffmpeg <ffmpeg-win64-shared.zip>] [--psd <dogfile-psd.zip>] [--web-only]
 // Writes <out dir>/<name>-<first 12 of sha256>.zip and <out dir>/components.json { name: { file, sha256, size } }.
 // CI uploads the zips to the "components" release and puts each address, checksum and size into the build's environment
 // (DOGFILE_FFMPEG_URL / _SHA256 / _SIZE, DOGFILE_OCR_…, DOGFILE_ORT_…).
@@ -14,6 +14,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
 const opt = (k) => { const i = argv.indexOf(k); return i >= 0 ? argv.splice(i, 2)[1] : null; };
 const ffZip = opt('--ffmpeg');
+const psdZip = opt('--psd');
 const out = path.resolve(argv[0] || path.join(root, 'dist', 'components'));
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
@@ -51,6 +52,13 @@ for (const [name, folder] of [['ocr', 'tesseract'], ['ort', 'ort']]) {
   fs.cpSync(path.join(vendor, folder), path.join(stage, folder), { recursive: true });
   zip(f, stage, [folder]);
   publish(name, f);
+}
+
+// the Photoshop helper: the folder PyInstaller made (dogfile-psd.exe and its libraries), already zipped by CI
+if (psdZip) {
+  const f = path.join(tmp, 'psd.zip');
+  fs.copyFileSync(psdZip, f);
+  publish('psd', f);
 }
 
 // the media engine: ffmpeg + ffprobe and their libraries (no ffplay), flat, with the licence

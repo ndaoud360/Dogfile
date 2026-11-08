@@ -1,0 +1,36 @@
+/* Dogfile PSD: layers on the left, the picture in the middle, what you can do on the right */
+body.psd-app { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; overflow: hidden; }
+#ps-title { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+#ps-name { font-weight: 600; }
+#ps-sub { opacity: .65; font-size: 12px; }
+#ps-actions { display: flex; gap: 6px; }
+#ps-main { display: grid; grid-template-columns: 270px 1fr 290px; min-height: 0; }
+#ps-layers, #ps-side { overflow: auto; padding: 8px; border-right: 1px solid var(--line); background: var(--bg-elev, var(--bg)); }
+#ps-side { border-right: 0; border-left: 1px solid var(--line); }
+#ps-stage { position: relative; overflow: hidden; background: repeating-conic-gradient(#2b2b2f 0 25%, #333338 0 50%) 0 0 / 20px 20px; cursor: grab; }
+#ps-stage.cropping { cursor: crosshair; }
+#ps-view { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+#ps-cv { display: block; image-rendering: auto; box-shadow: 0 0 0 1px rgba(255, 255, 255, .15), 0 8px 30px rgba(0, 0, 0, .5); background: transparent; }
+#ps-crop { position: absolute; border: 2px dashed #fff; box-shadow: 0 0 0 9999px rgba(0, 0, 0, .55); display: none; pointer-events: none; }
+#ps-busy { position: absolute; inset: 0; display: none; place-items: center; background: rgba(0, 0, 0, .4); gap: 8px; }
+#ps-busy.on { display: grid; }
+#ps-busy .msg { color: #fff; }
+#ps-empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--text); }
+#ps-empty:empty { display: none; }
+#ps-bar { display: flex; gap: 14px; padding: 4px 10px; border-top: 1px solid var(--line); font-size: 12px; opacity: .85; }
+.ps-h { font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; opacity: .7; margin: 12px 0 6px; }
+.ps-tools { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.ps-row { display: grid; grid-template-columns: 90px 1fr 38px; align-items: center; gap: 6px; font-size: 12.5px; margin: 3px 0; }
+.ps-row input[type=range] { width: 100%; }
+.ps-note { font-size: 12px; opacity: .75; margin: 6px 0; }
+.ps-layer { display: flex; align-items: center; gap: 6px; padding: 3px 4px; border-radius: 6px; cursor: default; font-size: 12.5px; }
+.ps-layer:hover { background: rgba(128, 128, 128, .14); }
+.ps-layer.sel { background: rgba(80, 140, 255, .28); }
+.ps-layer.off .ps-lname { opacity: .45; }
+.ps-eye { width: 22px; height: 22px; border: 0; background: transparent; color: inherit; cursor: pointer; border-radius: 4px; display: grid; place-items: center; flex: none; }
+.ps-eye:hover { background: rgba(128, 128, 128, .25); }
+.ps-eye svg { width: 15px; height: 15px; }
+.ps-fold { width: 14px; flex: none; opacity: .7; cursor: pointer; text-align: center; }
+.ps-lname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ps-kind { font-size: 10px; opacity: .6; padding: 0 5px; border: 1px solid rgba(128, 128, 128, .4); border-radius: 99px; flex: none; }
+.ps-edited { width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; flex: none; }

@@ -2243,3 +2243,23 @@ body.mv-on #mv-halo { position: fixed; inset: 0; z-index: 3000; pointer-events: 
 .mv-trash { display: grid; gap: 6px; max-height: 50vh; overflow: auto; }
 .mv-trash-row { display: flex; align-items: center; gap: 10px; padding: 4px 2px; }
 .mv-trash-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Self-destruct */
+.sd-list { display: grid; gap: 8px; max-height: 56vh; overflow: auto; }
+.sd-rule { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.sd-rule.off { opacity: .7; }
+.sd-rule-main { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.sd-rule-folder { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.sd-rule-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.sd-chip { font-size: 11px; font-weight: 500; padding: 1px 8px; border-radius: 99px; background: rgba(120, 120, 120, .18); }
+.sd-chip.warn { background: rgba(239, 68, 68, .18); }
+.sd-form { display: grid; gap: 6px; max-height: 62vh; overflow: auto; padding-right: 4px; }
+.sd-row { display: flex; gap: 8px; align-items: center; }
+.sd-row .input { flex: 1; }
+.sd-num { max-width: 90px; flex: none !important; }
+.sd-unit { max-width: 140px; flex: none !important; }
+.sd-radio, .sd-check { display: flex; gap: 8px; align-items: baseline; padding: 2px 0; }
+.sd-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.sd-preset { border: 1px solid var(--line); background: transparent; color: var(--text); border-radius: 99px; padding: 2px 10px; cursor: pointer; font: inherit; font-size: 12px; }
+.sd-preset:hover { background: rgba(128, 128, 128, .15); }
+.sd-preview { margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: rgba(128, 128, 128, .1); font-size: 12.5px; min-height: 20px; }

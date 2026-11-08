@@ -3,6 +3,7 @@
 //   ffmpeg  the media engine (Dogfile Player's conversions, thumbnails, trimming, transcripts)
 //   ocr     Tesseract, for selecting text in photos and screenshots
 //   ort     ONNX Runtime, for the stem separator and the on-device AI helpers
+//   psd     the Photoshop helper, for opening PSD files with their layers and saving them back as layered PSDs
 // (the assistant's llama-server has its own fetch: llm_server::fetch_if_missing.)
 // Every part comes from one address with one SHA-256, both written into the program when it was built, so a download
 // that isn't exactly the file that was built and tested is thrown away. Parts live in <data>/components and are never
@@ -29,11 +30,12 @@ struct Part {
 fn size_of(s: Option<&'static str>, d: u64) -> u64 {
     s.and_then(|s| s.parse().ok()).unwrap_or(d)
 }
-fn parts() -> [Part; 3] {
+fn parts() -> [Part; 4] {
     [
         Part { name: "ffmpeg", label: "Media engine (FFmpeg)", why: "plays and converts the video and audio formats Windows can't open by itself", url: option_env!("DOGFILE_FFMPEG_URL"), sha: option_env!("DOGFILE_FFMPEG_SHA256"), size: size_of(option_env!("DOGFILE_FFMPEG_SIZE"), 75_000_000) },
         Part { name: "ocr", label: "Text recognition (Tesseract)", why: "reads the text in photos and screenshots so you can select and copy it", url: option_env!("DOGFILE_OCR_URL"), sha: option_env!("DOGFILE_OCR_SHA256"), size: size_of(option_env!("DOGFILE_OCR_SIZE"), 15_000_000) },
         Part { name: "ort", label: "On-device AI runtime (ONNX)", why: "runs the stem separator and the on-device helpers on this PC", url: option_env!("DOGFILE_ORT_URL"), sha: option_env!("DOGFILE_ORT_SHA256"), size: size_of(option_env!("DOGFILE_ORT_SIZE"), 5_500_000) },
+        Part { name: "psd", label: "Photoshop layers (PSD)", why: "opens Photoshop files with their layers, so you can switch layers on and off, edit them and save a PSD Photoshop still opens", url: option_env!("DOGFILE_PSD_URL"), sha: option_env!("DOGFILE_PSD_SHA256"), size: size_of(option_env!("DOGFILE_PSD_SIZE"), 70_000_000) },
     ]
 }
 fn part(name: &str) -> Option<Part> {
@@ -51,6 +53,10 @@ pub fn web_dir() -> PathBuf {
 pub fn ffmpeg_dir() -> PathBuf {
     dir().join("ffmpeg")
 }
+/// the folder of the downloaded Photoshop helper (dogfile-psd.exe and its libraries)
+pub fn psd_dir() -> PathBuf {
+    dir().join("psd")
+}
 fn marker(name: &str) -> PathBuf {
     dir().join(format!("{name}.ok"))
 }
@@ -63,6 +69,7 @@ fn carried(name: &str) -> bool {
         "ffmpeg" => crate::media::bundled_dir().is_some(),
         "ocr" => crate::http::ui_bytes("vendor/tesseract/worker.min.js").is_some(),
         "ort" => crate::http::ui_bytes("vendor/ort/ort.bundle.min.mjs").is_some(),
+        "psd" => crate::psd::bundled().is_some(),
         _ => false,
     }
 }
@@ -168,7 +175,15 @@ async fn get(name: &'static str, url: &str, sha: &str) -> Result<(), String> {
         return Err("The download wasn’t the file Dogfile expected, so it was thrown away".into());
     }
     set_stage(name, "Installing");
-    let target = if name == "ffmpeg" { ffmpeg_dir() } else { web_dir() };
+    let target = match name {
+        "ffmpeg" => ffmpeg_dir(),
+        "psd" => psd_dir(),
+        _ => web_dir(),
+    };
+    // a new copy of the Photoshop helper replaces the old one whole (its folders must not mix with the old version's)
+    if name == "psd" {
+        let _ = std::fs::remove_dir_all(&target);
+    }
     let zip_path = part_file.clone();
     let res = tokio::task::spawn_blocking(move || extract(&zip_path, &target, name == "ffmpeg")).await.map_err(|e| e.to_string())?;
     let _ = std::fs::remove_file(&part_file);

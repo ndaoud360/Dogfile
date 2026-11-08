@@ -247,7 +247,7 @@ const R = {
     ['Undo', [['undo'], ['redo'], ['history', 'File history'], ['clipHistory', 'Clipboard list']]],
   ],
   organize: [
-    ['Sort & tidy', [['declutter', 'Tidy up (auto-sort)', true], ['multiverse', 'Multiverse (try changes first)', true], ['folderRules', 'Automate this folder'], ['automations', 'All automations']]],
+    ['Sort & tidy', [['declutter', 'Tidy up (auto-sort)', true], ['multiverse', 'Multiverse (try changes first)', true], ['selfDestruct', 'Self-destruct (auto-remove)', true], ['folderRules', 'Automate this folder'], ['automations', 'All automations']]],
     ['Rename', [['batchRename', 'Rename Studio', true], ['renameWords', 'Rename by describing it']]],
     ['Compress', [['quickZip', 'Zip', true], ['compress', 'Compress…'], ['extract'], ['extractTo']]],
     ['Find', [['dupes', 'Duplicates', true], ['similarImages', 'Similar pictures'], ['similarMedia', 'Similar media'], ['newCollection', 'New collection']]],
@@ -383,7 +383,7 @@ function fileMenu(btn) {
     full && { label: 'Open terminal', icon: 'terminal', submenu: [C('terminal', 'Dogfile terminal'), C('psHere', 'PowerShell window'), C('cmdHere', 'Command Prompt window'), C('terminalAdmin', 'Window as administrator')] },
     full && C('editor'),
     { separator: true },
-    { label: 'Tools', icon: 'wand', submenu: [{ header: 'Tidy & clean' }, C('declutter'), C('multiverse'), C('whatif'), C('cleanup'), C('automations'), C('analyze'), { separator: true }, { header: 'Find' }, C('dupes'), C('similarImages'), C('similarMedia'), C('compare'), C('newCollection'), { separator: true }, { header: 'Safety' }, C('history'), C('allVersions'), C('makeChecksums'), C('verifyChecksums'), { separator: true }, { header: 'Phone' }, C('phoneTransfer')] },
+    { label: 'Tools', icon: 'wand', submenu: [{ header: 'Tidy & clean' }, C('declutter'), C('multiverse'), C('whatif'), C('selfDestruct'), C('cleanup'), C('automations'), C('analyze'), { separator: true }, { header: 'Find' }, C('dupes'), C('similarImages'), C('similarMedia'), C('compare'), C('newCollection'), { separator: true }, { header: 'Safety' }, C('history'), C('allVersions'), C('makeChecksums'), C('verifyChecksums'), { separator: true }, { header: 'Phone' }, C('phoneTransfer')] },
     { label: 'Features', icon: 'puzzle', submenu: () => { const f = featureCmds(); return [...f, f.length && { separator: true }, C('features', 'Manage features…'), C('createFeature'), C('featureStore', 'Browse & share features…')].filter(Boolean); } },
     full && { label: 'Macros', icon: 'record', submenu: [C('startMacro'), C('macros'), ...[...commands.values()].filter((c) => c.id.startsWith('macro:')).map((c) => ({ label: c.title.replace(/^Macro: /, ''), icon: 'record', run: c.run }))] },
     { separator: true },
@@ -597,6 +597,7 @@ async function boot() {
   if (!info.test) setTimeout(() => import('./multiverse.js').then((m) => m.recoverAtStart()).catch(() => {}), 2500); // finish or reverse a Multiverse change an earlier run left half done
   if (!info.test) setTimeout(() => import('./mvmode.js').then((m) => m.recover()).catch(() => {}), 1500); // a Multiverse left open last time
   import('./foldericon.js').then((m) => m.loadFolderIcons()).catch(() => {});
+  import('./selfdestruct.js').then((m) => m.init()).catch(() => {});
   setTimeout(() => import('./readability.js').then((m) => m.guardReadability()).catch(() => {}), 3000); // colours that came from an import or another PC may be hard to read
   // the interface language (translates as things appear)
   if ((state.settings.language || 'auto') !== 'en') await import('./i18n.js').then((m) => m.initI18n(state.settings.language || 'auto')).catch(() => {});

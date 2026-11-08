@@ -218,6 +218,7 @@ def('folderRules', 'Automate this folder…', { icon: 'automation', cat: 'Tools'
 def('automations', 'Folder automations…', { icon: 'automation', cat: 'Tools', run: () => import('./rules.js').then((m) => m.automationsManager()) });
 def('newCollection', 'New smart collection…', { icon: 'collection', cat: 'Tools', run: () => import('./collections.js').then((m) => m.editCollection(null)) });
 def('multiverse', 'Multiverse: snapshot this folder and try anything', { icon: 'layout4', cat: 'Tools', run: () => import('./mvmode.js').then((m) => m.start()) });
+def('selfDestruct', 'Self-destruct: auto-remove files after a time…', { icon: 'clock', cat: 'Tools', run: () => import('./selfdestruct.js').then((m) => m.open()) });
 def('whatif', 'What-if copy of a folder (older Multiverse)…', { icon: 'layout4', cat: 'Tools', run: () => import('./multiverse.js').then((m) => m.open()) });
 def('declutter', 'Tidy up this folder…', { icon: 'wand', cat: 'Tools', run: () => import('./declutter.js').then((m) => m.declutter()) });
 def('renameWords', 'Rename by describing it…', { icon: 'rename', cat: 'Edit', run: () => A.batchRename(S_()) });
@@ -505,6 +506,7 @@ function filePalette() {
 
 // What each tool does, in a few plain words. Shown when you hover its button in the ribbon.
 const DESC = {
+  selfDestruct: 'Files in a folder (like Downloads) move to the Recycle Bin after the time you choose. Needs a password to change.',
   multiverse: 'Save a snapshot of this folder, then try anything (sort, rename, delete). Make it real, or go back to the snapshot.',
   whatif: 'Plan a reorganisation in a what-if copy of the folder before touching any files.',
   declutter: 'Sort the loose files in this folder into folders by kind, date or name. One Ctrl+Z puts it all back.',

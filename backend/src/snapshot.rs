@@ -259,6 +259,11 @@ fn begin_sync(root_s: &str) -> R {
     Ok(out)
 }
 
+/// the folder a Multiverse is open on (other background work stays out of it)
+pub fn active_root() -> Option<String> {
+    session().lock().as_ref().map(|s| s.root.clone())
+}
+
 // ---------- status / recover ----------
 fn summary(s: &Session) -> Value {
     let trashed = s.trash.iter().filter(|t| trash_path(s, t).exists()).count();

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:*; img-src 'self' http://127.0.0.1:* data: blob:; connect-src 'self' http://127.0.0.1:* data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' http://127.0.0.1:* data:; script-src 'self' http://127.0.0.1:* 'wasm-unsafe-eval'; worker-src 'self' http://127.0.0.1:* blob:">
+  <title>Dogfile PSD</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="psd.css">
+</head>
+<body class="tool psd-app">
+  <header id="ps-title">
+    <span id="ps-name">Dogfile PSD</span>
+    <span id="ps-sub"></span>
+    <div class="tab-drag"></div>
+    <div id="ps-actions"></div>
+    <div id="win-ctl"></div>
+  </header>
+  <div id="ps-main">
+    <aside id="ps-layers"></aside>
+    <div id="ps-stage"><div id="ps-view"><canvas id="ps-cv"></canvas><div id="ps-crop"></div></div><div id="ps-busy"><div class="spin"></div><div class="msg"></div></div><div id="ps-empty"></div></div>
+    <aside id="ps-side"></aside>
+  </div>
+  <footer id="ps-bar"></footer>
+  <div id="toasts"></div>
+  <script type="module" src="js/psd.js"></script>
+</body>
+</html>

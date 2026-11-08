@@ -10,6 +10,7 @@ export const APPS = {
   viewer: { title: 'Dogfile Photos', icon: 'image' },
   model: { title: 'Dogfile 3D', icon: 'cube' },
   office: { title: 'Dogfile Office', icon: 'page' },
+  psd: { title: 'Dogfile PSD', icon: 'stack' },
 };
 const frames = new Map(); // tabId -> iframe
 let host = null;

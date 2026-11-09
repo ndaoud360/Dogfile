@@ -310,7 +310,7 @@ pub async fn clone(a: &Args) -> R {
     if url.trim().is_empty() || url.starts_with('-') {
         return Err("Enter the repository address".into());
     }
-    let name = url.trim_end_matches('/').trim_end_matches(".git").rsplit(['/', ':']).next().filter(|s| !s.is_empty()).unwrap_or("repository").to_string();
+    let name = url.trim_end_matches('/').trim_end_matches(".git").rsplit(['/', '\\', ':']).next().filter(|s| !s.is_empty()).unwrap_or("repository").to_string();
     let target = Path::new(&parent).join(&name);
     if target.exists() {
         return Err(format!("“{name}” already exists in that folder"));

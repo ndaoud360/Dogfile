@@ -31,7 +31,6 @@ export function contextRibbon() {
       const secs = [2, 3, 4, 5, 8, 10, 15, 30].map((n) => ({ label: `${n} seconds`, checked: (st.secs || 4) === n, run: C('seconds', n) }));
       return { key: 'editor', label: 'Editor', groups: [
         ['Edit', [B('rename', 'Edit', C('edit'), true), B('crop', 'Crop', C('crop'), true), B('palette', 'Filters', C('filters')), B('rename', 'Draw', C('draw'))]],
-        ['Optimize', [B('compress', 'Compress', C('compress'), true), B('zoomIn', 'Upscale', C('upscale')), B('image', 'Remove background', C('removeBackground'))]],
         ['Rotate', [B('undo', 'Rotate left', C('rotateL')), B('redo', 'Rotate right', C('rotateR')), B('swap', 'Flip', C('flip'))]],
         st.editing
           ? ['Save', [B('copy', 'Save as copy', C('saveCopy'), true), B('save', 'Overwrite original', C('overwrite')), B('undo', 'Undo', C('undo')), B('redo', 'Redo', C('redo')), B('refresh', 'Reset all', C('resetAll')), B('close', 'Cancel', C('cancelEdit'))]]
@@ -40,26 +39,6 @@ export function contextRibbon() {
         ['Slideshow', [{ ...B(st.slideshow ? 'ppause' : 'pplay', st.slideshow ? 'Stop' : 'Slideshow', C('slideshow'), true), on: st.slideshow }, { ...B('shuffle', 'Shuffle', C('shuffle')), on: st.shuffle }, { icon: 'clock', label: `Every ${st.secs || 4}s`, menu: () => secs }]],
         ['Photo', [B('pprev', 'Previous', C('prev')), B('pnext', 'Next', C('next')), B('trash', 'Delete', C('delete'))]],
         ['Tools', [B('scan', 'Copy text from image', C('ocr'), true), B('puzzle', 'Features', C('features'))]],
-      ] };
-    }
-    if (app.app === 'psd') {
-      const C = (id, arg) => () => appCmd(id, arg);
-      const file = st.hasFile;
-      return { key: 'editor', label: 'Editor', groups: [
-        ['File', [B('folderOpen', 'Open…', C('open'), true), ...(file ? [B('save', 'Save PSD…', C('save')), B('image', 'Save flat picture…', C('saveFlat'))] : [])]],
-        ...(file ? [
-          ['Edit', [
-            ...(st.canUndo ? [B('undo', 'Undo', C('undo'), true)] : []),
-            ...(st.canRedo ? [B('redo', 'Redo', C('redo'))] : []),
-            ...(st.hasSelection ? [B('rename', 'Rename layer', C('renameLayer')), B('trash', 'Delete layer', C('deleteLayer'))] : []),
-          ]],
-          ['Layers', [B('eye', 'Show all', C('showAll')), B('eyeOff', 'Hide all', C('hideAll')), B('eye', 'Toggle selected', C('toggleLayer'))]],
-          ['Canvas', [
-            ...(st.canCanvasEdit ? [B('crop', st.cropping ? 'Finish crop' : 'Crop', C('crop'), true), B('undo', 'Rotate left', C('rotateLeft')), B('redo', 'Rotate right', C('rotateRight')), B('swap', 'Flip horizontal', C('flipH')), B('swap', 'Flip vertical', C('flipV'))] : []),
-            ...(st.hasCrop ? [B('close', 'Clear crop', C('clearCrop'))] : []),
-          ]],
-        ] : []),
-        ...(file ? [['View', [B('max', 'Fit', C('fit'), true), B('zoomIn', 'Zoom in', C('zoomIn')), B('zoomOut', 'Zoom out', C('zoomOut')), B('eye', 'Accurate preview', C('accurate'))]]] : []),
       ] };
     }
     if (app.app === 'office' && st.doc) return officeRibbon(st);

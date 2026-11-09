@@ -64,6 +64,9 @@ pub mod foldericon;
 pub mod selfdestruct;
 pub mod psd;
 pub mod inuse;
+pub mod gitx;
+pub mod docker;
+pub mod rclone;
 #[cfg(windows)]
 pub mod win;
 

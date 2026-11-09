@@ -1368,6 +1368,11 @@ export function buildItemsMenu(t, items) {
     allDirs && real.length && { label: isPinned(real[0].path) ? 'Unpin from sidebar' : 'Pin to sidebar', icon: isPinned(real[0]?.path) ? 'unpin' : 'pin', run: () => (isPinned(real[0].path) ? unpin(real[0].path) : pin(paths)) },
     one && !one.isDir && isImageFile(one) && { label: 'Extract image color palette…', icon: 'palette', run: () => import('./utilities.js').then((m) => m.openUtilities('palette', { path: one.path })) },
     ...sdMenu(real, one),
+    one && !one.isDir && /^(docker-)?compose(\.[\w-]+)?\.ya?ml$/i.test(one.name || '') && !one.archive && !one.mtp && { label: 'Docker Compose', icon: 'stack', submenu: [
+      { label: 'Start (up -d)', run: () => import('./devpanels.js').then((m) => m.composeHere('up', dirname(one.path))) },
+      { label: 'Stop and remove (down)', run: () => import('./devpanels.js').then((m) => m.composeHere('down', dirname(one.path))) },
+      { label: 'Open the Docker tab', run: () => bus.emit('termTab', 'docker') },
+    ] },
     one && isPsdFile(one) && !one.archive && !one.mtp && { label: 'Open with layers (Dogfile PSD)', icon: 'stack', run: () => openTool('psd', [one.path], { newTab: true }) },
     one && isPsdFile(one) && !one.archive && !one.mtp && { label: 'Open as a flat picture (Dogfile Photos)', icon: 'image', run: () => openTool('viewer', [one.path], {}) },
     real.length > 1 && real.every((i) => !i.isDir && i.ext === 'pdf' && !i.archive && !i.mtp) && { label: 'Merge PDFs…', icon: 'page', run: () => import('./protools.js').then((m) => m.mergePdfs(paths)) },

@@ -3,6 +3,7 @@ body.psd-app { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; 
 #ps-title { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-bottom: 1px solid var(--line); }
 #ps-name { font-weight: 600; }
 #ps-sub { opacity: .65; font-size: 12px; }
+#ps-actions { display: flex; gap: 6px; }
 #ps-main { display: grid; grid-template-columns: 270px 1fr 290px; min-height: 0; }
 #ps-layers, #ps-side { overflow: auto; padding: 8px; border-right: 1px solid var(--line); background: var(--bg-elev, var(--bg)); }
 #ps-side { border-right: 0; border-left: 1px solid var(--line); }

@@ -604,6 +604,28 @@ How long the file is.
 const d = await dogfile.player.duration();
 ```
 
+#### `dogfile.player.setSkin(name)`
+
+Picks the music view: "turntable" (record player), "cassette" (cassette deck) or "off" (cover picture). Remembered between sessions.
+
+- **Gives:** Promise<string>
+- **Works in:** Dogfile Player
+
+```js
+await dogfile.player.setSkin('turntable');
+```
+
+#### `dogfile.player.getSkin()`
+
+The music view now chosen: turntable, cassette or off.
+
+- **Gives:** Promise<string>
+- **Works in:** Dogfile Player
+
+```js
+const s = await dogfile.player.getSkin();
+```
+
 ### Internet
 
 Features can’t reach the internet directly; they ask Dogfile, which needs the network permission.

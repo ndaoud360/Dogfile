@@ -298,6 +298,7 @@ async fn open(id: &str) -> Result<Shared, String> {
         "gdrive" => Kind::Cloud(Arc::new(crate::cloudapi::Api::Drive(crate::cloudapi::OAuth::new("gdrive", id)))),
         "dropbox" => Kind::Cloud(Arc::new(crate::cloudapi::Api::Dropbox(crate::cloudapi::OAuth::new("dropbox", id)))),
         "onedrive" => Kind::Cloud(Arc::new(crate::cloudapi::Api::OneDrive(crate::cloudapi::OAuth::new("onedrive", id)))),
+        "rclone" => Kind::Cloud(Arc::new(crate::cloudapi::Api::Rclone(crate::rclone::Remote::new(c["remote"].as_str().unwrap_or(""))))),
         _ => return Err("Unsupported connection type".into()),
     };
     let s: Shared = Arc::new(AMutex::new(Session { kind, last: Instant::now() }));

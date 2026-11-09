@@ -71,6 +71,8 @@ export const SECTIONS = [
     { name: 'dogfile.player.seek', sig: 'dogfile.player.seek(seconds)', returns: 'Promise', where: ['player'], desc: 'Jumps to a time.', example: `dogfile.player.seek(90);` },
     { name: 'dogfile.player.time', sig: 'dogfile.player.time()', returns: 'Promise<number>', where: ['player'], desc: 'The current time.', example: `const t = await dogfile.player.time();` },
     { name: 'dogfile.player.duration', sig: 'dogfile.player.duration()', returns: 'Promise<number>', where: ['player'], desc: 'How long the file is.', example: `const d = await dogfile.player.duration();` },
+    { name: 'dogfile.player.setSkin', sig: 'dogfile.player.setSkin(name)', returns: 'Promise<string>', where: ['player'], desc: 'Picks the music view: "turntable" (record player), "cassette" (cassette deck) or "off" (cover picture). Remembered between sessions.', example: `await dogfile.player.setSkin('turntable');` },
+    { name: 'dogfile.player.getSkin', sig: 'dogfile.player.getSkin()', returns: 'Promise<string>', where: ['player'], desc: 'The music view now chosen: turntable, cassette or off.', example: `const s = await dogfile.player.getSkin();` },
   ] },
   { id: 'net', title: 'Internet', intro: 'Features can’t reach the internet directly; they ask Dogfile, which needs the network permission.', items: [
     { name: 'dogfile.net.fetch', sig: 'dogfile.net.fetch(url, { method?, headers?, body? })', returns: 'Promise<{ status, ok, text, headers }>', perm: 'network', where: 'all',

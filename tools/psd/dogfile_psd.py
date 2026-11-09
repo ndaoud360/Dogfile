@@ -4,6 +4,7 @@ PSD / PSB files with psd-tools, which keeps everything it doesn't change (text, 
 layers, masks, ICC profiles) exactly as it was.
 
     dogfile_psd.py version
+    dogfile_psd.py selftest                       makes a tiny PSD, changes it, saves and reads it back (checks the packed program is whole)
     dogfile_psd.py info   <file> <out dir>        layers (with a PNG of each) + the flattened picture, as JSON
     dogfile_psd.py raw    <file> <out dir> <id>   one layer's own pixels, as PNG, for editing
     dogfile_psd.py render <file> <out.png> [--hide 1,2] [--show 3] [--max 2000]   the real composite with layers shown / hidden
@@ -341,6 +342,45 @@ def turn_document(psd, degrees, flip_h, flip_v):
         psd._record.header.width, psd._record.header.height = H, W
 
 
+def selftest():
+    """uses every library the real work needs (numpy, Pillow, psd-tools' drawing), so a broken packaging shows up here"""
+    import numpy
+    from PIL import Image
+    from psd_tools import PSDImage
+    from psd_tools.api.layers import PixelLayer
+    with tempfile.TemporaryDirectory() as d:
+        psd = PSDImage.new("RGBA", (16, 12))
+        PixelLayer.frompil(Image.new("RGBA", (6, 6), (255, 0, 0, 255)), psd, "red", top=2, left=3)
+        PixelLayer.frompil(Image.new("RGBA", (4, 4), (0, 0, 255, 255)), psd, "blue", top=5, left=8)
+        src = os.path.join(d, "a.psd")
+        psd.save(src)
+        Image.new("RGBA", (6, 6), (0, 255, 0, 255)).save(os.path.join(d, "g.png"))
+        spec = {"src": src, "dest": os.path.join(d, "b.psd"), "layers": {"0": {"pixels": "g.png", "left": 3, "top": 2}, "1": {"visible": False}}, "doc": {"crop": [1, 1, 15, 11]}}
+        json.dump(spec, open(os.path.join(d, "s.json"), "w"))
+        saved = io_capture(lambda: save(os.path.join(d, "s.json")))
+        again = load(os.path.join(d, "b.psd"))
+        layers = walk(again)
+        img = again.composite(force=True)
+        px = img.convert("RGBA").getpixel((3 - 1, 2 - 1))
+        ok = len(layers) == 2 and again.size == (14, 10) and px[:3] == (0, 255, 0) and layers[1].visible is False and saved.get("ok")
+        if not ok:
+            fail(f"The self-test gave a wrong result ({again.size}, {px})")
+        out({"ok": True, "numpy": numpy.__version__, "helper": VERSION})
+
+
+def io_capture(fn):
+    """run something that prints its answer, and return that answer"""
+    import io
+    real = sys.stdout
+    sys.stdout = io.StringIO()
+    try:
+        fn()
+        text = sys.stdout.getvalue()
+    finally:
+        sys.stdout = real
+    return json.loads(text)
+
+
 def main(argv):
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -354,6 +394,8 @@ def main(argv):
         if cmd == "version":
             import psd_tools
             out({"ok": True, "helper": VERSION, "psdTools": psd_tools.__version__})
+        elif cmd == "selftest":
+            selftest()
         elif cmd == "info":
             info(argv[2], argv[3])
         elif cmd == "raw":

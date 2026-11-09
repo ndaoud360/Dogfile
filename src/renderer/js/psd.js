@@ -6,7 +6,7 @@ import { api, onMain, h, esc, DEFAULT_SETTINGS, setNativeDialogs, toast, fileUrl
 import { icon } from './icons.js';
 import './menu.js';
 import { applyColors, mediaSettings } from './theme.js';
-import { EMBED, pendingFiles, onHost, tellHost, setTitle, onLeave, onWindowClose } from './embed.js';
+import { EMBED, pendingFiles, onHost, setTitle, onLeave, onWindowClose } from './embed.js';
 import { modal, confirm } from './dialogs.js';
 import { ensureComponent } from './components.js';
 
@@ -47,7 +47,7 @@ function snapshot() { return { ED: new Map([...ED].map(([k, v]) => [k, { ...v }]
 function push() { UNDO.push(snapshot()); if (UNDO.length > 60) UNDO.shift(); REDO = []; }
 function restore(s) { ED = new Map([...s.ED].map(([k, v]) => [k, { ...v }])); DOC = { ...s.DOC, crop: s.DOC.crop ? [...s.DOC.crop] : null }; PREVIEW = null; ACCURATE = null; changed(); }
 function undo() { if (!UNDO.length) return; REDO.push(snapshot()); restore(UNDO.pop()); }
-function redo() { if (!REDO.length) return; UNDO.push(snapshot()); restore(UNDO.pop()); }
+function redo() { if (!REDO.length) return; UNDO.push(snapshot()); restore(REDO.pop()); }
 
 // ---------- drawing ----------
 const blank = (w, h2) => { const c = document.createElement('canvas'); c.width = Math.max(1, w); c.height = Math.max(1, h2); return c; };
@@ -176,7 +176,7 @@ async function rename(id) {
   const v = await modal({ title: 'Rename layer', width: 380, body: box, buttons: [{ label: 'Cancel', value: null }, { label: 'Rename', primary: true, run: (close) => close(box.value.trim() || null) }] });
   if (v && v !== eff(id).name) { push(); setEd(id, { name: v }); changed(); }
 }
-function select(id) { SEL = id; PREVIEW = null; renderLayers(); renderSide(); notifyHost(); }
+function select(id) { SEL = id; PREVIEW = null; renderLayers(); renderSide(); }
 
 function changed() { ACCURATE = ACCURATE && accurateStale() ? ACCURATE : ACCURATE; render(); renderLayers(); renderSide(); renderBar(); updateTitle(); if (ACCURATE) accurateSoon(); }
 const accurateStale = () => false;
@@ -271,7 +271,7 @@ function deleteLayer() {
   if (SEL == null) return;
   push(); setEd(SEL, { deleted: true, visible: false }); SEL = null; changed();
 }
-function setOpacity(pct) { setEd(SEL, { opacity: Math.round((pct / 100) * 255) }); render(); renderLayers(); notifyHost(); }
+function setOpacity(pct) { setEd(SEL, { opacity: Math.round((pct / 100) * 255) }); render(); renderLayers(); }
 
 // ---------- the side panel ----------
 function slider(label, key, min, max, step, unit = '') {
@@ -326,14 +326,14 @@ function turnDoc(deg) { push(); DOC.rot = ((DOC.rot + deg) % 360 + 360) % 360; D
 function flipDoc(k) { push(); if (k === 'h') DOC.flipH = !DOC.flipH; else DOC.flipV = !DOC.flipV; changed(); }
 function renderBar() {
   const bar = $('ps-bar');
-  if (!D) { bar.textContent = ''; notifyHost(); return; }
+  if (!D) { bar.textContent = ''; return; }
   const c = DOC.crop;
   const w = c ? c[2] - c[0] : D.width, h2 = c ? c[3] - c[1] : D.height, turn = DOC.rot % 180 !== 0;
   bar.textContent = `${turn ? h2 : w} × ${turn ? w : h2} px · ${plural(D.layers.filter((l) => !l.isGroup).length, 'layer')} · ${D.depth}-bit ${D.mode} · ${Math.round(ZOOM * 100)}%${dirty() ? ' · unsaved changes' : ''}`;
 }
 
 // ---------- crop ----------
-function toggleCrop() { CROPPING = !CROPPING; $('ps-stage').classList.toggle('cropping', CROPPING); renderSide(); notifyHost(); }
+function toggleCrop() { CROPPING = !CROPPING; $('ps-stage').classList.toggle('cropping', CROPPING); renderSide(); }
 function drawCropBox() {
   const box = $('ps-crop');
   box.style.display = 'none';
@@ -392,54 +392,15 @@ function wireStage() {
 // ---------- opening ----------
 function busy(msg) { const b = $('ps-busy'); b.classList.toggle('on', !!msg); b.querySelector('.msg').textContent = msg || ''; }
 function empty(html) { const e = $('ps-empty'); e.innerHTML = ''; if (html) e.append(html); }
-function notifyHost() {
-  tellHost({
-    type: 'state', kind: 'psd', path: D?.path || '', hasFile: !!D, dirty: dirty(),
-    canUndo: !!UNDO.length, canRedo: !!REDO.length, hasSelection: SEL != null,
-    canCanvasEdit: !!D && D.canEdit && plainDoc(), hasCrop: !!DOC.crop,
-    cropping: !!CROPPING, layers: D?.layers.length || 0,
-    width: D?.width || 0, height: D?.height || 0,
-  });
-}
-function updateTitle() {
-  const n = D ? basename(D.path) : 'Dogfile PSD';
-  $('ps-name').textContent = n + (dirty() ? ' •' : '');
-  $('ps-sub').textContent = D ? `${plural(D.layers.filter((l) => !l.isGroup).length, 'layer')}` : '';
-  setTitle(n);
-  notifyHost();
-}
-async function openPicker() {
-  const f = await api('dialog:openFiles', { title: 'Open a Photoshop file', filters: [{ name: 'Photoshop', extensions: ['psd', 'psb'] }] });
-  if (f?.[0]) await openFile(f[0]);
-}
-function ribbonCommand(id) {
-  if (id === 'open') return openPicker();
-  if (id === 'save') return save();
-  if (id === 'saveFlat') return exportFlat();
-  if (id === 'undo') return undo();
-  if (id === 'redo') return redo();
-  if (!D) return;
-  if (id === 'showAll') return setAllVisible(true);
-  if (id === 'hideAll') return setAllVisible(false);
-  if (id === 'toggleLayer' && SEL != null) return toggle(SEL);
-  if (id === 'renameLayer' && SEL != null) return rename(SEL);
-  if (id === 'deleteLayer' && SEL != null) return deleteLayer();
-  if (id === 'crop' && D.canEdit && plainDoc()) return toggleCrop();
-  if (id === 'clearCrop' && DOC.crop) { push(); DOC.crop = null; CROPPING = false; $('ps-stage').classList.remove('cropping'); return changed(); }
-  if (id === 'rotateLeft' && D.canEdit && plainDoc()) return turnDoc(-90);
-  if (id === 'rotateRight' && D.canEdit && plainDoc()) return turnDoc(90);
-  if (id === 'flipH' && D.canEdit && plainDoc()) return flipDoc('h');
-  if (id === 'flipV' && D.canEdit && plainDoc()) return flipDoc('v');
-  if (id === 'fit') return fit();
-  if (id === 'zoomIn') { ZOOM = Math.min(16, ZOOM * 1.25); placeView(); }
-  if (id === 'zoomOut') { ZOOM = Math.max(0.05, ZOOM / 1.25); placeView(); }
-  if (id === 'accurate') return toggleAccurate();
-}
-
+function updateTitle() { const n = D ? basename(D.path) : 'Dogfile PSD'; $('ps-name').textContent = n + (dirty() ? ' •' : ''); $('ps-sub').textContent = D ? `${plural(D.layers.filter((l) => !l.isGroup).length, 'layer')}` : ''; setTitle(n); renderActions(); }
 
 export async function openFile(path) {
   if (D && dirty() && !(await confirm('Close this file?', 'You have changes that aren’t saved.', { ok: 'Close without saving', danger: true }))) return;
   const status = await api('psd:status').catch(() => ({ ready: false }));
+  if (!status.ready && status.installed) {
+    empty(h('div', {}, h('div', { class: 'confirm-msg' }, 'The Photoshop helper is installed but doesn’t work: ' + (status.error || 'unknown problem')), h('div', { class: 'ps-note' }, 'Update Dogfile to get a fixed copy, or open the flat picture meanwhile.'), h('div', { class: 'ps-tools', style: { justifyContent: 'center' } }, h('button', { class: 'btn', onclick: () => openFile(path) }, 'Try again'), h('button', { class: 'btn', onclick: () => api('tool:open', 'viewer', [path], {}) }, 'Open the flat picture instead'))));
+    return;
+  }
   if (!status.ready) {
     if (!(await ensureComponent('psd', 'Opening a Photoshop file with its layers'))) {
       empty(h('div', {}, h('div', { class: 'confirm-msg' }, 'Photoshop layers need a one-time download.'), h('div', { class: 'ps-tools', style: { justifyContent: 'center' } }, h('button', { class: 'btn', onclick: () => openFile(path) }, 'Try again'), h('button', { class: 'btn', onclick: () => api('tool:open', 'viewer', [path], {}) }, 'Open the flat picture instead'))));
@@ -537,6 +498,15 @@ async function exportFlat() {
   toast(`Saved ${basename(dest)}`, { ok: true });
 }
 
+function renderActions() {
+  const a = $('ps-actions');
+  a.innerHTML = '';
+  const b = (ic, label, fn, dis) => h('button', { class: 'btn small', title: label, ...(dis ? { disabled: '' } : {}), onclick: fn }, h('span', { html: icon(ic) }), ' ' + label);
+  a.append(b('folderOpen', 'Open…', async () => { const f = await api('dialog:openFiles', { title: 'Open a Photoshop file', filters: [{ name: 'Photoshop', extensions: ['psd', 'psb'] }] }); if (f?.[0]) openFile(f[0]); }),
+    b('undo', 'Undo', undo, !UNDO.length), b('redo', 'Redo', redo, !REDO.length),
+    b('image', 'Save flat picture…', exportFlat, !D),
+    h('button', { class: 'btn small primary', ...(D && dirty() ? {} : { disabled: '' }), onclick: save }, h('span', { html: icon('save') }), ' Save…'));
+}
 
 // ---------- start ----------
 async function boot() {
@@ -552,11 +522,10 @@ async function boot() {
     const mk = (ic, act, title) => { const b = h('button', { class: 'wc-btn ' + act, title, html: icon(ic) }); b.addEventListener('click', () => api('win:control', act)); return b; };
     wc.append(mk('min', 'min', 'Minimize'), mk('max', 'max', 'Maximize'), mk('close', 'close', 'Close'));
   }
-  wireStage(); renderBar();
-  empty(h('div', {}, h('div', { class: 'ps-h' }, 'Dogfile PSD'), h('div', { class: 'confirm-msg' }, 'Open a Photoshop file (.psd or .psb) to see its layers.'), h('button', { class: 'btn primary', onclick: openPicker }, 'Open a file…')));
+  wireStage(); renderActions(); renderBar();
+  empty(h('div', {}, h('div', { class: 'ps-h' }, 'Dogfile PSD'), h('div', { class: 'confirm-msg' }, 'Open a Photoshop file (.psd or .psb) to see its layers.'), h('button', { class: 'btn primary', onclick: () => $('ps-actions').querySelector('button').click() }, 'Open a file…')));
   const pending = await pendingFiles();
   if (pending?.files?.length) await openFile(pending.files[0]);
-  notifyHost();
   document.body.classList.add('ready');
 }
 window.addEventListener('keydown', (e) => {
@@ -570,6 +539,6 @@ const leave = async () => (D && dirty() ? confirm('Close this file?', 'You have 
 onLeave(leave); onWindowClose(leave);
 onMain('psd:open', ({ files }) => files?.[0] && openFile(files[0]));
 onMain('settings:changed', (s) => { applyColors(mediaSettings({ ...DEFAULT_SETTINGS, ...s })); });
-onHost({ open: (m) => m.files?.[0] && openFile(m.files[0]), cmd: (id) => ribbonCommand(id) });
+onHost({ open: (m) => m.files?.[0] && openFile(m.files[0]) });
 window.addEventListener('pagehide', closeCurrent);
 boot().catch((e) => { console.error(e); document.body.innerHTML = `<pre style="padding:20px;color:#f66">${esc(e.stack || e.message)}</pre>`; });

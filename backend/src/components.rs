@@ -3,7 +3,7 @@
 //   ffmpeg  the media engine (Dogfile Player's conversions, thumbnails, trimming, transcripts)
 //   ocr     Tesseract, for selecting text in photos and screenshots
 //   ort     ONNX Runtime, for the stem separator and the on-device AI helpers
-//   psd     the Photoshop helper, bundled with Windows installers and fetched by standalone builds when needed
+//   psd     the Photoshop helper, for opening PSD files with their layers and saving them back as layered PSDs
 // (the assistant's llama-server has its own fetch: llm_server::fetch_if_missing.)
 // Every part comes from one address with one SHA-256, both written into the program when it was built, so a download
 // that isn't exactly the file that was built and tested is thrown away. Parts live in <data>/components and are never
@@ -30,12 +30,13 @@ struct Part {
 fn size_of(s: Option<&'static str>, d: u64) -> u64 {
     s.and_then(|s| s.parse().ok()).unwrap_or(d)
 }
-fn parts() -> [Part; 4] {
+fn parts() -> [Part; 5] {
     [
         Part { name: "ffmpeg", label: "Media engine (FFmpeg)", why: "plays and converts the video and audio formats Windows can't open by itself", url: option_env!("DOGFILE_FFMPEG_URL"), sha: option_env!("DOGFILE_FFMPEG_SHA256"), size: size_of(option_env!("DOGFILE_FFMPEG_SIZE"), 75_000_000) },
         Part { name: "ocr", label: "Text recognition (Tesseract)", why: "reads the text in photos and screenshots so you can select and copy it", url: option_env!("DOGFILE_OCR_URL"), sha: option_env!("DOGFILE_OCR_SHA256"), size: size_of(option_env!("DOGFILE_OCR_SIZE"), 15_000_000) },
         Part { name: "ort", label: "On-device AI runtime (ONNX)", why: "runs the stem separator and the on-device helpers on this PC", url: option_env!("DOGFILE_ORT_URL"), sha: option_env!("DOGFILE_ORT_SHA256"), size: size_of(option_env!("DOGFILE_ORT_SIZE"), 5_500_000) },
         Part { name: "psd", label: "Photoshop layers (PSD)", why: "opens Photoshop files with their layers, so you can switch layers on and off, edit them and save a PSD Photoshop still opens", url: option_env!("DOGFILE_PSD_URL"), sha: option_env!("DOGFILE_PSD_SHA256"), size: size_of(option_env!("DOGFILE_PSD_SIZE"), 70_000_000) },
+        Part { name: "rclone", label: "More cloud drives (rclone)", why: "lets Dogfile browse Box, MEGA, pCloud, Proton Drive, Yandex Disk, Backblaze B2 and dozens more cloud drives like folders", url: option_env!("DOGFILE_RCLONE_URL"), sha: option_env!("DOGFILE_RCLONE_SHA256"), size: size_of(option_env!("DOGFILE_RCLONE_SIZE"), 25_000_000) },
     ]
 }
 fn part(name: &str) -> Option<Part> {
@@ -52,6 +53,10 @@ pub fn web_dir() -> PathBuf {
 /// the folder of the downloaded media engine
 pub fn ffmpeg_dir() -> PathBuf {
     dir().join("ffmpeg")
+}
+/// the folder of the downloaded rclone (rclone.exe)
+pub fn rclone_dir() -> PathBuf {
+    dir().join("rclone")
 }
 /// the folder of the downloaded Photoshop helper (dogfile-psd.exe and its libraries)
 pub fn psd_dir() -> PathBuf {
@@ -70,6 +75,7 @@ fn carried(name: &str) -> bool {
         "ocr" => crate::http::ui_bytes("vendor/tesseract/worker.min.js").is_some(),
         "ort" => crate::http::ui_bytes("vendor/ort/ort.bundle.min.mjs").is_some(),
         "psd" => crate::psd::bundled().is_some(),
+        "rclone" => crate::rclone::bundled().is_some(),
         _ => false,
     }
 }
@@ -79,15 +85,12 @@ pub fn ready(name: &str) -> bool {
         return true;
     }
     let Some(p) = part(name) else { return false };
-    let marker_matches = match (std::fs::read_to_string(marker(name)), p.sha) {
+    match (std::fs::read_to_string(marker(name)), p.sha) {
         (Ok(m), Some(sha)) => m.trim() == sha,
         // a development build with no pinned address: whatever was put there by hand
         (Ok(_), None) => true,
         _ => false,
-    };
-    // A checksum marker alone is not enough: a partial or badly-shaped PSD archive must not
-    // be reported as installed unless the executable is actually at the path the backend runs.
-    marker_matches && (name != "psd" || psd_dir().join("dogfile-psd.exe").is_file())
+    }
 }
 
 #[derive(Default, Clone)]
@@ -181,14 +184,15 @@ async fn get(name: &'static str, url: &str, sha: &str) -> Result<(), String> {
     let target = match name {
         "ffmpeg" => ffmpeg_dir(),
         "psd" => psd_dir(),
+        "rclone" => rclone_dir(),
         _ => web_dir(),
     };
     // a new copy of the Photoshop helper replaces the old one whole (its folders must not mix with the old version's)
-    if name == "psd" {
+    if name == "psd" || name == "rclone" {
         let _ = std::fs::remove_dir_all(&target);
     }
     let zip_path = part_file.clone();
-    let res = tokio::task::spawn_blocking(move || extract(&zip_path, &target, name == "ffmpeg")).await.map_err(|e| e.to_string())?;
+    let res = tokio::task::spawn_blocking(move || extract(&zip_path, &target, name == "ffmpeg" || name == "rclone")).await.map_err(|e| e.to_string())?;
     let _ = std::fs::remove_file(&part_file);
     res?;
     std::fs::write(marker(name), sha).map_err(|e| format!("Couldn’t finish installing: {e}"))

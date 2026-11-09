@@ -13,7 +13,6 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => appl
 import { readExif } from './exif.js';
 import { ensureComponent } from './components.js';
 import { requirePro, initLicense } from './license.js';
-import { ensureModels, call } from './ai.js';
 import { EMBED, pendingFiles, onHost, tellHost, showInFiles, setTitle, onLeave, onWindowClose, onAsk } from './embed.js';
 
 const $ = (id) => document.getElementById(id);
@@ -474,75 +473,6 @@ function resizeWork(w, hh) {
   drawCanvas(); renderTools(); osd(`Resized to ${w} × ${hh}`);
 }
 
-async function authorizePhotoPro() {
-  if (!requirePro('proUtilities')) return false;
-  try { await api('pro:authorize'); return true; }
-  catch (e) { toast(e.message || String(e), { error: true }); return false; }
-}
-function openOptimizePanel() {
-  if (!E && !ensureEdit('optimize')) return;
-  if (!E) return;
-  E.tool = 'optimize';
-  document.body.classList.remove('drawing', 'cropping');
-  E.crop = null;
-  renderTools(); drawCanvas();
-}
-async function compressEditedImage() {
-  if (!E && !ensureEdit('optimize')) return;
-  if (!E || !(await authorizePhotoPro())) return;
-  E.format = E.format && E.format !== 'keep' ? E.format : 'webp';
-  E.quality = E.quality || 82;
-  renderTools();
-  await saveSafe('copy');
-}
-async function upscaleEditedImage() {
-  if (!E && !ensureEdit('optimize')) return;
-  if (!E || !(await authorizePhotoPro())) return;
-  const current = Math.max(E.work.width, E.work.height);
-  const target = Number(await prompt('Upscale photo', String(Math.min(20000, Math.max(current + 1, current * 2))), { label: 'Target longest edge in pixels (up to 20,000)' }));
-  if (!Number.isFinite(target) || target < 2 || target > 20000) return toast('Enter a target between 2 and 20,000 pixels', { error: true });
-  if (target <= current) return toast('The target must be larger than the current longest edge.');
-  const scale = target / current;
-  resizeWork(Math.max(1, Math.round(E.work.width * scale)), Math.max(1, Math.round(E.work.height * scale)));
-  osd('High-quality resampling applied · save a copy to keep it');
-}
-async function removeBackgroundEditedImage() {
-  if (!E && !ensureEdit('optimize')) return;
-  if (!E || !(await authorizePhotoPro())) return;
-  bakeAdjust();
-  if (!(await ensureModels(['removebg']))) return;
-  osd('Removing background…');
-  try {
-    const mask = await call({ type: 'removeBackground', url: E.work.toDataURL('image/png') });
-    if (!mask?.data || !mask.width || !mask.height) throw new Error('The segmentation model returned an invalid mask.');
-    const channels = Math.max(1, Math.round(mask.data.length / (mask.width * mask.height)));
-    let lo = Infinity, hi = -Infinity;
-    for (let i = 0; i < mask.width * mask.height; i++) { const v = Number(mask.data[i * channels]); if (v < lo) lo = v; if (v > hi) hi = v; }
-    const span = hi - lo;
-    const applyMask = (source) => {
-      const out = cloneCanvas(source);
-      const ctx = out.getContext('2d', { willReadFrequently: true });
-      const frame = ctx.getImageData(0, 0, out.width, out.height), pixels = frame.data;
-      for (let y = 0; y < out.height; y++) {
-        const my = Math.min(mask.height - 1, Math.floor((y / out.height) * mask.height));
-        for (let x = 0; x < out.width; x++) {
-          const mx = Math.min(mask.width - 1, Math.floor((x / out.width) * mask.width));
-          const v = Number(mask.data[(my * mask.width + mx) * channels]);
-          pixels[(y * out.width + x) * 4 + 3] = span > 0 ? Math.max(0, Math.min(255, Math.round(((v - lo) / span) * 255))) : 255;
-        }
-      }
-      ctx.putImageData(frame, 0, 0);
-      return out;
-    };
-    pushHistory();
-    E.work = applyMask(E.work);
-    E.photo = applyMask(E.photo);
-    E.crop = null; E.adj = defaultAdj(); E.format = 'png'; E.dirty = true;
-    drawCanvas(); renderTools(); renderBar();
-    osd('Background removed · save as a PNG copy to preserve transparency');
-  } catch (e) { toast(`Couldn’t remove background: ${e.message || e}`, { error: true }); }
-}
-
 // ---- draw & text ----
 let endStroke = null; // a second finger cancels the stroke the first one started
 (() => {
@@ -651,7 +581,7 @@ function renderTools() {
   if (!E) { box.innerHTML = ''; return; }
   box.innerHTML = '';
   const tabs = h('div', { class: 'seg vw-seg' });
-  for (const [k, l, ic] of [['adjust', 'Adjust', 'sliders'], ['filters', 'Filters', 'palette'], ['crop', 'Crop', 'treemap'], ['rotate', 'Rotate', 'refresh'], ['draw', 'Draw', 'rename'], ['resize', 'Resize', 'zoomIn'], ['optimize', 'Optimize', 'sparkles']]) {
+  for (const [k, l, ic] of [['adjust', 'Adjust', 'sliders'], ['filters', 'Filters', 'palette'], ['crop', 'Crop', 'treemap'], ['rotate', 'Rotate', 'refresh'], ['draw', 'Draw', 'rename'], ['resize', 'Resize', 'zoomIn']]) {
     const b = h('button', { class: 'seg-btn' + (E.tool === k ? ' on' : ''), title: l, html: `${icon(ic)}<span>${l}</span>` });
     b.onclick = () => { if (E.tool === 'crop' && k !== 'crop') { E.crop = null; document.body.classList.remove('cropping'); } if (k !== 'adjust' && k !== 'filters') bakeAdjust(); E.tool = k; document.body.classList.toggle('drawing', k === 'draw'); renderTools(); if (k === 'crop') startCrop(); drawCanvas(); };
     tabs.append(b);
@@ -708,19 +638,6 @@ function renderTools() {
     hh.oninput = () => { if (lock.checked) w.value = Math.round(+hh.value * ratio); };
     const pct = h('div', { class: 'chips' }, ...[25, 50, 75].map((p) => h('button', { class: 'chip', onclick: () => { w.value = Math.round((E.work.width * p) / 100); hh.value = Math.round((E.work.height * p) / 100); } }, p + '%')), ...[1920, 1280].map((px) => h('button', { class: 'chip', onclick: () => { w.value = px; hh.value = Math.round(px / ratio); } }, px + ' wide')));
     panel.append(h('div', { class: 'row-inline' }, w, h('span', {}, '×'), hh, h('span', { class: 'hint' }, 'px')), h('label', { class: 'check' }, lock, ' Keep proportions'), pct, h('div', { class: 'row-inline', style: { marginTop: '10px' } }, h('button', { class: 'btn small primary', onclick: () => { const W = Math.max(1, +w.value | 0), H = Math.max(1, +hh.value | 0); resizeWork(W, H); } }, 'Resize')));
-  }
-  else if (E.tool === 'optimize') {
-    panel.append(
-      h('div', { class: 'field-label' }, 'Compress'),
-      h('div', { class: 'hint' }, 'Choose the output format and quality in the Save as controls below, then save a compressed copy. The original is never overwritten.'),
-      h('button', { class: 'btn small primary', onclick: compressEditedImage }, 'Save compressed copy'),
-      h('div', { class: 'field-label' }, 'Upscale'),
-      h('div', { class: 'hint' }, 'Increase the image dimensions with high-quality resampling. This is not AI super-resolution; save a copy to keep the result.'),
-      h('button', { class: 'btn small', onclick: upscaleEditedImage }, 'Upscale…'),
-      h('div', { class: 'field-label' }, 'Remove background'),
-      h('div', { class: 'hint' }, 'Runs the local segmentation model on this edited image. The first use downloads the model; the image stays on this PC.'),
-      h('button', { class: 'btn small', onclick: removeBackgroundEditedImage }, 'Remove background'),
-    );
   }
   // save format
   const fmt = h('select', { class: 'input' }, ...[['keep', 'Same format'], ['jpg', 'JPEG'], ['png', 'PNG'], ['webp', 'WebP']].map(([v, l]) => h('option', { value: v }, l)));
@@ -946,7 +863,7 @@ function cmd(id, arg) {
     features: () => featureMenuVw(null),
     cancelEdit: async () => { if (!E) return; if (E.dirty && !(await confirm('Discard edits?', 'Leave the editor without saving?', { ok: 'Discard', danger: true }))) return; exitEdit(); },
     delete: del, saveCopy: () => saveSafe('copy'), overwrite: () => saveSafe('overwrite'), crop: () => { if (!E) enterEdit('crop'); E.tool = 'crop'; renderTools(); startCrop(); }, draw: () => { if (!E) enterEdit(); E.tool = 'draw'; document.body.classList.add('drawing'); renderTools(); },
-    filters: () => { if (!E) enterEdit(); E.tool = 'filters'; renderTools(); }, compress: compressEditedImage, upscale: upscaleEditedImage, removeBackground: removeBackgroundEditedImage, optimize: openOptimizePanel, undo, redo, queue: () => { V.showQueue = !V.showQueue; document.body.classList.toggle('no-queue', !V.showQueue); setTimeout(layout, 20); },
+    filters: () => { if (!E) enterEdit(); E.tool = 'filters'; renderTools(); }, undo, redo, queue: () => { V.showQueue = !V.showQueue; document.body.classList.toggle('no-queue', !V.showQueue); setTimeout(layout, 20); },
   };
   return map[id]?.();
 }

@@ -182,6 +182,7 @@ async function dump(mode) {
 // ======================================================================
 // Terminal drawer
 // ======================================================================
+let termTab = 'terminal'; // 'terminal' | 'git' | 'docker'
 let term = null, fit = null, ptyId = null, termCwd = null, busy = false, dirty = false, pendingSync = false, lastSent = null, termOpen = false, termShell = null;
 // set when you press Enter in the terminal: only then may its new folder move the pane (never just from opening it)
 let typedCommand = false;
@@ -206,13 +207,27 @@ async function ensureTerminal() {
   const rz = h('div', { class: 'term-rz' });
   const head = h('div', { class: 'term-head' });
   const host = h('div', { class: 'term-host' });
-  drawer.append(rz, head, host);
+  const panel = h('div', { class: 'term-panel' });
+  drawer.append(rz, head, host, panel);
+  // the folder the Git and Docker tabs work on: the active pane's folder (or where the terminal is)
+  const devCtx = { dir: () => { const t = activeTab(); return t && t.path && !isVirtual(t.path) ? t.path : termCwd || ''; } };
+  const setTab = (name) => {
+    termTab = name;
+    drawer.dataset.tab = name;
+    panel.dataset.on = name;
+    if (name === 'terminal') { panel.innerHTML = ''; fitTerm(); term?.focus(); }
+    else import('./devpanels.js').then((m) => (name === 'git' ? m.mountGit(panel, devCtx) : m.mountDocker(panel, devCtx))).catch((e) => { panel.textContent = e.message; });
+    renderHead();
+  };
+  drawer.dataset.tab = termTab;
+  bus.on('termTab', async (name) => { await toggleTerminal(true); setTab(name); });
   const renderHead = () => {
     head.innerHTML = '';
     const syncBtn = h('button', { class: 'chip' + (state.settings.terminalSync ? ' on' : ''), title: 'Keep the terminal and the active pane in the same folder' }, state.settings.terminalSync ? '⇄ Synced with pane' : '⇄ Sync off');
     syncBtn.onclick = () => { state.settings.terminalSync = !state.settings.terminalSync; saveSettings(); renderHead(); if (state.settings.terminalSync) syncTerminalTo(activeTab(), true); };
     head.append(h('span', { class: 'term-title', html: `${icon('terminal')}<span>${esc(termShell === 'cmd' ? 'Command Prompt' : sys.platform === 'win32' ? 'PowerShell' : 'Shell')}</span>` }),
-      h('span', { class: 'term-cwd' }, termCwd || ''), h('span', { class: 'st-spacer' }), syncBtn,
+      h('span', { class: 'term-tabs' }, ...[['terminal', 'Terminal'], ['git', 'Git'], ['docker', 'Docker']].map(([id, label]) => h('button', { class: 'chip' + (termTab === id ? ' on' : ''), onclick: () => setTab(id) }, label))),
+      h('span', { class: 'term-cwd' }, termTab === 'terminal' ? termCwd || '' : ''), h('span', { class: 'st-spacer' }), termTab === 'terminal' ? syncBtn : null,
       h('button', { class: 'icon-btn small', title: 'Shell', html: icon('more'), onclick: (e) => showMenu([
         sys.platform === 'win32' && { label: 'PowerShell', radio: true, selected: termShell !== 'cmd' && termShell !== 'pwsh', run: () => restart('powershell') },
         sys.platform === 'win32' && { label: 'PowerShell 7 (pwsh)', radio: true, selected: termShell === 'pwsh', run: () => restart('pwsh') },

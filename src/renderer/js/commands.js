@@ -170,6 +170,8 @@ def('loremIpsum', 'Generate Lorem Ipsum…', { icon: 'page', cat: 'Tools', run: 
 def('analyze', 'Analyze disk space', { icon: 'chart', keys: ['Ctrl+Alt+A'], cat: 'Tools', run: () => T.analyzeSpace() });
 def('analyzeSelection', 'Calculate selection size', { icon: 'chart', cat: 'Tools', run: T.analyzeSelection });
 def('terminal', 'Open terminal here', { icon: 'terminal', keys: ['Ctrl+Alt+T'], cat: 'Tools', run: () => A.openTerminalHere(undefined, T_()) });
+def('gitPanel', 'Git: changes, commit, push and pull', { icon: 'git', cat: 'Tools', run: () => bus.emit('termTab', 'git') });
+def('dockerPanel', 'Docker: containers, images and Compose', { icon: 'stack', cat: 'Tools', run: () => bus.emit('termTab', 'docker') });
 def('terminalDrawer', 'Toggle built-in terminal', { icon: 'terminal', keys: ['Ctrl+`', "Ctrl+'"], cat: 'Tools', run: () => bus.emit('toggleTerminal') });
 def('shelf', 'Toggle Drop Shelf', { icon: 'shelf', keys: ['Ctrl+Shift+J'], cat: 'Tools', run: () => bus.emit('toggleShelf') });
 def('addToShelf', 'Add selection to Drop Shelf', { icon: 'shelf', keys: ['Ctrl+Alt+J'], cat: 'Tools', run: () => { const s = S_().filter((i) => !i.virtual); if (s.length) bus.emit('addToShelf', s.map((i) => i.path)); } });
@@ -219,6 +221,8 @@ def('automations', 'Folder automations…', { icon: 'automation', cat: 'Tools', 
 def('newCollection', 'New smart collection…', { icon: 'collection', cat: 'Tools', run: () => import('./collections.js').then((m) => m.editCollection(null)) });
 def('multiverse', 'Multiverse: snapshot this folder and try anything', { icon: 'layout4', cat: 'Tools', run: () => import('./mvmode.js').then((m) => m.start()) });
 def('selfDestruct', 'Self-destruct: auto-remove files after a time…', { icon: 'clock', cat: 'Tools', run: () => import('./selfdestruct.js').then((m) => m.open()) });
+def('semanticSearch', 'Search documents by meaning…', { icon: 'search', cat: 'Tools', run: () => import('./semsearch.js').then((m) => m.open()) });
+def('addCloud', 'Add a cloud drive (Box, MEGA, pCloud…)…', { icon: 'cloud', cat: 'Tools', run: () => import('./cloudmore.js').then((m) => m.addCloud()) });
 def('whatif', 'What-if copy of a folder (older Multiverse)…', { icon: 'layout4', cat: 'Tools', run: () => import('./multiverse.js').then((m) => m.open()) });
 def('declutter', 'Tidy up this folder…', { icon: 'wand', cat: 'Tools', run: () => import('./declutter.js').then((m) => m.declutter()) });
 def('renameWords', 'Rename by describing it…', { icon: 'rename', cat: 'Edit', run: () => A.batchRename(S_()) });
@@ -537,6 +541,10 @@ const DESC = {
   psAdmin: 'Open PowerShell in this folder with administrator rights. Windows asks for permission each time; Dogfile itself stays a normal program.',
   cmdAdmin: 'Open Command Prompt in this folder with administrator rights. Windows asks for permission each time; Dogfile itself stays a normal program.',
   whoLocks: 'Find out which program is using a file or folder (or why it can’t be changed), and end it.',
+  gitPanel: 'See what changed in this folder’s Git repository, stage and commit it, push, pull, switch branches and stash. Opens in the terminal section.',
+  dockerPanel: 'Start, stop and watch Docker containers, read their logs, open a shell in one, manage images and volumes, and run Compose projects.',
+  semanticSearch: 'Describe what you are looking for and find text, Markdown, PDF and Word files about it, even if they never use your words. Runs on this PC.',
+  addCloud: 'Connect Box, MEGA, pCloud, Proton Drive, Yandex Disk, Backblaze B2 and many more cloud drives and browse them like folders.',
   fileTypes: 'Choose which app opens each kind of file.',
   cleanup: 'Find big and old files taking up space.',
   analyze: 'A map of what is using your disk space.',

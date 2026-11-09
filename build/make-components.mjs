@@ -1,9 +1,9 @@
 // Makes the downloadable parts of Dogfile (backend/src/components.rs): zips of the media engine, text recognition and
 // the AI runtime, named after their checksums so an old program always finds the exact file it was built with.
-//   node build/make-components.mjs <out dir> [--ffmpeg <ffmpeg-win64-shared.zip>] [--psd <dogfile-psd.zip>] [--web-only]
+//   node build/make-components.mjs <out dir> [--ffmpeg <ffmpeg-win64-shared.zip>] [--psd <dogfile-psd.zip>] [--rclone <rclone-windows-amd64.zip>] [--web-only]
 // Writes <out dir>/<name>-<first 12 of sha256>.zip and <out dir>/components.json { name: { file, sha256, size } }.
 // CI uploads the zips to the "components" release and puts each address, checksum and size into the build's environment
-// (DOGFILE_FFMPEG_…, DOGFILE_OCR_…, DOGFILE_ORT_…, DOGFILE_PSD_…).
+// (DOGFILE_FFMPEG_URL / _SHA256 / _SIZE, DOGFILE_OCR_…, DOGFILE_ORT_…).
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -15,6 +15,7 @@ const argv = process.argv.slice(2);
 const opt = (k) => { const i = argv.indexOf(k); return i >= 0 ? argv.splice(i, 2)[1] : null; };
 const ffZip = opt('--ffmpeg');
 const psdZip = opt('--psd');
+const rcloneZip = opt('--rclone');
 const out = path.resolve(argv[0] || path.join(root, 'dist', 'components'));
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
@@ -52,6 +53,13 @@ for (const [name, folder] of [['ocr', 'tesseract'], ['ort', 'ort']]) {
   fs.cpSync(path.join(vendor, folder), path.join(stage, folder), { recursive: true });
   zip(f, stage, [folder]);
   publish(name, f);
+}
+
+// rclone (more cloud drives): the release zip as it is; rclone.exe is unpacked flat by Dogfile
+if (rcloneZip) {
+  const f = path.join(tmp, 'rclone.zip');
+  fs.copyFileSync(rcloneZip, f);
+  publish('rclone', f);
 }
 
 // the Photoshop helper: the folder PyInstaller made (dogfile-psd.exe and its libraries), already zipped by CI

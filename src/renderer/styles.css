@@ -2263,3 +2263,53 @@ body.mv-on #mv-halo { position: fixed; inset: 0; z-index: 3000; pointer-events: 
 .sd-preset { border: 1px solid var(--line); background: transparent; color: var(--text); border-radius: 99px; padding: 2px 10px; cursor: pointer; font: inherit; font-size: 12px; }
 .sd-preset:hover { background: rgba(128, 128, 128, .15); }
 .sd-preview { margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: rgba(128, 128, 128, .1); font-size: 12.5px; min-height: 20px; }
+
+/* the terminal section's Git and Docker tabs */
+.term-tabs { display: inline-flex; gap: 4px; }
+.term-panel { display: none; flex: 1; min-height: 0; overflow: hidden; flex-direction: column; }
+#term-drawer[data-tab="git"] .term-panel, #term-drawer[data-tab="docker"] .term-panel { display: flex; }
+#term-drawer[data-tab="git"] .term-host, #term-drawer[data-tab="docker"] .term-host { display: none; }
+.dv-head { display: flex; align-items: center; gap: 6px; padding: 4px 10px; flex-wrap: wrap; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+.dv-body { flex: 1; min-height: 0; overflow: auto; padding: 6px 10px; }
+.dv-body.git { display: grid; grid-template-columns: minmax(260px, 38%) 1fr; gap: 10px; overflow: hidden; padding: 6px 10px 8px; }
+.dv-empty { display: grid; gap: 8px; justify-items: center; padding: 24px; text-align: center; }
+.dv-row { display: flex; align-items: center; gap: 10px; padding: 5px 4px; border-bottom: 1px solid rgba(128, 128, 128, .12); }
+.dv-main { flex: 1; min-width: 0; }
+.dv-main .hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dv-acts { display: flex; gap: 4px; flex: none; }
+.dv-group { margin-top: 8px; padding: 2px 4px; font-size: 12px; opacity: .85; }
+.dv-foot { padding: 8px 4px; }
+.dv-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: #888; }
+.dv-dot.ok { background: #22c55e; } .dv-dot.warn { background: #f59e0b; } .dv-dot.bad { background: #ef4444; }
+.dv-logs { max-height: 60vh; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+.dv-compose { display: grid; gap: 8px; }
+.git-left { overflow: auto; display: flex; flex-direction: column; gap: 2px; min-height: 0; }
+.git-sec { display: flex; align-items: center; justify-content: space-between; padding: 6px 2px 2px; font-size: 12px; }
+.git-row { display: flex; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 6px; font-size: 12.5px; }
+.git-row:hover, .git-row.sel { background: rgba(128, 128, 128, .16); }
+.git-row.conflict { outline: 1px solid #ef4444; }
+.git-path { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; font-family: var(--mono); font-size: 12px; }
+.git-acts { display: inline-flex; gap: 2px; }
+.git-st { width: 16px; text-align: center; font-weight: 700; font-family: var(--mono); flex: none; }
+.git-st.st-M { color: #f59e0b; } .git-st.st-A, .git-st.st-\? { color: #22c55e; } .git-st.st-D, .git-st.st-U { color: #ef4444; } .git-st.st-R { color: #60a5fa; }
+.git-ab { color: var(--accent); }
+.git-diff { margin: 0; overflow: auto; font-family: var(--mono); font-size: 12px; padding: 6px 8px; background: rgba(128, 128, 128, .08); border-radius: 8px; min-height: 0; }
+.git-diff .add { background: rgba(34, 197, 94, .16); } .git-diff .del { background: rgba(239, 68, 68, .16); } .git-diff .hunk { color: #60a5fa; }
+.git-commit-box { margin-top: auto; display: grid; gap: 4px; padding-top: 6px; }
+.git-commit-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dv-msg { width: 100%; resize: vertical; }
+.git-hist { grid-column: 1 / -1; overflow: auto; }
+.git-commit { display: flex; align-items: baseline; gap: 10px; padding: 3px 4px; font-size: 12.5px; }
+.git-commit code { color: var(--accent); }
+.git-subj { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Search by meaning */
+.ss-results { display: grid; gap: 6px; margin-top: 8px; max-height: 52vh; overflow: auto; }
+.ss-row { display: flex; gap: 10px; align-items: flex-start; padding: 6px 8px; border: 1px solid var(--line); border-radius: 10px; }
+.ss-score { min-width: 40px; text-align: center; font-weight: 700; color: var(--accent); padding-top: 2px; }
+.ss-main { flex: 1; min-width: 0; }
+.ss-name { font-weight: 600; cursor: pointer; }
+.ss-name:hover { text-decoration: underline; }
+.ss-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ss-snip { font-size: 12.5px; opacity: .9; margin-top: 2px; }
+.ss-snip mark { background: rgba(250, 204, 21, .35); color: inherit; border-radius: 3px; }

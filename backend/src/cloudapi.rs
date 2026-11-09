@@ -27,9 +27,11 @@ pub enum Api {
     Drive(OAuth),
     Dropbox(OAuth),
     OneDrive(OAuth),
+    /// Box, MEGA, pCloud and the rest, through rclone (rclone.rs)
+    Rclone(crate::rclone::Remote),
 }
 pub fn is_cloud(kind: &str) -> bool {
-    matches!(kind, "s3" | "gdrive" | "dropbox" | "onedrive")
+    matches!(kind, "s3" | "gdrive" | "dropbox" | "onedrive" | "rclone")
 }
 
 // ---------------------------------------------------------------- OAuth (Google, Dropbox, Microsoft)
@@ -243,6 +245,7 @@ impl Api {
             Api::Dropbox(o) => dropbox::list(o, dir).await,
             Api::OneDrive(o) => onedrive::list(o, dir).await,
             Api::Drive(o) => gdrive::list(o, dir).await,
+            Api::Rclone(r) => r.list(dir).await,
         }
     }
     pub async fn stat(&self, p: &str) -> Option<(bool, u64)> {
@@ -254,6 +257,7 @@ impl Api {
             Api::Dropbox(o) => dropbox::stat(o, p).await,
             Api::OneDrive(o) => onedrive::stat(o, p).await,
             Api::Drive(o) => gdrive::find(o, p).await.ok().map(|(_, d, size)| (d, size)),
+            Api::Rclone(r) => r.stat(p).await,
         }
     }
     pub async fn download(&self, p: &str, local: &Path, prog: &mut (dyn FnMut(u64) + Send)) -> Result<(), String> {
@@ -262,6 +266,7 @@ impl Api {
             Api::Dropbox(o) => save_stream(util::http().post(dropbox::content("download")).bearer_auth(o.access().await?).header("Dropbox-API-Arg", json!({ "path": dropbox::dp(p) }).to_string()).send().await.map_err(|e| e.to_string())?, local, prog).await,
             Api::OneDrive(o) => save_stream(util::http().get(format!("{}:/content", onedrive::item(p))).bearer_auth(o.access().await?).send().await.map_err(|e| e.to_string())?, local, prog).await,
             Api::Drive(o) => gdrive::download(o, p, local, prog).await,
+            Api::Rclone(r) => r.download(p, local, prog).await,
         }
     }
     pub async fn upload(&self, local: &Path, p: &str, prog: &mut (dyn FnMut(u64) + Send)) -> Result<(), String> {
@@ -270,12 +275,14 @@ impl Api {
             Api::Dropbox(o) => dropbox::upload(o, local, p).await,
             Api::OneDrive(o) => onedrive::upload(o, local, p).await,
             Api::Drive(o) => gdrive::upload(o, local, p).await,
+            Api::Rclone(r) => r.upload(local, p, prog).await,
         }
     }
     /// copy inside the service when it can (S3); None: download and upload instead
     pub async fn copy(&self, from: &str, to: &str) -> Option<Result<(), String>> {
         match self {
             Api::S3(s) => Some(s.copy(from, to).await),
+            Api::Rclone(r) => r.copy(from, to).await,
             _ => None,
         }
     }
@@ -285,6 +292,7 @@ impl Api {
             Api::Dropbox(o) => dropbox::rpc(o, "create_folder_v2", json!({ "path": dropbox::dp(p), "autorename": false })).await.map(|_| ()),
             Api::OneDrive(o) => onedrive::mkdir(o, p).await,
             Api::Drive(o) => gdrive::mkdir(o, p).await.map(|_| ()),
+            Api::Rclone(r) => r.mkdir(p).await,
         }
     }
     /// deletes a file, or a folder with everything in it
@@ -297,6 +305,7 @@ impl Api {
                 if r.status().is_success() || r.status().as_u16() == 404 { Ok(()) } else { let c = r.status().as_u16(); Err(api_err(c, &r.json().await.unwrap_or(Value::Null))) }
             }
             Api::Drive(o) => gdrive::trash(o, p).await,
+            Api::Rclone(r) => r.remove(p).await,
         }
     }
     pub async fn rename(&self, from: &str, to: &str) -> Result<(), String> {
@@ -305,6 +314,7 @@ impl Api {
             Api::Dropbox(o) => dropbox::rpc(o, "move_v2", json!({ "from_path": dropbox::dp(from), "to_path": dropbox::dp(to) })).await.map(|_| ()),
             Api::OneDrive(o) => onedrive::rename(o, from, to).await,
             Api::Drive(o) => gdrive::rename(o, from, to).await,
+            Api::Rclone(r) => r.rename(from, to).await,
         }
     }
 }

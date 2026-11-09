@@ -302,7 +302,7 @@ export function render() {
   if (sec.network !== false && (IS_WIN() || (state.settings.connections || []).length)) {
     const net = h('div', { class: 'device' });
     const nh = entry({ label: 'Network', ic: 'network', path: IS_WIN() ? 'atlas:network' : null, cls: 'device-head', extra: `<button class="si-action" title="Add a connection (NAS, share, SFTP, FTP, WebDAV, Google Drive, Dropbox, OneDrive, S3)">${icon('plus')}</button>` });
-    nh.querySelector('.si-action').addEventListener('click', (e) => { e.stopPropagation(); import('./network.js').then((m) => m.editConnection(null)); });
+    nh.querySelector('.si-action').addEventListener('click', (e) => { e.stopPropagation(); showMenu([{ label: 'Add a server…', icon: 'server', run: () => import('./network.js').then((m) => m.editConnection(null)) }, { label: 'Add a cloud drive (Box, MEGA, pCloud…)', icon: 'cloud', run: () => import('./cloudmore.js').then((m) => m.addCloud()) }], e.clientX, e.clientY); });
     net.append(nh);
     import('./network.js').then((N) => {
       let after = nh;
@@ -311,7 +311,7 @@ export function render() {
         const isCloud = ['gdrive', 'dropbox', 'onedrive', 's3'].includes(c.type);
         const row = entry({ label: c.name || c.host, ic: isCloud ? 'cloud' : c.type === 'smb' ? 'computer' : 'server', depth: 1, title: `${c.name}\n${isCloud ? (c.who || c.bucket || '') : `${c.type.toUpperCase()} · ${c.host}`}${st === false ? '\nNot answering' : ''}`, onclick: () => N.openConnection(c), extra: `<span class="cn-dot small ${st === true ? 'up' : st === false ? 'down' : ''}"></span>` });
         row.dataset.path = ['sftp', 'ftp', 'ftps', 's3', 'gdrive', 'dropbox', 'onedrive'].includes(c.type) ? `atlas:remote|${c.id}|${c.path || '/'}` : '';
-        row.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopImmediatePropagation(); showMenu([{ label: 'Open', icon: 'open', run: () => N.openConnection(c) }, { label: 'Edit…', icon: 'rename', run: () => N.editConnection(c) }, { label: 'All connections…', icon: 'server', run: () => N.connectionsDialog() }], e.clientX, e.clientY); }, true);
+        row.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopImmediatePropagation(); showMenu([{ label: 'Open', icon: 'open', run: () => N.openConnection(c) }, c.type === 'rclone' ? { label: 'Remove this cloud drive', icon: 'trash', run: () => import('./cloudmore.js').then((m) => m.removeCloud(c)) } : { label: 'Edit…', icon: 'rename', run: () => N.editConnection(c) }, { label: 'All connections…', icon: 'server', run: () => N.connectionsDialog() }], e.clientX, e.clientY); }, true);
         after.after(row); after = row;
       }
     });

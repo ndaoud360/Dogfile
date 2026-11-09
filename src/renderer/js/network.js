@@ -11,7 +11,7 @@ export const conns = () => (state.settings.connections ||= []);
 const TYPES = [['smb', 'Windows share (SMB)'], ['sftp', 'SFTP (SSH)'], ['ftp', 'FTP'], ['ftps', 'FTPS (FTP over TLS)'], ['webdav', 'WebDAV (https)'],
   ['gdrive', 'Google Drive (sign in)'], ['dropbox', 'Dropbox (sign in)'], ['onedrive', 'OneDrive (sign in)'], ['s3', 'Object storage (Amazon S3, Backblaze B2, Google Cloud, R2, Wasabi…)']];
 const OAUTH = { gdrive: 'Google Drive', dropbox: 'Dropbox', onedrive: 'OneDrive' };
-const BROWSED = new Set(['sftp', 'ftp', 'ftps', 's3', 'gdrive', 'dropbox', 'onedrive']);
+const BROWSED = new Set(['sftp', 'ftp', 'ftps', 's3', 'gdrive', 'dropbox', 'onedrive', 'rclone']);
 // where to register Dogfile once so it can sign in to each cloud (until the official app IDs are built in)
 const APP_HELP = {
   gdrive: ['Google Cloud Console → APIs & Services → Credentials → Create OAuth client ID → Desktop app. Turn on the Google Drive API. Paste the client ID and client secret.', 'https://console.cloud.google.com/apis/credentials'],

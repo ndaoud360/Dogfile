@@ -1,0 +1,11 @@
+{
+  "dogmod": 1,
+  "id": "player-animations",
+  "name": "Player animations",
+  "description": "A spinning record player or a cassette deck in the music view: the record slides in and the needle drops, or the tape slides in and the lid closes",
+  "version": "1.0",
+  "author": "Dogfile",
+  "target": "player",
+  "permissions": [],
+  "code": "// @dogmod\n// @name Player animations\n// @description A spinning record player or a cassette deck in the music view: the record slides in and the needle drops, or the tape slides in and the lid closes\n// @target player\n// @permissions\n// @version 1.0\n// @author Dogfile\n// @icon music\n\n// The pictures are drawn by Dogfile Player itself (features run in a sandbox and can't draw); this feature picks which one.\n// Record player: the record slides in and lands, the needle swings over and drops, then the song starts. Pausing lifts the needle.\n// Cassette deck: the lid opens, the tape slides in, the lid closes, then the song starts and the reels turn. Pausing stops them.\n\nconst say = { turntable: 'Record player on', cassette: 'Cassette deck on', off: 'Cover picture back' };\nasync function pick(name) {\n  await dogfile.player.setSkin(name);\n  dogfile.ui.toast(say[name]);\n}\n\ndogfile.addCommand({ id: 'turntable', title: 'Music view: record player', icon: 'music', toolbar: true, run: () => pick('turntable') });\ndogfile.addCommand({ id: 'cassette', title: 'Music view: cassette deck', icon: 'music', run: () => pick('cassette') });\ndogfile.addCommand({ id: 'off', title: 'Music view: cover picture (animations off)', icon: 'image', run: () => pick('off') });\n"
+}

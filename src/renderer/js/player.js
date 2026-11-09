@@ -10,6 +10,7 @@ import { applyColors, mediaSettings } from './theme.js';
 import { EMBED, pendingFiles, onHost, tellHost, showInFiles, setTitle, onWindowClose, onAsk } from './embed.js';
 import { analyzeAudio, cachedAnalysis } from './audio-analysis.js';
 import { ensureComponent } from './components.js';
+import { createSkins } from './playerskin.js';
 function applyMediaTheme() {
   const dark = applyColors(mediaSettings(settings));
   if (!EMBED && sys?.platform === 'win32') api('win:overlay', dark ? { color: '#101012', symbolColor: '#c9cacc' } : { color: getComputedStyle(document.documentElement).getPropertyValue('--tabbar').trim() || '#efeff0', symbolColor: '#3a3a3a' });
@@ -18,6 +19,7 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => appl
 onWindowClose(async () => true);
 
 const $ = (id) => document.getElementById(id);
+let skins = null; // animated record player / cassette deck (see playerskin.js)
 const v = $('v');
 let sys = {}, settings = { ...DEFAULT_SETTINGS };
 let prefs = { volume: 1, muted: false, eq: { on: false, preset: 'Flat', bands: Array(10).fill(0), preamp: 0 }, repeat: 'off', shuffle: false, subSize: 100, autoResume: 'ask', showList: false, speed: 1 };
@@ -137,7 +139,12 @@ function setSource(t = 0, autoplay = true) {
     v.src = streamUrl(t);
   }
   v.playbackRate = wasRate;
-  if (autoplay) v.play().catch(() => {});
+  if (autoplay) {
+    const seq = P.loadSeq;
+    // with a record player or cassette skin the song starts once the needle is down / the lid is closed
+    if (skins?.active() && !P.vStream) skins.whenReady().then(() => { if (seq === P.loadSeq) v.play().catch(() => {}); });
+    else v.play().catch(() => {});
+  }
   renderModeBadge();
   rebuildCues();
   if (P.mode === 'direct' && P.aStreams.length) scheduleSilenceCheck();
@@ -170,8 +177,8 @@ v.addEventListener('error', () => { if (!P.item) return; fallback(v.error?.messa
 v.addEventListener('waiting', () => setBusy(true));
 v.addEventListener('playing', () => { setBusy(false); renderButtons(); });
 v.addEventListener('canplay', () => setBusy(false));
-v.addEventListener('pause', () => { renderButtons(); showControls(); saveResume(); });
-v.addEventListener('play', () => { renderButtons(); hideControlsSoon(); });
+v.addEventListener('pause', () => { renderButtons(); showControls(); saveResume(); skins?.playing(false); });
+v.addEventListener('play', () => { renderButtons(); hideControlsSoon(); skins?.playing(true); });
 v.addEventListener('loadedmetadata', () => {
   // the web view found a picture after all: show the video, not the music view
   if (v.videoWidth > 0 && !P.vStream) { P.vStream = { codec_type: 'video', width: v.videoWidth, height: v.videoHeight, guessed: true }; document.body.classList.remove('audio-only'); document.body.classList.add('has-video'); tellHost({ type: 'state', kind: 'video', path: P.item?.path }); }
@@ -179,6 +186,7 @@ v.addEventListener('loadedmetadata', () => {
 });
 v.addEventListener('timeupdate', () => {
   renderTime();
+  if (skins?.active()) skins.progress(dur() ? Math.min(1, pos() / dur()) : 0);
   if (P.ab && P.ab.b != null && pos() >= P.ab.b) seek(P.ab.a);
   saveResumeSoon();
   // remembered as watched / listened to (used by the "Unwatched videos" collection and the assistant)
@@ -339,6 +347,7 @@ function setupAudioView() {
   const hasPic = (P.info?.streams || []).some((s) => s.disposition?.attached_pic);
   if (!P.vStream && hasPic && sys.ffmpeg) { art.onload = () => (art.style.display = 'block'); art.src = `/media/art?p=${encodeURIComponent(P.item.path)}${P.item.bust ? `&b=${P.item.bust}` : ''}`; }
   else if (!P.vStream) findFolderArt();
+  if (skins && !P.vStream) skins.track({ title: $('av-title').textContent, art: '' });
 }
 async function findFolderArt() {
   const dir = P.item.path.replace(/[\\/][^\\/]*$/, '');
@@ -1125,6 +1134,7 @@ async function startPlayerFeatures() {
     target: 'player', getSettings: () => settings,
     provide: {
       'player.currentFile': () => P.item?.path || '', 'player.play': () => { v.play(); return true; }, 'player.pause': () => { v.pause(); return true; },
+      'player.setSkin': (n) => { prefs.skin = ['turntable', 'cassette'].includes(n) ? n : 'off'; skins?.set(prefs.skin); savePrefs(); return prefs.skin; }, 'player.getSkin': () => prefs.skin || 'off',
       'player.seek': (t) => { seek(Math.max(0, +t || 0)); return true; }, 'player.time': () => pos(), 'player.duration': () => P.duration || (Number.isFinite(v.duration) ? v.duration : 0),
     },
   });
@@ -1146,6 +1156,9 @@ async function boot() {
   resume = rs || {};
   applyMediaTheme();
   applySubSize();
+  skins = createSkins({ stage: $('audio-view'), audioEl: v, getProgress: () => (dur() ? Math.min(1, pos() / dur()) : 0) });
+  $('art').addEventListener('load', () => skins.art($('art').src));
+  skins.set(prefs.skin || 'off');
   if ((sys.platform !== 'win32' || sys.customControls) && !EMBED) {
     const wc = $('win-ctl');
     const mk = (ic, act, title) => { const b = h('button', { class: 'wc-btn ' + act, title, html: icon(ic) }); b.addEventListener('click', () => api('win:control', act)); return b; };

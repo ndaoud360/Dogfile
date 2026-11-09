@@ -40,7 +40,7 @@ const atlas = Object.freeze({
   // Dogfile Photos (features made for the photo editor): pixels as { width, height, data: Uint8ClampedArray RGBA }
   photos: Object.freeze({ getImageData: () => call('photos.getImageData'), putImageData: (img) => call('photos.putImageData', img), fileName: () => call('photos.fileName') }),
   // Dogfile Player
-  player: Object.freeze({ currentFile: () => call('player.currentFile'), play: () => call('player.play'), pause: () => call('player.pause'), seek: (s) => call('player.seek', +s), time: () => call('player.time'), duration: () => call('player.duration') }),
+  player: Object.freeze({ currentFile: () => call('player.currentFile'), play: () => call('player.play'), pause: () => call('player.pause'), seek: (s) => call('player.seek', +s), time: () => call('player.time'), duration: () => call('player.duration'), setSkin: (n) => call('player.setSkin', String(n)), getSkin: () => call('player.getSkin') }),
   // network (needs the "network" permission): returns { status, text } — JSON: JSON.parse(r.text)
   net: Object.freeze({ fetch: (url, opts) => call('net.fetch', String(url), opts ? { method: opts.method, headers: opts.headers, body: opts.body == null ? undefined : String(opts.body) } : {}) }),
   // run a command in the built-in terminal (needs the "run" permission; the person sees it run)

@@ -1,6 +1,6 @@
 // Contextual ribbon tab next to View: Zip inside/for archives, Audio / Video / Pictures for selected media,
 // and Editor / Audio for a built-in app open in a tab.
-import { KINDS, dirname, basename } from './core.js';
+import { KINDS, dirname, basename, bus } from './core.js';
 import { activeTab, selectedItems, navigate } from './pane.js';
 import * as A from './actions.js';
 import { activeAppTab, appCmd, appMenu } from './apptabs.js';
@@ -39,6 +39,16 @@ export function contextRibbon() {
         ['Slideshow', [{ ...B(st.slideshow ? 'ppause' : 'pplay', st.slideshow ? 'Stop' : 'Slideshow', C('slideshow'), true), on: st.slideshow }, { ...B('shuffle', 'Shuffle', C('shuffle')), on: st.shuffle }, { icon: 'clock', label: `Every ${st.secs || 4}s`, menu: () => secs }]],
         ['Photo', [B('pprev', 'Previous', C('prev')), B('pnext', 'Next', C('next')), B('trash', 'Delete', C('delete'))]],
         ['Tools', [B('scan', 'Copy text from image', C('ocr'), true), B('puzzle', 'Features', C('features'))]],
+        ['Web', [B('globe', 'URL', () => bus.cmd('webUrl'), true)]],
+      ] };
+    }
+    if (app.app === 'psd') return { key: 'psd', label: 'Photoshop', groups: [['Web', [B('globe', 'URL', () => bus.cmd('webUrl'), true), B('settings', 'URL buttons', () => bus.cmd('webButtons'))]]] };
+    if (app.app === 'web') {
+      const C = (id) => () => appCmd(id);
+      return { key: 'web', label: 'Browser', groups: [
+        ['Browse', [B('back', 'Back', C('back')), B('forward', 'Forward', C('forward')), B('refresh', 'Reload', C('reload'), true), B('home', 'Start page', C('home')), B('rename', 'Address', C('address'))]],
+        ['Tabs', [B('plus', 'New tab', C('newTab'), true), B('close', 'Close tab', C('closeTab')), B('moon', 'Sleep other tabs', C('sleepAll'))]],
+        ['Sites', [B('globe', 'Sites', C('sites'), true), B('settings', 'URL buttons', () => bus.cmd('webButtons'))]],
       ] };
     }
     if (app.app === 'office' && st.doc) return officeRibbon(st);

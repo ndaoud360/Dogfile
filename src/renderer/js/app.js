@@ -264,7 +264,7 @@ const R = {
     ['Compare', [['compare', 'Compare & sync', true], ['compareFiles', 'Two files…']]],
     ['Protect', [['timeTravel', 'Time travel', true], ['history', 'File history'], ['allVersions', 'Versions'], ['makeChecksums', 'Checksums'], ['verifyChecksums', 'Verify'], ['hashes'], ['whoLocks', 'What’s locking it?'], ['lock', 'Lock'], ['unlock', 'Unlock']]],
     ['Connect', [['phoneTransfer', 'Phone', true], ['connections', 'Servers', true], ['addConnection', 'Add server'], ['addCloud', 'Add cloud drive']]],
-    ['Apps', [['notepad', 'Notepad', true], ['photos', 'Photos', true], ['player', 'Player', true], ['music', 'Music', true], ['viewer3d', '3D viewer'], ['office', 'Office'], ['terminalDrawer', 'Terminal'], ['shelf', 'Drop Shelf'], ['gotoFile', 'Go to file']]],
+    ['Apps', [['notepad', 'Notepad', true], ['photos', 'Photos', true], ['player', 'Player', true], ['music', 'Music', true], ['viewer3d', '3D viewer'], ['office', 'Office'], ['terminalDrawer', 'Terminal'], ['webBrowser', 'Web browser'], ['webUrl', 'URL'], ['shelf', 'Drop Shelf'], ['gotoFile', 'Go to file']]],
     ['Automate', [['features', 'Features', true], ['startMacro', 'Record macro'], ['macros', 'Macros'], ['featureStore', 'Get features']]],
     ['AI', [['aiModels', 'AI models', true]]],
     ['Windows', [['showInExplorer'], ['winProperties'], ['windowsMenu'], ['fileTypes', 'File types']]],
@@ -273,7 +273,7 @@ const R = {
     ['Layout', [['viewDetails', 'Details', true], ['viewColumns', 'Columns'], ['viewGrid', 'Grid', true], ['viewGallery', 'Gallery', true], ['viewList', 'List'], ['zoomIn', 'Bigger'], ['zoomOut', 'Smaller']]],
     ['History', [['timeTravel', 'Time travel', true]]],
     ['Sort & group', [['sort_name', 'By name'], ['sort_mtime', 'By date'], ['sort_size', 'By size'], ['sort_type', 'By type'], ['group_type', 'Group by type'], ['group_date', 'Group by date'], ['groupNone', 'No groups'], ['mediaFilter', 'Media filter']]],
-    ['Panes', [['togglePreview', 'Preview pane'], ['toggleSidebar', 'Sidebar'], ['layout1', 'One pane'], ['layout2v', 'Side by side'], ['layout2h', 'Stacked'], ['layout3', 'Three'], ['layout4', 'Four'], ['mirrorPane', 'Same folder in other pane'], ['syncNav', 'Sync browsing'], ['swapPanes', 'Swap panes']]],
+    ['Panes', [['webPane', 'Web pane'], ['togglePreview', 'Preview pane'], ['toggleSidebar', 'Sidebar'], ['layout1', 'One pane'], ['layout2v', 'Side by side'], ['layout2h', 'Stacked'], ['layout3', 'Three'], ['layout4', 'Four'], ['mirrorPane', 'Same folder in other pane'], ['syncNav', 'Sync browsing'], ['swapPanes', 'Swap panes']]],
     ['Show', [['toggleHidden', 'Hidden items'], ['toggleExt', 'File extensions'], ['toggleFolderSizes', 'Folder sizes'], ['toggleCheckboxes', 'Check boxes'], ['flatten', 'Flatten folder'], ['toggleGlass', 'Glass sidebar']]],
     ['Workspace', [['workspaces', 'Workspaces', true], ['profiles', 'Profiles'], ['pinToWorkspace', 'Pin files']]],
     ['Theme', [['themeSystem', 'System'], ['themeLight', 'Light'], ['themeDark', 'Dark'], ['customizeToolbar', 'Toolbar…']]],
@@ -442,6 +442,7 @@ function initMenubar() {
       { header: 'Split view' },
       L('1', 'Single pane', 'layout1', 'Ctrl+Alt+1'), L('2v', 'Two side by side', 'layout2v', 'Ctrl+Alt+2'), L('2h', 'Two stacked', 'layout2h', 'Ctrl+Alt+3'), L('3', 'Three panes', 'layout3', 'Ctrl+Alt+4'), L('4', 'Four panes (2×2)', 'layout4', 'Ctrl+Alt+5'),
       { separator: true },
+      { label: 'Web pane (browser beside this folder)', icon: 'globe', run: () => bus.cmd('webPane') },
       { label: 'Split this pane right', icon: 'layout2v', keys: 'Ctrl+Alt+\\', run: () => bus.cmd('splitRight') },
       { label: 'Split this pane down', icon: 'layout2h', keys: 'Ctrl+Alt+-', run: () => bus.cmd('splitDown') },
       { label: 'Close this pane', icon: 'close', keys: 'Ctrl+Alt+W', run: () => bus.cmd('closePane'), disabled: paneCount() < 2 },
@@ -599,6 +600,7 @@ async function boot() {
   if (!info.test) setTimeout(() => import('./mvmode.js').then((m) => m.recover()).catch(() => {}), 1500); // a Multiverse left open last time
   import('./foldericon.js').then((m) => m.loadFolderIcons()).catch(() => {});
   import('./selfdestruct.js').then((m) => m.init()).catch(() => {});
+  import('./mouse.js').then((m) => m.initMouse()).catch(() => {});
   setTimeout(() => import('./readability.js').then((m) => m.guardReadability()).catch(() => {}), 3000); // colours that came from an import or another PC may be hard to read
   // the interface language (translates as things appear)
   if ((state.settings.language || 'auto') !== 'en') await import('./i18n.js').then((m) => m.initI18n(state.settings.language || 'auto')).catch(() => {});

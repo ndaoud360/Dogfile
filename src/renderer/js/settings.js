@@ -457,6 +457,22 @@ export async function openSettings(section = 'general', opts = {}) {
       draw();
       el.append(h('div', { class: 'row-inline' }, filter, h('button', { class: 'btn small', onclick: () => { S.keybindings = {}; saveSettings(); rebuildKeymap(); draw(); } }, 'Reset all')), list);
     }],
+    mouse: ['Mouse & wheel', 'mouse', async (el) => {
+      const m = await import('./mouse.js');
+      m.mouseSettings(el, { group, row });
+    }],
+    web: ['Web pane', 'globe', async (el) => {
+      const W = await import('./webcfg.js');
+      _append(el,
+        group('Dogfile Web'),
+        row('URL buttons', h('button', { class: 'btn small', onclick: () => W.editWebButtons() }, 'Edit…'), 'Sites that open in a pane beside what you are looking at, like Photopea next to a picture.'),
+        row('Start page', text('webHome', 'https://duckduckgo.com')),
+        row('Search with', select('webSearch', [['https://duckduckgo.com/?q=%s', 'DuckDuckGo'], ['https://www.google.com/search?q=%s', 'Google'], ['https://www.bing.com/search?q=%s', 'Bing'], ['https://search.brave.com/search?q=%s', 'Brave Search']])),
+        row('Put idle tabs to sleep after', select('webSleepMinutes', [['2', '2 minutes'], ['5', '5 minutes'], ['15', '15 minutes'], ['60', '1 hour']]), 'A sleeping tab uses no memory. It reloads its page when you click it.'),
+        row('Addresses on this computer and your home network', toggle('webLocal'), 'Off by default: a web page can’t reach your PC’s own services or your router.'),
+        h('div', { class: 'hint', style: { marginTop: '10px' } }, 'Dogfile Web keeps nothing: no history, cookies, passwords or logins, and no extensions. Pages can’t reach Dogfile or your files, except what you drop onto them.'),
+      );
+    }],
     tags: ['Tags', 'tag', (el) => {
       const list = h('div', { class: 'stack' });
       const draw = () => {

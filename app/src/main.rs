@@ -6,6 +6,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod launch;
+mod web;
 #[cfg(windows)]
 mod winx;
 
@@ -542,6 +543,19 @@ impl Host for AppHost {
     fn launch_of(&self, win: &str) -> Value {
         self.launches.lock().get(win).cloned().unwrap_or(json!({}))
     }
+    fn web(&self, win: &str, op: &str, args: Value) -> Value {
+        let Some(app) = self.app_opt() else { return json!({ "ok": false, "error": "Dogfile is still starting" }) };
+        let setup = web::Setup {
+            browser_args: BROWSER_ARGS,
+            #[cfg(windows)]
+            data_dir: Some(webview_data_dir()),
+            #[cfg(not(windows))]
+            data_dir: None,
+            downloads: dirs::download_dir().unwrap_or_else(|| std::env::temp_dir()),
+        };
+        let emit: web::Emit = Arc::new(|win, ch, data| host().emit(win, ch, data));
+        web::run(app, win, op, &args, &setup, &emit)
+    }
     fn set_zoom(&self, win: &str, factor: f64) {
         if let Some(w) = self.win(win) {
             let _ = w.set_zoom(factor);
@@ -980,6 +994,11 @@ fn main() {
             host().handle_launch(l, false);
         }))
         .register_asynchronous_uri_scheme_protocol("dogfile", |ctx, request, responder| {
+            // pages in the web pane are strangers: they get nothing from Dogfile (not its files, settings or commands)
+            if ctx.webview_label().starts_with("web-") {
+                responder.respond(tauri::http::Response::builder().status(403).body(Vec::new()).unwrap_or_else(|_| tauri::http::Response::new(Vec::new())));
+                return;
+            }
             let req = to_req(ctx.webview_label(), request);
             tauri::async_runtime::spawn(async move {
                 responder.respond(respond(req).await);

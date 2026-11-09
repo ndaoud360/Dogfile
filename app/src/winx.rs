@@ -40,6 +40,19 @@ pub fn webview_memory_low(w: &tauri::WebviewWindow, low: bool) {
     });
 }
 
+/// the same for one web view of the web pane (a tab left in the background)
+pub fn webview_memory_low_wv(w: &tauri::Webview, low: bool) {
+    let _ = w.with_webview(move |pw| unsafe {
+        use webview2_com::Microsoft::Web::WebView2::Win32::{ICoreWebView2_19, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL};
+        use windows_core::Interface;
+        if let Ok(core) = pw.controller().CoreWebView2() {
+            if let Ok(c19) = core.cast::<ICoreWebView2_19>() {
+                let _ = c19.SetMemoryUsageTargetLevel(if low { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW } else { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL });
+            }
+        }
+    });
+}
+
 /// Hand back the memory this program isn't using right now (its pages stay available: Windows brings back the ones
 /// that are needed again). Used a little after Dogfile stops being the window in front.
 pub fn trim_own_memory() {

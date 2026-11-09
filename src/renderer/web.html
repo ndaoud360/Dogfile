@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://127.0.0.1:*; img-src 'self' http://127.0.0.1:* data: blob:; connect-src 'self' http://127.0.0.1:* data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' http://127.0.0.1:* data:; script-src 'self' http://127.0.0.1:* 'wasm-unsafe-eval'; worker-src 'self' http://127.0.0.1:* blob:">
+  <title>Dogfile Web</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="web.css">
+</head>
+<body class="tool web-app">
+  <div id="wb-tabs"></div>
+  <div id="wb-bar"></div>
+  <div id="wb-notice"></div>
+  <div id="wb-stage"><div id="wb-start"></div><div id="wb-asleep"></div></div>
+  <div id="wb-status"></div>
+  <div id="toasts"></div>
+  <script type="module" src="js/web.js"></script>
+</body>
+</html>

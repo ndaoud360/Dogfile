@@ -13,7 +13,7 @@ name: app
 on:
   push:
     branches: [main]
-    paths: ['core/**', 'backend/**', 'app/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/app.yml', 'src/renderer/**', 'supabase/**']
+    paths: ['core/**', 'backend/**', 'app/**', 'build/**', 'tools/psd/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/app.yml', 'src/renderer/**', 'supabase/**']
   workflow_dispatch:
 permissions:
   contents: write
@@ -78,7 +78,10 @@ jobs:
           "DOGFILE_LLAMA_URL=$($asset.browser_download_url)" >> $env:GITHUB_ENV
           "DOGFILE_LLAMA_SHA256=$sha" >> $env:GITHUB_ENV
           Write-Output "::notice title=llama-server::$tag $($asset.name) $sha"
-      - name: Downloadable parts (media engine, text recognition, AI runtime)
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Downloadable parts (media engine, text recognition, AI runtime, Photoshop helper)
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -97,16 +100,33 @@ jobs:
           if (-not $ffAsset) { Write-Output "::error title=ffmpeg::No FFmpeg build found"; exit 1 }
           Invoke-WebRequest $ffAsset.browser_download_url -OutFile "$dl/ff.zip"
           Write-Output "::notice title=ffmpeg::$($ffAsset.name)"
+          # Build the self-contained Photoshop helper. Dogfile downloads this folder on first PSD open.
+          python -m pip install --disable-pip-version-check -r tools/psd/requirements-build.txt
+          if ($LASTEXITCODE -ne 0) { Write-Output "::error title=psd::could not install PSD build requirements"; exit 1 }
+          python -m PyInstaller --clean --noconfirm --onedir --name dogfile-psd --collect-all psd_tools --collect-all PIL tools/psd/dogfile_psd.py
+          if ($LASTEXITCODE -ne 0) { Write-Output "::error title=psd::could not package the Photoshop helper"; exit 1 }
+          $psdExe = "dist/dogfile-psd/dogfile-psd.exe"
+          if (-not (Test-Path $psdExe)) { Write-Output "::error title=psd::the Photoshop helper executable was not produced"; exit 1 }
+          & $psdExe version | Out-Host
+          if ($LASTEXITCODE -ne 0) { Write-Output "::error title=psd::the packaged Photoshop helper failed its self-test"; exit 1 }
+          Compress-Archive -Path "dist/dogfile-psd/*" -DestinationPath "$dl/psd.zip" -CompressionLevel Optimal -Force
+          # Test the actual downloaded archive too: the executable must still find its bundled runtime after extraction.
+          $psdTest = "$env:RUNNER_TEMP/psd-package-test"
+          Expand-Archive -LiteralPath "$dl/psd.zip" -DestinationPath $psdTest -Force
+          $packedPsdExe = Join-Path $psdTest "dogfile-psd.exe"
+          if (-not (Test-Path $packedPsdExe)) { Write-Output "::error title=psd::the PSD download archive does not contain dogfile-psd.exe at its root"; exit 1 }
+          & $packedPsdExe version | Out-Host
+          if ($LASTEXITCODE -ne 0) { Write-Output "::error title=psd::the extracted PSD download archive failed its self-test"; exit 1 }
           $parts = "$env:RUNNER_TEMP/components"
-          node build/make-components.mjs $parts --ffmpeg "$dl/ff.zip"
+          node build/make-components.mjs $parts --ffmpeg "$dl/ff.zip" --psd "$dl/psd.zip"
           if ($LASTEXITCODE -ne 0) { Write-Output "::error title=components::could not make the downloadable parts"; exit 1 }
           $repo = '${{ github.repository }}'
           gh release view components --repo $repo *> $null
-          if ($LASTEXITCODE -ne 0) { gh release create components --repo $repo --title 'Downloadable parts' --notes 'Parts of Dogfile that are downloaded the first time they are needed (media engine, text recognition, AI runtime). Files are named after their checksums; do not delete them while a release that uses them is in the Store.' --latest=false *> $null }
+          if ($LASTEXITCODE -ne 0) { gh release create components --repo $repo --title 'Downloadable parts' --notes 'Parts of Dogfile that are downloaded the first time they are needed (media engine, text recognition, AI runtime, Photoshop helper). Files are named after their checksums; do not delete them while a release that uses them is in the Store.' --latest=false *> $null }
           gh release upload components (Get-ChildItem "$parts/*.zip" | ForEach-Object { $_.FullName }) --repo $repo --clobber
           if ($LASTEXITCODE -ne 0) { Write-Output "::error title=components::could not upload the parts to the components release"; exit 1 }
           $j = Get-Content "$parts/components.json" -Raw | ConvertFrom-Json
-          foreach ($n in @('ffmpeg', 'ocr', 'ort')) {
+          foreach ($n in @('ffmpeg', 'ocr', 'ort', 'psd')) {
             $c = $j.$n
             if (-not $c) { continue }
             $u = $n.ToUpper()

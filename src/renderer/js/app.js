@@ -247,8 +247,8 @@ const R = {
     ['Undo', [['undo'], ['redo'], ['history', 'File history'], ['clipHistory', 'Clipboard list']]],
   ],
   organize: [
-    ['Sort & tidy', [['declutter', 'Tidy up (auto-sort)', true], ['multiverse', 'Multiverse (try changes first)', true], ['selfDestruct', 'Self-destruct (auto-remove)', true], ['folderRules', 'Automate this folder'], ['automations', 'All automations']]],
-    ['Rename', [['batchRename', 'Rename Studio', true], ['renameWords', 'Rename by describing it']]],
+    ['Sort & tidy', [['declutter', 'Tidy up', true], ['multiverse', 'Multiverse', true], ['selfDestruct', 'Self-destruct', true], ['folderRules', 'Automate this folder'], ['automations', 'All automations']]],
+    ['Rename', [['batchRename', 'Rename Studio', true]]],
     ['Compress', [['quickZip', 'Zip', true], ['compress', 'Compress…'], ['extract'], ['extractTo']]],
     ['Find', [['dupes', 'Duplicates', true], ['similarImages', 'Similar pictures'], ['similarMedia', 'Similar media'], ['newCollection', 'New collection']]],
     ['Folder', [['folderNote', 'Folder note'], ['createShortcut'], ['symlink']]],

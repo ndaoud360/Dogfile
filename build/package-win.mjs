@@ -1,9 +1,9 @@
 // Builds the ready-to-run Windows x64 folder + zip for Dogfile 2 (Tauri):
 //   Dogfile.exe (the program with its interface inside, built by GitHub Actions, .github/workflows/app.yml, fetched from the app-bin branch),
-//   7zip/ (archives), installer scripts. The big parts (ffmpeg, text recognition, the AI runtime, llama-server) aren't in it:
+//   psd/ (the layered Photoshop helper), 7zip/ (archives), installer scripts. Other big parts (FFmpeg, OCR, AI runtime, llama-server) download on first use:
 //   Dogfile downloads them the first time they're needed (backend/src/components.rs). Give an ffmpeg zip as the second
 //   argument to bundle the media engine anyway (an offline copy).
-// usage: node build/package-win.mjs <Dogfile.exe> [<ffmpeg-win64-shared.zip>]
+// usage: node build/package-win.mjs <Dogfile.exe> [<ffmpeg-win64-shared.zip>] [--psd <dogfile-psd.zip>]
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,8 +15,17 @@ const unzip = (zip, dir) => {
   if (process.platform === 'win32') execFileSync(path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe'), ['-xf', zip, '-C', dir]);
   else execFileSync('unzip', ['-q', zip, '-d', dir]);
 };
-const [exe, ffZip] = process.argv.slice(2);
-if (!exe || !fs.existsSync(exe)) { console.error('usage: node build/package-win.mjs <Dogfile.exe> [<ffmpeg.zip>]'); process.exit(1); }
+const args = process.argv.slice(2);
+const exe = args.shift();
+let ffZip = null;
+if (args[0] && !args[0].startsWith('--')) ffZip = args.shift();
+let psdZip = null;
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--psd') psdZip = args[++i] || null;
+  else { console.error(`unknown argument: ${args[i]}`); process.exit(1); }
+}
+if (!exe || !fs.existsSync(exe)) { console.error('usage: node build/package-win.mjs <Dogfile.exe> [<ffmpeg.zip>] [--psd <dogfile-psd.zip>]'); process.exit(1); }
+if (psdZip && !fs.existsSync(psdZip)) { console.error(`PSD helper package not found: ${psdZip}`); process.exit(1); }
 // DOGFILE_ARCH=arm64 builds the Windows on ARM folder (dist/Dogfile-arm64) next to the x64 one
 const ARCH = process.env.DOGFILE_ARCH === 'arm64' ? 'arm64' : 'x64';
 const outDir = path.join(root, 'dist', ARCH === 'x64' ? 'Dogfile' : 'Dogfile-arm64');
@@ -26,6 +35,31 @@ else fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
 
 fs.copyFileSync(exe, path.join(outDir, 'Dogfile.exe'));
+// The PSD helper is shipped next to Dogfile as well as being available through the verified component
+// downloader. This makes the Windows installer and Store package work even when a build's cached Rust
+// artifact was produced without the component URL environment variables.
+if (psdZip) {
+  const stage = path.join(root, 'dist', '_psd-package');
+  fs.rmSync(stage, { recursive: true, force: true });
+  fs.mkdirSync(stage, { recursive: true });
+  unzip(psdZip, stage);
+  const files = (() => {
+    const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
+    return walk(stage);
+  })();
+  const helper = files.find((f) => path.basename(f).toLowerCase() === 'dogfile-psd.exe');
+  if (!helper) throw new Error('The PSD package does not contain dogfile-psd.exe');
+  const helperDir = path.dirname(helper);
+  const psdOut = path.join(outDir, 'psd');
+  fs.rmSync(psdOut, { recursive: true, force: true });
+  fs.cpSync(helperDir, psdOut, { recursive: true });
+  if (!fs.existsSync(path.join(psdOut, 'dogfile-psd.exe'))) throw new Error('The PSD helper was not copied into the Dogfile package');
+  if (process.platform === 'win32') {
+    execFileSync(path.join(psdOut, 'dogfile-psd.exe'), ['version'], { stdio: 'inherit', windowsHide: true });
+  }
+  fs.rmSync(stage, { recursive: true, force: true });
+  console.log('bundled Photoshop helper in dist/Dogfile/psd');
+}
 // the interface is inside Dogfile.exe (build/pack-ui.mjs before the build), so no renderer/ folder ships
 
 // media engine, only when asked for: ffmpeg + ffprobe (shared build) for Dogfile Player, thumbnails and conversions

@@ -2,7 +2,8 @@
 // a PSD that Photoshop opens as it was, with every layer still in it.
 // The reading and writing is done by a small helper program (tools/psd/dogfile_psd.py, built into dogfile-psd.exe with
 // PyInstaller) that uses psd-tools, which keeps everything it doesn't change (text, smart objects, effects, adjustment
-// layers, masks, colour profiles) exactly as it was. The helper is a downloadable part (components.rs), so Dogfile itself stays small.
+// layers, masks, colour profiles) exactly as it was. Windows installers bundle the helper beside Dogfile; portable
+// builds can still fetch the checksum-verified component on first use.
 use crate::args::{err, Args, R};
 use crate::{components, st, util};
 use serde_json::{json, Value};
@@ -22,11 +23,17 @@ fn helper() -> Option<(PathBuf, Vec<String>)> {
         }
         return p.is_file().then_some((p, vec![]));
     }
+    // Prefer the helper shipped beside Dogfile (the installer and Store package include it).
+    // A verified downloaded copy remains the fallback for portable/update builds that contain
+    // only Dogfile.exe.
+    if let Some(p) = bundled() {
+        return Some((p, vec![]));
+    }
     let part = components::psd_dir().join(EXE);
     if components::ready("psd") && part.is_file() {
         return Some((part, vec![]));
     }
-    bundled().map(|p| (p, vec![]))
+    None
 }
 
 /// a copy of the helper that ships with this build (next to the program)

@@ -3,7 +3,7 @@
 //   ffmpeg  the media engine (Dogfile Player's conversions, thumbnails, trimming, transcripts)
 //   ocr     Tesseract, for selecting text in photos and screenshots
 //   ort     ONNX Runtime, for the stem separator and the on-device AI helpers
-//   psd     the Photoshop helper, for opening PSD files with their layers and saving them back as layered PSDs
+//   psd     the Photoshop helper, bundled with Windows installers and fetched by standalone builds when needed
 // (the assistant's llama-server has its own fetch: llm_server::fetch_if_missing.)
 // Every part comes from one address with one SHA-256, both written into the program when it was built, so a download
 // that isn't exactly the file that was built and tested is thrown away. Parts live in <data>/components and are never
@@ -79,12 +79,15 @@ pub fn ready(name: &str) -> bool {
         return true;
     }
     let Some(p) = part(name) else { return false };
-    match (std::fs::read_to_string(marker(name)), p.sha) {
+    let marker_matches = match (std::fs::read_to_string(marker(name)), p.sha) {
         (Ok(m), Some(sha)) => m.trim() == sha,
         // a development build with no pinned address: whatever was put there by hand
         (Ok(_), None) => true,
         _ => false,
-    }
+    };
+    // A checksum marker alone is not enough: a partial or badly-shaped PSD archive must not
+    // be reported as installed unless the executable is actually at the path the backend runs.
+    marker_matches && (name != "psd" || psd_dir().join("dogfile-psd.exe").is_file())
 }
 
 #[derive(Default, Clone)]

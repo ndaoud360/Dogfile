@@ -59,7 +59,7 @@ export function contextRibbon() {
             ...(st.hasCrop ? [B('close', 'Clear crop', C('clearCrop'))] : []),
           ]],
         ] : []),
-        ['View', [B('max', 'Fit', C('fit'), true), B('zoomIn', 'Zoom in', C('zoomIn')), B('zoomOut', 'Zoom out', C('zoomOut')), ...(file ? [B('eye', 'Accurate preview', C('accurate'))] : [])]],
+        ...(file ? [['View', [B('max', 'Fit', C('fit'), true), B('zoomIn', 'Zoom in', C('zoomIn')), B('zoomOut', 'Zoom out', C('zoomOut')), B('eye', 'Accurate preview', C('accurate'))]]] : []),
       ] };
     }
     if (app.app === 'office' && st.doc) return officeRibbon(st);

@@ -382,12 +382,12 @@ mod tests {
         // stash it away and bring it back
         stash(&call(vec![json!(dir), json!("push"), json!("wip")])).await.unwrap();
         assert_eq!(stash(&call(vec![json!(dir), json!("list")])).await.unwrap().as_array().unwrap().len(), 1);
-        assert_eq!(std::fs::read_to_string(d.join("a.txt")).unwrap(), "one\n");
+        assert_eq!(std::fs::read_to_string(d.join("a.txt")).unwrap().replace("\r\n", "\n"), "one\n"); // Windows git may check out CRLF
         stash(&call(vec![json!(dir), json!("pop")])).await.unwrap();
         assert!(std::fs::read_to_string(d.join("a.txt")).unwrap().contains("changed"));
         // throw the change away
         discard(&call(vec![json!(dir), json!(["a.txt"]), json!(false)])).await.unwrap();
-        assert_eq!(std::fs::read_to_string(d.join("a.txt")).unwrap(), "one\n");
+        assert_eq!(std::fs::read_to_string(d.join("a.txt")).unwrap().replace("\r\n", "\n"), "one\n"); // Windows git may check out CRLF
         // an untracked file is removed only when asked for as such
         std::fs::write(d.join("new.txt"), "x").unwrap();
         discard(&call(vec![json!(dir), json!(["new.txt"]), json!(true)])).await.unwrap();

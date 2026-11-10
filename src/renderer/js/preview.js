@@ -103,12 +103,12 @@ export async function renderPreview(box, it, { large = false } = {}) {
       stage.append(wave, a);
       const playBtn = () => { if (!large) meta.append(h('div', { class: 'pv-actions' }, h('button', { class: 'btn small', onclick: () => openTool('player', [it.path], { play: true }) }, 'Play in Dogfile Player'))); };
       playBtn();
-      waveform(wave, a, url, it, (info) => { if (my === seq) { addMeta([...baseRows(), ['Duration', fmtDur(info.duration)], ['Sample rate', `${(info.sampleRate / 1000).toFixed(1)} kHz`], ['Channels', info.channels === 1 ? 'Mono' : info.channels === 2 ? 'Stereo' : String(info.channels)], ['Peak level', `${info.peakDb.toFixed(1)} dBFS`]]); playBtn(); } });
+      waveform(wave, a, url, it, (info) => { if (my === seq) { addMeta([...baseRows(), ['Duration', fmtDur(info.duration)], info.sampleRate ? ['Sample rate', `${(info.sampleRate / 1000).toFixed(1)} kHz`] : null, ['Channels', info.channels === 1 ? 'Mono' : info.channels === 2 ? 'Stereo' : String(info.channels)], ['Peak level', `${info.peakDb.toFixed(1)} dBFS`]]); playBtn(); } });
     } else if (it.ext === 'pdf') {
       stage.append(h('iframe', { class: 'pv-pdf', src: url + '#toolbar=0&navpanes=0', title: it.name }));
       pdfRows(it).then((rows) => { if (my === seq && rows.length) { addMeta([...baseRows(), ...rows]); if (!large) meta.append(h('div', { class: 'pv-actions' }, h('button', { class: 'btn small', onclick: () => A.openItems([it]) }, 'Open'), h('button', { class: 'btn small', onclick: () => editDocProps(it) }, 'Edit properties…'))); } });
     } else if (OFFICE.has(it.ext)) {
-      const d = await renderOffice(stage, it, { large, alive: () => my === seq, addRows: (rows) => { if (my === seq) addMeta([...baseRows(), ...rows.filter(Boolean)]); } });
+      const d = await renderOffice(stage, it, { large, alive: () => my === seq, addRows: (rows) => { if (my === seq) { const seen = new Set(); addMeta([...baseRows(), ...rows].filter((r) => r && !seen.has(r[0]) && seen.add(r[0]))); } } });
       if (my === seq && !large && d) meta.append(h('div', { class: 'pv-actions' }, h('button', { class: 'btn small', onclick: () => A.openItems([it]) }, 'Open'), !['rtf', 'odt', 'ods', 'odp', 'ott'].includes(it.ext) && h('button', { class: 'btn small', onclick: () => editDocProps(it) }, 'Edit properties…'), h('button', { class: 'btn small', onclick: () => A.copyPaths([it]) }, 'Copy path')));
     } else if (KINDS.model.includes(it.ext) && it.ext !== 'dwg' && !(it.size > 300 * 1048576)) {
       const box = h('div', { class: 'pv-3d' }, h('div', { class: 'pv-3d-hint' }, 'Loading 3D model…'));
@@ -184,11 +184,35 @@ async function codeViewHL(text, name) {
   } catch (e) { console.warn(e); return codeView(text); }
 }
 
+// the file's own sample rate. Decoding with WebAudio resamples to the context's rate, so buffer.sampleRate is not it;
+// WAV, FLAC, Ogg Vorbis/Opus and MP3 say it in their first bytes (null for anything else: the row is left out)
+function fileSampleRate(ab) {
+  const b = new Uint8Array(ab, 0, Math.min(ab.byteLength, 65536)), dv = new DataView(ab);
+  const tag = (o, t) => t.split('').every((c, i) => b[o + i] === c.charCodeAt(0));
+  if (tag(0, 'RIFF') && tag(8, 'WAVE')) { // the fmt chunk
+    for (let o = 12; o + 24 <= b.length;) { const len = dv.getUint32(o + 4, true); if (tag(o, 'fmt ')) return dv.getUint32(o + 12, true) || null; o += 8 + len + (len & 1); }
+    return null;
+  }
+  if (tag(0, 'fLaC') && b.length >= 22) return (b[18] << 12) | (b[19] << 4) | (b[20] >> 4);
+  if (tag(0, 'OggS')) { for (let o = 27; o + 16 < b.length; o++) { if (b[o] === 1 && tag(o + 1, 'vorbis')) return dv.getUint32(o + 12, true); if (tag(o, 'OpusHead')) return dv.getUint32(o + 12, true) || null; } return null; }
+  let o = 0;
+  if (tag(0, 'ID3') && b.length > 10) o = 10 + ((b[6] & 127) << 21 | (b[7] & 127) << 14 | (b[8] & 127) << 7 | (b[9] & 127));
+  for (let i = o; i + 4 < b.length && i < o + 4096; i++) { // first MPEG audio frame header
+    if (b[i] === 0xff && (b[i + 1] & 0xe0) === 0xe0) {
+      const ver = (b[i + 1] >> 3) & 3, idx = (b[i + 2] >> 2) & 3;
+      if (ver === 1 || idx === 3 || ((b[i + 1] >> 1) & 3) === 0) continue;
+      const base = [44100, 48000, 32000][idx];
+      return ver === 3 ? base : ver === 2 ? base / 2 : base / 4;
+    }
+  }
+  return null;
+}
+
 // audio waveform (decoded with WebAudio) with click-to-seek and a moving playhead
 async function waveform(canvas, audio, url, it, onInfo) {
   if (it.size > 80 * 1024 * 1024) { canvas.remove(); return; }
-  let buf;
-  try { const ab = await (await fetch(url)).arrayBuffer(); const ctx = new OfflineAudioContext(1, 1, 44100); buf = await ctx.decodeAudioData(ab); } catch { canvas.remove(); return; }
+  let buf, rate = null;
+  try { const ab = await (await fetch(url)).arrayBuffer(); try { rate = fileSampleRate(ab); } catch { /* the row is left out */ } const ctx = new OfflineAudioContext(1, 1, 44100); buf = await ctx.decodeAudioData(ab); } catch { canvas.remove(); return; }
   if (!canvas.isConnected) return;
   const W = (canvas.width = Math.round((canvas.clientWidth || 300) * devicePixelRatio)), H = (canvas.height = Math.round((canvas.clientHeight || 90) * devicePixelRatio));
   const data = buf.getChannelData(0);
@@ -196,7 +220,7 @@ async function waveform(canvas, audio, url, it, onInfo) {
   const peaks = new Float32Array(W);
   let peak = 0;
   for (let x = 0; x < W; x++) { let m = 0; const s0 = x * step; for (let i = 0; i < step; i += 4) { const v = Math.abs(data[s0 + i] || 0); if (v > m) m = v; } peaks[x] = m; if (m > peak) peak = m; }
-  onInfo?.({ duration: buf.duration, sampleRate: buf.sampleRate, channels: buf.numberOfChannels, peakDb: 20 * Math.log10(peak || 1e-9) });
+  onInfo?.({ duration: buf.duration, sampleRate: rate, channels: buf.numberOfChannels, peakDb: 20 * Math.log10(peak || 1e-9) });
   const g = canvas.getContext('2d');
   const cs = getComputedStyle(document.documentElement);
   const accent = cs.getPropertyValue('--accent').trim() || '#3b82f6', dim = cs.getPropertyValue('--text-4').trim() || '#bbb';

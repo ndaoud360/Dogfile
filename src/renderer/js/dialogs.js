@@ -9,7 +9,7 @@ export function modal({ title, body, buttons = [], width = 460, className = '', 
   closeMenus(0);
   return new Promise((resolve) => {
     const back = h('div', { class: 'modal-back' });
-    const box = h('div', { class: 'modal ' + className, role: 'dialog', 'aria-modal': 'true', style: { width: typeof width === 'number' ? width + 'px' : width } });
+    const box = h('div', { class: 'modal ' + className, role: 'dialog', 'aria-modal': 'true', tabindex: '-1', style: { width: typeof width === 'number' ? width + 'px' : width } });
     const close = (v) => { back.remove(); openModals.splice(openModals.indexOf(close), 1); onClose?.(v); resolve(v); };
     const head = h('div', { class: 'modal-head' }, h('div', { class: 'modal-title' }, title || ''), h('button', { class: 'icon-btn', title: 'Close', html: icon('close'), onclick: () => close(null) }));
     const content = h('div', { class: 'modal-body' + (noPadding ? ' np' : '') });
@@ -237,7 +237,7 @@ export async function propertiesDialog(items, helpers) {
     el.append(kv([
       ['Location', single ? dirname(single.path) || '' : dirname(items[0].path) || ''],
       ['Size', sizeEl],
-      ['Contains', countEl],
+      (items.length > 1 || items.some((i) => i.isDir)) && ['Contains', countEl],
       single && ['Created', fmtDate(single.ctime, 'locale')],
       single && ['Modified', fmtDate(single.mtime, 'locale')],
       single && single.atime && ['Accessed', fmtDate(single.atime, 'locale')],
@@ -259,8 +259,8 @@ export async function propertiesDialog(items, helpers) {
     for (const it of items) {
       if (it.isDir) { const r = await helpers.folderSize(it.path); if (r.failed) { failed++; continue; } total += r.total; files += r.files; if (r.dirs == null) dirsKnown = false; else dirs += r.dirs + 1; } else { total += it.size || 0; files++; }
     }
-    sizeEl.textContent = `${fmtSize(total)} (${total.toLocaleString()} bytes)${failed ? ` · ${failed === 1 ? 'one folder' : `${failed} folders`} couldn’t be measured` : ''}`;
-    countEl.textContent = dirsKnown ? `${files.toLocaleString()} files, ${Math.max(0, dirs - (single?.isDir ? 1 : 0)).toLocaleString()} folders` : `${files.toLocaleString()} files`;
+    sizeEl.textContent = `${fmtSize(total)}${total >= 1024 ? ` (${total.toLocaleString()} bytes)` : ''}${failed ? ` · ${failed === 1 ? 'one folder' : `${failed} folders`} couldn’t be measured` : ''}`;
+    countEl.textContent = dirsKnown ? `${files.toLocaleString()} ${files === 1 ? 'file' : 'files'}, ${Math.max(0, dirs - (single?.isDir ? 1 : 0)).toLocaleString()} ${dirs - (single?.isDir ? 1 : 0) === 1 ? 'folder' : 'folders'}` : `${files.toLocaleString()} ${files === 1 ? 'file' : 'files'}`;
   });
 
   if (single && !single.isDir) {

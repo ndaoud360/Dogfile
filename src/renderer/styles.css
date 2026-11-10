@@ -529,6 +529,7 @@ body.no-status #statusbar #st-left, body.no-status #statusbar #st-mid, body.no-s
 .modal-back { position: fixed; inset: 0; z-index: 900; background: rgba(0,0,0,.28); display: grid; place-items: center; animation: fade .12s; }
 :root[data-theme='dark'] .modal-back { background: rgba(0,0,0,.5); }
 @keyframes fade { from { opacity: 0; } }
+.modal:focus { outline: none; }
 .modal { max-width: calc(100vw - 40px); max-height: calc(100vh - 40px); display: flex; flex-direction: column; background: var(--bg-elev); border-radius: 14px; box-shadow: var(--shadow); animation: pop .12s ease-out; overflow: hidden; }
 .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 6px 22px; flex: none; }
 .modal-title { font-size: 15.5px; font-weight: 500; }

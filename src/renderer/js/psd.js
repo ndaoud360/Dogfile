@@ -193,6 +193,7 @@ let accTimer = 0;
 async function toggleAccurate() {
   if (ACCURATE) { ACCURATE = null; changed(); return; }
   ACCURATE = { img: null, busy: true };
+  tellState(); renderLayers();
   await refreshAccurate();
 }
 function accurateSoon() { clearTimeout(accTimer); accTimer = setTimeout(refreshAccurate, 350); }
@@ -353,6 +354,69 @@ function stagePoint(ev) {
   const x = (ev.clientX - r.left - PAN.x) / ZOOM, y = (ev.clientY - r.top - PAN.y) / ZOOM;
   return { x: Math.round(Math.max(0, Math.min($('ps-cv').width, x))), y: Math.round(Math.max(0, Math.min($('ps-cv').height, y))), c };
 }
+// ---------- moving a layer (Ctrl + drag) ----------
+// the picture on screen has the crop / turn / flip applied; these go back from a point (or a movement) on it to the file's own pixels
+function docMap(x, y, vector) {
+  const c = DOC.crop || [0, 0, D.width, D.height], cw = c[2] - c[0], ch = c[3] - c[1];
+  const turn = DOC.rot % 180 !== 0, ow = turn ? ch : cw, oh = turn ? cw : ch;
+  let dx = vector ? x : x - ow / 2, dy = vector ? y : y - oh / 2;
+  const a = (-DOC.rot * Math.PI) / 180, co = Math.cos(a), si = Math.sin(a);
+  [dx, dy] = [dx * co - dy * si, dx * si + dy * co];
+  if (DOC.flipH) dx = -dx;
+  if (DOC.flipV) dy = -dy;
+  return vector ? [dx, dy] : [dx + cw / 2 + c[0], dy + ch / 2 + c[1]];
+}
+/** the top layer that has a visible pixel under this point of the file (or null) */
+function layerAt(x, y) {
+  const probe = blank(1, 1), g = probe.getContext('2d', { willReadFrequently: true });
+  const shown = (id) => { for (let p = id; p != null; p = meta(p).parent) { const e = eff(p); if (!e.visible || e.deleted) return false; } return true; };
+  const topDown = [];
+  const walk = (ids) => { for (const id of [...ids].reverse()) { topDown.push(meta(id)); if (meta(id).isGroup) walk(D.kids.get(id) || []); } };
+  walk(D.roots);
+  for (const l of topDown) {
+    if (l.isGroup || !shown(l.id)) continue;
+    const src = sourceOf(l.id);
+    if (!src) continue;
+    const e = eff(l.id), px = Math.floor(x - e.left), py = Math.floor(y - e.top);
+    if (px < 0 || py < 0 || px >= src.width || py >= src.height) continue;
+    g.clearRect(0, 0, 1, 1); g.drawImage(src, -px, -py);
+    if (g.getImageData(0, 0, 1, 1).data[3] > 8) return l.id;
+  }
+  return null;
+}
+let moving = null;
+async function startMove(ev) {
+  const r = $('ps-stage').getBoundingClientRect();
+  const cx = (ev.clientX - r.left - PAN.x) / ZOOM, cy = (ev.clientY - r.top - PAN.y) / ZOOM;
+  const [fx, fy] = docMap(cx, cy);
+  const id = layerAt(fx, fy) ?? (SEL != null && D.byId.has(SEL) ? SEL : null);
+  if (id == null) { toast('Ctrl+drag moves the layer under the pointer: there is none here.'); return; }
+  if (!canEditPixels(id)) { toast(D.canEdit ? `“${eff(id).name}” is a ${kindName(meta(id).kind).toLowerCase()} layer. Dogfile keeps it where it is; move it in Photoshop.` : `This file is in ${D.mode} colour, so it can be looked at but not edited here.`, { error: true }); return; }
+  if (meta(id).hasMask) { toast('This layer has a mask, so it can’t be moved here. Move it in Photoshop.', { error: true }); return; }
+  if (SEL !== id) select(id);
+  const m = { id, x0: ev.clientX, y0: ev.clientY, l0: eff(id).left, t0: eff(id).top, base: null, started: false };
+  moving = m;
+  $('ps-stage').classList.add('moving');
+  try { m.base = await baseCanvasOf(id); } catch (e) { moving = null; $('ps-stage').classList.remove('moving'); toast(errText(e), { error: true }); }
+}
+function doMove(ev) {
+  const m = moving;
+  if (!m || !m.base) return;
+  const [vx, vy] = docMap((ev.clientX - m.x0) / ZOOM, (ev.clientY - m.y0) / ZOOM, true);
+  const left = m.l0 + Math.round(vx), top = m.t0 + Math.round(vy);
+  if (!m.started) { if (left === m.l0 && top === m.t0) return; push(); m.started = true; }
+  const e = ed(m.id);
+  setEd(m.id, { canvas: e.canvas || m.base, left, top });
+  PREVIEW = null;
+  render();
+}
+function endMove() {
+  const m = moving;
+  moving = null;
+  $('ps-stage').classList.remove('moving');
+  if (m?.started) changed();
+}
+
 function wireStage() {
   const st = $('ps-stage');
   // the picture follows the window until the person zooms or moves it themself (and fits once the tab first has a size)
@@ -369,11 +433,13 @@ function wireStage() {
   let pan = null;
   st.addEventListener('pointerdown', (ev) => {
     if (!D) return;
-    st.setPointerCapture(ev.pointerId);
+    try { st.setPointerCapture(ev.pointerId); } catch { /* a synthetic event has no pointer to capture */ }
+    if ((ev.ctrlKey || ev.metaKey) && !CROPPING) { startMove(ev); return; }
     if (CROPPING) { const p = stagePoint(ev); cropDrag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y }; return; }
     pan = { x: ev.clientX - PAN.x, y: ev.clientY - PAN.y };
   });
   st.addEventListener('pointermove', (ev) => {
+    if (moving) { doMove(ev); return; }
     if (cropDrag) {
       const p = stagePoint(ev); cropDrag.x1 = p.x; cropDrag.y1 = p.y;
       const box = $('ps-crop');
@@ -383,6 +449,7 @@ function wireStage() {
     } else if (pan) { PAN = { x: ev.clientX - pan.x, y: ev.clientY - pan.y }; placeView(); }
   });
   st.addEventListener('pointerup', () => {
+    if (moving) endMove();
     if (cropDrag) {
       const d = cropDrag; cropDrag = null; $('ps-crop').style.display = 'none';
       const l = Math.min(d.x0, d.x1), t = Math.min(d.y0, d.y1), r = Math.max(d.x0, d.x1), b = Math.max(d.y0, d.y1);
@@ -527,6 +594,14 @@ async function openDialog() {
   if (f?.[0]) openFile(f[0]);
 }
 
+// what turn / flip works on: the picked layer, or (nothing picked) the whole picture; null when it can't be done
+function xformTarget() {
+  if (!D || !D.canEdit) return null;
+  if (SEL != null && D.byId.has(SEL)) return canEditPixels(SEL) && !meta(SEL).hasMask ? 'layer' : null;
+  return plainDoc() ? 'picture' : null;
+}
+function xform(layerKind, docFn) { const t = xformTarget(); if (t === 'layer') turnLayer(layerKind); else if (t === 'picture') docFn(); }
+
 // what the main window's ribbon (PSD tab) needs to know to show its buttons as on or off
 let stateTimer = 0;
 function tellState() {
@@ -536,7 +611,7 @@ function tellState() {
     const plain = !!D && D.canEdit && plainDoc();
     tellHost({ type: 'state', kind: 'psd', path: D?.path || null, open: !!D, canUndo: UNDO.length > 0, canRedo: REDO.length > 0, dirty: !!D && !!dirty(),
       wholeOk: plain, cropping: CROPPING, hasCrop: !!DOC.crop, accurate: !!ACCURATE,
-      layerOk: !!D && SEL != null && D.byId.has(SEL) && canEditPixels(SEL), hasLayer: !!D && SEL != null });
+      xform: xformTarget(), hasLayer: !!D && SEL != null });
   }, 30);
 }
 
@@ -580,6 +655,7 @@ window.addEventListener('keydown', (e) => {
   else if (c && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
   else if (c && e.key.toLowerCase() === 's') { e.preventDefault(); save(); }
   else if (e.key === '0' && c) { e.preventDefault(); fit(); }
+  else if (e.key === 'Escape' && SEL != null && !CROPPING) { SEL = null; PREVIEW = null; renderLayers(); renderSide(); }
 });
 const leave = async () => (D && dirty() ? confirm('Close this file?', 'You have changes that aren’t saved.', { ok: 'Close without saving', danger: true }) : true);
 onLeave(leave); onWindowClose(leave);
@@ -590,11 +666,9 @@ const RIBBON = {
   open: openDialog, save, saveFlat: exportFlat, undo, redo,
   crop: () => { if (D && D.canEdit && plainDoc()) toggleCrop(); },
   clearCrop: () => { if (DOC.crop) { push(); DOC.crop = null; changed(); } },
-  turnL: () => D && D.canEdit && plainDoc() && turnDoc(-90), turnR: () => D && D.canEdit && plainDoc() && turnDoc(90),
-  flipH: () => D && D.canEdit && plainDoc() && flipDoc('h'), flipV: () => D && D.canEdit && plainDoc() && flipDoc('v'),
+  turnL: () => xform('ccw', () => turnDoc(-90)), turnR: () => xform('cw', () => turnDoc(90)),
+  flipH: () => xform('h', () => flipDoc('h')), flipV: () => xform('v', () => flipDoc('v')),
   showAll: () => D && setAllVisible(true), hideAll: () => D && setAllVisible(false), accurate: () => D && toggleAccurate(),
-  layerTurnL: () => SEL != null && canEditPixels(SEL) && turnLayer('ccw'), layerTurnR: () => SEL != null && canEditPixels(SEL) && turnLayer('cw'),
-  layerFlipH: () => SEL != null && canEditPixels(SEL) && turnLayer('h'), layerFlipV: () => SEL != null && canEditPixels(SEL) && turnLayer('v'),
   fit: () => fit(),
 };
 onHost({ open: (m) => m.files?.[0] && openFile(m.files[0]), cmd: (id) => RIBBON[id]?.() });

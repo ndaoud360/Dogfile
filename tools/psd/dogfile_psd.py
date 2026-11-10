@@ -99,14 +99,35 @@ def info(path, outdir):
     if big:
         warnings.append("This is a very large file, so the layers are not drawn one by one. Use the accurate preview.")
     rows = []
+    # each layer is drawn on its own (the slow part), so several at once: the work is mostly in numpy, which lets go of the
+    # interpreter lock, so this is about twice as fast on a file with a handful of big layers. If a layer can't be drawn
+    # in a thread it is drawn again here, one by one, as before.
+    pngs = {}
+    todo = [(i, l) for i, l in enumerate(layers) if not l.is_group() and not big]
+
+    def draw(item):
+        i, l = item
+        img = layer_png(l)
+        if img is None:
+            return i, None
+        name = f"layer-{i}.png"
+        img.save(os.path.join(outdir, name), compress_level=1)  # temporary working pictures: quick to write beats small
+        return i, name
+
+    if len(todo) > 1:
+        try:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=min(4, len(todo))) as ex:
+                for i, name in ex.map(draw, todo):
+                    pngs[i] = name
+        except Exception:
+            pngs = {}
+    for item in todo:
+        if item[0] not in pngs:
+            pngs[item[0]] = draw(item)[1]
     for i, l in enumerate(layers):
         kind = kind_of(l)
-        png = None
-        if not l.is_group() and not big:
-            img = layer_png(l)
-            if img is not None:
-                png = f"layer-{i}.png"
-                img.save(os.path.join(outdir, png))
+        png = pngs.get(i)
         parent = l.parent
         rows.append({
             "id": i,
@@ -127,14 +148,18 @@ def info(path, outdir):
             "editable": kind == "pixel",
         })
     # the flattened picture, as Photoshop (or the file) stored it
-    comp = safe(lambda: psd.composite()) or safe(lambda: psd.composite(apply_icc=False))
-    if comp is None:
-        comp = safe(lambda: psd.topil())
+    # the flattened picture is only needed for a file without layers: the window draws the layers itself, and the
+    # accurate preview asks for its own render
+    comp = None
+    if not rows:
+        comp = safe(lambda: psd.composite()) or safe(lambda: psd.composite(apply_icc=False))
+        if comp is None:
+            comp = safe(lambda: psd.topil())
     comp_name = None
     if comp is not None:
         comp = comp.convert("RGBA")
         comp_name = "composite.png"
-        comp.save(os.path.join(outdir, comp_name))
+        comp.save(os.path.join(outdir, comp_name), compress_level=1)
     adjust = [r["id"] for r in rows if r["kind"] in ("adjustment", "fill", "gradientfill", "patternfill", "solidcolorfill") or "adjust" in r["kind"].lower()]
     ok_edit = mode_name(psd) in ("RGB",)
     if not ok_edit:

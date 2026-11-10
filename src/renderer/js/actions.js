@@ -73,7 +73,7 @@ export async function openItems(items, { pane = state.activePane, newTab = false
   if (photos.length) { openTool('viewer', photos.map((f) => f.path), { autoPlaylist: photos.length === 1 }); photos.forEach((f) => addRecentFile(f.path)); }
   if (texts.length) { openTool('editor', texts.map((f) => f.path)); texts.forEach((f) => addRecentFile(f.path)); }
   if (medias.length) { openTool('player', medias.map((f) => f.path), { play: true, autoPlaylist: medias.length === 1 }); medias.forEach((f) => addRecentFile(f.path)); }
-  files = files.filter((f) => !texts.includes(f) && !medias.includes(f) && !photos.includes(f) && !models.includes(f) && !offices.includes(f));
+  files = files.filter((f) => !texts.includes(f) && !medias.includes(f) && !photos.includes(f) && !models.includes(f) && !offices.includes(f) && !psds.includes(f)); // psds too: left in, Windows was asked to open them as well ("application not found")
   if (files.length > 15 && !(await confirm('Open many files?', `You're about to open <b>${files.length}</b> files.`))) return;
   for (const f of files) {
     if (f.mtp) {

@@ -298,7 +298,7 @@ function renderCtxRibbon(r) {
   for (const [gname, btns] of ctxCache.groups) {
     const list = btns.filter(Boolean);
     if (!list.length) continue;
-    r.append(ribbonGroup(gname, list.map((bt) => ({ icon: bt.icon || 'command', label: bt.label, title: bt.title || bt.label, big: bt.big, on: bt.on, run: bt.run, menu: bt.menu }))));
+    r.append(ribbonGroup(gname, list.map((bt) => ({ icon: bt.icon || 'command', label: bt.label, title: bt.title || bt.label, big: bt.big, on: bt.on, disabled: bt.disabled, run: bt.run, menu: bt.menu }))));
   }
 }
 // one ribbon group: big buttons, then small ones in columns of three, and the group name under them
@@ -310,7 +310,7 @@ function ribbonGroup(gname, entries) {
   if (loneSmall.length === 1) loneSmall[0] = Object.assign(loneSmall[0], { big: true });
   const after = () => { if (!state.settings.ribbonPinned) { ribbonOpen = null; renderRibbon(); } else setTimeout(renderRibbon, 50); };
   for (const e of entries) {
-    const b = h('button', { class: `rb-btn ${e.big ? 'big' : ''}${e.on ? ' on' : ''}${e.menu ? ' has-menu' : ''}`, title: e.title || e.label, html: `${icon(e.icon)}<span>${esc(e.label)}${e.pro ? starHtml : ''}${e.menu ? ' ▾' : ''}</span>` });
+    const b = h('button', { class: `rb-btn ${e.big ? 'big' : ''}${e.on ? ' on' : ''}${e.menu ? ' has-menu' : ''}`, title: e.title || e.label, ...(e.disabled ? { disabled: '' } : {}), html: `${icon(e.icon)}<span>${esc(e.label)}${e.pro ? starHtml : ''}${e.menu ? ' ▾' : ''}</span>` });
     // a button with a menu drops it down under itself (and a second click closes it)
     if (e.menu) b.addEventListener('click', () => { const r = b.getBoundingClientRect(); showMenu(e.menu, r.left, r.bottom + 2); });
     else b.addEventListener('click', () => { e.run(); after(); });
@@ -318,7 +318,7 @@ function ribbonGroup(gname, entries) {
     (e.big ? big : small).append(b);
   }
   g.append(h('div', { class: 'rb-btns' }, big.childElementCount ? big : null, small.childElementCount ? small : null), h('div', { class: 'rb-label' }, gname));
-  const asItems = () => entries.map((e) => (e.menu ? { label: e.label, icon: e.icon, submenu: e.menu } : { label: e.label, icon: e.icon, pro: e.pro, checked: e.on || undefined, run: () => { e.run(); after(); } }));
+  const asItems = () => entries.map((e) => (e.menu ? { label: e.label, icon: e.icon, submenu: e.menu } : { label: e.label, icon: e.icon, pro: e.pro, checked: e.on || undefined, disabled: e.disabled || undefined, run: () => { e.run(); after(); } }));
   g._name = gname; g._items = asItems;
   g._fold = () => {
     g.innerHTML = '';

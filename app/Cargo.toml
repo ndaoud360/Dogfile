@@ -10,7 +10,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 dogfile-backend = { path = "../backend", default-features = false }
 dogfile-core = { path = "../core" }
-tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri = { version = "2", features = ["tray-icon", "image-png", "unstable"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
 serde_json = "1"
 parking_lot = "0.12"

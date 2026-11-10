@@ -17,7 +17,7 @@ pub const NAMES: &[&str] = &[
     "remote:remove", "remote:rename", "remote:copy", "remote:mkdir", "remote:open", "remote:test", "remote:setSecret", "remote:forgetHostKey", "remote:disconnect", "net:connectShare", "net:unc", "net:reachable", "net:status", "cloud:detect",
     "ext:fetch", "docs:featureGuide", "ext:log", "ext:logs", "ext:clearLogs", "ext:install", "secret:set", "secret:has", "gh:request", "meta:status", "meta:install", "m3d:cadStatus", "m3d:cadInstall", "components:status", "components:install", "lock:start", "lock:status", "lock:cancel", "git:overview", "git:stage", "git:unstage", "git:discard", "git:commit", "git:push", "git:fetch", "git:sync", "git:diff", "git:stash", "git:merge", "git:branchDelete", "git:identity", "git:setIdentity", "git:init", "git:clone", "docker:status", "docker:startEngine", "docker:containers", "docker:stats", "docker:images", "docker:volumes", "docker:networks", "docker:action", "docker:logs", "docker:inspect", "docker:prune", "docker:pull", "docker:composeFile", "docker:compose", "rclone:status", "rclone:providers", "rclone:remotes", "rclone:create", "rclone:delete", "rclone:check", "psd:status", "psd:open", "psd:raw", "psd:render", "psd:save", "psd:clean", "sd:status", "sd:unlock", "sd:lock", "sd:setPassword", "sd:reset", "sd:list", "sd:folders", "sd:preview", "sd:save", "sd:remove", "sd:setEnabled", "sd:runNow", "sd:keep", "sd:log", "fs:setFolderIcon", "fs:clearFolderIcon", "mvs:begin", "mvs:status", "mvs:recover", "mvs:trash", "mvs:trashList", "mvs:restore", "mvs:plan", "mvs:commit", "mvs:discard", "mvs:forget", "mv:list", "mv:create", "mv:view", "mv:addOps", "mv:preset", "mv:toggle", "mv:removeOps", "mv:rebase", "mv:check", "mv:apply", "mv:undo", "mv:rename", "mv:discard", "mv:recover", "mv:fork", "mv:compare", "mv:takeOps", "mv:viewAt", "mv:exportPack", "mv:inspectPack", "mv:importPack", "m3d:dwgStatus", "m3d:dwgToDxf", "demo:status", "demo:set", "demo:reset", "phone:adbStatus", "phone:adbInstall", "phone:adbPair", "phone:adbConnect", "phone:adbDisconnect", "phone:status", "phone:start", "phone:stop", "phone:pair", "phone:forget", "phone:rename", "phone:send", "phone:sendText", "phone:unsend", "meta:read", "meta:write", "meta:stripGps", "meta:stripAll", "meta:streams", "meta:streamsMany", "meta:streamRead", "meta:streamWrite", "meta:streamRemove", "doc:read", "doc:text", "doc:titles", "doc:summarize", "links:forDir", "links:of", "links:check", "links:scan", "timeline:points", "timeline:at", "timeline:heat", "doc:setProps", "media:setMeta",
     "versions:save", "versions:list", "versions:restore", "versions:remove", "versions:overview", "versions:track", "watched:add", "watched:get", "store:get", "store:set", "store:path", "default:get",
-    "default:set", "win:new", "win:control", "win:overlay", "win:zoom", "theme:get", "dialog:pickFolder", "dialog:openFiles", "dialog:saveFile", "dialog:confirm", "tool:open", "tool:pending", "media:probe",
+    "default:set", "win:new", "win:control", "win:overlay", "win:zoom", "theme:get", "dialog:pickFolder", "dialog:openFiles", "dialog:saveFile", "dialog:confirm", "tool:open", "tool:pending", "web:do", "web:check", "media:probe",
     "media:imgMeta", "media:quickProbe", "media:lyrics", "media:sheetCancel", "media:contactSheet", "media:encoder", "media:shotDir", "media:export", "ai:status", "ai:download", "ai:remove", "ai:cacheGet", "ai:cacheSet",
     "tags:read", "tags:write", "keywords:read", "keywords:write", "tags:lookup", "tags:identify", "tags:fetchArt", "media:job", "media:cancel", "fs:trash", "fs:copyFile", "fs:writeDataUrl", "fs:writePart", "fs:finishPart", "fs:readBuffer", "fs:writeEncoded",
     "archive:watchEdit", "fs:watchFile", "mtp:list", "mtp:copyOut", "mtp:copyIn", "mtp:delete", "mtp:mkdir", "mtp:rename", "mtp:fetch", "mtp:origin", "win:corners", "net:discover", "net:open", "locks:who", "locks:inspect", "locks:inspectAdmin", "locks:kill",
@@ -570,6 +570,16 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
             Ok(json!(true))
         }
         "tool:pending" => Ok(st().host.tool_pending(win)),
+        // the web pane (native web views over a pane); the window that asks is the window the views belong to
+        "web:do" => {
+            let (w2, op, args) = (w.clone(), a.s(0)?, a.v(1));
+            Ok(host_blocking(move |h| h.web(&w2, &op, args)).await?)
+        }
+        // would this address be opened? (the address bar asks before it goes anywhere)
+        "web:check" => Ok(match crate::webguard::check(&a.s(0)?, a.b_or(1, false)) {
+            Ok(u) => json!({ "ok": true, "url": u }),
+            Err(e) => json!({ "ok": false, "error": e }),
+        }),
         "dialog:pickFolder" => {
             let t = a.os(0);
             Ok(json!(host_blocking(move |h| h.pick_folder(&w, t)).await?))

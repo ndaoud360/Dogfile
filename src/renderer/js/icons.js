@@ -140,6 +140,7 @@ const P = {
   dupes: '<rect x="7.5" y="7.5" width="12" height="12" rx="1"/><path d="M16.5 7.5v-3h-12v12h3"/><path d="M11 13.5h5M13.5 11v5"/>',
   chart: '<path d="M4 20V4M4 20h16"/><rect x="7" y="12" width="3" height="5"/><rect x="12" y="8" width="3" height="9"/><rect x="17" y="5" width="3" height="12"/>',
   command: '<path d="M8.5 15.5h7v-7h-7z"/><path d="M8.5 8.5V6.5a2 2 0 1 0-2 2zM15.5 8.5V6.5a2 2 0 1 1 2 2zM8.5 15.5v2a2 2 0 1 1-2-2zM15.5 15.5v2a2 2 0 1 0 2-2z"/>',
+  mouse: '<rect x="7" y="3" width="10" height="18" rx="5"/><path d="M12 3v6M7 9h10"/>',
   keyboard: '<rect x="2.5" y="6" width="19" height="12" rx="1.5"/><path d="M6 10h.01M9 10h.01M12 10h.01M15 10h.01M18 10h.01M7.5 14h9"/>',
   git: '<circle cx="6.5" cy="6" r="2"/><circle cx="6.5" cy="18" r="2"/><circle cx="17.5" cy="9" r="2"/><path d="M6.5 8v8M17.5 11c0 3-4 3.5-9 5.5"/>',
   workspace: '<rect x="3.5" y="4.5" width="7" height="7"/><rect x="13.5" y="4.5" width="7" height="7"/><rect x="3.5" y="14.5" width="7" height="5"/><rect x="13.5" y="14.5" width="7" height="5"/>',

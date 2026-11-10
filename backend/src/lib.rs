@@ -3,6 +3,7 @@
 // The app (Tauri) and the development server both run this same code; they differ only in the `Host` they
 // provide (windows, dialogs, events).
 pub mod args;
+pub mod webguard;
 pub mod license;
 #[cfg(feature = "llm")]
 pub mod llm;

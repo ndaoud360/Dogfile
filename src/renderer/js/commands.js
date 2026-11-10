@@ -1,14 +1,15 @@
 // Command registry: every action has an id, title, icon and default shortcut(s).
 // Shortcuts are user-remappable; the Command Palette (Ctrl+Shift+P) searches them all.
 import { api, state, bus, h, esc, isVirtual, saveSettings, toast, IS_WIN, sys, debounce, isModelFile, isImageFile, KINDS } from './core.js';
-import { openTool } from './apptabs.js';
+import { openTool, openWebBeside, activeAppTab } from './apptabs.js';
+import { buttonsFor, editWebButtons, homePage } from './webcfg.js';
 import { icon } from './icons.js';
 import { activeTab, paneCount, navigate, goBack, goForward, goUp, openTab, closeTab, reopenClosedTab, duplicateTab, setLayout, focusPane, splitPane, closePane, selectedItems, selectAll, selectNone, invertSelection, setView, loadTab, otherPaneTab, startPathEdit, paneEls, renderAll, recompute, renderTabPanes, clearThumbCache, touchView, showTabInPane, confirmLeaveAll } from './pane.js';
 import * as A from './actions.js';
 import * as T from './tools.js';
 import { quickLook } from './preview.js';
 import { selectPatternDialog, patternToTest, modal } from './dialogs.js';
-import { closeMenus } from './menu.js';
+import { closeMenus, showMenu } from './menu.js';
 import { requirePro } from './license.js';
 import { PRO_COMMANDS } from './pro-marks.js';
 
@@ -50,6 +51,33 @@ def('layout2v', 'Two panes side by side', { icon: 'layout2v', keys: ['Ctrl+Alt+2
 def('layout2h', 'Two panes stacked', { icon: 'layout2h', keys: ['Ctrl+Alt+3'], cat: 'Layout', run: () => setLayout('2h') });
 def('layout3', 'Three panes', { icon: 'layout3', keys: ['Ctrl+Alt+4'], cat: 'Layout', run: () => setLayout('3') });
 def('layout4', 'Four panes (2×2)', { icon: 'layout4', keys: ['Ctrl+Alt+5'], cat: 'Layout', run: () => setLayout('4') });
+// the web pane: a plain browser in a pane, nothing saved. The URL buttons open a site beside what you are looking at.
+function webContext() {
+  const app = activeAppTab();
+  if (app) {
+    const k = app.appState?.kind;
+    return app.app === 'psd' ? ['psd', 'image'] : app.app === 'viewer' ? ['image'] : app.app === 'player' ? [k === 'audio' ? 'audio' : 'video'] : app.app === 'office' || app.app === 'editor' ? ['doc'] : ['any'];
+  }
+  const sel = S_();
+  const ctx = ['folder'];
+  if (sel.some((i) => !i.isDir && i.ext === 'psd')) ctx.push('psd');
+  if (sel.some((i) => !i.isDir && isImageFile(i))) ctx.push('image');
+  if (sel.some((i) => !i.isDir && KINDS.video.includes(i.ext))) ctx.push('video');
+  if (sel.some((i) => !i.isDir && KINDS.audio.includes(i.ext))) ctx.push('audio');
+  return ctx;
+}
+def('webPane', 'Web browser beside this folder', { icon: 'globe', cat: 'Layout', run: () => openWebBeside('') });
+def('webBrowser', 'Open Dogfile Web (browser tab)', { icon: 'globe', cat: 'Apps', run: () => openTool('web', [], {}) });
+def('webUrl', 'URL buttons: open a site beside this', { icon: 'link', cat: 'Apps', run: () => {
+  const list = buttonsFor(webContext());
+  const open = (b) => openWebBeside(b.url);
+  if (list.length === 1) return open(list[0]);
+  const ev = window.event;
+  showMenu([...list.map((b) => ({ label: b.name, icon: 'globe', run: () => open(b) })), { separator: true }, { label: 'Edit URL buttons…', icon: 'settings', run: () => editWebButtons() }], ev?.clientX ?? 240, ev?.clientY ?? 120);
+} });
+def('mouseSettings', 'Mouse gestures and command wheel…', { icon: 'mouse', cat: 'App', run: () => import('./settings.js').then((m) => m.openSettings('mouse')) });
+def('webButtons', 'Edit URL buttons…', { icon: 'settings', cat: 'Apps', run: () => editWebButtons() });
+def('webHome', 'Open the web start page beside this', { icon: 'home', cat: 'Apps', run: () => openWebBeside(homePage()) });
 def('toggleSplit', 'Toggle dual pane', { icon: 'split', keys: ['F3'], cat: 'Layout', run: () => setLayout(paneCount() > 1 ? '1' : '2v') });
 def('nextPane', 'Focus next pane', { keys: ['Tab', 'Ctrl+Alt+Right'], cat: 'Layout', run: () => focusPane((state.activePane + 1) % paneCount()), when: () => paneCount() > 1 });
 def('prevPane', 'Focus previous pane', { keys: ['Shift+Tab', 'Ctrl+Alt+Left'], cat: 'Layout', run: () => focusPane((state.activePane - 1 + paneCount()) % paneCount()), when: () => paneCount() > 1 });

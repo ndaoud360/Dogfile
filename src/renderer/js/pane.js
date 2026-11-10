@@ -1913,6 +1913,9 @@ function beginInternalDrag(paths, e0) {
     // the mouse left the window: while the button is held the page keeps getting the moves (with positions outside
     // it) but no mouseout, so this is where the drag goes over to Windows (the desktop, Explorer, a browser, mail…)
     if (ev.clientX < 1 || ev.clientY < 1 || ev.clientX > innerWidth - 2 || ev.clientY > innerHeight - 2) return out({});
+    // over a web page: it is a native view, so the drag goes over to Windows here too (a site takes the files like any browser)
+    const over = document.elementFromPoint(ev.clientX, ev.clientY);
+    if (over?.classList?.contains('app-frame') && tabById(over.dataset.tab)?.app === 'web' && ev.clientY > over.getBoundingClientRect().top + 84) return out({});
     place(ev);
     const hit = targetAt(ev.clientX, ev.clientY);
     const fe = hit && fakeEvent(ev, hit.el);

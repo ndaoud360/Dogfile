@@ -158,7 +158,9 @@ fn spawn_tracked(j: &Job, cmd: &Path, args: &[String], cwd: Option<&Path>) -> JR
                 e.push_str(&txt);
                 if e.len() > 8000 { let k = e.len() - 8000; e.drain(..k); }
             }
-            let lines = txt.matches('\n').count() as u64;
+            // only lines that name a file count as files: the packer's banner, "Scanning the drive" and
+            // "Everything is Ok" lines are not items (a one-file zip used to report "Zipped: 14 items")
+            let lines = if is_err { 0 } else { txt.lines().filter(|l| ["+ ", "a ", "x ", "- ", "U ", "= "].iter().any(|p| l.starts_with(p))).count() as u64 };
             {
                 let mut d = j.d.lock();
                 d.files_done += lines;

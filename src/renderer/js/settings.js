@@ -468,7 +468,7 @@ export async function openSettings(section = 'general', opts = {}) {
         row('URL buttons', h('button', { class: 'btn small', onclick: () => W.editWebButtons() }, 'Edit…'), 'Sites that open in a pane beside what you are looking at, like Photopea next to a picture.'),
         row('Start page', text('webHome', 'https://duckduckgo.com')),
         row('Search with', select('webSearch', [['https://duckduckgo.com/?q=%s', 'DuckDuckGo'], ['https://www.google.com/search?q=%s', 'Google'], ['https://www.bing.com/search?q=%s', 'Bing'], ['https://search.brave.com/search?q=%s', 'Brave Search']])),
-        row('Put idle tabs to sleep after', select('webSleepMinutes', [['2', '2 minutes'], ['5', '5 minutes'], ['15', '15 minutes'], ['60', '1 hour']]), 'A sleeping tab uses no memory. It reloads its page when you click it.'),
+        row('Put idle tabs to sleep after', select('webSleepMinutes', [['2', '2 minutes'], ['5', '5 minutes'], ['15', '15 minutes'], ['60', '1 hour']]), 'A sleeping tab uses no memory. It reloads its page when you click it. When the whole web pane is out of view (another tab is on show) its pages are kept for at least 20 minutes, so work in progress isn’t lost.'),
         row('Addresses on this computer and your home network', toggle('webLocal'), 'Off by default: a web page can’t reach your PC’s own services or your router.'),
         h('div', { class: 'hint', style: { marginTop: '10px' } }, 'Dogfile Web keeps nothing: no history, cookies, passwords or logins, and no extensions. Pages can’t reach Dogfile or your files, except what you drop onto them.'),
       );

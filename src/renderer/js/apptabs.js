@@ -68,8 +68,16 @@ export function openWebBeside(url) {
   if (paneCount() < 2) setLayout('2v');
   const other = here === 0 ? 1 : 0;
   let t = state.tabs.find((x) => x.app === 'web');
-  if (t && frames.has(t.id)) post(t, { type: 'open', url });
-  else t = newAppTab('web', url ? { url } : {}, { activate: false });
+  if (t && frames.has(t.id)) {
+    const f = frames.get(t.id);
+    const send = () => post(t, { type: 'open', url });
+    // a page still loading would miss the message
+    let ready = false, loaded = false;
+    try { loaded = f.contentDocument?.readyState === 'complete'; ready = !!f.contentDocument?.body?.classList.contains('ready'); } catch { /* not readable: send anyway */ ready = true; }
+    if (ready) send(); else if (loaded) setTimeout(send, 500); else f.addEventListener('load', () => setTimeout(send, 500), { once: true });
+    // the web page itself is what is on show here: it just goes to the address
+    if (state.panes[here] === t.id) return t;
+  } else t = newAppTab('web', url ? { url } : {}, { activate: false });
   // the pane shows its tab a moment after the layout is built
   setTimeout(() => { showTabInPane(t.id, other); state.activePane = here; bus.emit('activePane'); document.querySelectorAll('.pane').forEach((p, k) => p.classList.toggle('active', k === here)); syncFrames(); }, 0);
   return t;
@@ -129,7 +137,7 @@ function webLayout(id, visible) {
 }
 let coverTimer = 0;
 const covered = new Set();
-const dragging = () => document.body.classList.contains('pane-resizing') || document.body.classList.contains('wheel-open') || document.body.classList.contains('tab-dragging') || document.body.classList.contains('item-dragging');
+const dragging = () => document.body.classList.contains('pane-resizing') || document.body.classList.contains('wheel-open') || document.body.classList.contains('tab-dragging');
 // dragging a pane divider, the sidebar edge or the preview edge: the pages must not catch the mouse on the way
 window.addEventListener('mousedown', (e) => {
   if (e.button === 0 && e.target?.closest?.('.splitter, #sidebar-resizer, #preview-resizer') && frames.size) { document.body.classList.add('pane-resizing'); checkCover(); }
@@ -144,6 +152,8 @@ function checkCover() {
     let on = false;
     // while a divider (or a tab or file) is being dragged the page's native view would swallow the mouse: hide it
     if (f.style.display !== 'none' && dragging()) on = true;
+    // files being dragged from a folder: the page stays on show (a site takes the drop), and the frames ignore the mouse then, so looking at what is on top would say "covered"
+    else if (document.body.classList.contains('item-dragging')) on = false;
     else if (f.style.display !== 'none') {
       let r = f.getBoundingClientRect();
       try { const s = f.contentDocument?.getElementById('wb-stage')?.getBoundingClientRect(); if (s && s.width) r = { left: r.left + s.left, top: r.top + s.top, width: s.width, height: s.height }; } catch { /* not readable: the whole frame */ }

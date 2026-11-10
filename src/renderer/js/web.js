@@ -14,14 +14,18 @@ import { buttonsFor, webButtons, homePage, resolveInput } from './webcfg.js';
 const $ = (id) => document.getElementById(id);
 const PFX = FRAME_ID.replace(/[^a-z0-9]/gi, '').slice(0, 6) || 'w';
 let SET = { ...DEFAULT_SETTINGS };
+const MAX_TABS = 25;
 const S = { tabs: [], active: null, hidden: false, cover: false, own: false, seq: 0, noticeShown: false };
 
 const tabById = (id) => S.tabs.find((t) => t.id === id);
 const act = () => tabById(S.active);
 const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
 const allowLocal = () => !!SET.webLocal;
-const call = (op, id, extra = {}) => api('web:do', op, { id, allowLocal: allowLocal(), ...extra }).catch((e) => ({ ok: false, error: errText(e) }));
+const zoom = () => { const z = Number(SET.zoom); return z >= 0.25 && z <= 5 ? z : 1; }; // the program's own zoom (Ctrl +/-): the page's view is placed in window units
+const call = (op, id, extra = {}) => api('web:do', op, { id, allowLocal: allowLocal(), zoom: zoom(), ...extra }).catch((e) => ({ ok: false, error: errText(e) }));
 const sleepMs = () => Math.max(1, Number(SET.webSleepMinutes) || 5) * 60000;
+// a pane that is hidden (another tab is on show) keeps its page much longer than a tab you left behind: coming back to a half-finished upload or edit and finding it reloaded would lose work
+const hiddenSleepMs = () => Math.max(sleepMs(), 20 * 60000);
 
 // ---------- where the native view goes ----------
 function stageRect() {
@@ -34,7 +38,7 @@ function syncBounds() {
   const t = act();
   if (!t?.awake || !t.shown) return;
   const r = stageRect();
-  const key = [r.x, r.y, r.w, r.h].map(Math.round).join(',');
+  const key = [r.x, r.y, r.w, r.h, zoom()].map((n) => Math.round(n * 100)).join(',');
   if (key === lastRect) return;
   lastRect = key;
   call('bounds', t.id, r);
@@ -70,7 +74,7 @@ function refresh() {
       if (want) { clearTimeout(t.timer); t.timer = 0; lastRect = ''; syncBounds(); }
     }
     // a page that isn't on show for a while goes to sleep: nothing runs in the background
-    if (t.id !== S.active || S.hidden) { if (!t.timer) t.timer = setTimeout(() => sleep(t), sleepMs()); }
+    if (t.id !== S.active || S.hidden) { if (!t.timer) t.timer = setTimeout(() => sleep(t), t.id !== S.active ? sleepMs() : hiddenSleepMs()); }
     else if (t.timer) { clearTimeout(t.timer); t.timer = 0; }
   }
   const t = act();
@@ -214,7 +218,13 @@ onMain('web:event', (ev) => {
     if (ev.url) t.url = ev.url;
     renderTabs(); if (t.id === S.active) renderBar();
   } else if (ev.type === 'newtab') {
-    addTab(ev.url, { after: t });
+    // a link that wants a new window: its own tab. A page can't flood the browser with them or pull you away from what you are doing.
+    const now = Date.now();
+    S.pops = (S.pops || []).filter((x) => now - x < 4000);
+    if (S.tabs.length >= MAX_TABS || S.pops.length >= 3) { setStatus('A page tried to open too many tabs, so some were blocked.', true); return; }
+    const first = !S.pops.length;
+    S.pops.push(now);
+    addTab(ev.url, { after: t, activate: first && t.id === S.active });
   } else if (ev.type === 'blocked') {
     setStatus('Blocked: ' + String(ev.url).slice(0, 90) + ' (only web addresses are opened here)', true);
   } else if (ev.type === 'download') {
@@ -237,7 +247,7 @@ function openUrl(url) {
   if (t && !t.url) go(t, url); else go(addTab('', { after: t }), url);
 }
 onHost({
-  settings: (s) => { SET = { ...DEFAULT_SETTINGS, ...s }; applyColors(SET); const st = $('wb-start'); if (st) st._sig = ''; renderStage(); },
+  settings: (s) => { SET = { ...DEFAULT_SETTINGS, ...s }; applyColors(SET); const st = $('wb-start'); if (st) st._sig = ''; renderStage(); syncBounds(); },
   cmd: (id, arg) => {
     const t = act();
     if (id === 'newTab') addTab('');
@@ -257,6 +267,18 @@ onAsk(async (op, arg) => {
   if (op === 'open' && arg?.url) { openUrl(arg.url); return { ok: true, msg: 'Opened' }; }
   if (op === 'where') return { ok: true, msg: t?.url || 'Start page' };
   return { ok: false, msg: 'Not available here' };
+});
+
+// the usual browser keys while the address bar or tab strip has the keyboard (a page that has focus keeps its own keys)
+window.addEventListener('keydown', (e) => {
+  const t = act();
+  const ctrl = e.ctrlKey || e.metaKey;
+  if (ctrl && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'l') { e.preventDefault(); $('wb-url')?.focus(); }
+  else if (e.altKey && !ctrl && e.key.toLowerCase() === 'd') { e.preventDefault(); $('wb-url')?.focus(); }
+  else if (ctrl && !e.shiftKey && e.key.toLowerCase() === 'w' && t) { e.preventDefault(); closeTab(t); }
+  else if ((e.key === 'F5' || (ctrl && e.key.toLowerCase() === 'r')) && t) { e.preventDefault(); if (t.awake) call('reload', t.id); else if (t.url) wake(t); }
+  else if (e.altKey && e.key === 'ArrowLeft' && t?.awake && document.activeElement?.id !== 'wb-url') { e.preventDefault(); call('back', t.id); }
+  else if (e.altKey && e.key === 'ArrowRight' && t?.awake && document.activeElement?.id !== 'wb-url') { e.preventDefault(); call('forward', t.id); }
 });
 
 // our own menus and dialogs sit over the page: hide it while they are open

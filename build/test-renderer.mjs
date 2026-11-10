@@ -186,5 +186,19 @@ const sc = await import('../src/renderer/js/stems-core.js');
   }
 }
 
+// the web pane's address bar
+{
+  const { resolveInput, buttonsFor } = await import('../src/renderer/js/webaddr.js');
+  const S = {};
+  eq(resolveInput('example.com', S), 'https://example.com', 'web: a name gets https');
+  eq(resolveInput('localhost:3000', S), 'http://localhost:3000', 'web: this computer gets http (https has no certificate there)');
+  eq(resolveInput('192.168.1.5/x', S), 'http://192.168.1.5/x', 'web: a home network address gets http');
+  eq(resolveInput('münchen.de', S), 'https://münchen.de', 'web: a name with letters outside A-Z is an address, not a search');
+  eq(resolveInput('hello world', S), 'https://duckduckgo.com/?q=hello%20world', 'web: words are a search');
+  eq(resolveInput('C:\\Windows', S), 'https://duckduckgo.com/?q=C%3A%5CWindows', 'web: a file path is a search, never opened');
+  eq(resolveInput('https://a.b/c', S), 'https://a.b/c', 'web: a full address is kept');
+  eq(buttonsFor(['image'], { webButtons: [{ name: 'a', url: 'https://a', for: ['any'] }, { name: 'p', url: 'https://p', for: ['image'] }] }).map((b) => b.name).join(), 'p,a', 'web: buttons made for the thing come first');
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

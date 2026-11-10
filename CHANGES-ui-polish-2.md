@@ -7,3 +7,15 @@
 - **Git and Docker tabs**: buttons keep icon and label on one line and are never cut off; empty states are centered.
 - **Operations**: a job with nothing counted yet (recycling one folder, or a copy before its first bytes) shows a sliding bar and "Working…" instead of an empty "0%" bar.
 - **Photoshop helper**: the packaged helper was missing numpy, scipy and scikit-image pieces ("No module named numpy._core._exceptions"). Build now bundles them, pins numpy 2.2.6, and the CI runs the helper's real self-test (it only ran `version` before, which never loaded numpy). Fixed `psd.mark_updated()` (not in psd-tools 1.10) and the self-test, which was hiding its own failure.
+
+# Web browser audit
+- Pages were placed wrongly when the program's zoom (Ctrl +/-) wasn't 100%: the zoom is now sent with every position.
+- A page could open dozens of tabs and pull you into each one; now at most 3 per 4 seconds, 25 tabs in all, and only the first comes to the front.
+- A web pane hidden behind another tab kept its pages only as long as a background tab did (5 minutes by default), so a half-finished upload could reload; hidden panes now keep pages at least 20 minutes.
+- The "URL button" click right after opening the web tab could be lost while the page was still loading; it is now held until the browser is ready, and clicking it while the web page is itself on show just goes to the address.
+- Ctrl+L / Alt+D (address), Ctrl+W (close tab), F5 / Ctrl+R (reload) and Alt+Left/Right work from the address bar and tab strip. Ctrl + mouse wheel zooms a page.
+- Typing localhost:3000 or a home network address uses http (https can't work there); names with letters like ü are addresses, not searches.
+- Edit URL buttons: Start page and "allow this computer" were saved even when you pressed Cancel.
+- about:blank is allowed as a navigation target (some sign-in pages use it).
+- address helpers moved to webaddr.js and tested.
+- Dragging files from a folder onto a web page did nothing, for two reasons: the hand-over to Windows looked for the page under the pointer, but app frames ignore the mouse during a file drag so it never found it (it now checks where the page is); and the page was being hidden during the drag as if something covered it (it now stays on show, so the site can take the drop).

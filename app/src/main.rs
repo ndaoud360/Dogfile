@@ -988,11 +988,15 @@ fn main() {
     }
     *h.corners.lock() = dogfile_backend::setting("windowCorners").as_str().unwrap_or("round").to_string();
 
-    let app = tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|_app, argv, cwd| {
+    let mut builder = tauri::Builder::default();
+    // test runs (ATLAS_TEST=1) must not hand over to an already-running Dogfile and quit
+    if !test_mode {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|_app, argv, cwd| {
             let l = launch::parse(&argv.iter().skip(1).cloned().collect::<Vec<_>>(), Some(&cwd));
             host().handle_launch(l, false);
-        }))
+        }));
+    }
+    let app = builder
         .register_asynchronous_uri_scheme_protocol("dogfile", |ctx, request, responder| {
             // pages in the web pane are strangers: they get nothing from Dogfile (not its files, settings or commands)
             if ctx.webview_label().starts_with("web-") {

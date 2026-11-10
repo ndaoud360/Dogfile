@@ -52,9 +52,10 @@ export function contextRibbon() {
       return { key: 'psd', label: 'PSD', groups: [
         ['File', [B('folderOpen', 'Open…', C('open'), true), D({ ...B('save', 'Save…', C('save'), true), on: !!st.dirty }, open && st.dirty), D(B('image', 'Save flat picture…', C('saveFlat')), open)]],
         ['Edit', [D(B('undo', 'Undo', C('undo')), st.canUndo), D(B('redo', 'Redo', C('redo')), st.canRedo)]],
-        ['Picture', [D({ ...B('crop', st.cropping ? 'Drag to crop…' : 'Crop', C('crop'), true), on: !!st.cropping }, st.wholeOk), st.hasCrop && B('close', 'Clear crop', C('clearCrop')), D(B('undo', 'Turn left', C('turnL')), st.wholeOk), D(B('redo', 'Turn right', C('turnR')), st.wholeOk), D(B('swap', 'Flip horizontal', C('flipH')), st.wholeOk), D(B('swap', 'Flip vertical', C('flipV')), st.wholeOk)].filter(Boolean)],
+        ['Crop', [D({ ...B('crop', st.cropping ? 'Drag to crop…' : 'Crop', C('crop'), true), on: !!st.cropping }, st.wholeOk), st.hasCrop && B('close', 'Clear crop', C('clearCrop'))].filter(Boolean)],
+        // one set of turn / flip buttons: they work on the layer picked in the panel, or on the whole picture when none is picked
+        [st.xform === 'layer' ? 'Turn layer' : st.xform === 'picture' ? 'Turn picture' : 'Turn / flip', [D(B('undo', 'Turn left', C('turnL'), true), !!st.xform), D(B('redo', 'Turn right', C('turnR')), !!st.xform), D(B('swap', 'Flip horizontal', C('flipH')), !!st.xform), D(B('swap', 'Flip vertical', C('flipV')), !!st.xform)]],
         ['Layers', [D(B('eye', 'Show all', C('showAll')), open), D(B('eyeOff', 'Hide all', C('hideAll')), open), D({ ...B('sparkle', 'Accurate preview', C('accurate')), on: !!st.accurate }, open)]],
-        ['Layer', [D(B('undo', 'Turn left', C('layerTurnL')), st.layerOk), D(B('redo', 'Turn right', C('layerTurnR')), st.layerOk), D(B('swap', 'Flip horizontal', C('layerFlipH')), st.layerOk), D(B('swap', 'Flip vertical', C('layerFlipV')), st.layerOk)]],
         site && ['Web', [B('globe', site.name, () => openWebBeside(site.url), true)]],
       ].filter(Boolean) };
     }

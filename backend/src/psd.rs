@@ -92,12 +92,26 @@ async fn call(args: Vec<String>, timeout_ms: u64) -> Result<Value, String> {
 
 /// psd:status → { ready, version? }
 pub async fn status(_a: &Args) -> R {
-    if helper().is_none() {
+    let Some((exe, _)) = helper() else {
         return Ok(json!({ "ready": false }));
+    };
+    // a copy that passed the self-test is not tested again until the program changes (each PSD tab used to wait for it)
+    let stamp = format!("{}|{:?}", exe.display(), std::fs::metadata(&exe).and_then(|m| m.modified()).ok());
+    static PASSED: std::sync::Mutex<Option<(String, Value)>> = std::sync::Mutex::new(None);
+    if let Some((k, v)) = PASSED.lock().ok().and_then(|g| g.clone()) {
+        if k == stamp {
+            return Ok(v);
+        }
     }
     // the self-test makes, changes and saves a tiny PSD, so an installed copy that is damaged or missing a piece is found here
     match call(vec!["selftest".into()], 90_000).await {
-        Ok(v) => Ok(json!({ "ready": true, "helper": v["helper"], "numpy": v["numpy"] })),
+        Ok(v) => {
+            let ok = json!({ "ready": true, "helper": v["helper"], "numpy": v["numpy"] });
+            if let Ok(mut g) = PASSED.lock() {
+                *g = Some((stamp, ok.clone()));
+            }
+            Ok(ok)
+        }
         Err(e) => Ok(json!({ "ready": false, "installed": true, "error": e })),
     }
 }

@@ -2378,3 +2378,5 @@ body.mv-on #mv-halo { position: fixed; inset: 0; z-index: 3000; pointer-events: 
 /* button rows in the Git and Docker tabs (the same name is used by the Photoshop page, which has its own style) */
 .dv-empty .ps-tools, .dv-compose .ps-tools, .dv-body .ps-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
 .dv-empty .ps-tools { justify-content: center; }
+
+.rb-btn:disabled { opacity: .4; pointer-events: none; }

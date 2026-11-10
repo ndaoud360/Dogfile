@@ -3,7 +3,8 @@
 import { KINDS, dirname, basename, bus } from './core.js';
 import { activeTab, selectedItems, navigate } from './pane.js';
 import * as A from './actions.js';
-import { activeAppTab, appCmd, appMenu } from './apptabs.js';
+import { activeAppTab, appCmd, appMenu, openWebBeside } from './apptabs.js';
+import { buttonsFor } from './webcfg.js';
 import { convertMedia, analyzeDialog, convertImages, setWallpaper } from './mediatools.js';
 
 const B = (icon, label, run, big = false) => ({ icon, label, run, big });
@@ -42,7 +43,21 @@ export function contextRibbon() {
         ['Web', [B('globe', 'URL', () => bus.cmd('webUrl'), true)]],
       ] };
     }
-    if (app.app === 'psd') return { key: 'psd', label: 'Photoshop', groups: [['Web', [B('globe', 'URL', () => bus.cmd('webUrl'), true), B('settings', 'URL buttons', () => bus.cmd('webButtons'))]]] };
+    if (app.app === 'psd') {
+      // every button the page used to have in its own header and side panel is here; the page hides its copies
+      const C = (id) => () => appCmd(id);
+      const open = !!st.open;
+      const D = (b, ok) => ({ ...b, disabled: !ok });
+      const site = buttonsFor(['psd'])[0]; // what "URL" opens: the first site made for Photoshop files (Photopea), named after it
+      return { key: 'psd', label: 'PSD', groups: [
+        ['File', [B('folderOpen', 'Open…', C('open'), true), D({ ...B('save', 'Save…', C('save'), true), on: !!st.dirty }, open && st.dirty), D(B('image', 'Save flat picture…', C('saveFlat')), open)]],
+        ['Edit', [D(B('undo', 'Undo', C('undo')), st.canUndo), D(B('redo', 'Redo', C('redo')), st.canRedo)]],
+        ['Picture', [D({ ...B('crop', st.cropping ? 'Drag to crop…' : 'Crop', C('crop'), true), on: !!st.cropping }, st.wholeOk), st.hasCrop && B('close', 'Clear crop', C('clearCrop')), D(B('undo', 'Turn left', C('turnL')), st.wholeOk), D(B('redo', 'Turn right', C('turnR')), st.wholeOk), D(B('swap', 'Flip horizontal', C('flipH')), st.wholeOk), D(B('swap', 'Flip vertical', C('flipV')), st.wholeOk)].filter(Boolean)],
+        ['Layers', [D(B('eye', 'Show all', C('showAll')), open), D(B('eyeOff', 'Hide all', C('hideAll')), open), D({ ...B('sparkle', 'Accurate preview', C('accurate')), on: !!st.accurate }, open)]],
+        ['Layer', [D(B('undo', 'Turn left', C('layerTurnL')), st.layerOk), D(B('redo', 'Turn right', C('layerTurnR')), st.layerOk), D(B('swap', 'Flip horizontal', C('layerFlipH')), st.layerOk), D(B('swap', 'Flip vertical', C('layerFlipV')), st.layerOk)]],
+        site && ['Web', [B('globe', site.name, () => openWebBeside(site.url), true)]],
+      ].filter(Boolean) };
+    }
     if (app.app === 'web') {
       const C = (id) => () => appCmd(id);
       return { key: 'web', label: 'Browser', groups: [

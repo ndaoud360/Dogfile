@@ -85,10 +85,11 @@ jobs:
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          GH_TOKEN: ${{ github.token }}
+          # the parts live in the PUBLIC updates repository, so downloads keep working when this repository is private
+          GH_TOKEN: ${{ secrets.DOGFILE_UPDATES_TOKEN || github.token }}
         run: |
           # The big parts aren't inside the program or the Store package: Dogfile downloads each the first time it's needed
-          # (backend/src/components.rs). Their zips go to this repository's "components" release under names that carry
+          # (backend/src/components.rs). Their zips go to the "components" release of the public updates repository (ndaoud360/dogfile-updates) under names that carry
           # their checksum (an older program always finds the file it was built with), and each address and checksum is
           # written into the build below, so a download that isn't exactly this file is refused.
           $ProgressPreference = 'SilentlyContinue'
@@ -122,7 +123,8 @@ jobs:
           $parts = "$env:RUNNER_TEMP/components"
           node build/make-components.mjs $parts --ffmpeg "$dl/ff.zip" --psd "$dl/psd.zip"
           if ($LASTEXITCODE -ne 0) { Write-Output "::error title=components::could not make the downloadable parts"; exit 1 }
-          $repo = '${{ github.repository }}'
+          $repo = '${{ secrets.DOGFILE_UPDATES_TOKEN && 'ndaoud360/dogfile-updates' || github.repository }}'
+          if ($repo -eq '${{ github.repository }}') { Write-Output "::warning title=components::DOGFILE_UPDATES_TOKEN is not set, so the downloadable parts went to this repository: they will stop downloading when it is made private." }
           gh release view components --repo $repo *> $null
           if ($LASTEXITCODE -ne 0) { gh release create components --repo $repo --title 'Downloadable parts' --notes 'Parts of Dogfile that are downloaded the first time they are needed (media engine, text recognition, AI runtime, Photoshop helper). Files are named after their checksums; do not delete them while a release that uses them is in the Store.' --latest=false *> $null }
           gh release upload components (Get-ChildItem "$parts/*.zip" | ForEach-Object { $_.FullName }) --repo $repo --clobber
@@ -411,10 +413,11 @@ jobs:
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          GH_TOKEN: ${{ github.token }}
+          # the parts live in the PUBLIC updates repository, so downloads keep working when this repository is private
+          GH_TOKEN: ${{ secrets.DOGFILE_UPDATES_TOKEN || github.token }}
         run: |
           # The big parts aren't inside the program or the Store package: Dogfile downloads each the first time it's needed
-          # (backend/src/components.rs). Their zips go to this repository's "components" release under names that carry
+          # (backend/src/components.rs). Their zips go to the "components" release of the public updates repository (ndaoud360/dogfile-updates) under names that carry
           # their checksum (an older program always finds the file it was built with), and each address and checksum is
           # written into the build below, so a download that isn't exactly this file is refused.
           $ProgressPreference = 'SilentlyContinue'
@@ -422,7 +425,8 @@ jobs:
           $parts = "$env:RUNNER_TEMP/components"
           node build/make-components.mjs $parts
           if ($LASTEXITCODE -ne 0) { Write-Output "::error title=components::could not make the downloadable parts"; exit 1 }
-          $repo = '${{ github.repository }}'
+          $repo = '${{ secrets.DOGFILE_UPDATES_TOKEN && 'ndaoud360/dogfile-updates' || github.repository }}'
+          if ($repo -eq '${{ github.repository }}') { Write-Output "::warning title=components::DOGFILE_UPDATES_TOKEN is not set, so the downloadable parts went to this repository: they will stop downloading when it is made private." }
           gh release view components --repo $repo *> $null
           if ($LASTEXITCODE -ne 0) { gh release create components --repo $repo --title 'Downloadable parts' --notes 'Parts of Dogfile that are downloaded the first time they are needed (media engine, text recognition, AI runtime). Files are named after their checksums; do not delete them while a release that uses them is in the Store.' --latest=false *> $null }
           gh release upload components (Get-ChildItem "$parts/*.zip" | ForEach-Object { $_.FullName }) --repo $repo --clobber

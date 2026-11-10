@@ -598,12 +598,15 @@ function drawOps() {
   const allPaused = active.length && active.every((j) => j.paused || j.status !== 'running');
   const showPop = state.settings.opsPopup && active.length > 0;
   panel.innerHTML = `<div class="ops-head"><span>Operations</span>${state.settings.opsPopup && active.length ? `<button class="link" data-act="popup" title="Show progress in its own window">Pop out</button>` : ''}<label class="ops-seq" title="Run copies and moves one after another instead of at the same time (faster on hard drives)"><input type="checkbox" data-act="seq" ${seq ? 'checked' : ''}> One at a time</label>${anyRunning ? `<button class="link" data-act="${allPaused ? 'resumeAll' : 'pauseAll'}">${allPaused ? 'Resume all' : 'Pause all'}</button>` : ''}<button class="link" data-act="clear">Clear finished</button></div>` + (list.length ? list.map((j) => {
-    const pct = j.indeterminate || !j.total ? (j.filesTotal ? (j.filesDone / j.filesTotal) * 100 : null) : (j.done / j.total) * 100;
+    let pct = j.indeterminate || !j.total ? (j.filesTotal ? (j.filesDone / j.filesTotal) * 100 : null) : (j.done / j.total) * 100;
+    // nothing counted yet (recycling one big folder is a single step, a copy has not sent its first bytes): a sliding bar says it is working
+    const indet = j.status === 'running' && !j.paused && (pct == null || (!(j.done > 0) && !(j.filesDone > 0)));
+    if (indet) pct = null;
     const eta = j.speed > 0 && j.total ? Math.max(0, (j.total - j.done) / j.speed) : null;
     const elapsed = ((j.finished || Date.now()) - (j.started || Date.now())) / 1000;
     const files = j.filesTotal ? `${(j.filesDone || 0).toLocaleString()} of ${j.filesTotal.toLocaleString()} files` : '';
     const st = {
-      running: j.paused ? `Paused · ${files}` : [pct != null ? Math.floor(pct) + '%' : '', j.total ? `${fmtSize(j.done || 0)} of ${fmtSize(j.total)}` : files, j.speed ? `${fmtSize(j.speed)}/s` : '', eta != null && eta > 1 ? `about ${fmtDurS(eta)} left` : '', elapsed > 3 ? `${fmtDurS(elapsed)} so far` : ''].filter(Boolean).join(' · '),
+      running: j.paused ? `Paused · ${files}` : [pct != null ? Math.floor(pct) + '%' : indet ? 'Working…' : '', j.total ? `${fmtSize(j.done || 0)} of ${fmtSize(j.total)}` : indet ? '' : files, j.speed ? `${fmtSize(j.speed)}/s` : '', eta != null && eta > 1 ? `about ${fmtDurS(eta)} left` : '', elapsed > 3 ? `${fmtDurS(elapsed)} so far` : ''].filter(Boolean).join(' · '),
       queued: `Waiting in line${j.queuePos ? ` (#${j.queuePos})` : ''}`, waiting: 'Waiting for you to choose', done: j.errors?.length ? `Done in ${fmtDurS(elapsed)} · ${j.errors.length} problem${j.errors.length > 1 ? 's' : ''}` : `Done in ${fmtDurS(elapsed)}${j.total ? ` · ${fmtSize(j.total)}` : ''}${j.total && elapsed > 1 ? ` · ${fmtSize(j.total / elapsed)}/s average` : ''}`,
       error: `Failed: ${j.error}`, cancelled: 'Cancelled',
     }[j.status];

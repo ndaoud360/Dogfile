@@ -129,13 +129,22 @@ function webLayout(id, visible) {
 }
 let coverTimer = 0;
 const covered = new Set();
+const dragging = () => document.body.classList.contains('pane-resizing') || document.body.classList.contains('wheel-open') || document.body.classList.contains('tab-dragging') || document.body.classList.contains('item-dragging');
+// dragging a pane divider, the sidebar edge or the preview edge: the pages must not catch the mouse on the way
+window.addEventListener('mousedown', (e) => {
+  if (e.button === 0 && e.target?.closest?.('.splitter, #sidebar-resizer, #preview-resizer') && frames.size) { document.body.classList.add('pane-resizing'); checkCover(); }
+}, true);
+bus.on('coverNow', () => { if (frames.size) checkCover(); });
+window.addEventListener('mouseup', () => { if (document.body.classList.contains('pane-resizing')) { document.body.classList.remove('pane-resizing'); setTimeout(checkCover, 30); } }, true);
 function scheduleCover() { if (!coverTimer) coverTimer = setTimeout(() => { coverTimer = 0; checkCover(); }, 90); }
 function checkCover() {
   for (const [id, f] of frames) {
     const t = tabById(id);
     if (t?.app !== 'web') continue;
     let on = false;
-    if (f.style.display !== 'none') {
+    // while a divider (or a tab or file) is being dragged the page's native view would swallow the mouse: hide it
+    if (f.style.display !== 'none' && dragging()) on = true;
+    else if (f.style.display !== 'none') {
       let r = f.getBoundingClientRect();
       try { const s = f.contentDocument?.getElementById('wb-stage')?.getBoundingClientRect(); if (s && s.width) r = { left: r.left + s.left, top: r.top + s.top, width: s.width, height: s.height }; } catch { /* not readable: the whole frame */ }
       outer: for (const fx of [0.04, 0.3, 0.5, 0.7, 0.96]) for (const fy of [0.04, 0.5, 0.96]) {

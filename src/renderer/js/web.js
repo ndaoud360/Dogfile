@@ -210,6 +210,7 @@ onMain('web:event', (ev) => {
     renderTabs(); if (t.id === S.active) renderBar();
   } else if (ev.type === 'title') {
     t.title = ev.title || '';
+    t.loading = false; // a page that has a title has arrived, whatever the load events say (pages that change address in place never "finish")
     if (ev.url) t.url = ev.url;
     renderTabs(); if (t.id === S.active) renderBar();
   } else if (ev.type === 'newtab') {

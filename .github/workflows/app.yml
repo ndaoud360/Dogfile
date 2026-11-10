@@ -103,20 +103,22 @@ jobs:
           # Build the self-contained Photoshop helper. It is bundled into the Windows installer and also published for verified fallback downloads.
           python -m pip install --disable-pip-version-check -r tools/psd/requirements-build.txt
           if ($LASTEXITCODE -ne 0) { Write-Output "::error title=psd::could not install PSD build requirements"; exit 1 }
-          python -m PyInstaller --clean --noconfirm --onedir --name dogfile-psd --collect-all psd_tools --collect-all PIL tools/psd/dogfile_psd.py
+          python -m PyInstaller --clean --noconfirm --onedir --name dogfile-psd --collect-all psd_tools --collect-all PIL --collect-all numpy --collect-all scipy --collect-all skimage tools/psd/dogfile_psd.py
           if ($LASTEXITCODE -ne 0) { Write-Output "::error title=psd::could not package the Photoshop helper"; exit 1 }
+          # psd-tools draws layer effects with scikit-image, which needs scipy and numpy whole (leaving any out gave "No module named numpy._core._exceptions"); their test folders are never used
+          Get-ChildItem dist/dogfile-psd -Recurse -Directory -Filter tests | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
           $psdExe = "dist/dogfile-psd/dogfile-psd.exe"
           if (-not (Test-Path $psdExe)) { Write-Output "::error title=psd::the Photoshop helper executable was not produced"; exit 1 }
-          & $psdExe version | Out-Host
-          if ($LASTEXITCODE -ne 0) { Write-Output "::error title=psd::the packaged Photoshop helper failed its self-test"; exit 1 }
+          $st = (& $psdExe selftest | Out-String); $st | Out-Host
+          if ($LASTEXITCODE -ne 0 -or $st -notmatch '"ok":\s*true') { Write-Output "::error title=psd::the packaged Photoshop helper failed its self-test"; exit 1 }
           Compress-Archive -Path "dist/dogfile-psd/*" -DestinationPath "$dl/psd.zip" -CompressionLevel Optimal -Force
           # Test the actual downloaded archive too: the executable must still find its bundled runtime after extraction.
           $psdTest = "$env:RUNNER_TEMP/psd-package-test"
           Expand-Archive -LiteralPath "$dl/psd.zip" -DestinationPath $psdTest -Force
           $packedPsdExe = Join-Path $psdTest "dogfile-psd.exe"
           if (-not (Test-Path $packedPsdExe)) { Write-Output "::error title=psd::the PSD download archive does not contain dogfile-psd.exe at its root"; exit 1 }
-          & $packedPsdExe version | Out-Host
-          if ($LASTEXITCODE -ne 0) { Write-Output "::error title=psd::the extracted PSD download archive failed its self-test"; exit 1 }
+          $st = (& $packedPsdExe selftest | Out-String); $st | Out-Host
+          if ($LASTEXITCODE -ne 0 -or $st -notmatch '"ok":\s*true') { Write-Output "::error title=psd::the extracted PSD download archive failed its self-test"; exit 1 }
           $parts = "$env:RUNNER_TEMP/components"
           node build/make-components.mjs $parts --ffmpeg "$dl/ff.zip" --psd "$dl/psd.zip"
           if ($LASTEXITCODE -ne 0) { Write-Output "::error title=components::could not make the downloadable parts"; exit 1 }

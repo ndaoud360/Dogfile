@@ -457,7 +457,7 @@ export async function openSettings(section = 'general', opts = {}) {
       draw();
       el.append(h('div', { class: 'row-inline' }, filter, h('button', { class: 'btn small', onclick: () => { S.keybindings = {}; saveSettings(); rebuildKeymap(); draw(); } }, 'Reset all')), list);
     }],
-    mouse: ['Mouse & wheel', 'mouse', async (el) => {
+    mouse: ['Command wheel', 'mouse', async (el) => {
       const m = await import('./mouse.js');
       m.mouseSettings(el, { group, row });
     }],

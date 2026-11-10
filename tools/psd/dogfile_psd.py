@@ -401,7 +401,30 @@ def selftest():
         if not ok:
             out({"ok": False, "error": f"The self-test gave a wrong result ({again.size}, {px}, saved: {saved})"})
             sys.exit(1)
+        effects_smoke(numpy)
         out({"ok": True, "numpy": numpy.__version__, "helper": VERSION})
+
+
+def effects_smoke(numpy):
+    """the libraries behind layer effects (shadows, glows, strokes) and vector shapes: if the package was trimmed too far, this fails in CI"""
+    import psd_tools.composite.effects  # noqa: F401
+    import psd_tools.composite.vector  # noqa: F401
+    from scipy import interpolate
+    from scipy.ndimage import maximum_filter1d, uniform_filter1d
+    from skimage import filters
+    from skimage.morphology import disk
+    from skimage.transform import resize
+    a = numpy.random.RandomState(0).rand(24, 24)
+    filters.gaussian(a, sigma=2)
+    filters.sobel(a)
+    if disk(3).sum() < 20:
+        raise RuntimeError("morphology.disk gave a wrong shape")
+    resize(a, (12, 12))
+    maximum_filter1d(a, 3)
+    uniform_filter1d(a, 3)
+    t = numpy.linspace(0, 1, 8)
+    tck, _ = interpolate.splprep([t, t ** 2], s=0)
+    interpolate.splev(t, tck)
 
 
 def io_capture(fn):

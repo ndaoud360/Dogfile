@@ -30,6 +30,10 @@ pub trait Host: Send + Sync + 'static {
     fn open_path(&self, launch: Value) {
         self.new_window(launch)
     }
+    /// the web pane: a request to the native web views that sit over a pane (open, move, navigate, close…)
+    fn web(&self, _win: &str, _op: &str, _args: Value) -> Value {
+        serde_json::json!({ "ok": false, "error": "The web pane is only in the Dogfile app" })
+    }
     /// Dogfile Notepad / Player / Photos in their own window
     fn open_tool(&self, kind: &str, files: Vec<String>, opts: Value);
     /// what a tool window was opened with (asked once by the page)

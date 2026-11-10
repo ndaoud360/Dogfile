@@ -2,7 +2,7 @@
 // main window (Settings > General > "Open built-in apps as tabs"). Each app tab owns one persistent <iframe>
 // that floats over whichever pane is showing the tab, so switching tabs or changing the split never reloads it.
 import { api, onMain, state, bus, h, toast } from './core.js';
-import { paneEls, paneCount, newTabState, showTabInPane, openTab, navigate, tabById, closeTab, setLeaveHandler } from './pane.js';
+import { paneEls, paneCount, newTabState, showTabInPane, openTab, navigate, tabById, closeTab, setLeaveHandler, setLayout } from './pane.js';
 
 export const APPS = {
   editor: { title: 'Dogfile Notepad', icon: 'notepad' },
@@ -11,6 +11,7 @@ export const APPS = {
   model: { title: 'Dogfile 3D', icon: 'cube' },
   office: { title: 'Dogfile Office', icon: 'page' },
   psd: { title: 'Dogfile PSD', icon: 'stack' },
+  web: { title: 'Dogfile Web', icon: 'globe' },
 };
 const frames = new Map(); // tabId -> iframe
 let host = null;
@@ -32,6 +33,8 @@ function newAppTab(kind, pending, { activate = true, after = null } = {}) {
 }
 export function openTool(kind, files = [], opts = {}) {
   // opts.inTab: the assistant opens a file to work on it here, even when built-in apps normally get their own window
+  // the web pane only exists as a tab: it sits over a pane
+  if (kind === 'web') opts = { ...opts, inTab: true };
   if (!state.settings.toolsInTabs && !opts.inTab) return api('tool:open', kind, files, opts);
   // Dogfile Notepad: every document is its own tab, like a browser
   if (kind === 'editor') {
@@ -53,11 +56,23 @@ export function openTool(kind, files = [], opts = {}) {
   const act = tabById(state.panes[state.activePane]);
   let t = act?.app === kind ? act : [...state.tabs].reverse().find((x) => x.app === kind);
   if (t && frames.has(t.id)) {
-    if (files.length) post(t, { type: 'open', files, ...opts });
+    if (files.length || opts.url) post(t, { type: 'open', files, ...opts });
     showTabInPane(t.id, paneFor(t));
     return t;
   }
   return newAppTab(kind, { files, ...opts });
+}
+/** a web page in the other pane, what you are looking at stays where it is (the URL buttons, "Web pane" in the pane list) */
+export function openWebBeside(url) {
+  const here = state.activePane;
+  if (paneCount() < 2) setLayout('2v');
+  const other = here === 0 ? 1 : 0;
+  let t = state.tabs.find((x) => x.app === 'web');
+  if (t && frames.has(t.id)) post(t, { type: 'open', url });
+  else t = newAppTab('web', url ? { url } : {}, { activate: false });
+  // the pane shows its tab a moment after the layout is built
+  setTimeout(() => { showTabInPane(t.id, other); state.activePane = here; bus.emit('activePane'); document.querySelectorAll('.pane').forEach((p, k) => p.classList.toggle('active', k === here)); syncFrames(); }, 0);
+  return t;
 }
 function paneFor(t) { const i = state.panes.slice(0, paneCount()).indexOf(t.id); return i >= 0 ? i : state.activePane; }
 
@@ -96,13 +111,43 @@ function applyFrames() {
     for (const [id, f] of frames) {
       const i = state.panes.slice(0, n).indexOf(id);
       const el = i >= 0 ? paneEls[i] : null;
-      if (!el || !el.root.isConnected) { f.style.display = 'none'; continue; }
+      if (!el || !el.root.isConnected) { f.style.display = 'none'; webLayout(id, false); continue; }
       const r = el.root.getBoundingClientRect();
       Object.assign(f.style, { display: 'block', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
       f.classList.toggle('active', i === state.activePane);
+      webLayout(id, true);
     }
   }
 }
+// the web pane's native views sit above everything the window draws: tell the page when its pane is hidden, and when
+// a menu, dialog or panel of the window is over it (the page hides its view until they are gone)
+function webLayout(id, visible) {
+  const t = tabById(id);
+  if (t?.app !== 'web') return;
+  post(t, { type: 'layout', visible });
+  scheduleCover();
+}
+let coverTimer = 0;
+const covered = new Set();
+function scheduleCover() { if (!coverTimer) coverTimer = setTimeout(() => { coverTimer = 0; checkCover(); }, 90); }
+function checkCover() {
+  for (const [id, f] of frames) {
+    const t = tabById(id);
+    if (t?.app !== 'web') continue;
+    let on = false;
+    if (f.style.display !== 'none') {
+      let r = f.getBoundingClientRect();
+      try { const s = f.contentDocument?.getElementById('wb-stage')?.getBoundingClientRect(); if (s && s.width) r = { left: r.left + s.left, top: r.top + s.top, width: s.width, height: s.height }; } catch { /* not readable: the whole frame */ }
+      outer: for (const fx of [0.04, 0.3, 0.5, 0.7, 0.96]) for (const fy of [0.04, 0.5, 0.96]) {
+        const el = document.elementFromPoint(r.left + r.width * fx, r.top + r.height * fy);
+        if (el && el !== f && !f.contains(el)) { on = true; break outer; }
+      }
+    }
+    if (on !== covered.has(id)) { on ? covered.add(id) : covered.delete(id); post(t, { type: 'cover', on }); }
+  }
+}
+new MutationObserver(() => { if (frames.size) scheduleCover(); }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'open', 'hidden'] });
+for (const ev of ['mousedown', 'keydown', 'contextmenu', 'focusin', 'transitionend', 'animationend']) document.addEventListener(ev, () => { if (frames.size) scheduleCover(); }, true);
 export function observePanes() {
   ro.disconnect();
   for (const el of paneEls) if (el) ro.observe(el.root);
@@ -113,7 +158,17 @@ bus.on('foldTick', syncFrames);
 for (const ev of ['syncFrames', 'layout', 'activePane', 'tabs']) bus.on(ev, syncFrames);
 bus.on('panesBuilt', observePanes);
 window.addEventListener('resize', syncFrames);
-bus.on('tabClosed', (t) => { const f = frames.get(t.id); if (f) { f.remove(); frames.delete(t.id); } syncFrames(); });
+bus.on('tabClosed', (t) => {
+  const f = frames.get(t.id);
+  if (f) { f.remove(); frames.delete(t.id); }
+  covered.delete(t.id);
+  if (t.app === 'web') {
+    // every page of this browser is closed and forgotten with its tab
+    api('web:do', 'closeAll', { prefix: t.id.replace(/[^a-z0-9]/gi, '').slice(0, 6) + '_' }).catch(() => {});
+    toast('Dogfile Web closed. Nothing was saved: no history, cookies, passwords or logins.');
+  }
+  syncFrames();
+});
 bus.on('settings', () => { for (const id of frames.keys()) { const t = tabById(id); if (t) post(t, { type: 'settings', settings: state.settings }); } });
 
 // messages coming up from the apps
@@ -122,7 +177,7 @@ window.addEventListener('message', (e) => {
   if (!m.atlasFrame) return;
   const t = tabById(m.atlasFrame);
   if (!t) return;
-  if (m.type === 'title') { t.appTitle = m.title.replace(/ - Dogfile (Notepad|Player|Photos)$/, '') || APPS[t.app].title; bus.emit('tabs'); }
+  if (m.type === 'title') { t.appTitle = m.title.replace(/ - Dogfile (Notepad|Player|Photos|Web)$/, '') || APPS[t.app].title; bus.emit('tabs'); }
   else if (m.type === 'state') { t.appState = m; if (m.path) t.appPath = m.path; bus.emit('appState', t); }
   else if (m.type === 'open') openTool(m.kind || t.app, m.files || [], m.opts || {});
   else if (m.type === 'dirty') { t.appDirty = !!m.dirty; bus.emit('tabs'); }

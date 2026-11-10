@@ -45,6 +45,16 @@ def walk(psd):
     return list(psd.descendants())
 
 
+def mark_updated(psd):
+    """tell psd-tools the layers changed, so the flattened picture inside the file is made again when saving
+    (newer versions have a method for it; 1.10 keeps a flag)"""
+    fn = getattr(psd, "mark_updated", None)
+    if callable(fn):
+        fn()
+    else:
+        psd._updated_layers = True
+
+
 def mode_name(psd):
     return str(getattr(psd.color_mode, "name", psd.color_mode))
 
@@ -168,7 +178,7 @@ def render(path, dest, hide, show, maxside, force=False):
                 p.visible = True
                 p = p.parent
     if hide or show or force:
-        psd.mark_updated()
+        mark_updated(psd)
     force = bool(hide or show or force)
     try:
         img = psd.composite(force=force)
@@ -245,7 +255,7 @@ def save(spec_path):
     if doc.get("rotate") or doc.get("flipH") or doc.get("flipV"):
         turn_document(psd, int(doc.get("rotate") or 0), bool(doc.get("flipH")), bool(doc.get("flipV")))
     if spec.get("layers") or doc:
-        psd.mark_updated()  # the flattened picture inside the file is made again from the layers
+        mark_updated(psd)  # the flattened picture inside the file is made again from the layers
     d = os.path.dirname(os.path.abspath(dest)) or "."
     fd, tmp = tempfile.mkstemp(prefix=".dogfile-psd-", suffix=".tmp", dir=d)
     os.close(fd)
@@ -349,9 +359,9 @@ def selftest():
     from psd_tools import PSDImage
     from psd_tools.api.layers import PixelLayer
     with tempfile.TemporaryDirectory() as d:
-        psd = PSDImage.new("RGBA", (16, 12))
-        PixelLayer.frompil(Image.new("RGBA", (6, 6), (255, 0, 0, 255)), psd, "red", top=2, left=3)
-        PixelLayer.frompil(Image.new("RGBA", (4, 4), (0, 0, 255, 255)), psd, "blue", top=5, left=8)
+        psd = PSDImage.new("RGB", (16, 12))
+        psd.append(PixelLayer.frompil(Image.new("RGBA", (6, 6), (255, 0, 0, 255)), psd, "red", top=2, left=3))
+        psd.append(PixelLayer.frompil(Image.new("RGBA", (4, 4), (0, 0, 255, 255)), psd, "blue", top=5, left=8))
         src = os.path.join(d, "a.psd")
         psd.save(src)
         Image.new("RGBA", (6, 6), (0, 255, 0, 255)).save(os.path.join(d, "g.png"))
@@ -364,7 +374,8 @@ def selftest():
         px = img.convert("RGBA").getpixel((3 - 1, 2 - 1))
         ok = len(layers) == 2 and again.size == (14, 10) and px[:3] == (0, 255, 0) and layers[1].visible is False and saved.get("ok")
         if not ok:
-            fail(f"The self-test gave a wrong result ({again.size}, {px})")
+            out({"ok": False, "error": f"The self-test gave a wrong result ({again.size}, {px}, saved: {saved})"})
+            sys.exit(1)
         out({"ok": True, "numpy": numpy.__version__, "helper": VERSION})
 
 
@@ -374,7 +385,10 @@ def io_capture(fn):
     real = sys.stdout
     sys.stdout = io.StringIO()
     try:
-        fn()
+        try:
+            fn()
+        except SystemExit:
+            pass  # a failure prints its message and exits: the message is the answer
         text = sys.stdout.getvalue()
     finally:
         sys.stdout = real

@@ -247,8 +247,8 @@ const R = {
     ['Undo', [['undo'], ['redo'], ['history', 'File history'], ['clipHistory', 'Clipboard list']]],
   ],
   organize: [
-    ['Sort & tidy', [['declutter', 'Tidy up (auto-sort)', true], ['multiverse', 'Multiverse (try changes first)', true], ['selfDestruct', 'Self-destruct (auto-remove)', true], ['folderRules', 'Automate this folder'], ['automations', 'All automations']]],
-    ['Rename', [['batchRename', 'Rename Studio', true], ['renameWords', 'Rename by describing it']]],
+    ['Sort & tidy', [['declutter', 'Tidy up', true], ['multiverse', 'Multiverse', true], ['selfDestruct', 'Self-destruct', true], ['folderRules', 'Automate this folder'], ['automations', 'All automations']]],
+    ['Rename', [['batchRename', 'Rename Studio', true]]],
     ['Compress', [['quickZip', 'Zip', true], ['compress', 'Compress…'], ['extract'], ['extractTo']]],
     ['Find', [['dupes', 'Duplicates', true], ['similarImages', 'Similar pictures'], ['similarMedia', 'Similar media'], ['semanticSearch', 'Search by meaning'], ['newCollection', 'New collection']]],
     ['Folder', [['folderNote', 'Folder note'], ['createShortcut'], ['symlink']]],
@@ -318,13 +318,15 @@ function ribbonGroup(gname, entries) {
     (e.big ? big : small).append(b);
   }
   g.append(h('div', { class: 'rb-btns' }, big.childElementCount ? big : null, small.childElementCount ? small : null), h('div', { class: 'rb-label' }, gname));
+  const asItems = () => entries.map((e) => (e.menu ? { label: e.label, icon: e.icon, submenu: e.menu } : { label: e.label, icon: e.icon, pro: e.pro, checked: e.on || undefined, run: () => { e.run(); after(); } }));
+  g._name = gname; g._items = asItems;
   g._fold = () => {
     g.innerHTML = '';
     g.classList.add('folded');
     // a folded group of Pro features keeps its star
     const allPro = entries.every((e) => e.pro);
     const b = h('button', { class: 'rb-btn big', title: gname, html: `${icon(entries[0].icon)}<span>${esc(gname)}${allPro ? starHtml : ''} ▾</span>` });
-    b.addEventListener('click', () => { const r = b.getBoundingClientRect(); showMenu(entries.map((e) => (e.menu ? { label: e.label, icon: e.icon, submenu: e.menu } : { label: e.label, icon: e.icon, pro: e.pro, checked: e.on || undefined, run: () => { e.run(); after(); } })), r.left, r.bottom + 2); });
+    b.addEventListener('click', () => { const r = b.getBoundingClientRect(); showMenu(asItems(), r.left, r.bottom + 2); });
     g.append(h('div', { class: 'rb-btns' }, h('div', { class: 'rb-big' }, b)), h('div', { class: 'rb-label' }, gname));
   };
   return g;
@@ -333,6 +335,20 @@ function ribbonGroup(gname, entries) {
 function fitRibbon(r) {
   const groups = [...r.querySelectorAll(':scope > .rb-group')];
   for (let i = groups.length - 1; i >= 1 && r.scrollWidth > r.clientWidth + 1; i--) groups[i]._fold?.();
+  // still too wide even with every group folded (a small window): the groups that don't fit go into one "More" menu, so nothing is cut off
+  if (r.scrollWidth > r.clientWidth + 1 && groups.length > 2) {
+    const hidden = [];
+    const mb = h('button', { class: 'rb-btn big', title: 'More groups', html: `${icon('more')}<span>More ▾</span>` });
+    const more = h('div', { class: 'rb-group folded rb-more' }, h('div', { class: 'rb-btns' }, h('div', { class: 'rb-big' }, mb)), h('div', { class: 'rb-label' }, 'More'));
+    r.append(more);
+    for (let i = groups.length - 1; i >= 0 && r.scrollWidth > r.clientWidth + 1; i--) { groups[i].style.display = 'none'; hidden.unshift(groups[i]); }
+    mb.addEventListener('click', () => {
+      const rc = mb.getBoundingClientRect();
+      const items = [];
+      for (const g of hidden) items.push(...(items.length ? [{ separator: true }] : []), { label: g._name, disabled: true }, ...g._items());
+      showMenu(items, Math.max(8, rc.right - 240), rc.bottom + 2);
+    });
+  }
 }
 window.addEventListener('resize', debounce(() => { if ($('ribbon').classList.contains('open')) renderRibbon(); }, 150));
 // the sidebar opened or closed: the ribbon has a new width (refit it once the browser is idle)

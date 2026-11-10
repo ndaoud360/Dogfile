@@ -25,7 +25,7 @@ export const PRO_COMMANDS = {
   assistant: 'assistant', aiModels: 'assistant',
   layout3: 'panes', layout4: 'panes',
   compare: 'compare',
-  batchRename: 'rename', renameWords: 'rename',
+  batchRename: 'rename',
   dupes: 'dupes', similarImages: 'dupes', similarMedia: 'dupes',
   analyze: 'space', analyzeSelection: 'space', cleanup: 'space',
   declutter: 'automation', startMacro: 'automation', macros: 'automation', folderRules: 'automation', automations: 'automation',

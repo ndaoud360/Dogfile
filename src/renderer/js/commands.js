@@ -75,7 +75,7 @@ def('webUrl', 'URL buttons: open a site beside this', { icon: 'link', cat: 'Apps
   const ev = window.event;
   showMenu([...list.map((b) => ({ label: b.name, icon: 'globe', run: () => open(b) })), { separator: true }, { label: 'Edit URL buttons…', icon: 'settings', run: () => editWebButtons() }], ev?.clientX ?? 240, ev?.clientY ?? 120);
 } });
-def('mouseSettings', 'Mouse gestures and command wheel…', { icon: 'mouse', cat: 'App', run: () => import('./settings.js').then((m) => m.openSettings('mouse')) });
+def('mouseSettings', 'Command wheel settings…', { icon: 'mouse', cat: 'App', run: () => import('./settings.js').then((m) => m.openSettings('mouse')) });
 def('webButtons', 'Edit URL buttons…', { icon: 'settings', cat: 'Apps', run: () => editWebButtons() });
 def('webHome', 'Open the web start page beside this', { icon: 'home', cat: 'Apps', run: () => openWebBeside(homePage()) });
 def('toggleSplit', 'Toggle dual pane', { icon: 'split', keys: ['F3'], cat: 'Layout', run: () => setLayout(paneCount() > 1 ? '1' : '2v') });
@@ -253,7 +253,6 @@ def('semanticSearch', 'Search documents by meaning…', { icon: 'search', cat: '
 def('addCloud', 'Add a cloud drive (Box, MEGA, pCloud…)…', { icon: 'cloud', cat: 'Tools', run: () => import('./cloudmore.js').then((m) => m.addCloud()) });
 def('whatif', 'What-if copy of a folder (older Multiverse)…', { icon: 'layout4', cat: 'Tools', run: () => import('./multiverse.js').then((m) => m.open()) });
 def('declutter', 'Tidy up this folder…', { icon: 'wand', cat: 'Tools', run: () => import('./declutter.js').then((m) => m.declutter()) });
-def('renameWords', 'Rename by describing it…', { icon: 'rename', cat: 'Edit', run: () => A.batchRename(S_()) });
 def('aiModels', 'AI models…', { icon: 'wand', cat: 'Tools', run: () => import('./ai.js').then((m) => m.modelsDialog()) });
 def('flatten', 'Flatten this folder (all files in subfolders)', { icon: 'flatten', keys: ['Ctrl+Alt+B'], cat: 'View', run: () => { const t = T_(); if (isVirtual(t.path)) return toast('Open a folder first'); navigate(t, T.searchUrl({ root: t.path, kind: 'file', flatten: 1 })); } });
 def('flattenSel', 'Flatten selected folder', { icon: 'flatten', cat: 'View', hidden: true, run: () => { const d = S_().find((i) => i.isDir && !i.virtual); if (d) navigate(T_(), T.searchUrl({ root: d.path, kind: 'file', flatten: 1 })); } });
@@ -547,7 +546,6 @@ const DESC = {
   folderRules: 'Make Dogfile sort or clean this folder by itself whenever new files arrive.',
   automations: 'See and edit every folder automation.',
   batchRename: 'Rename many files at once with a live preview.',
-  renameWords: 'Describe the new names in your own words and Dogfile does the renaming.',
   folderNote: 'Pin a note to this folder that shows up whenever you open it.',
   qrCode: 'Make a QR code picture from a link, text or contact details.',
   blankFile: 'Make an empty file of an exact size (for testing).',

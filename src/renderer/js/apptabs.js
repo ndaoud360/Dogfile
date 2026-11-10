@@ -68,8 +68,16 @@ export function openWebBeside(url) {
   if (paneCount() < 2) setLayout('2v');
   const other = here === 0 ? 1 : 0;
   let t = state.tabs.find((x) => x.app === 'web');
-  if (t && frames.has(t.id)) post(t, { type: 'open', url });
-  else t = newAppTab('web', url ? { url } : {}, { activate: false });
+  if (t && frames.has(t.id)) {
+    const f = frames.get(t.id);
+    const send = () => post(t, { type: 'open', url });
+    // a page still loading would miss the message
+    let ready = false, loaded = false;
+    try { loaded = f.contentDocument?.readyState === 'complete'; ready = !!f.contentDocument?.body?.classList.contains('ready'); } catch { /* not readable: send anyway */ ready = true; }
+    if (ready) send(); else if (loaded) setTimeout(send, 500); else f.addEventListener('load', () => setTimeout(send, 500), { once: true });
+    // the web page itself is what is on show here: it just goes to the address
+    if (state.panes[here] === t.id) return t;
+  } else t = newAppTab('web', url ? { url } : {}, { activate: false });
   // the pane shows its tab a moment after the layout is built
   setTimeout(() => { showTabInPane(t.id, other); state.activePane = here; bus.emit('activePane'); document.querySelectorAll('.pane').forEach((p, k) => p.classList.toggle('active', k === here)); syncFrames(); }, 0);
   return t;

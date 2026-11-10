@@ -80,11 +80,12 @@ pub fn run(app: &AppHandle, win: &str, op: &str, a: &Value, setup: &Setup, emit:
             let builder = WebviewBuilder::new(&label, WebviewUrl::External(parsed))
                 .incognito(true)
                 .disable_drag_drop_handler()
+                .zoom_hotkeys_enabled(true) // Ctrl + mouse wheel zooms the page, as in any browser
                 .additional_browser_args(setup.browser_args)
                 .on_navigation({
                     let (wid, emit, wname) = (wid.clone(), emit.clone(), wname.clone());
                     move |u| {
-                        let ok = webguard::check(u.as_str(), allow_local).is_ok();
+                        let ok = u.as_str() == "about:blank" || webguard::check(u.as_str(), allow_local).is_ok();
                         if !ok {
                             emit(&wname, "web:event", evt(&wid, "blocked", json!({ "url": u.as_str() })));
                         }

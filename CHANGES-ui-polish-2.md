@@ -18,3 +18,4 @@
 - Edit URL buttons: Start page and "allow this computer" were saved even when you pressed Cancel.
 - about:blank is allowed as a navigation target (some sign-in pages use it).
 - address helpers moved to webaddr.js and tested.
+- Dragging files from a folder onto a web page did nothing, for two reasons: the hand-over to Windows looked for the page under the pointer, but app frames ignore the mouse during a file drag so it never found it (it now checks where the page is); and the page was being hidden during the drag as if something covered it (it now stays on show, so the site can take the drop).

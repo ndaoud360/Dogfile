@@ -1892,6 +1892,23 @@ function fakeEvent(ev, el) {
   return { clientX: ev.clientX, clientY: ev.clientY, target: el, ctrlKey: ev.ctrlKey, shiftKey: ev.shiftKey, altKey: ev.altKey, button: 0, synthetic: true,
     preventDefault() {}, stopPropagation() {}, dataTransfer: { types: ['Files'], files: [], getData: () => '', dropEffect: 'none' } };
 }
+// is the pointer over the page of a web pane (its native view)? The frames ignore the mouse while files are dragged,
+// so this looks at where the page is rather than at what is under the pointer. A start page or sleeping tab has no view.
+function overWebPage(x, y) {
+  for (const f of document.querySelectorAll('.app-frame')) {
+    if (f.style.display === 'none' || tabById(f.dataset.tab)?.app !== 'web') continue;
+    const fr = f.getBoundingClientRect();
+    let r = { left: fr.left, top: fr.top + 84, right: fr.right, bottom: fr.bottom };
+    try {
+      const d = f.contentDocument;
+      const s = d?.getElementById('wb-stage')?.getBoundingClientRect();
+      if (s && s.width) r = { left: fr.left + s.left, top: fr.top + s.top, right: fr.left + s.right, bottom: fr.top + s.bottom };
+      if (d?.getElementById('wb-start')?.classList.contains('on') || d?.getElementById('wb-asleep')?.classList.contains('on')) continue;
+    } catch { /* not readable: the guess above */ }
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return true;
+  }
+  return false;
+}
 let dragging = null;
 export const isInternalDragging = () => !!dragging;
 function beginInternalDrag(paths, e0) {
@@ -1914,8 +1931,7 @@ function beginInternalDrag(paths, e0) {
     // it) but no mouseout, so this is where the drag goes over to Windows (the desktop, Explorer, a browser, mail…)
     if (ev.clientX < 1 || ev.clientY < 1 || ev.clientX > innerWidth - 2 || ev.clientY > innerHeight - 2) return out({});
     // over a web page: it is a native view, so the drag goes over to Windows here too (a site takes the files like any browser)
-    const over = document.elementFromPoint(ev.clientX, ev.clientY);
-    if (over?.classList?.contains('app-frame') && tabById(over.dataset.tab)?.app === 'web' && ev.clientY > over.getBoundingClientRect().top + 84) return out({});
+    if (overWebPage(ev.clientX, ev.clientY)) return out({});
     place(ev);
     const hit = targetAt(ev.clientX, ev.clientY);
     const fe = hit && fakeEvent(ev, hit.el);

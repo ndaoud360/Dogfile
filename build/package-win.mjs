@@ -1,6 +1,6 @@
 // Builds the ready-to-run Windows x64 folder + zip for Dogfile 2 (Tauri):
 //   Dogfile.exe (the program with its interface inside, built by GitHub Actions, .github/workflows/app.yml, fetched from the app-bin branch),
-//   psd/ (the layered Photoshop helper), 7zip/ (archives), installer scripts. Other big parts (FFmpeg, OCR, AI runtime, llama-server) download on first use:
+//   7zip/ (archives), installer scripts. Other big parts (FFmpeg, OCR, AI runtime, llama-server) download on first use:
 //   Dogfile downloads them the first time they're needed (backend/src/components.rs). Give an ffmpeg zip as the second
 //   argument to bundle the media engine anyway (an offline copy).
 // usage: node build/package-win.mjs <Dogfile.exe> [<ffmpeg-win64-shared.zip>] [--psd <dogfile-psd.zip>]
@@ -35,9 +35,8 @@ else fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
 
 fs.copyFileSync(exe, path.join(outDir, 'Dogfile.exe'));
-// The PSD helper is shipped next to Dogfile as well as being available through the verified component
-// downloader. This makes the Windows installer and Store package work even when a build's cached Rust
-// artifact was produced without the component URL environment variables.
+// The PSD helper is NOT shipped by default any more (it is ~250 MB unpacked): Dogfile downloads it the first time layers are
+// wanted (components.rs), and opens Photoshop files as plain pictures until then. `--psd <zip>` still bundles it for a special build.
 if (psdZip) {
   const stage = path.join(root, 'dist', '_psd-package');
   fs.rmSync(stage, { recursive: true, force: true });

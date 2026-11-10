@@ -9,6 +9,7 @@ import { openTool } from './apptabs.js';
 import { icon } from './icons.js';
 import { featureMenuItems } from './features.js';
 import { mvActive, mvJobBlocked } from './mvstate.js';
+import { componentReady } from './components.js';
 
 const NO_SEL = () => toast('Select one or more items first');
 const realItems = (items) => items.filter((i) => !i.virtual && !i.archive && !i.recycle && !i.share && !i.mtp);
@@ -62,8 +63,10 @@ export async function openItems(items, { pane = state.activePane, newTab = false
   const local = files.filter((f) => !f.archive && !f.recycle && !f.mtp);
   const texts = state.settings.useAtlasEditor !== false ? local.filter((f) => isTextFile(f) && !(state.settings.useAtlasViewer !== false && isImageFile(f)) && !(state.settings.useAtlas3D !== false && isModelFile(f))) : [];
   const medias = state.settings.useAtlasPlayer !== false ? local.filter(isMediaFile) : [];
-  // Photoshop files open with their layers (the one-time download of the helper is asked for inside Dogfile PSD)
-  const psds = state.settings.useAtlasPsd !== false ? local.filter(isPsdFile) : [];
+  // Photoshop files open as a plain picture, until the Photoshop helper (a one-time download) is installed: then they open
+  // in Dogfile PSD with their layers. "Edit layers" in the menu offers the download.
+  const psdFiles = state.settings.useAtlasPsd !== false ? local.filter(isPsdFile) : [];
+  const psds = psdFiles.length && (await componentReady('psd')) ? psdFiles : [];
   const photos = state.settings.useAtlasViewer !== false ? local.filter((f) => isImageFile(f) && !psds.includes(f)) : [];
   const models = state.settings.useAtlas3D !== false ? local.filter(isModelFile) : [];
   const offices = state.settings.useAtlasOffice !== false ? local.filter((f) => isOfficeFile(f) && !isTextFile(f)) : [];
@@ -1373,7 +1376,7 @@ export function buildItemsMenu(t, items) {
       { label: 'Stop and remove (down)', run: () => import('./devpanels.js').then((m) => m.composeHere('down', dirname(one.path))) },
       { label: 'Open the Docker tab', run: () => bus.emit('termTab', 'docker') },
     ] },
-    one && isPsdFile(one) && !one.archive && !one.mtp && { label: 'Open with layers (Dogfile PSD)', icon: 'stack', run: () => openTool('psd', [one.path], { newTab: true }) },
+    one && isPsdFile(one) && !one.archive && !one.mtp && { label: 'Edit layers (Dogfile PSD)', icon: 'stack', run: () => openTool('psd', [one.path], { newTab: true }) },
     one && isPsdFile(one) && !one.archive && !one.mtp && { label: 'Open as a flat picture (Dogfile Photos)', icon: 'image', run: () => openTool('viewer', [one.path], {}) },
     real.length > 1 && real.every((i) => !i.isDir && i.ext === 'pdf' && !i.archive && !i.mtp) && { label: 'Merge PDFs…', icon: 'page', run: () => import('./protools.js').then((m) => m.mergePdfs(paths)) },
     one && !one.isDir && one.ext === 'pdf' && !one.archive && !one.mtp && { label: 'Split PDF pages…', icon: 'scissors', run: () => import('./protools.js').then((m) => m.splitPdf(one.path)) },

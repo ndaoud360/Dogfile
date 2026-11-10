@@ -303,7 +303,7 @@ jobs:
           Copy-Item "$dl/7zfull/*" "$out/7zfull/"; Copy-Item "$dl/7zfull-arm64/*" "$out/7zfull-arm64/"
           Copy-Item target/release/dogfile.exe "$dl/Dogfile.exe"
           $env:DOGFILE_7Z_FULL = "$dl/7zfull"
-          $pk = node build/package-win.mjs "$dl/Dogfile.exe" --psd "$dl/psd.zip" 2>&1
+          $pk = node build/package-win.mjs "$dl/Dogfile.exe" 2>&1
           Write-Output "::notice title=package-win::$(($pk | Out-String) -replace "[`r`n]+",'%0A')"
           $ver = (Get-Content app/tauri.conf.json -Raw | ConvertFrom-Json).version
           $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter signtool.exe | Where-Object { $_.FullName -like '*\x64\*' } | Select-Object -First 1
@@ -352,13 +352,6 @@ jobs:
           & $makeappx.FullName pack /o /d $st /p "dist/Dogfile-$ver-x64.msix" | Select-Object -Last 3
           if (-not $env:STORE_IDENTITY_NAME -or -not $env:STORE_PUBLISHER -or -not $env:STORE_PUBLISHER_NAME) { Write-Output "::warning title=store-identity::The Store variables (STORE_IDENTITY_NAME, STORE_PUBLISHER, STORE_PUBLISHER_NAME) are not set in the repository, so this MSIX has a placeholder identity ($idn / $pub) and Partner Center will refuse it. Copy the three values from Partner Center > Product management > Product identity into Settings > Secrets and variables > Actions > Variables." }
           Write-Output "::notice title=store::$(if (Test-Path "dist/Dogfile-$ver-x64.msix") { "Dogfile-$ver-x64.msix $([math]::Round((Get-Item "dist/Dogfile-$ver-x64.msix").Length/1MB,1)) MB (identity $idn, publisher $pub)" } else { 'no msix' })"
-      - name: Verify the final Windows package contains a runnable PSD helper
-        shell: pwsh
-        run: |
-          $helper = "dist/Dogfile/psd/dogfile-psd.exe"
-          if (-not (Test-Path $helper)) { Write-Output "::error title=psd-package::The final Windows app folder is missing $helper"; exit 1 }
-          & $helper version | Out-Host
-          if ($LASTEXITCODE -ne 0) { Write-Output "::error title=psd-package::The PSD helper in the final Windows app folder did not start"; exit 1 }
       - uses: actions/upload-artifact@v7
         if: vars.RUNNER != 'pc'
         continue-on-error: true
@@ -367,7 +360,6 @@ jobs:
           path: |
             dist/Dogfile-Setup-*.exe
             dist/Dogfile/Dogfile.exe
-            dist/Dogfile/psd/**
             dist/*.msix
           if-no-files-found: warn
       - name: Publish to the app-bin branch (readable with git)

@@ -39,7 +39,7 @@ fn idle_memory(w: &tauri::Window, focused: bool) {
     };
     if focused {
         if let Some(wv) = host().win(&label) {
-            winx::webview_memory_low(&wv, wv.is_minimized().unwrap_or(false));
+            winx::webview_memory_low(&wv.webview, wv.is_minimized().unwrap_or(false));
         }
         return;
     }
@@ -49,7 +49,7 @@ fn idle_memory(w: &tauri::Window, focused: bool) {
             return; // it was in front again meanwhile
         }
         if let Some(wv) = host().win(&label) {
-            winx::webview_memory_low(&wv, true);
+            winx::webview_memory_low(&wv.webview, true);
         }
         winx::trim_own_memory();
     });
@@ -76,7 +76,7 @@ fn win_build() -> u32 {
     0
 }
 
-fn glass_effect(w: &WebviewWindow, on: bool) -> bool {
+fn glass_effect(w: &tauri::Window, on: bool) -> bool {
     use tauri::window::{Effect, EffectsBuilder};
     if on {
         // Windows 11 22H2 and later draw Acrylic as a system backdrop, which stays smooth. Before that, Acrylic is an
@@ -105,6 +105,36 @@ pub struct AppHost {
     glassy: Mutex<std::collections::HashSet<String>>,
 }
 
+/// one of Dogfile's windows: the window and its own web view (see AppHost::win)
+#[derive(Clone)]
+struct Win {
+    window: tauri::Window,
+    webview: tauri::Webview,
+}
+impl std::ops::Deref for Win {
+    type Target = tauri::Window;
+    fn deref(&self) -> &tauri::Window {
+        &self.window
+    }
+}
+impl AsRef<tauri::Webview> for Win {
+    fn as_ref(&self) -> &tauri::Webview {
+        &self.webview
+    }
+}
+impl Win {
+    fn eval(&self, js: impl Into<String>) -> tauri::Result<()> {
+        self.webview.eval(js)
+    }
+    fn set_zoom(&self, factor: f64) -> tauri::Result<()> {
+        self.webview.set_zoom(factor)
+    }
+    #[cfg(debug_assertions)]
+    fn open_devtools(&self) {
+        self.webview.open_devtools()
+    }
+}
+
 impl AppHost {
     /// the app once Tauri has set it up. The back end starts first and may already call in (events, windows lists):
     /// those calls just do nothing until then, instead of stopping the program (which kept Dogfile from opening).
@@ -114,8 +144,17 @@ impl AppHost {
     fn app_opt(&self) -> Option<&AppHandle> {
         self.app.get()
     }
-    fn win(&self, label: &str) -> Option<WebviewWindow> {
-        self.app_opt()?.get_webview_window(label)
+    /// A window of Dogfile by its label. NOT get_webview_window / webview_windows: Tauri leaves out a window the moment it
+    /// has a second web view (the web pane's pages), and everything sent to the main window (events, zoom, window
+    /// buttons) would silently go nowhere for as long as a page is open.
+    fn win(&self, label: &str) -> Option<Win> {
+        let webview = self.app_opt()?.get_webview(label)?; // a window's own web view carries the window's label
+        let window = webview.window();
+        Some(Win { window, webview })
+    }
+    fn all_wins(&self) -> Vec<Win> {
+        let Some(app) = self.app_opt() else { return vec![] };
+        app.windows().keys().filter_map(|l| self.win(l)).collect()
     }
     fn theme_bg(&self, kind: &str) -> tauri::window::Color {
         if kind == "player" {
@@ -191,7 +230,7 @@ impl AppHost {
         let n = self.seq.fetch_add(1, Ordering::Relaxed) + 1;
         let label = format!("main-{n}");
         self.launches.lock().insert(label.clone(), launch);
-        let first = self.app().webview_windows().keys().all(|k| !k.starts_with("main"));
+        let first = self.app().windows().keys().all(|k| !k.starts_with("main"));
         let saved = dogfile_backend::store::get("window").unwrap_or(json!({}));
         let b = WebviewWindowBuilder::new(self.app(), &label, page_url("index.html", &format!("w={label}")))
             .title("Dogfile")
@@ -257,7 +296,7 @@ impl AppHost {
             self.glassy.lock().insert(w.label().to_string());
         }
         if glass {
-            glass_effect(&w, true);
+            glass_effect(&AsRef::<tauri::Webview>::as_ref(&w).window(), true);
         }
         #[cfg(windows)]
         if let Ok(h) = w.hwnd() {
@@ -280,7 +319,7 @@ impl AppHost {
         if let Some(target) = wins.first().and_then(|l| self.win(l)) {
             if !want_new {
                 #[cfg(windows)]
-                winx::webview_memory_low(&target, false);
+                winx::webview_memory_low(&target.webview, false);
                 let _ = target.show();
                 let _ = target.unminimize();
                 // somewhere no screen shows: back to the middle of the main screen
@@ -407,15 +446,12 @@ impl Host for AppHost {
     }
     fn broadcast(&self, channel: &str, data: Value) {
         let script = format!("window.__dogEvent&&window.__dogEvent({},{})", js_str(&channel), js_str(&data));
-        let Some(app) = self.app_opt() else { return };
-        for w in app.webview_windows().values() {
+        for w in self.all_wins() {
             let _ = w.eval(script.clone());
         }
     }
     fn windows(&self) -> Vec<String> {
-        let Some(app) = self.app_opt() else { return vec![] };
-        let all = app.webview_windows();
-        let mut v: Vec<(bool, String)> = all.iter().map(|(k, w)| (w.is_focused().unwrap_or(false), k.clone())).collect();
+        let mut v: Vec<(bool, String)> = self.all_wins().iter().map(|w| (w.is_focused().unwrap_or(false), w.label().to_string())).collect();
         v.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
         v.into_iter().map(|x| x.1).collect()
     }
@@ -604,7 +640,7 @@ impl Host for AppHost {
     fn set_corners(&self, pref: &str) {
         *self.corners.lock() = pref.to_string();
         #[cfg(windows)]
-        for w in self.app_opt().map(|a| a.webview_windows()).unwrap_or_default().values() {
+        for w in self.all_wins() {
             if let Ok(h) = w.hwnd() {
                 winx::set_corners(h.0 as isize, pref);
             }
@@ -619,21 +655,21 @@ impl Host for AppHost {
             d = d.set_title(t);
         }
         if let Some(w) = self.win(win) {
-            d = d.set_parent(&w);
+            d = d.set_parent(&*w);
         }
         d.pick_folder().map(|p| p.to_string_lossy().into_owned())
     }
     fn open_files(&self, win: &str, o: DialogOpts) -> Vec<String> {
         let mut d = dialog_from(o);
         if let Some(w) = self.win(win) {
-            d = d.set_parent(&w);
+            d = d.set_parent(&*w);
         }
         d.pick_files().unwrap_or_default().into_iter().map(|p| p.to_string_lossy().into_owned()).collect()
     }
     fn save_file(&self, win: &str, o: DialogOpts) -> Option<String> {
         let mut d = dialog_from(o);
         if let Some(w) = self.win(win) {
-            d = d.set_parent(&w);
+            d = d.set_parent(&*w);
         }
         d.save_file().map(|p| p.to_string_lossy().into_owned())
     }
@@ -642,7 +678,7 @@ impl Host for AppHost {
         let text = if detail.is_empty() { message.to_string() } else { format!("{message}\n\n{detail}") };
         let mut d = MessageDialog::new().set_title(title).set_description(text);
         if let Some(w) = self.win(win) {
-            d = d.set_parent(&w);
+            d = d.set_parent(&*w);
         }
         let b = |i: usize| buttons.get(i).cloned().unwrap_or_default();
         d = match buttons.len() {
@@ -663,7 +699,7 @@ impl Host for AppHost {
             return winx::system_dark();
         }
         #[cfg(not(windows))]
-        self.app_opt().and_then(|a| a.webview_windows().values().next().and_then(|w| w.theme().ok())).map(|t| t == tauri::Theme::Dark).unwrap_or(false)
+        self.all_wins().first().and_then(|w| w.theme().ok()).map(|t| t == tauri::Theme::Dark).unwrap_or(false)
     }
     fn accent_color(&self) -> Option<String> {
         #[cfg(windows)]
@@ -1082,7 +1118,7 @@ fn main() {
                     let _ = w.hide();
                     #[cfg(windows)]
                     if let Some(wv) = h.win(w.label()) {
-                        winx::webview_memory_low(&wv, true);
+                        winx::webview_memory_low(&wv.webview, true);
                     }
                     h.tray_icon();
                 }
@@ -1103,7 +1139,7 @@ fn main() {
                     let m = m.get_or_insert_with(HashMap::new);
                     if m.get(w.label()) != Some(&low) {
                         m.insert(w.label().to_string(), low);
-                        winx::webview_memory_low(&wv, low);
+                        winx::webview_memory_low(&wv.webview, low);
                     }
                 }
                 if w.label().starts_with("main") {

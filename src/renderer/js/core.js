@@ -3,11 +3,19 @@
 const PICKERS = { 'dialog:pickFolder': (m, a) => m.pickFolder(a[0], { pinned: (typeof state !== 'undefined' && state.pinned) || undefined, ...(a[1] || {}) }), 'dialog:openFiles': (m, a) => m.openFiles(a[0] || {}), 'dialog:saveFile': (m, a) => m.saveFile(a[0] || {}), 'dialog:confirm': (m, a) => m.messageBox(a[0] || {}) };
 let nativeDialogs = null;
 export const setNativeDialogs = (v) => { nativeDialogs = !!v; };
+const PART_WHAT = { ffmpeg: 'This' };
 export const api = (name, ...args) => {
   if (PICKERS[name] && !nativeDialogs) return import('./picker.js').then((m) => PICKERS[name](m, args));
   const p = window.atlas.invoke(name, ...args);
+  // work that needs a downloadable part (the media engine…) that isn't here yet: offer the download, then try once more
+  if (p?.catch) return p.catch(async (e) => {
+    const m = /^(?:Error invoking remote method '[^']+':\s*)?(?:Error:\s*)?NEEDS_PART:(\w+)/.exec(String(e?.message || e));
+    if (!m) throw e;
+    const { ensureComponent } = await import('./components.js');
+    if (!(await ensureComponent(m[1], PART_WHAT[m[1]] || 'This'))) throw new Error('That needs a download you chose not to make');
+    return window.atlas.invoke(name, ...args);
   // a Pro call refused by the program (backend/src/license.rs): explain and offer Pro
-  p?.catch?.((e) => { if (String(e?.message || e).startsWith('PRO_REQUIRED')) bus.emit('proRequired', name); });
+  }).catch((e) => { if (String(e?.message || e).startsWith('PRO_REQUIRED')) bus.emit('proRequired', name); throw e; });
   return p;
 };
 export const onMain = (ch, fn) => window.atlas.on(ch, fn);

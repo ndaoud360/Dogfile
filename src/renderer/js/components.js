@@ -1,7 +1,7 @@
 // Big parts of Dogfile that are downloaded the first time they're needed (the media engine, text recognition, the AI
 // runtime): ask once, show the progress, and carry on with what the person was doing. The backend (components.rs)
 // checks every download against a checksum written into the program when it was built.
-import { api, h, esc, toast } from './core.js';
+import { api, h, esc, toast, sys } from './core.js';
 import { confirm } from './dialogs.js';
 
 const fmtMB = (b) => (b / 1048576 >= 10 ? Math.round(b / 1048576) : (b / 1048576).toFixed(1)) + ' MB';
@@ -49,6 +49,7 @@ async function run(name, what) {
       fill.style.width = (s.stage === 'Installing' ? 100 : pct) + '%';
       txt.textContent = s.stage === 'Installing' ? `Installing ${c.label}…` : `Downloading ${c.label}… ${fmtMB(s.received)}${s.total ? ' of ' + fmtMB(s.total) : ''}`;
     }
+    if (name === 'ffmpeg') sys.ffmpeg = true;
     toast(`${c.label} is ready`);
     return true;
   } catch (e) { toast(`Couldn’t download ${c.label}: ${e.message}`, { error: true }); return false; }

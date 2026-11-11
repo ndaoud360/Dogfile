@@ -42,6 +42,10 @@ pub async fn call(win: &str, name: &str, args: Vec<Value>) -> R {
     if let Some(r) = license::gate(name, &a) {
         return r;
     }
+    // work that can't happen without a downloadable part says which one, and the interface offers the download and tries again
+    if matches!(name, "media:export" | "media:contactSheet" | "media:setMeta" | "tags:write" | "tags:identify") && !media::available() {
+        return Err("NEEDS_PART:ffmpeg".into());
+    }
     match name {
         // ---------- Dogfile Pro ----------
         "license:status" => license::status(&a),

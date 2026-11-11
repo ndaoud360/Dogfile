@@ -611,7 +611,7 @@ impl Host for AppHost {
             #[cfg(target_os = "linux")]
             let Ok(target) = w2.gtk_window() else { return };
             #[cfg(not(target_os = "linux"))]
-            let target = w2;
+            let target = w2.window.clone();
             let _ = drag::start_drag(&target, drag::DragItem::Files(files), image, |_r, _p| {}, drag::Options::default());
         });
     }

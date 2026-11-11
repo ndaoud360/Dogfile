@@ -121,7 +121,24 @@ jobs:
           $st = (& $packedPsdExe selftest | Out-String); $st | Out-Host
           if ($LASTEXITCODE -ne 0 -or $st -notmatch '"ok":\s*true') { Write-Output "::error title=psd::the extracted PSD download archive failed its self-test"; exit 1 }
           $parts = "$env:RUNNER_TEMP/components"
-          node build/make-components.mjs $parts --ffmpeg "$dl/ff.zip" --psd "$dl/psd.zip"
+          # rclone (more cloud drives): the official release zip, checked against the checksum list published beside it
+          $rcRel = $null
+          foreach ($try in 1..5) {
+            try { $rcRel = Invoke-RestMethod 'https://api.github.com/repos/rclone/rclone/releases/latest' -Headers @{ 'User-Agent' = 'Dogfile-CI'; 'Authorization' = "Bearer $env:GITHUB_TOKEN" }; break }
+            catch { Write-Output "::warning title=rclone::release lookup failed (try $try): $($_.Exception.Message)"; Start-Sleep -Seconds (10 * $try) }
+          }
+          $rcAsset = $rcRel.assets | Where-Object { $_.name -match '^rclone-v[\d.]+-windows-amd64\.zip$' } | Select-Object -First 1
+          if (-not $rcAsset) { Write-Output "::error title=rclone::No rclone windows-amd64 build found"; exit 1 }
+          Invoke-WebRequest $rcAsset.browser_download_url -OutFile "$dl/rclone.zip"
+          $rcSums = $rcRel.assets | Where-Object { $_.name -eq 'SHA256SUMS' } | Select-Object -First 1
+          if ($rcSums) {
+            Invoke-WebRequest $rcSums.browser_download_url -OutFile "$dl/rclone.sums"
+            $want = ((Get-Content "$dl/rclone.sums" | Where-Object { $_ -match [regex]::Escape($rcAsset.name) } | Select-Object -First 1) -split '\s+')[0]
+            $got = (Get-FileHash "$dl/rclone.zip" -Algorithm SHA256).Hash
+            if (-not $want -or $want.ToLower() -ne $got.ToLower()) { Write-Output "::error title=rclone::the rclone download does not match its published checksum"; exit 1 }
+          } else { Write-Output "::warning title=rclone::no SHA256SUMS next to the rclone release, so its checksum was not compared" }
+          Write-Output "::notice title=rclone::$($rcAsset.name)"
+          node build/make-components.mjs $parts --ffmpeg "$dl/ff.zip" --psd "$dl/psd.zip" --rclone "$dl/rclone.zip"
           if ($LASTEXITCODE -ne 0) { Write-Output "::error title=components::could not make the downloadable parts"; exit 1 }
           $repo = '${{ secrets.DOGFILE_UPDATES_TOKEN && 'ndaoud360/dogfile-updates' || github.repository }}'
           if ($repo -eq '${{ github.repository }}') { Write-Output "::warning title=components::DOGFILE_UPDATES_TOKEN is not set, so the downloadable parts went to this repository: they will stop downloading when it is made private." }
@@ -130,7 +147,7 @@ jobs:
           gh release upload components (Get-ChildItem "$parts/*.zip" | ForEach-Object { $_.FullName }) --repo $repo --clobber
           if ($LASTEXITCODE -ne 0) { Write-Output "::error title=components::could not upload the parts to the components release"; exit 1 }
           $j = Get-Content "$parts/components.json" -Raw | ConvertFrom-Json
-          foreach ($n in @('ffmpeg', 'ocr', 'ort', 'psd')) {
+          foreach ($n in @('ffmpeg', 'ocr', 'ort', 'psd', 'rclone')) {
             $c = $j.$n
             if (-not $c) { continue }
             $u = $n.ToUpper()
@@ -423,7 +440,24 @@ jobs:
           $ProgressPreference = 'SilentlyContinue'
           $dl = "$env:RUNNER_TEMP/dl"; New-Item -ItemType Directory -Force $dl | Out-Null
           $parts = "$env:RUNNER_TEMP/components"
-          node build/make-components.mjs $parts
+          # rclone (more cloud drives): the official release zip, checked against the checksum list published beside it
+          $rcRel = $null
+          foreach ($try in 1..5) {
+            try { $rcRel = Invoke-RestMethod 'https://api.github.com/repos/rclone/rclone/releases/latest' -Headers @{ 'User-Agent' = 'Dogfile-CI'; 'Authorization' = "Bearer $env:GITHUB_TOKEN" }; break }
+            catch { Write-Output "::warning title=rclone::release lookup failed (try $try): $($_.Exception.Message)"; Start-Sleep -Seconds (10 * $try) }
+          }
+          $rcAsset = $rcRel.assets | Where-Object { $_.name -match '^rclone-v[\d.]+-windows-arm64\.zip$' } | Select-Object -First 1
+          if (-not $rcAsset) { Write-Output "::error title=rclone::No rclone windows-arm64 build found"; exit 1 }
+          Invoke-WebRequest $rcAsset.browser_download_url -OutFile "$dl/rclone.zip"
+          $rcSums = $rcRel.assets | Where-Object { $_.name -eq 'SHA256SUMS' } | Select-Object -First 1
+          if ($rcSums) {
+            Invoke-WebRequest $rcSums.browser_download_url -OutFile "$dl/rclone.sums"
+            $want = ((Get-Content "$dl/rclone.sums" | Where-Object { $_ -match [regex]::Escape($rcAsset.name) } | Select-Object -First 1) -split '\s+')[0]
+            $got = (Get-FileHash "$dl/rclone.zip" -Algorithm SHA256).Hash
+            if (-not $want -or $want.ToLower() -ne $got.ToLower()) { Write-Output "::error title=rclone::the rclone download does not match its published checksum"; exit 1 }
+          } else { Write-Output "::warning title=rclone::no SHA256SUMS next to the rclone release, so its checksum was not compared" }
+          Write-Output "::notice title=rclone::$($rcAsset.name)"
+          node build/make-components.mjs $parts --rclone "$dl/rclone.zip"
           if ($LASTEXITCODE -ne 0) { Write-Output "::error title=components::could not make the downloadable parts"; exit 1 }
           $repo = '${{ secrets.DOGFILE_UPDATES_TOKEN && 'ndaoud360/dogfile-updates' || github.repository }}'
           if ($repo -eq '${{ github.repository }}') { Write-Output "::warning title=components::DOGFILE_UPDATES_TOKEN is not set, so the downloadable parts went to this repository: they will stop downloading when it is made private." }
@@ -432,7 +466,7 @@ jobs:
           gh release upload components (Get-ChildItem "$parts/*.zip" | ForEach-Object { $_.FullName }) --repo $repo --clobber
           if ($LASTEXITCODE -ne 0) { Write-Output "::error title=components::could not upload the parts to the components release"; exit 1 }
           $j = Get-Content "$parts/components.json" -Raw | ConvertFrom-Json
-          foreach ($n in @('ffmpeg', 'ocr', 'ort')) {
+          foreach ($n in @('ffmpeg', 'ocr', 'ort', 'rclone')) {
             $c = $j.$n
             if (-not $c) { continue }
             $u = $n.ToUpper()

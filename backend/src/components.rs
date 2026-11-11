@@ -79,6 +79,21 @@ fn carried(name: &str) -> bool {
         _ => false,
     }
 }
+/// the folder next to the program that holds a part an older install put there (the helper in the install folder), when it is
+/// a folder of its own that can be deleted without touching the program; the interface parts packed into the program
+/// itself have none
+fn carried_folder(name: &str) -> Option<PathBuf> {
+    if !carried(name) {
+        return None;
+    }
+    let f = match name {
+        "ffmpeg" => crate::media::bundled_dir()?,
+        "psd" => crate::psd::bundled()?.parent()?.to_path_buf(),
+        "rclone" => crate::rclone::bundled()?.parent()?.to_path_buf(),
+        _ => return None,
+    };
+    (f.file_name().map(|n| n.to_string_lossy().eq_ignore_ascii_case(name)).unwrap_or(false)).then_some(f)
+}
 /// the part is here and is the version this program was built with
 pub fn ready(name: &str) -> bool {
     if carried(name) {
@@ -114,7 +129,7 @@ pub fn status(_a: &Args) -> R {
         let s = f.get(p.name).cloned().unwrap_or_default();
         out.insert(
             p.name.to_string(),
-            json!({ "ready": ready(p.name), "carried": carried(p.name), "label": p.label, "why": p.why, "bytes": p.size, "downloadable": p.url.is_some() && p.sha.is_some(),
+            json!({ "ready": ready(p.name), "carried": carried(p.name), "removable": !carried(p.name) || carried_folder(p.name).is_some(), "label": p.label, "why": p.why, "bytes": p.size, "downloadable": p.url.is_some() && p.sha.is_some(),
                 "downloading": s.running, "received": s.received, "total": s.total, "stage": s.stage, "error": s.error }),
         );
     }
@@ -124,8 +139,9 @@ pub fn status(_a: &Args) -> R {
 pub fn remove(a: &Args) -> R {
     let name = a.s(0)?;
     let p = part(&name).ok_or("Unknown component")?;
-    if carried(p.name) {
-        return Err(format!("{} is part of this copy of Dogfile, so it can’t be removed", p.label));
+    let carried_dir = carried_folder(p.name);
+    if carried(p.name) && carried_dir.is_none() {
+        return Err(format!("{} is built into this copy of Dogfile, so it can’t be removed", p.label));
     }
     if fetches().lock().get(p.name).map(|f| f.running).unwrap_or(false) {
         return Err(format!("{} is still downloading", p.label));
@@ -137,6 +153,10 @@ pub fn remove(a: &Args) -> R {
         "ocr" => { let _ = std::fs::remove_dir_all(web_dir().join("tesseract")); }
         "ort" => { let _ = std::fs::remove_dir_all(web_dir().join("ort")); }
         _ => {}
+    }
+    // a copy an older install left in the program's folder (the installer may have made it read-only)
+    if let Some(d) = carried_dir {
+        std::fs::remove_dir_all(&d).map_err(|e| format!("Couldn’t remove {} from {}: {e}", p.label, d.display()))?;
     }
     let _ = std::fs::remove_file(marker(p.name));
     fetches().lock().remove(p.name);

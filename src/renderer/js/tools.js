@@ -589,6 +589,7 @@ function drawOps() {
   const active = list.filter((j) => ['running', 'queued', 'waiting'].includes(j.status));
   btn.classList.toggle('busy', active.length > 0);
   btn.classList.toggle('show', list.length > 0);
+  btn.classList.toggle('indet', active.length > 0 && !active.some((j) => j.total));
   const total = active.reduce((a, j) => a + (j.total || 0), 0), done = active.reduce((a, j) => a + (j.done || 0), 0);
   btn.style.setProperty('--p', active.length && total ? (done / total) * 100 + '%' : '0%');
   taskbarProgress(active, total, done, list);
@@ -617,7 +618,7 @@ function drawOps() {
     return `<div class="op ${j.status}${problems ? ' has-problems' : ''}"><div class="op-title" title="${esc(j.title)}">${esc(j.title)}</div><div class="op-sub">${esc(st || '')}${j.current && running ? ` · ${esc(j.current)}` : ''}</div>${linkLine(j, running)}${running ? `<div class="op-bar ${pct == null ? 'indet' : ''}"><i style="width:${pct ?? 30}%"></i></div>` : ''}
       ${problems ? `<button class="link op-more" data-id="${j.id}" data-act="toggle">${open ? 'Hide problems' : 'What went wrong?'}</button>${open ? `<div class="op-errs">${(j.errors || []).slice(0, 12).map(explain).join('')}${j.status === 'error' ? explain(j.error || '') : ''}${j.locked?.length ? `<button class="link" data-id="${j.id}" data-act="locks">Find what’s locking ${j.locked.length > 1 ? 'them' : 'it'}</button>` : ''}</div>` : ''}` : ''}
       <div class="op-actions">${running
-        ? `${j.status === 'queued' && j.queuePos > 1 ? `<button class="icon-btn" data-id="${j.id}" data-act="prioritize" title="Run this next">${icon('up')}</button>` : ''}${j.status === 'running' && !j.client ? `<button class="icon-btn" data-id="${j.id}" data-act="${j.paused ? 'resume' : 'pause'}" title="${j.paused ? 'Resume' : 'Pause'}">${icon(j.paused ? 'play' : 'pause')}</button>` : ''}<button class="icon-btn" data-id="${j.id}" data-act="cancel" title="Cancel">${icon('stop')}</button>`
+        ? `${j.status === 'queued' && j.queuePos > 1 ? `<button class="icon-btn" data-id="${j.id}" data-act="prioritize" title="Run this next">${icon('up')}</button>` : ''}${j.status === 'running' && !j.client ? `<button class="icon-btn" data-id="${j.id}" data-act="${j.paused ? 'resume' : 'pause'}" title="${j.paused ? 'Resume' : 'Pause'}">${icon(j.paused ? 'play' : 'pause')}</button>` : ''}${j.noCancel ? '' : `<button class="icon-btn" data-id="${j.id}" data-act="cancel" title="Cancel">${icon('stop')}</button>`}`
         : `${(problems || j.status === 'cancelled') && j.canRetry ? `<button class="icon-btn" data-id="${j.id}" data-act="retry" title="${j.failed?.length && j.failed.length < j.sourceCount ? `Retry the ${j.failed.length} that failed` : 'Try again'}">${icon('refresh')}</button>` : ''}<button class="icon-btn" data-id="${j.id}" data-act="dismiss" title="Dismiss">${icon('close')}</button>`}</div></div>`;
   }).join('') : '<div class="hint pad">No recent operations</div>') + `<div class="ops-foot"><button class="link" data-act="history">${icon('history')} File history…</button></div>`;
   // optional progress window (Settings > Behavior): the same list, floating, with Minimize

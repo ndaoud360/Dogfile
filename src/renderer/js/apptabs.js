@@ -216,7 +216,38 @@ window.addEventListener('message', (e) => {
 // file watching for Dogfile Notepad tabs is delivered to the main frame: pass it on
 onMain('file:changed', (p) => { for (const id of frames.keys()) { const t = tabById(id); if (t?.app === 'editor') post(t, { type: 'fileChanged', path: p }); } });
 // news from the web views (finished loading, page title, a link that wants a new tab, downloads) goes to the web page's frame
-onMain('web:event', (ev) => { for (const id of frames.keys()) { const t = tabById(id); if (t?.app === 'web') post(t, { type: 'webEvent', ev }); } });
+onMain('web:event', (ev) => {
+  if (ev?.type === 'download') webDownload(ev);
+  for (const id of frames.keys()) { const t = tabById(id); if (t?.app === 'web') post(t, { type: 'webEvent', ev }); } });
+// A download from a page shows in the Operations list and on its button (it spins and the bar under it slides) while it
+// runs, with the size so far: WebView2 doesn't say how big the file will be, so there is no percentage to show.
+const webDls = new Map(); // address → { job, timer }
+let webDlChain = Promise.resolve();
+function webDownload(ev) {
+  webDlChain = webDlChain.then(async () => {
+    const { clientJob } = await import('./tools.js');
+    const { fmtSize } = await import('./core.js');
+    if (ev.state === 'start') {
+      const job = clientJob(`Downloading ${ev.name}`);
+      job.update({ indeterminate: true, noCancel: true, current: 'Starting…' });
+      const d = { job, path: ev.path, timer: 0 };
+      d.timer = setInterval(async () => {
+        const st = d.path ? await api('fs:stat', d.path).catch(() => null) : null;
+        const size = st?.size || 0;
+        job.update({ done: size, current: size ? `${fmtSize(size)} so far` : 'Waiting for the site…' });
+      }, 700);
+      webDls.set(ev.url, d);
+      return;
+    }
+    const key = webDls.has(ev.url) ? ev.url : webDls.keys().next().value;
+    const d = webDls.get(key);
+    if (!d) return;
+    clearInterval(d.timer); webDls.delete(key);
+    const st = ev.path ? await api('fs:stat', ev.path).catch(() => null) : null;
+    if (ev.state === 'done') { d.job.update({ indeterminate: false, total: st?.size || 0, done: st?.size || 0, filesTotal: 0, current: '' }); d.job.finish('done'); }
+    else d.job.finish('error', 'The download didn’t finish');
+  }).catch(() => {});
+}
 
 // the id an app tab's answer must carry: unguessable, so no other page can answer in its place (for example to
 // skip the "save your changes?" question when a tab closes)

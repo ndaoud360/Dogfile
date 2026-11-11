@@ -33,6 +33,19 @@ async function srcFor(p) {
   if (sys.platform === 'win32') { const t = await api('thumb:get', p, 2560).catch(() => null); if (t) return t; }
   return `/media/still?p=${encodeURIComponent(p)}${b}`;
 }
+// "Loading…" over the picture while a big one (a Photoshop file, a RAW photo) is being prepared; it only appears when
+// that takes more than a moment, so quick pictures don't flash it
+let loadTimer = 0;
+function loadingOn(name) {
+  clearTimeout(loadTimer);
+  loadTimer = setTimeout(() => {
+    let el = $('vw-loading');
+    if (!el) { el = document.createElement('div'); el.id = 'vw-loading'; el.innerHTML = '<div class="msg"></div><div class="bar"><div class="fill"></div></div>'; $('vw-stage').append(el); }
+    el.querySelector('.msg').textContent = `Loading ${name}…`;
+    el.classList.add('on');
+  }, 180);
+}
+function loadingOff() { clearTimeout(loadTimer); $('vw-loading')?.classList.remove('on'); }
 async function show(i, { fade = false } = {}) {
   if (!V.list.length) { $('vw-empty').style.display = ''; return; }
   if (E && E.dirty && !(await confirm('Discard edits?', 'You have unsaved edits. Leave the editor and discard them?', { ok: 'Discard', danger: true }))) return;
@@ -48,12 +61,14 @@ async function show(i, { fade = false } = {}) {
   $('vw-count').textContent = `${i + 1} / ${V.list.length}`;
   const next = V.layer === 'a' ? $('img-b') : $('img-a');
   const cur = V.layer === 'a' ? $('img-a') : $('img-b');
+  loadingOn(it.name);
   const src = await srcFor(it.path);
   if (seq !== V.seq) return;
   next.classList.add('no-anim');
   next.style.opacity = '0';
   next.onload = () => {
     if (seq !== V.seq) return;
+    loadingOff();
     V.nat = { w: next.naturalWidth, h: next.naturalHeight };
     V.rot = 0; V.flipH = V.flipV = false; V.panX = V.panY = 0; V.zoom = 'fit';
     V.layer = V.layer === 'a' ? 'b' : 'a';
@@ -65,7 +80,7 @@ async function show(i, { fade = false } = {}) {
     renderInfo(); renderQueue(); preload();
     tellHost({ type: 'state', kind: 'photo' });
   };
-  next.onerror = () => { if (seq === V.seq) osd(`Can't show ${it.name}`); };
+  next.onerror = () => { if (seq === V.seq) { loadingOff(); osd(`Can't show ${it.name}`); } };
   next.src = src;
 }
 function preload() { for (const d of [1, -1]) { const it = V.list[(V.idx + d + V.list.length) % V.list.length]; if (it) srcFor(it.path).then((s) => { const im = new Image(); im.src = s; }); } }

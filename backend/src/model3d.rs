@@ -41,6 +41,14 @@ pub fn cad_status(_a: &Args) -> R {
     let f = fetch().lock().clone();
     Ok(json!({ "ready": occt_ready(), "dir": occt_dir().to_string_lossy(), "downloading": f.running, "received": f.received, "total": f.total, "error": f.error }))
 }
+/// m3d:cadRemove: delete the downloaded CAD reader
+pub fn cad_remove(_a: &Args) -> R {
+    if fetch().lock().running {
+        return Err("The CAD reader is still downloading".into());
+    }
+    let _ = std::fs::remove_dir_all(occt_dir());
+    Ok(json!({ "removed": true }))
+}
 /// m3d:cadInstall: fetch the CAD reader (about 8 MB) in the background; poll m3d:cadStatus
 pub fn cad_install(_a: &Args) -> R {
     if occt_ready() {

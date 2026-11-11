@@ -48,6 +48,16 @@ pub fn status(_a: &Args) -> R {
     let f = fetch().lock().clone();
     Ok(json!({ "ready": exiftool().is_some(), "downloading": f.running, "received": f.received, "total": f.total, "error": f.error, "windows": util::IS_WIN }))
 }
+/// meta:remove: delete the ExifTool Dogfile downloaded (one that came with the program or Windows isn't touched)
+pub fn remove(_a: &Args) -> R {
+    if fetch().lock().running {
+        return Err("ExifTool is still downloading".into());
+    }
+    let d = tool_dir();
+    let _ = std::fs::remove_file(d.join("exiftool.exe"));
+    let _ = std::fs::remove_dir_all(d.join("exiftool_files"));
+    Ok(json!({ "removed": true }))
+}
 /// meta:install: fetch ExifTool (Windows): the latest version from exiftool.org, SourceForge if that fails
 pub fn install(_a: &Args) -> R {
     if exiftool().is_some() {

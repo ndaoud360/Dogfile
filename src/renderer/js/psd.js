@@ -498,7 +498,7 @@ export async function openFile(path) {
     }
   }
   closeCurrent();
-  empty(null); busy('Reading the layers… (large files take a few seconds)');
+  empty(null); busy(`Loading ${basename(path)}… reading the layers (large files take a few seconds)`);
   let info;
   try { info = await api('psd:open', path); } catch (e) {
     busy(null);
@@ -644,7 +644,7 @@ async function boot() {
   wireStage(); renderActions(); renderBar();
   const pending = await pendingFiles();
   // a file is on its way: no "open a file" screen flashing before it
-  if (!pending?.files?.length) empty(h('div', {}, h('div', { class: 'ps-h' }, 'Dogfile PSD'), h('div', { class: 'confirm-msg' }, 'Open a Photoshop file (.psd or .psb) to see its layers.'), h('button', { class: 'btn primary', onclick: openDialog }, 'Open a file…')));
+  if (!pending?.files?.length) { busy(null); empty(h('div', {}, h('div', { class: 'ps-h' }, 'Dogfile PSD'), h('div', { class: 'confirm-msg' }, 'Open a Photoshop file (.psd or .psb) to see its layers.'), h('button', { class: 'btn primary', onclick: openDialog }, 'Open a file…'))); }
   else busy('Opening…');
   if (pending?.files?.length) await openFile(pending.files[0]);
   document.body.classList.add('ready');

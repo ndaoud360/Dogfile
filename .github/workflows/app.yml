@@ -95,7 +95,20 @@ jobs:
           $ProgressPreference = 'SilentlyContinue'
           $dl = "$env:RUNNER_TEMP/dl"; New-Item -ItemType Directory -Force $dl | Out-Null
           # the newest stable shared FFmpeg build listed in the release (names change with each version), master as a fallback
-          $ffRel = Invoke-RestMethod 'https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/latest' -Headers @{ 'User-Agent' = 'Dogfile-CI'; 'Authorization' = "Bearer $env:GITHUB_TOKEN" }
+          # GitHub answers "rate limit exceeded" now and then when many builds share the runner's address: try again a few times, with the other token as a second chance
+          $ffRel = $null
+          foreach ($try in 1..5) {
+            foreach ($tok in @($env:GITHUB_TOKEN, $env:GH_TOKEN, '')) {
+              try {
+                $hd = @{ 'User-Agent' = 'Dogfile-CI' }; if ($tok) { $hd['Authorization'] = "Bearer $tok" }
+                $ffRel = Invoke-RestMethod 'https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/tags/latest' -Headers $hd
+                break
+              } catch { Write-Output "::warning title=ffmpeg-list::attempt $try could not read the FFmpeg release list: $($_.Exception.Message)" }
+            }
+            if ($ffRel) { break }
+            Start-Sleep -Seconds (20 * $try)
+          }
+          if (-not $ffRel) { Write-Output "::error title=ffmpeg-list::could not read the FFmpeg release list from GitHub after 5 tries"; exit 1 }
           $ffAsset = $ffRel.assets | Where-Object { $_.name -match '^ffmpeg-n[\d.]+-latest-win64-gpl-shared-[\d.]+\.zip$' } | Sort-Object { [version](($_.name -replace '^ffmpeg-n([\d.]+)-.*','$1') + '.0') } -Descending | Select-Object -First 1
           if (-not $ffAsset) { $ffAsset = $ffRel.assets | Where-Object { $_.name -eq 'ffmpeg-master-latest-win64-gpl-shared.zip' } | Select-Object -First 1 }
           if (-not $ffAsset) { Write-Output "::error title=ffmpeg::No FFmpeg build found"; exit 1 }

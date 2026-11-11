@@ -204,7 +204,9 @@ function offerSystemBrowser(t) {
 }
 
 // ---------- news from the web views ----------
-onMain('web:event', (ev) => {
+// In a tab of the main window this page is a frame, and the app sends its events to the main page only: the main page
+// passes them on (apptabs.js) and they arrive through onHost. In a window of its own they arrive through onMain.
+function onWebEvent(ev) {
   const t = tabById(ev.id);
   if (!t) return;
   if (ev.type === 'load') {
@@ -232,7 +234,8 @@ onMain('web:event', (ev) => {
     else if (ev.state === 'done') setStatus('Downloaded', false, ...(ev.path ? [h('span', { class: 'wb-link', onclick: () => api('shell:showInExplorer', ev.path, true) }, 'Show in folder')] : []));
     else setStatus('The download didn’t finish', true);
   }
-});
+}
+onMain('web:event', onWebEvent);
 
 // ---------- the host tab ----------
 window.addEventListener('message', (e) => {
@@ -247,6 +250,7 @@ function openUrl(url) {
   if (t && !t.url) go(t, url); else go(addTab('', { after: t }), url);
 }
 onHost({
+  webEvent: onWebEvent,
   settings: (s) => { SET = { ...DEFAULT_SETTINGS, ...s }; applyColors(SET); const st = $('wb-start'); if (st) st._sig = ''; renderStage(); syncBounds(); },
   cmd: (id, arg) => {
     const t = act();

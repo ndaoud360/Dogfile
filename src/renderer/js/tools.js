@@ -151,6 +151,8 @@ export function openSearchBar() {
   host.append(searchBox);
   host.classList.add('open');
   input.focus();
+  // coming back to the words last searched: the caret goes after them, ready to add to them
+  input.setSelectionRange(input.value.length, input.value.length);
   let idle = null;
   const close = () => { clearTimeout(idle); searchBox?.remove(); searchBox = null; host.classList.remove('open'); };
   // closes by itself after 5 seconds of nothing happening in it (not while the pointer rests on it)

@@ -81,12 +81,12 @@ function buildLayer(side, W, H) {
   const snap = () => { const c = side.cloneNode(true); c.removeAttribute('id'); c.classList.add('fold-snap'); c.querySelectorAll('[id]').forEach((n) => n.removeAttribute('id')); c.style.width = W + 'px'; return c; };
   const layer = document.createElement('div');
   layer.className = 'fold-layer';
-  layer.innerHTML = `<div class="fold-back"></div><div class="fold" style="width:${W}px;perspective:${Math.round(1100 * Math.max(1, H / 640))}px"><div class="panel l" style="width:${W / 2}px"><div class="clip"></div><div class="shade"></div><div class="panel r" style="width:${W / 2}px;left:${W / 2}px"><div class="clip"></div><div class="shade"></div></div></div></div>`;
+  layer.innerHTML = `<div class="fold-shadow"></div><div class="fold-back"></div><div class="fold" style="width:${W}px;perspective:${Math.round(1100 * Math.max(1, H / 640))}px"><div class="panel l" style="width:${W / 2}px"><div class="clip"></div><div class="shade"></div><div class="panel r" style="width:${W / 2}px;left:${W / 2}px"><div class="clip"></div><div class="shade"></div></div></div></div>`;
   const [cl, cr] = layer.querySelectorAll('.clip');
   cl.append(snap());
   const right = snap(); right.style.marginLeft = -(W / 2 - 1) + 'px'; cr.append(right);
   const [sl, sr] = layer.querySelectorAll('.shade');
-  return { layer, W, H, dirty: false, pl: layer.querySelector('.panel.l'), pr: layer.querySelector('.panel.r'), sl, sr, back: layer.querySelector('.fold-back'), fold: layer.querySelector('.fold') };
+  return { layer, W, H, dirty: false, pl: layer.querySelector('.panel.l'), pr: layer.querySelector('.panel.r'), sl, sr, back: layer.querySelector('.fold-back'), shadow: layer.querySelector('.fold-shadow'), fold: layer.querySelector('.fold') };
 }
 let watching = false;
 function watchSidebar(side) {
@@ -109,6 +109,8 @@ function run(open) {
   if (!fl || fl.dirty || Math.abs(fl.W - W) > 0.5 || fl.H !== H) { fl?.layer.remove(); fl = buildLayer(side, W, H); }
   // (our own class changes below don't count as the sidebar changing)
   const L = fl;
+  // the sidebar's drop shadow (its copies have none) follows the moving edge and fades with it, instead of vanishing the moment the fold starts
+  L.shadow.style.boxShadow = (getComputedStyle(side).boxShadow || '').split(/,(?![^(]*\))/).map((x) => x.trim()).filter((x) => x && x !== 'none' && !/inset/.test(x)).join(', ') || 'none';
   if (!L.layer.isConnected) app.append(L.layer);
   L.layer.style.display = '';
 
@@ -124,6 +126,8 @@ function run(open) {
     L.sl.style.opacity = L.sr.style.opacity = String((1 - p) * 0.9);
     L.fold.style.visibility = p < 0.004 ? 'hidden' : 'visible';
     L.back.style.width = W * p + 'px';
+    L.shadow.style.width = W * p + 'px';
+    L.shadow.style.opacity = String(p);
     app.style.gridTemplateColumns = `${(W * p).toFixed(1)}px minmax(0, 1fr)`;
     // the tab strip makes room for the menu button in step with the fold (58px closed, 18px open)
     tabbar.style.paddingLeft = (58 - 40 * p).toFixed(1) + 'px';

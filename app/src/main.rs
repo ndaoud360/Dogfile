@@ -251,6 +251,8 @@ impl AppHost {
         #[cfg(windows)]
         let b = b.data_directory(webview_data_dir());
         let w = b.build()?;
+        #[cfg(windows)]
+        winx::no_browser_keys(&w);
         if see_through {
             self.glassy.lock().insert(w.label().to_string());
         }

@@ -26,6 +26,23 @@ pub fn accent_color() -> Option<String> {
     Some(format!("{:02x}{:02x}{:02x}ff", v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff))
 }
 
+/// Dogfile's own windows are an app, not a browser: switch off the web view's built-in shortcuts (Print on Ctrl+P /
+/// Ctrl+Shift+P, reload, view source, developer tools, find, back/forward) so they can never open over the app. Dogfile
+/// has its own for everything it wants. Typing and copy/paste keep working. The web pane's sites are not touched.
+pub fn no_browser_keys(w: &tauri::WebviewWindow) {
+    let _ = w.with_webview(move |pw| unsafe {
+        use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings3;
+        use windows_core::Interface;
+        if let Ok(core) = pw.controller().CoreWebView2() {
+            if let Ok(settings) = core.Settings() {
+                if let Ok(s3) = settings.cast::<ICoreWebView2Settings3>() {
+                    let _ = s3.SetAreBrowserAcceleratorKeysEnabled(false);
+                }
+            }
+        }
+    });
+}
+
 /// Ask the web view to use as little memory as it can while the window is minimized or hidden, and go back to
 /// normal when it's shown again.
 pub fn webview_memory_low(w: &tauri::WebviewWindow, low: bool) {

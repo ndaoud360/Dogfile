@@ -20,6 +20,7 @@ export function onHost(handlers) {
     if (m.type === 'cmd') handlers.cmd?.(m.id, m.arg);
     if (m.type === 'settings') handlers.settings?.(m.settings);
     if (m.type === 'fileChanged') handlers.fileChanged?.(m.path);
+    if (m.type === 'webEvent') handlers.webEvent?.(m.ev);
     if (m.type === 'leave') answerLeave(m.token);
   });
 }

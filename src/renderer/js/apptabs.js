@@ -215,6 +215,8 @@ window.addEventListener('message', (e) => {
 
 // file watching for Dogfile Notepad tabs is delivered to the main frame: pass it on
 onMain('file:changed', (p) => { for (const id of frames.keys()) { const t = tabById(id); if (t?.app === 'editor') post(t, { type: 'fileChanged', path: p }); } });
+// news from the web views (finished loading, page title, a link that wants a new tab, downloads) goes to the web page's frame
+onMain('web:event', (ev) => { for (const id of frames.keys()) { const t = tabById(id); if (t?.app === 'web') post(t, { type: 'webEvent', ev }); } });
 
 // the id an app tab's answer must carry: unguessable, so no other page can answer in its place (for example to
 // skip the "save your changes?" question when a tab closes)

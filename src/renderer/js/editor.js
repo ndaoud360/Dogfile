@@ -564,7 +564,7 @@ function renderMenubar() {
   for (const name of Object.keys(MENUS)) {
     const b = h('button', { class: 'menu-tab' }, name);
     b.addEventListener('click', () => { const r = b.getBoundingClientRect(); showMenu(MENUS[name](), r.left, r.bottom + 2, { onClose: () => active?.view.focus() }); });
-    b.addEventListener('mouseenter', () => { if (document.querySelector('.menu') && !b.classList.contains('on')) b.click(); });
+    b.addEventListener('mouseenter', () => { if (document.querySelector('.menu:not(.closing)') && !b.classList.contains('on')) b.click(); });
     bar.append(b);
   }
 }

@@ -506,7 +506,7 @@ function cueLines() {
   const line = document.body.classList.contains('idle') ? -2 : -5;
   for (const c of track.cues) if (c.line !== line) c.line = line;
 }
-function hideControlsSoon() { clearTimeout(hideT); hideT = setTimeout(() => { if (!v.paused && !document.querySelector('.menu') && !$('eq-panel').classList.contains('open') && !$('edit-panel').classList.contains('open') && !document.body.classList.contains('audio-only')) { document.body.classList.add('idle'); cueLines(); } }, 2600); }
+function hideControlsSoon() { clearTimeout(hideT); hideT = setTimeout(() => { if (!v.paused && !document.querySelector('.menu:not(.closing)') && !$('eq-panel').classList.contains('open') && !$('edit-panel').classList.contains('open') && !document.body.classList.contains('audio-only')) { document.body.classList.add('idle'); cueLines(); } }, 2600); }
 document.addEventListener('mousemove', () => { showControls(); if (!v.paused) hideControlsSoon(); });
 
 // ---------------- playlist ----------------
@@ -1076,7 +1076,7 @@ function wire() {
   });
   // keyboard (VLC-style)
   window.addEventListener('keydown', (e) => {
-    if (e.target.matches('input, textarea, select') || document.querySelector('.modal-back') || document.querySelector('.menu')) return;
+    if (e.target.matches('input, textarea, select') || document.querySelector('.modal-back') || document.querySelector('.menu:not(.closing)')) return;
     const k = e.key, c = e.ctrlKey || e.metaKey;
     const step = e.shiftKey ? 3 : c ? 60 : 10;
     let handled = true;

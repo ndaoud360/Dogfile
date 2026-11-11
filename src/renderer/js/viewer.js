@@ -798,7 +798,7 @@ function wire() {
   window.addEventListener('resize', debounce(() => { layout(); if (E) drawCanvas(); }, 40));
   new ResizeObserver(debounce(() => { layout(); if (E) drawCanvas(); }, 30)).observe($('vw-stage'));
   window.addEventListener('keydown', (e) => {
-    if (e.target.matches('input, textarea, select') || document.querySelector('.modal-back, .menu')) return;
+    if (e.target.matches('input, textarea, select') || document.querySelector('.modal-back, .menu:not(.closing)')) return;
     const k = e.key, c = e.ctrlKey || e.metaKey;
     let hd = true;
     if (E) {

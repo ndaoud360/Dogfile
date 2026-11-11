@@ -350,9 +350,27 @@ function fitRibbon(r) {
     });
   }
 }
-window.addEventListener('resize', debounce(() => { if ($('ribbon').classList.contains('open')) renderRibbon(); }, 150));
+// Refitting the ribbon to a new width rebuilds it (groups fold into buttons or open out again): each group glides from where it
+// was to where it lands, and one that changed shape fades in, instead of everything jumping at once
+function refitRibbon() {
+  const r = $('ribbon');
+  if (!r.classList.contains('open')) return;
+  const keyOf = (g) => g._name || g.querySelector('.rb-label')?.textContent || '';
+  const before = new Map();
+  for (const g of r.querySelectorAll(':scope > .rb-group')) before.set(keyOf(g), { x: g.getBoundingClientRect().left, folded: g.classList.contains('folded') });
+  renderRibbon();
+  if (document.body.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  for (const g of r.querySelectorAll(':scope > .rb-group')) {
+    const o = before.get(keyOf(g));
+    if (!o || !g.animate) continue;
+    const dx = o.x - g.getBoundingClientRect().left, changed = o.folded !== g.classList.contains('folded');
+    if (Math.abs(dx) < 1 && !changed) continue;
+    g.animate([{ transform: `translateX(${dx}px)`, opacity: changed ? 0 : 1 }, { transform: 'none', opacity: 1 }], { duration: 260, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  }
+}
+window.addEventListener('resize', debounce(refitRibbon, 150));
 // the sidebar opened or closed: the ribbon has a new width (refit it once the browser is idle)
-bus.on('sidebarToggled', () => { const r = $('ribbon'); const go = () => { if (r.classList.contains('open')) renderRibbon(); }; (window.requestIdleCallback || setTimeout)(go, { timeout: 500 }); });
+bus.on('sidebarToggled', () => { const r = $('ribbon'); const go = () => refitRibbon(); (window.requestIdleCallback || setTimeout)(go, { timeout: 500 }); });
 
 // tools that only show in Full mode (Simple mode keeps them in the command palette and the right-click "More")
 const ADVANCED_CMDS = new Set(['selectAll', 'selectNone', 'invertSel', 'shelf', 'pin', 'clipHistory', 'allVersions', 'emptyRecycle', 'showInExplorer', 'symlink', 'pasteShortcut', 'copyToOther', 'moveToOther', 'newFolderSel', 'openNewTab', 'terminal', 'runAsAdmin', 'selectPattern', 'selectSameType', 'createShortcut', 'symlink', 'hashes', 'whoLocks', 'addToShelf', 'terminalDrawer', 'gotoFile', 'winProperties', 'windowsMenu', 'syncNav', 'swapPanes', 'layout3', 'layout4', 'viewColumns', 'group_type', 'group_date', 'groupNone', 'flatten', 'toggleCheckboxes', 'toggleFolderSizes', 'sort_type', 'extractTo', 'copyName', 'editor', 'compare', 'hashes', 'similarMedia', 'makeChecksums', 'verifyChecksums', 'macros', 'startMacro', 'featureStore', 'features', 'addConnection', 'pinToWorkspace', 'automations', 'profiles', 'clipHistory', 'newCollection', 'mediaFilter']);
@@ -719,7 +737,7 @@ onMain('drives:changed', async () => {
 // ======================================================================
 window.addEventListener('keydown', (e) => {
   if (anyModalOpen() || quickLookOpen()) return;
-  if (document.querySelector('.menu')) return;
+  if (document.querySelector('.menu:not(.closing)')) return;
   // Ctrl+C with words selected in a message (a toast, an error, the assistant) copies the words, not the files
   if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C' || e.key === 'Insert')) {
     const sel = getSelection();

@@ -6,7 +6,8 @@ import { proForLabel, starHtml } from './pro-marks.js';
 let stack = [];
 
 export function closeMenus(depth = 0) {
-  while (stack.length > depth) { const m = stack.pop(); m.el.remove(); m.onClose?.(); }
+  // the menu fades out instead of vanishing (it is already out of the way: it takes no clicks while it goes)
+  while (stack.length > depth) { const m = stack.pop(); const el = m.el; el.classList.add('closing'); setTimeout(() => el.remove(), 130); m.onClose?.(); }
 }
 
 function placeAt(el, x, y, alignRight) {

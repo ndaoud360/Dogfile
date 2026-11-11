@@ -101,7 +101,9 @@ pub fn ready(name: &str) -> bool {
     }
     let Some(p) = part(name) else { return false };
     match (std::fs::read_to_string(marker(name)), p.sha) {
-        (Ok(m), Some(sha)) => m.trim() == sha,
+        // the media engine and rclone are stand-alone programs that don't depend on this version of Dogfile, and CI builds
+        // them from "latest", so every release pins a new checksum: a copy installed by an older release is still good
+        (Ok(m), Some(sha)) => m.trim() == sha || (matches!(name, "ffmpeg" | "rclone") && !m.trim().is_empty()),
         // a development build with no pinned address: whatever was put there by hand
         (Ok(_), None) => true,
         _ => false,

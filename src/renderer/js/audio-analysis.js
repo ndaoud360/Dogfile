@@ -1,5 +1,6 @@
 // Shared BPM / key analysis (used by Dogfile Player and the Audio ribbon tab), cached per file.
-import { api } from './core.js';
+import { api, sys } from './core.js';
+import { ensureComponent } from './components.js';
 
 let worker = null, seq = 0;
 const waiting = new Map();
@@ -18,6 +19,11 @@ export async function analyzeAudio(path, { force = false } = {}) {
   const st = await api('fs:stat', path).catch(() => null);
   const sig = st ? `v2|${st.size}|${Math.round(st.mtime)}` : '';
   if (!force && c[path] && c[path].sig === sig) return c[path];
+  // reading the audio needs the media engine: offer the download if it isn't here (one question however many files wait)
+  if (!sys.ffmpeg) {
+    if (!(await ensureComponent('ffmpeg', 'Finding the BPM and key'))) throw new Error('Needs the media engine (not downloaded)');
+    sys.ffmpeg = true;
+  }
   const r = await fetch(`/media/pcm?p=${encodeURIComponent(path)}&ss=0&t=360`);
   if (!r.ok) throw new Error('Could not decode this audio');
   const buf = await r.arrayBuffer();

@@ -1,6 +1,6 @@
 // Media helpers for the main window: batch audio/video conversion (ffmpeg), BPM/key results,
 // image format conversion and desktop background.
-import { api, h, toast, basename, dirname, stem, bus, IS_WIN, fileUrl, backupBeforeOverwrite } from './core.js';
+import { api, h, toast, basename, dirname, stem, bus, IS_WIN, sys, fileUrl, backupBeforeOverwrite } from './core.js';
 import { modal } from './dialogs.js';
 import { analyzeAudio, fmtAnalysis } from './audio-analysis.js';
 import { requirePro } from './license.js';
@@ -73,6 +73,7 @@ export async function convertOne(src, format, { onPct } = {}) {
 
 // BPM / key for a set of audio files, shown as a table that fills in as results arrive
 export async function analyzeDialog(paths) {
+  if (!sys.ffmpeg) { if (!(await ensureComponent('ffmpeg', 'Finding the BPM and key'))) return; sys.ffmpeg = true; }
   const rows = paths.map((p) => {
     const bpm = h('td', { class: 'num' }, h('span', { class: 'mini-spin' })), key = h('td', {}, ''), cam = h('td', {}, ''), loud = h('td', { class: 'dim' }, '');
     return { p, tr: h('tr', {}, h('td', { class: 'nm', title: p }, basename(p)), bpm, key, cam, loud), bpm, key, cam, loud };

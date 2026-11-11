@@ -2,7 +2,7 @@
 // Free and private: open models run on this PC. Pictures and video frames use CLIP, music and sounds use CLAP.
 // Embeddings are cached, so a folder is only analyzed once.
 import { ensureComponent } from './components.js';
-import { api, bus, h, esc, toast, KINDS, IS_WIN, fileUrl } from './core.js';
+import { api, bus, h, esc, toast, KINDS, IS_WIN, sys, fileUrl } from './core.js';
 import { confirm, modal } from './dialogs.js';
 import { requirePro, isPro } from './license.js';
 
@@ -268,16 +268,30 @@ async function downloadRows() {
       id: 'c:' + k, label: c.label, note: note[k] || c.why, ready: c.ready, included: c.carried && !c.removable, size: c.bytes, sizeIsEstimate: true,
       unavailable: !c.downloadable && !c.ready, busy: c.downloading, stage: c.stage, received: c.received, total: c.total, error: c.error,
       download: async () => { const r = await api('components:install', k).catch((e) => ({ error: e.message || String(e) })); if (r?.error) toast(r.error, { error: true }); },
-      remove: () => api('components:remove', k),
+      remove: async () => { await api('components:remove', k); if (k === 'ffmpeg') sys.ffmpeg = false; },
     });
   }
   if (meta?.windows) tools.push({ id: 'meta', label: 'Photo and file details (ExifTool)', note: 'Reads and edits the details inside photos, videos and documents', ready: meta.ready, busy: meta.downloading, received: meta.received, total: meta.total, error: meta.error, size: 10000000, sizeIsEstimate: true, download: () => api('meta:install'), remove: () => api('meta:remove') });
   if (cad) tools.push({ id: 'cad', label: 'CAD reader', note: 'Opens STEP, IGES and other CAD models in the 3D viewer', ready: cad.ready, busy: cad.downloading, received: cad.received, total: cad.total, error: cad.error, size: 7700000, sizeIsEstimate: true, download: () => api('m3d:cadInstall'), remove: () => api('m3d:cadRemove') });
   if (adb) tools.push({ id: 'adb', label: 'Phone connection tool (adb)', note: 'Lets Dogfile talk to an Android phone over USB or Wi-Fi', ready: adb.ready, busy: adb.downloading, error: adb.error, size: 7000000, sizeIsEstimate: true, download: () => api('phone:adbInstall'), remove: () => api('phone:adbRemove') });
+  // one plain sentence per model: what it does for the person
+  const WHAT = {
+    clip: 'Lets you search your pictures and videos by describing them, like “dog on a beach”.',
+    clap: 'Lets you search your music and sounds by describing them, like “calm piano”.',
+    whisper: 'Turns speech in videos and audio into text (transcripts and captions), on this PC.',
+    minilm: 'Understands what your notes and documents mean, so search finds them by meaning, not just exact words.',
+    writer: 'Helps in Notepad: summarize, rewrite, fix grammar and write text. Works on any PC.',
+    'writer-gpu': 'The same Notepad writing helper, much faster on PCs with a supported graphics card.',
+    brain: 'The Dogfile assistant that answers questions and does tasks for you. Best quality; needs about 6 GB of memory.',
+    'brain-small': 'A smaller assistant for PCs with less memory. Faster, but not quite as capable.',
+    stems: 'Splits a song into vocals, drums, bass and other parts.',
+    removebg: 'Cuts the background out of a photo and leaves just the subject.',
+    translate: 'Translates text between many languages without an internet connection.',
+  };
   for (const [k, m] of Object.entries(ai || {})) {
     const p = m.progress || {};
     models.push({
-      id: 'a:' + k, pro: true, label: m.label, ready: m.ready, size: m.bytes, busy: m.downloading, received: p.received, total: p.total, error: p.error,
+      id: 'a:' + k, pro: true, label: m.label, note: WHAT[k] || '', ready: m.ready, size: m.bytes, busy: m.downloading, received: p.received, total: p.total, error: p.error,
       download: async () => { if (!requirePro('assistant')) return; await ensureModels([k]); },
       remove: async () => { if (k === 'brain' || k === 'brain-small') await api('llm:stop').catch(() => {}); await api('ai:remove', k); },
     });

@@ -1,7 +1,8 @@
 // Music tag editor (MP3 / FLAC / M4A / WAV / OGG…): edit one or many files, cover art, BPM & key from analysis,
 // and Auto mode that looks the song up online by its title (iTunes + MusicBrainz, free) or by its sound
 // (AcoustID fingerprint, free key) and fills in everything including the album cover.
-import { api, h, toast, state, bus } from './core.js';
+import { api, h, toast, state, bus, sys } from './core.js';
+import { ensureComponent } from './components.js';
 import { icon } from './icons.js';
 import { modal } from './dialogs.js';
 import { analyzeAudio } from './audio-analysis.js';
@@ -44,6 +45,7 @@ const artUrl = (p, bust) => `/media/art?p=${encodeURIComponent(p)}&b=${bust || 0
 export async function openTagEditor(paths) {
   paths = paths.filter(Boolean);
   if (!paths.length) return;
+  if (!sys.ffmpeg) { if (!(await ensureComponent('ffmpeg', 'Editing music tags'))) return; sys.ffmpeg = true; }
   const infos = [];
   for (const p of paths) { try { infos.push({ p, ...(await api('tags:read', p)) }); } catch (e) { toast(`${base(p)}: ${e.message}`, { error: true }); } }
   if (!infos.length) return;

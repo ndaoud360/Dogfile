@@ -674,3 +674,30 @@ const RIBBON = {
 onHost({ open: (m) => m.files?.[0] && openFile(m.files[0]), cmd: (id) => RIBBON[id]?.() });
 window.addEventListener('pagehide', closeCurrent);
 boot().catch((e) => { console.error(e); document.body.innerHTML = `<pre style="padding:20px;color:#f66">${esc(e.stack || e.message)}</pre>`; });
+
+// ---------------- the two side bars can be hidden ----------------
+// Hiding is remembered. Until it has been chosen by hand, a narrow window (the editor beside a web page, say) hides them by itself
+// so the picture keeps room: the panel first, then the layer list.
+(function sideBars() {
+  const KEY = 'dogfile.psd.sides';
+  let pref = { l: null, r: null };
+  try { pref = { ...pref, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { /* no saved choice */ }
+  const wrap = h('div', { id: 'ps-sides' });
+  const mk = (side, label, title) => {
+    const b = h('button', { class: 'btn small', title, onclick: () => { pref[side] = !isHidden(side); try { localStorage.setItem(KEY, JSON.stringify(pref)); } catch { /* not saved */ } apply(); } }, label);
+    return b;
+  };
+  const bl = mk('l', 'Layers', 'Show or hide the layer list');
+  const br = mk('r', 'Panel', 'Show or hide the side panel');
+  wrap.append(bl, br);
+  $('ps-title').insertBefore(wrap, $('ps-actions'));
+  const autoHide = (side) => (side === 'r' ? window.innerWidth < 900 : window.innerWidth < 560);
+  const isHidden = (side) => document.body.classList.contains(side === 'l' ? 'hide-l' : 'hide-r');
+  function apply() {
+    for (const side of ['l', 'r']) document.body.classList.toggle(side === 'l' ? 'hide-l' : 'hide-r', pref[side] ?? autoHide(side));
+    bl.setAttribute('aria-pressed', String(!isHidden('l')));
+    br.setAttribute('aria-pressed', String(!isHidden('r')));
+  }
+  window.addEventListener('resize', apply);
+  apply();
+})();

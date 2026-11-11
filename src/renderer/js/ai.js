@@ -4,7 +4,7 @@
 import { ensureComponent } from './components.js';
 import { api, bus, h, esc, toast, KINDS, IS_WIN, fileUrl } from './core.js';
 import { confirm, modal } from './dialogs.js';
-import { requirePro } from './license.js';
+import { requirePro, isPro } from './license.js';
 
 // ---------------- understanding the request ----------------
 const IMG_WORDS = /\b(photos?|pictures?|pics?|images?|screenshots?|selfies?|wallpapers?)\b/i;
@@ -265,7 +265,7 @@ async function downloadRows() {
   const note = { ffmpeg: 'Plays and converts video and audio Windows can’t open by itself', ocr: 'Reads the text in photos and screenshots', ort: 'Runs the on-device AI helpers on this PC', psd: 'Opens Photoshop files with their layers (PSD editor). Without it, PSD files open as a picture', rclone: 'Browse more cloud drives like folders' };
   for (const [k, c] of Object.entries(comp || {})) {
     tools.push({
-      id: 'c:' + k, label: c.label, note: note[k] || c.why, ready: c.ready, included: c.carried, size: c.bytes, sizeIsEstimate: true,
+      id: 'c:' + k, label: c.label, note: note[k] || c.why, ready: c.ready, included: c.carried && !c.removable, size: c.bytes, sizeIsEstimate: true,
       unavailable: !c.downloadable && !c.ready, busy: c.downloading, stage: c.stage, received: c.received, total: c.total, error: c.error,
       download: async () => { const r = await api('components:install', k).catch((e) => ({ error: e.message || String(e) })); if (r?.error) toast(r.error, { error: true }); },
       remove: () => api('components:remove', k),
@@ -277,7 +277,7 @@ async function downloadRows() {
   for (const [k, m] of Object.entries(ai || {})) {
     const p = m.progress || {};
     models.push({
-      id: 'a:' + k, label: m.label, ready: m.ready, size: m.bytes, busy: m.downloading, received: p.received, total: p.total, error: p.error,
+      id: 'a:' + k, pro: true, label: m.label, ready: m.ready, size: m.bytes, busy: m.downloading, received: p.received, total: p.total, error: p.error,
       download: async () => { if (!requirePro('assistant')) return; await ensureModels([k]); },
       remove: async () => { if (k === 'brain' || k === 'brain-small') await api('llm:stop').catch(() => {}); await api('ai:remove', k); },
     });
@@ -304,14 +304,14 @@ export async function modelsDialog() {
       } }, 'Remove');
     } else if (r.unavailable) ctl = h('span', { class: 'hint' }, 'Not in this copy');
     else ctl = h('button', { class: 'btn small primary', onclick: async () => { await r.download(); tick(); } }, 'Download');
-    const status = r.busy ? '' : r.ready ? (r.included ? 'Included with Dogfile' : `Installed${r.size && !r.sizeIsEstimate ? ' · ' + fmtSize(r.size) : ''}`) : `Not downloaded${r.size ? ' · about ' + fmtSize(r.size) : ''}`;
+    const status = r.busy ? '' : r.ready ? (r.included ? 'Included with Dogfile' : `Installed${r.size && !r.sizeIsEstimate ? ' · ' + fmtSize(r.size) : ''}`) : `Not downloaded${r.size ? ' · about ' + fmtSize(r.size) : ''}${r.pro && !isPro() ? ' · AI models are a Dogfile Pro feature' : ''}`;
     sub.textContent = status;
     if (r.busy) { bar.style.display = ''; sub.textContent = 'Starting…'; bars.set(r.id, { fill, txt: sub }); }
     if (r.error && !r.busy && !r.ready) { sub.textContent = `Couldn’t download: ${r.error}`; sub.style.color = 'var(--danger, #d33)'; }
     return h('div', { class: 'set-row' }, h('div', { class: 'set-label' }, h('div', {}, r.label), r.note ? h('div', { class: 'hint' }, r.note) : null, sub, bar), h('div', { class: 'set-ctl row-inline' }, ctl));
   };
   const draw = (d) => {
-    const structural = JSON.stringify([...d.tools, ...d.models].map((r) => [r.id, r.ready, r.busy, r.error, r.unavailable, r.included]));
+    const structural = JSON.stringify([...d.tools, ...d.models].map((r) => [r.id, r.ready, r.busy, r.error, r.unavailable, r.included, r.pro && !isPro()]));
     // keep the progress moving in the rows that are already downloading
     for (const r of [...d.tools, ...d.models]) {
       const b = bars.get(r.id);

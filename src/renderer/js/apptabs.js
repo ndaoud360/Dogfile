@@ -110,9 +110,11 @@ export function syncFrames() {
   cancelAnimationFrame(raf);
   raf = requestAnimationFrame(applyFrames);
 }
+const SPLIT_GAP = 4;
 function applyFrames() {
   {
     const n = paneCount();
+    const splitters = [...document.querySelectorAll('#panes .splitter')];
     // an app filling the only pane doesn't need the preview column beside it
     const appOnly = n === 1 && frames.has(state.panes[0]);
     if (document.body.classList.contains('app-only') !== appOnly) { document.body.classList.toggle('app-only', appOnly); syncFrames(); }
@@ -121,7 +123,17 @@ function applyFrames() {
       const el = i >= 0 ? paneEls[i] : null;
       if (!el || !el.root.isConnected) { f.style.display = 'none'; webLayout(id, false); continue; }
       const r = el.root.getBoundingClientRect();
-      Object.assign(f.style, { display: 'block', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+      // a pane divider can be grabbed a few pixels either side of its line: keep the page (and a web page's native view) off that strip
+      let L = r.left, T = r.top, R = r.right, B = r.bottom;
+      for (const sp of splitters) {
+        const q = sp.getBoundingClientRect();
+        const alongY = q.top < r.bottom - 2 && q.bottom > r.top + 2, alongX = q.left < r.right - 2 && q.right > r.left + 2;
+        if (alongY && Math.abs(q.left - r.right) <= 2) R -= SPLIT_GAP;
+        if (alongY && Math.abs(q.right - r.left) <= 2) L += SPLIT_GAP;
+        if (alongX && Math.abs(q.top - r.bottom) <= 2) B -= SPLIT_GAP;
+        if (alongX && Math.abs(q.bottom - r.top) <= 2) T += SPLIT_GAP;
+      }
+      Object.assign(f.style, { display: 'block', left: L + 'px', top: T + 'px', width: Math.max(0, R - L) + 'px', height: Math.max(0, B - T) + 'px' });
       f.classList.toggle('active', i === state.activePane);
       webLayout(id, true);
     }

@@ -350,7 +350,7 @@ export async function openSettings(section = 'general', opts = {}) {
           const draw = async () => {
             const [ai, st] = await Promise.all([api('ai:status'), api('llm:status').catch(() => ({}))]);
             box.innerHTML = '';
-            const dl = (k, label) => (ai[k]?.ready ? h('button', { class: 'btn small', onclick: async () => { await api('llm:stop'); await api('ai:remove', k); draw(); } }, `Remove ${label}`) : h('button', { class: 'btn small primary', onclick: async () => { const { ensureModels } = await import('./ai.js'); await ensureModels([k]); draw(); } }, `Download ${label}`));
+            const dl = (k, label) => (ai[k]?.ready ? h('button', { class: 'btn small', onclick: async () => { await api('llm:stop'); await api('ai:remove', k); draw(); } }, `Remove ${label}`) : h('button', { class: 'btn small primary', onclick: async () => { const { requirePro } = await import('./license.js'); if (!requirePro('assistant')) return; const { ensureModels } = await import('./ai.js'); await ensureModels([k]); draw(); } }, `Download ${label}`));
             box.append(
               h('label', { class: 'check' }, toggle('assistantBrain'), ' Use it to understand requests'),
               select('assistantModel', [['auto', 'Best one downloaded'], ['brain', '4B: understands most (2.7 GB, 8 GB+ memory)'], ['brain-small', '2B: faster, less memory (1.3 GB)']], () => api('llm:stop')),
@@ -361,7 +361,7 @@ export async function openSettings(section = 'general', opts = {}) {
           return box;
         })(), 'Runs privately on this PC, even offline. You always see the plan before anything changes.'),
         row('Downloads and models', h('button', { class: 'btn small', onclick: () => import('./ai.js').then((m) => m.modelsDialog()) }, 'Manage…'), 'Everything Dogfile can download (the PSD editor, the media engine, text recognition, AI models…), with a Remove button for each.'),
-        row('AI search', h('div', { class: 'row-inline' }, toggle('aiSearch'), h('button', { class: 'btn small', onclick: () => import('./ai.js').then((m) => m.modelsDialog()) }, 'Models…')), 'Find photos, videos and songs by describing them. Runs privately on this PC.'),
+        row('AI search', toggle('aiSearch'), 'Find photos, videos and songs by describing them. Runs privately on this PC.'),
         (() => {
           const st = h('div', { class: 'hint' }, 'Uses Everything for instant results across your PC. Needs Everything and its es.exe tool.');
           if (IS_WIN()) api('everything:status').then((r) => {

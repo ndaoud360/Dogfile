@@ -255,11 +255,85 @@ export async function runAiSearch(t, query, roots) {
   if (alive()) { t._aiStop = null; publish(true); }
 }
 
-// Settings > Tools: manage downloaded models
+// Downloads & models: everything Dogfile can download, in one place, with its progress and a Remove button.
+// Helpers and tools (media engine, text recognition, PSD helper…) first, then the on-device AI models.
+const fmtSize = (b) => (b >= 1073741824 ? (b / 1073741824).toFixed(1) + ' GB' : b >= 10485760 ? Math.round(b / 1048576) + ' MB' : (b / 1048576).toFixed(1) + ' MB');
+async function downloadRows() {
+  const safe = (p) => p.catch(() => null);
+  const [comp, ai, meta, cad, adb] = await Promise.all([safe(api('components:status')), safe(api('ai:status')), safe(api('meta:status')), safe(api('m3d:cadStatus')), safe(api('phone:adbStatus'))]);
+  const tools = [], models = [];
+  const note = { ffmpeg: 'Plays and converts video and audio Windows can’t open by itself', ocr: 'Reads the text in photos and screenshots', ort: 'Runs the on-device AI helpers on this PC', psd: 'Opens Photoshop files with their layers (PSD editor). Without it, PSD files open as a picture', rclone: 'Browse more cloud drives like folders' };
+  for (const [k, c] of Object.entries(comp || {})) {
+    tools.push({
+      id: 'c:' + k, label: c.label, note: note[k] || c.why, ready: c.ready, included: c.carried, size: c.bytes, sizeIsEstimate: true,
+      unavailable: !c.downloadable && !c.ready, busy: c.downloading, stage: c.stage, received: c.received, total: c.total, error: c.error,
+      download: async () => { const r = await api('components:install', k).catch((e) => ({ error: e.message || String(e) })); if (r?.error) toast(r.error, { error: true }); },
+      remove: () => api('components:remove', k),
+    });
+  }
+  if (meta?.windows) tools.push({ id: 'meta', label: 'Photo and file details (ExifTool)', note: 'Reads and edits the details inside photos, videos and documents', ready: meta.ready, busy: meta.downloading, received: meta.received, total: meta.total, error: meta.error, size: 10000000, sizeIsEstimate: true, download: () => api('meta:install'), remove: () => api('meta:remove') });
+  if (cad) tools.push({ id: 'cad', label: 'CAD reader', note: 'Opens STEP, IGES and other CAD models in the 3D viewer', ready: cad.ready, busy: cad.downloading, received: cad.received, total: cad.total, error: cad.error, size: 7700000, sizeIsEstimate: true, download: () => api('m3d:cadInstall'), remove: () => api('m3d:cadRemove') });
+  if (adb) tools.push({ id: 'adb', label: 'Phone connection tool (adb)', note: 'Lets Dogfile talk to an Android phone over USB or Wi-Fi', ready: adb.ready, busy: adb.downloading, error: adb.error, size: 7000000, sizeIsEstimate: true, download: () => api('phone:adbInstall'), remove: () => api('phone:adbRemove') });
+  for (const [k, m] of Object.entries(ai || {})) {
+    const p = m.progress || {};
+    models.push({
+      id: 'a:' + k, label: m.label, ready: m.ready, size: m.bytes, busy: m.downloading, received: p.received, total: p.total, error: p.error,
+      download: async () => { if (!requirePro('assistant')) return; await ensureModels([k]); },
+      remove: async () => { if (k === 'brain' || k === 'brain-small') await api('llm:stop').catch(() => {}); await api('ai:remove', k); },
+    });
+  }
+  return { tools, models };
+}
+
 export async function modelsDialog() {
-  if (!requirePro('assistant')) return;
-  const st = await api('ai:status');
-  const rows = Object.entries(st).map(([k, s]) => h('div', { class: 'set-row' }, h('div', { class: 'set-label' }, h('div', {}, s.label), h('div', { class: 'hint' }, s.ready ? `Installed · ${fmtMB(s.bytes)}` : 'Not downloaded')),
-    h('div', { class: 'set-ctl row-inline' }, s.ready ? h('button', { class: 'btn small', onclick: async () => { await api('ai:remove', k); toast('Removed'); } }, 'Remove') : h('button', { class: 'btn small primary', onclick: () => ensureModels([k]) }, 'Download'))));
-  modal({ title: 'AI search models', width: 520, body: h('div', {}, ...rows, h('div', { class: 'hint', style: { marginTop: '10px' } }, 'Models: CLIP ViT-B/32 and CLAP (HTSAT), open source, run on this PC. Analysis results are cached so each file is only looked at once.')), buttons: [{ label: 'Close', primary: true, value: true }] });
+  const list = h('div', {});
+  const bars = new Map(); // id → { fill, txt } so progress moves without rebuilding the rows
+  let sig = '', dead = false;
+  const row = (r) => {
+    const sub = h('div', { class: 'hint' });
+    const bar = h('div', { class: 'tp-bar', style: { marginTop: '6px', display: 'none' } }, h('div', { class: 'tp-fill' }));
+    const fill = bar.firstChild;
+    let ctl;
+    if (r.busy) { ctl = h('span', { class: 'hint' }, 'Downloading…'); }
+    else if (r.included) ctl = h('span', { class: 'hint' }, 'Included');
+    else if (r.ready) {
+      ctl = h('button', { class: 'btn small', onclick: async () => {
+        if (!(await confirm(`Remove ${esc(r.label)}?`, 'It frees up space on this PC. You can download it again whenever you need it.', { ok: 'Remove' }))) return;
+        try { await r.remove(); toast('Removed'); } catch (e) { toast(e.message || String(e), { error: true }); }
+        tick();
+      } }, 'Remove');
+    } else if (r.unavailable) ctl = h('span', { class: 'hint' }, 'Not in this copy');
+    else ctl = h('button', { class: 'btn small primary', onclick: async () => { await r.download(); tick(); } }, 'Download');
+    const status = r.busy ? '' : r.ready ? (r.included ? 'Included with Dogfile' : `Installed${r.size && !r.sizeIsEstimate ? ' · ' + fmtSize(r.size) : ''}`) : `Not downloaded${r.size ? ' · about ' + fmtSize(r.size) : ''}`;
+    sub.textContent = status;
+    if (r.busy) { bar.style.display = ''; sub.textContent = 'Starting…'; bars.set(r.id, { fill, txt: sub }); }
+    if (r.error && !r.busy && !r.ready) { sub.textContent = `Couldn’t download: ${r.error}`; sub.style.color = 'var(--danger, #d33)'; }
+    return h('div', { class: 'set-row' }, h('div', { class: 'set-label' }, h('div', {}, r.label), r.note ? h('div', { class: 'hint' }, r.note) : null, sub, bar), h('div', { class: 'set-ctl row-inline' }, ctl));
+  };
+  const draw = (d) => {
+    const structural = JSON.stringify([...d.tools, ...d.models].map((r) => [r.id, r.ready, r.busy, r.error, r.unavailable, r.included]));
+    // keep the progress moving in the rows that are already downloading
+    for (const r of [...d.tools, ...d.models]) {
+      const b = bars.get(r.id);
+      if (b && r.busy && structural === sig) {
+        const pct = r.total ? Math.min(100, ((r.received || 0) / r.total) * 100) : 5;
+        b.fill.style.width = (r.stage === 'Installing' ? 100 : pct) + '%';
+        b.txt.textContent = r.stage === 'Installing' ? 'Installing…' : `Downloading… ${fmtSize(r.received || 0)}${r.total ? ' of ' + fmtSize(r.total) : ''}`;
+      }
+    }
+    if (structural === sig) return;
+    sig = structural; bars.clear();
+    list.replaceChildren(
+      h('div', { class: 'set-group-title', style: { fontWeight: 600, margin: '2px 0 4px' } }, 'Helpers and tools'),
+      ...d.tools.map(row),
+      h('div', { class: 'set-group-title', style: { fontWeight: 600, margin: '14px 0 4px' } }, 'AI models'),
+      ...d.models.map(row),
+      h('div', { class: 'hint', style: { marginTop: '10px' } }, 'Everything here is checked after it downloads and runs on this PC; your files never leave it. AI search results are cached so each file is only looked at once.'));
+    // progress numbers for rows that just appeared mid-download
+    draw({ ...d });
+  };
+  async function tick() { if (dead) return; try { draw(await downloadRows()); } catch { /* the next tick tries again */ } }
+  await tick();
+  const timer = setInterval(() => { if (!list.isConnected) { dead = true; clearInterval(timer); return; } tick(); }, 800);
+  modal({ title: 'Downloads and models', width: 560, body: list, buttons: [{ label: 'Close', primary: true, value: true }], onClose: () => { dead = true; clearInterval(timer); } });
 }

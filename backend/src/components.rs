@@ -114,11 +114,33 @@ pub fn status(_a: &Args) -> R {
         let s = f.get(p.name).cloned().unwrap_or_default();
         out.insert(
             p.name.to_string(),
-            json!({ "ready": ready(p.name), "label": p.label, "why": p.why, "bytes": p.size, "downloadable": p.url.is_some() && p.sha.is_some(),
+            json!({ "ready": ready(p.name), "carried": carried(p.name), "label": p.label, "why": p.why, "bytes": p.size, "downloadable": p.url.is_some() && p.sha.is_some(),
                 "downloading": s.running, "received": s.received, "total": s.total, "stage": s.stage, "error": s.error }),
         );
     }
     Ok(Value::Object(out))
+}
+/// components:remove(name): delete a downloaded part (not one the program carries itself, and not while it downloads)
+pub fn remove(a: &Args) -> R {
+    let name = a.s(0)?;
+    let p = part(&name).ok_or("Unknown component")?;
+    if carried(p.name) {
+        return Err(format!("{} is part of this copy of Dogfile, so it can’t be removed", p.label));
+    }
+    if fetches().lock().get(p.name).map(|f| f.running).unwrap_or(false) {
+        return Err(format!("{} is still downloading", p.label));
+    }
+    match p.name {
+        "ffmpeg" => { let _ = std::fs::remove_dir_all(ffmpeg_dir()); }
+        "psd" => { let _ = std::fs::remove_dir_all(psd_dir()); }
+        "rclone" => { let _ = std::fs::remove_dir_all(rclone_dir()); }
+        "ocr" => { let _ = std::fs::remove_dir_all(web_dir().join("tesseract")); }
+        "ort" => { let _ = std::fs::remove_dir_all(web_dir().join("ort")); }
+        _ => {}
+    }
+    let _ = std::fs::remove_file(marker(p.name));
+    fetches().lock().remove(p.name);
+    Ok(json!({ "removed": true }))
 }
 /// components:install(name): fetch the part in the background; poll components:status
 pub fn install(a: &Args) -> R {

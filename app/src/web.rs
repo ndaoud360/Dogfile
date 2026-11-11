@@ -128,12 +128,12 @@ pub fn run(app: &AppHandle, win: &str, op: &str, a: &Value, setup: &Setup, emit:
                             let target = unique(&dir, &name);
                             *destination = target.clone();
                             let shown = target.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or(name);
-                            emit(&wname, "web:event", evt(&wid, "download", json!({ "state": "start", "name": shown, "risky": webguard::risky_file(&shown) })));
+                            emit(&wname, "web:event", evt(&wid, "download", json!({ "state": "start", "name": shown, "url": url.as_str(), "path": target.to_string_lossy(), "risky": webguard::risky_file(&shown) })));
                             true
                         }
-                        DownloadEvent::Finished { path, success, .. } => {
+                        DownloadEvent::Finished { url, path, success } => {
                             let p = path.map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
-                            emit(&wname, "web:event", evt(&wid, "download", json!({ "state": if success { "done" } else { "failed" }, "path": p })));
+                            emit(&wname, "web:event", evt(&wid, "download", json!({ "state": if success { "done" } else { "failed" }, "url": url.as_str(), "path": p })));
                             true
                         }
                         _ => true,

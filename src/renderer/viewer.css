@@ -188,3 +188,11 @@ body.ocr-on #vw-layers { user-select: text; }
 :root[data-theme='light'] .ocr-text { background: #fff; border-color: #d9d9dc; color: #1f2023; }
 body.ocr-busy #vw-stage { cursor: progress; }
 html.embedded #vw-bar { display: none !important; }
+
+/* loading message over a picture that takes a moment to prepare */
+#vw-loading { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 12px; pointer-events: none; z-index: 5; color: var(--text-2, #ddd); font-size: 14px; }
+#vw-loading.on { display: flex; }
+#vw-loading .bar { width: min(260px, 60%); height: 5px; border-radius: 3px; background: rgba(128, 128, 128, .3); overflow: hidden; position: relative; }
+#vw-loading .fill { position: absolute; height: 100%; width: 35%; border-radius: 3px; background: var(--accent, #6aa3ff); animation: vw-slide 1.1s ease-in-out infinite alternate; }
+@keyframes vw-slide { from { left: 0; } to { left: 65%; } }
+@media (prefers-reduced-motion: reduce) { #vw-loading .fill { animation: none; width: 100%; opacity: .6; } }

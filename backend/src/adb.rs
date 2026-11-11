@@ -316,6 +316,14 @@ pub async fn status(_a: &Args) -> R {
     let phones: Vec<String> = if adb().is_some() { devices().await.into_iter().map(|d| d.label).collect() } else { vec![] };
     Ok(json!({ "ready": adb().is_some(), "downloading": f.running, "error": f.error, "phones": phones }))
 }
+/// phone:adbRemove: delete the adb Dogfile downloaded (not one that was already on the PC)
+pub fn remove(_a: &Args) -> R {
+    if fetch().lock().running {
+        return Err("adb is still downloading".into());
+    }
+    let _ = std::fs::remove_dir_all(tool_dir());
+    Ok(json!({ "removed": true }))
+}
 /// phone:adbInstall: Google's platform-tools (adb), once
 pub fn install(_a: &Args) -> R {
     if adb().is_some() {

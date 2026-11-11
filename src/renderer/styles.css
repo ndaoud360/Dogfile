@@ -491,6 +491,9 @@ body.no-status #statusbar #st-left, body.no-status #statusbar #st-mid, body.no-s
 #ops-btn.show { display: grid !important; }
 #ops-btn.busy { color: var(--accent); }
 #ops-btn.busy .ic { animation: spin 1.4s linear infinite; }
+@keyframes opsslide { from { transform: translateX(-120%); } to { transform: translateX(220%); } }
+#ops-btn.busy.indet::after { background: var(--accent); width: 40%; right: auto; animation: opsslide 1.2s ease-in-out infinite; }
+#ops-btn { overflow: hidden; }
 #ops-btn::after { content: ''; position: absolute; left: 6px; right: 6px; bottom: 3px; height: 2px; background: linear-gradient(90deg, var(--accent) var(--p, 0%), transparent var(--p, 0%)); border-radius: 2px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 #ops-panel { position: absolute; right: 10px; bottom: 40px; width: 380px; max-height: 60vh; overflow: auto; background: var(--bg-elev); border-radius: 12px; box-shadow: var(--shadow); z-index: 40; display: none; padding: 6px 0; }

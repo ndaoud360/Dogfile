@@ -360,6 +360,7 @@ export async function openSettings(section = 'general', opts = {}) {
           draw();
           return box;
         })(), 'Runs privately on this PC, even offline. You always see the plan before anything changes.'),
+        row('Downloads and models', h('button', { class: 'btn small', onclick: () => import('./ai.js').then((m) => m.modelsDialog()) }, 'Manage…'), 'Everything Dogfile can download (the PSD editor, the media engine, text recognition, AI models…), with a Remove button for each.'),
         row('AI search', h('div', { class: 'row-inline' }, toggle('aiSearch'), h('button', { class: 'btn small', onclick: () => import('./ai.js').then((m) => m.modelsDialog()) }, 'Models…')), 'Find photos, videos and songs by describing them. Runs privately on this PC.'),
         (() => {
           const st = h('div', { class: 'hint' }, 'Uses Everything for instant results across your PC. Needs Everything and its es.exe tool.');

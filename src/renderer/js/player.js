@@ -1174,7 +1174,16 @@ async function boot() {
 }
 onMain('player:open', ({ files, play, autoPlaylist }) => setPlaylist(files, { play: play !== false, autoPlaylist: !!autoPlaylist }));
 onMain('settings:changed', (s) => { settings = { ...settings, ...s }; applyMediaTheme(); plFeatures?.reload(); });
+// files dragged in from a folder pane: audio and video play here, anything else gets the "can't open here" pop-up
+async function dropFiles(m) {
+  const D = await import('./dropin.js');
+  const ok = [], bad = [];
+  for (const p of m.paths || []) { const a = await D.appForDeep(p); if (a === 'player') ok.push(p); else bad.push({ path: p, app: a }); }
+  if (bad.length) await D.unsupportedDialog('player', bad);
+  if (ok.length) setPlaylist(ok, { play: true, autoPlaylist: ok.length === 1 });
+}
 onHost({
+  dropFiles,
   open: (m) => setPlaylist(m.files || [], { play: m.play !== false && !m.append, autoPlaylist: !!m.autoPlaylist, append: !!m.append }),
   settings: (s) => { settings = { ...settings, ...s }; applyMediaTheme(); plFeatures?.reload(); },
   cmd: (id) => ({

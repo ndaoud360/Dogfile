@@ -2414,3 +2414,20 @@ body.mv-on #mv-halo { position: fixed; inset: 0; z-index: 3000; pointer-events: 
 .wm-controls .seg-btn { padding: 4px 12px; border: 1px solid var(--border); background: transparent; color: var(--text); border-radius: 6px; cursor: pointer; }
 .wm-controls .seg-btn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
 .row-inline.wrap { flex-wrap: wrap; }
+
+/* What is this? */
+.wit-list { display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow: auto; }
+.wit-row { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 3px; }
+.wit-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wit-what { font-size: 13px; }
+.wit-group { color: var(--muted, #888); }
+.wit-line { font-size: 12.5px; color: var(--muted, #888); }
+.wit-line.ok { color: var(--ok, #3a9a5b); }
+.wit-fix { font-size: 13px; }
+.wit-error .wit-what { color: var(--danger, #d44); }
+
+/* the pop-up for a file dropped on an app that can't show it */
+.di-row { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+.di-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.di-sub { font-size: 12.5px; color: var(--muted, #888); }
+.di-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }

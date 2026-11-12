@@ -869,7 +869,41 @@ function openText({ text, name, dir }) {
   docs.push(d); activate_(d); renderTabs();
 }
 onMain('editor:open', ({ files, compare, text, name, dir }) => (text != null && !files?.length ? openText({ text, name, dir }) : compare && files.length === 2 ? openCompare(files[0], files[1]) : openPaths(files)));
-onHost({ open: (m) => (m.compare && m.files?.length === 2 ? openCompare(m.files[0], m.files[1]) : openPaths(m.files || [])), settings: (v) => { settings = { ...settings, ...v }; applyColors(settings); features?.reload(); }, cmd: (id) => { ({ save: () => save(active), saveAs: () => saveAs(active), saveAll, new: () => newDoc(), open: () => openDialog(), requestClose: () => closeDoc(active),
+// files dragged in from a folder pane (the main window passes them on): open them here, in a new tab, or in place of the one showing
+async function replaceActive(p) {
+  const old = active;
+  if (!old) return openPaths([p]);
+  if (old.dirty) {
+    const r = await api('dialog:confirm', { type: 'warning', title: 'Dogfile Notepad', message: `Save changes to “${old.name}”?`, buttons: ['Save', "Don't save", 'Cancel'], cancelId: 2 });
+    if (r === 2) return false;
+    if (r === 0 && !(await save(old))) return false;
+  }
+  const i = docs.indexOf(old);
+  docs.splice(i, 1);
+  if (old.path) api('fs:watchFile', old.path, false);
+  old.view.destroy();
+  if (docs.length) activate_(docs[Math.min(i, docs.length - 1)]);
+  const got = await openPaths([p]);
+  if (!got && !docs.length) newDoc('', { here: true });
+  return true;
+}
+async function dropFiles(m) {
+  const D = await import('./dropin.js');
+  const ok = [], bad = [];
+  for (const p of m.paths || []) { const a = await D.appForDeep(p); if (a === 'editor') ok.push(p); else bad.push({ path: p, app: a }); }
+  if (bad.length) await D.unsupportedDialog('editor', bad);
+  if (!ok.length) return;
+  const used = active && (active.path || active.dirty || active.view.state.doc.length);
+  const fresh = ok.filter((p) => !docs.some((d) => d.path && d.path.toLowerCase() === p.toLowerCase()));
+  if (!used || !fresh.length) { await openPaths(ok); return; }
+  const what = ok.length > 1 ? `${basename(ok[0])} and ${ok.length - 1} more` : basename(ok[0]);
+  const choice = await D.askNewOrReplace('editor', what, active.name);
+  if (!choice) return;
+  if (choice === 'new') { await openPaths(ok); return; }
+  const done = await replaceActive(fresh[0]);
+  if (done !== false && ok.length > 1) await openPaths(ok.filter((p) => p !== fresh[0]));
+}
+onHost({ dropFiles, open: (m) => (m.compare && m.files?.length === 2 ? openCompare(m.files[0], m.files[1]) : openPaths(m.files || [])), settings: (v) => { settings = { ...settings, ...v }; applyColors(settings); features?.reload(); }, cmd: (id) => { ({ save: () => save(active), saveAs: () => saveAs(active), saveAll, new: () => newDoc(), open: () => openDialog(), requestClose: () => closeDoc(active),
   undo: () => CM.undo(view()), redo: () => CM.redo(view()), find: () => CM.openSearchPanel(view()), replace: () => { CM.openSearchPanel(view()); setTimeout(() => document.querySelector('.cm-search [name=replace]')?.focus(), 10); },
   bookmark: toggleBookmark, wrap: () => toggle('wrap'), whitespace: () => toggle('whitespace'), zoomIn: () => zoom(1), zoomOut: () => zoom(-1), preview: () => toggle('preview'), stats }[id]?.()); if (id !== 'requestClose') active?.view.focus(); }, fileChanged: (p) => fileChanged(p) });
 onMain('settings:changed', (v) => { settings = { ...settings, ...v }; applyColors(settings); features?.reload(); });

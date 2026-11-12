@@ -671,7 +671,23 @@ const RIBBON = {
   showAll: () => D && setAllVisible(true), hideAll: () => D && setAllVisible(false), accurate: () => D && toggleAccurate(),
   fit: () => fit(),
 };
-onHost({ open: (m) => m.files?.[0] && openFile(m.files[0]), cmd: (id) => RIBBON[id]?.() });
+// files dragged in from a folder pane: a Photoshop file opens in a new tab or in place of this one (asking to save first)
+async function dropFiles(m) {
+  const DI = await import('./dropin.js');
+  const ok = [], bad = [];
+  for (const p of m.paths || []) { const a = await DI.appForDeep(p); if (a === 'psd') ok.push(p); else bad.push({ path: p, app: a }); }
+  if (bad.length) await DI.unsupportedDialog('psd', bad);
+  if (!ok.length) return;
+  if (!D || D.path === ok[0]) { if (!D) await openFile(ok[0]); else toast('That file is already open here'); return; }
+  const choice = await DI.askNewOrReplace('psd', basename(ok[0]), basename(D.path));
+  if (!choice) return;
+  if (choice === 'new') { DI.openElsewhere('psd', ok); return; }
+  if (dirty() && !(await DI.askSaveBeforeReplace('psd', basename(D.path), async () => { await save(); return !dirty(); }))) return;
+  ED = new Map(); DOC = { crop: null, rot: 0, flipH: false, flipV: false };
+  await openFile(ok[0]);
+  if (ok.length > 1) DI.openElsewhere('psd', ok.slice(1));
+}
+onHost({ dropFiles, open: (m) => m.files?.[0] && openFile(m.files[0]), cmd: (id) => RIBBON[id]?.() });
 window.addEventListener('pagehide', closeCurrent);
 boot().catch((e) => { console.error(e); document.body.innerHTML = `<pre style="padding:20px;color:#f66">${esc(e.stack || e.message)}</pre>`; });
 

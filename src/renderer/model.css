@@ -112,3 +112,6 @@ body.no-side #md-side { display: none; }
 .md-chip .ic { width: 12px; height: 12px; }
 
 @media (max-width: 760px) { #md-main { grid-template-columns: minmax(0, 1fr) 0; } #md-side { display: none; } }
+
+/* a picture dragged over one of the texture rows */
+.md-chan.drop-map { outline: 2px dashed var(--accent, #4a90e2); outline-offset: -2px; background: color-mix(in srgb, var(--accent, #4a90e2) 14%, transparent); border-radius: 6px; }

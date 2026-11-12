@@ -21,6 +21,8 @@ export function onHost(handlers) {
     if (m.type === 'settings') handlers.settings?.(m.settings);
     if (m.type === 'fileChanged') handlers.fileChanged?.(m.path);
     if (m.type === 'webEvent') handlers.webEvent?.(m.ev);
+    if (m.type === 'dragFiles') handlers.dragFiles?.(m);
+    if (m.type === 'dropFiles') handlers.dropFiles?.(m);
     if (m.type === 'leave') answerLeave(m.token);
   });
 }

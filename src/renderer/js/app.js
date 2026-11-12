@@ -251,7 +251,7 @@ const R = {
     ['Rename', [['batchRename', 'Rename Studio', true]]],
     ['Compress', [['quickZip', 'Zip', true], ['compress', 'Compress…'], ['extract'], ['extractTo']]],
     ['Find', [['dupes', 'Duplicates', true], ['similarImages', 'Similar pictures'], ['similarMedia', 'Similar media'], ['semanticSearch', 'Search by meaning'], ['newCollection', 'New collection']]],
-    ['Batch', [['batchTools', 'Batch tools', true], ['packFolders', 'Pack into folders'], ['flattenFolders', 'Flatten'], ['zipEach', 'Zip each'], ['extractEach', 'Extract each']]],
+    ['Batch', [['batchTools', 'Batch tools', true], ['whatIsThis', 'What is this?'], ['packFolders', 'Pack into folders'], ['flattenFolders', 'Flatten'], ['zipEach', 'Zip each'], ['extractEach', 'Extract each']]],
     ['Folder', [['folderNote', 'Folder note'], ['createShortcut'], ['symlink']]],
     ['Share', [['sendToPhone', 'Send to phone'], ['copyPath', 'Copy path'], ['copyName'], ['addToShelf', 'Add to Drop Shelf']]],
   ],

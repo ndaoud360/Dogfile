@@ -27,14 +27,16 @@ const pdfLib = async () => {
 const KIND = (p) => {
   const e = (p.split('.').pop() || '').toLowerCase();
   if (e === 'pdf') return 'pdf';
-  if (['docx', 'docm', 'dotx'].includes(e)) return 'docx';
-  if (['xlsx', 'xlsm', 'xls', 'ods', 'xlsb'].includes(e)) return 'xlsx';
-  if (['pptx', 'ppsx', 'potx'].includes(e)) return 'pptx';
+  if (['docx', 'docm', 'dotx', 'dotm'].includes(e)) return 'docx';
+  if (['xlsx', 'xlsm', 'xls', 'ods', 'xlsb', 'xlt', 'xltx', 'xltm', 'ots', 'fods'].includes(e)) return 'xlsx';
+  if (['pptx', 'pptm', 'ppsx', 'ppsm', 'potx', 'potm'].includes(e)) return 'pptx';
   if (e === 'one') return 'one';
-  if (['doc', 'ppt', 'rtf'].includes(e)) return 'legacy';
+  // OpenDocument text and slides, and RTF: shown as pages to read (Dogfile can't save these)
+  if (['odt', 'ott', 'odp', 'rtf'].includes(e)) return 'readonly';
+  if (['doc', 'dot', 'ppt', 'pps', 'pot'].includes(e)) return 'legacy';
   return 'other';
 };
-const KIND_NAME = { pdf: 'PDF', docx: 'Word document', xlsx: 'Spreadsheet', pptx: 'Presentation', one: 'OneNote page', legacy: 'Older Office file', other: 'File' };
+const KIND_NAME = { readonly: 'Document', pdf: 'PDF', docx: 'Word document', xlsx: 'Spreadsheet', pptx: 'Presentation', one: 'OneNote page', legacy: 'Older Office file', other: 'File' };
 const baseName = (p) => p.split(/[\\/]/).pop();
 const dirName = (p) => p.replace(/[\\/][^\\/]*$/, '');
 
@@ -168,19 +170,21 @@ function sendState() {
   tellHost({ type: 'state', kind: 'office', doc: cur?.kind || null, path: cur?.path || null, dirty: !!cur?.dirty, canSave: !!(cur && SAVE[cur.kind] && v && !v.readonly),
     tool: v?.tool || null, fit: v?.zoom === 'fit', sheets: v?.wb?.SheetNames || null, sheet: v?.sheet || null });
 }
+// Dogfile writes plain Open XML files: older, template and macro-enabled types are saved as the plain type beside them
+const SAVES_AS = { xls: 'xlsx', ods: 'xlsx', xlsb: 'xlsx', xlt: 'xlsx', xltx: 'xlsx', xltm: 'xlsx', ots: 'xlsx', fods: 'xlsx', xlsm: 'xlsx', docm: 'docx', dotx: 'docx', dotm: 'docx', pptm: 'pptx', ppsm: 'pptx', ppsx: 'pptx', potx: 'pptx', potm: 'pptx' };
 async function save(copy) {
   const d = cur;
   if (!d?.view || !SAVE[d.kind]) return;
   let target = d.path;
   if (copy) {
     const ext = d.path.split('.').pop();
-    target = await api('fs:uniqueName', dirName(d.path), `${d.name.replace(/\.[^.]+$/, '')} (edited).${['xls', 'ods', 'xlsb'].includes(ext.toLowerCase()) ? 'xlsx' : ext}`, 'number');
+    target = await api('fs:uniqueName', dirName(d.path), `${d.name.replace(/\.[^.]+$/, '')} (edited).${SAVES_AS[ext.toLowerCase()] || ext}`, 'number');
   } else if (d.view.lossy && !d.warned) {
     const ok = await confirm('Save over the original?', `${esc(d.view.lossy)}<br><br>Choose <b>Save a copy</b> instead to keep the original as it is.`, { ok: 'Save' });
     if (!ok) return false;
     d.warned = true;
   }
-  if (!copy && ['xls', 'ods', 'xlsb'].includes(d.path.split('.').pop().toLowerCase())) target = d.path.replace(/\.[^.]+$/, '.xlsx');
+  if (!copy && SAVES_AS[d.path.split('.').pop().toLowerCase()]) target = d.path.replace(/\.[^.]+$/, '.' + SAVES_AS[d.path.split('.').pop().toLowerCase()]);
   busy('Saving…');
   try {
     const bytes = await SAVE[d.kind](d);
@@ -1122,6 +1126,17 @@ RENDER.one = (d) => {
   $('of-doc').append(box);
 };
 
+// OpenDocument text / slides and RTF: read here (the same reader as the preview pane); editing is for their own program
+LOADERS.readonly = async () => ({ readonly: true, status: () => 'read only' });
+RENDER.readonly = async (d) => {
+  const host = h('div', { class: 'of-readonly' });
+  $('of-doc').append(h('div', { class: 'of-note' }, h('span', {}, `${d.name} is shown for reading. Dogfile Office can’t change this kind of file.`), h('button', { class: 'btn small', onclick: () => openDefault(d.path) }, 'Open in its own program')), host);
+  try {
+    const { renderOffice } = await import('./docpreview.js');
+    await renderOffice(host, { path: d.path, name: d.name }, { large: true, alive: () => cur === d, addRows: () => {} });
+  } catch (e) { host.append(h('div', { class: 'of-err' }, h('div', { class: 'err-title' }, `Couldn’t read ${d.name}`), h('div', { class: 'err-msg' }, String(e?.message || e)))); }
+};
+
 // older formats Dogfile can't edit
 LOADERS.legacy = async () => ({ readonly: true, status: () => 'older format' });
 RENDER.legacy = (d) => { $('of-doc').append(h('div', { class: 'of-err' }, h('div', { class: 'err-title' }, `${d.name} is in an older Office format`), h('div', { class: 'err-msg' }, 'Dogfile Office opens .docx, .xlsx (and .xls), .pptx and PDF files. Open this one in its own program, or save it there in the newer format.'), h('button', { class: 'btn', onclick: () => openDefault(d.path) }, 'Open with the Windows default app'))); };
@@ -1136,7 +1151,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.key === 'F5' && cur?.kind === 'pptx') { e.preventDefault(); slideshow(cur); }
 });
 async function openDialog() {
-  const files = await api('dialog:openFiles', { title: 'Open a document', filters: [{ name: 'Documents', extensions: ['docx', 'xlsx', 'xls', 'xlsm', 'ods', 'pptx', 'pdf', 'one'] }] });
+  const files = await api('dialog:openFiles', { title: 'Open a document', filters: [{ name: 'Documents', extensions: ['docx', 'docm', 'dotx', 'dotm', 'xlsx', 'xls', 'xlsm', 'xlsb', 'xlt', 'xltx', 'xltm', 'ods', 'ots', 'fods', 'pptx', 'pptm', 'ppsx', 'potx', 'pdf', 'odt', 'ott', 'odp', 'rtf', 'one'] }] });
   if (files?.length) openPaths(files);
 }
 const confirmLeave = async (asking) => {
@@ -1184,6 +1199,27 @@ const CMD = {
   markText: () => cur?.kind === 'pdf' && pdfTool(cur.view, 'text'), markHl: () => cur?.kind === 'pdf' && pdfTool(cur.view, 'hl'), markPen: () => cur?.kind === 'pdf' && pdfTool(cur.view, 'pen'),
   sheet: (name) => { const v = cur?.view; if (cur?.kind === 'xlsx' && v.wb.Sheets[name]) { v.sheet = name; v.sel = { r: 0, c: 0 }; $('of-doc').innerHTML = ''; RENDER.xlsx(cur); renderBar(); } },
 };
-onHost({ open: (m) => openPaths(m.files || []), cmd: (id, arg) => CMD[id]?.(arg), settings: (s) => { settings = { ...settings, ...s }; applyColors(settings); } });
+// files dragged in from a folder pane: a new tab, or in place of the document showing (asking to save its changes first)
+async function dropFiles(m) {
+  const D = await import('./dropin.js');
+  const ok = [], bad = [];
+  for (const p of m.paths || []) { const a = await D.appForDeep(p); if (a === 'office') ok.push(p); else bad.push({ path: p, app: a }); }
+  if (bad.length) await D.unsupportedDialog('office', bad);
+  if (!ok.length) return;
+  const fresh = ok.filter((p) => !docs.some((d) => d.path.toLowerCase() === p.toLowerCase()));
+  if (!cur || !fresh.length) { await openPaths(ok); return; }
+  const what = ok.length > 1 ? `${baseName(ok[0])} and ${ok.length - 1} more` : baseName(ok[0]);
+  const choice = await D.askNewOrReplace('office', what, cur.name);
+  if (!choice) return;
+  if (choice === 'new') { await openPaths(ok); return; }
+  const old = cur;
+  if (old.dirty && !(await askSave(old))) return;
+  const i = docs.indexOf(old);
+  docs.splice(i, 1);
+  cur = null;
+  if (docs.length) await show(docs[Math.max(0, i - 1)]); else showEmpty();
+  await openPaths(ok);
+}
+onHost({ dropFiles, open: (m) => openPaths(m.files || []), cmd: (id, arg) => CMD[id]?.(arg), settings: (s) => { settings = { ...settings, ...s }; applyColors(settings); } });
 window.__office = { docs, get cur() { return cur; }, openPaths, save, show };
 boot().catch((e) => { console.error(e); document.body.innerHTML = `<pre style="padding:20px;color:#f66">${esc(e.stack || e.message)}</pre>`; });

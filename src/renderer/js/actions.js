@@ -18,6 +18,7 @@ const copyable = (items) => items.filter((i) => !i.virtual && !i.archive && !i.r
 // ======================================================================
 // Opening
 // ======================================================================
+const AMBIGUOUS = { ts: 'ts', vhd: 'vhd' };
 export async function openItems(items, { pane = state.activePane, newTab = false, newWindow = false } = {}) {
   for (const i of items) if (i && i.ext == null && !i.isDir && (i.name || i.path)) i.ext = extname(i.name || basename(i.path));
   const t = paneTab(pane);
@@ -61,8 +62,10 @@ export async function openItems(items, { pane = state.activePane, newTab = false
   }
   // Built-in apps: Dogfile Notepad for text, Dogfile Player for audio/video
   const local = files.filter((f) => !f.archive && !f.recycle && !f.mtp);
-  const texts = state.settings.useAtlasEditor !== false ? local.filter((f) => isTextFile(f) && !(state.settings.useAtlasViewer !== false && isImageFile(f)) && !(state.settings.useAtlas3D !== false && isModelFile(f))) : [];
-  const medias = state.settings.useAtlasPlayer !== false ? local.filter(isMediaFile) : [];
+  // two kinds of file share a name ending: .ts (TypeScript or MPEG video) and .vhd (VHDL or a virtual disk). What is inside decides.
+  await Promise.all(local.filter((f) => AMBIGUOUS[f.ext]).map(async (f) => { const i = await api('file:identify', f.path).catch(() => null); f.binaryTwin = !!(i && i.sure && i.ext === AMBIGUOUS[f.ext]); }));
+  const texts = state.settings.useAtlasEditor !== false ? local.filter((f) => isTextFile(f) && !f.binaryTwin && !(state.settings.useAtlasViewer !== false && isImageFile(f)) && !(state.settings.useAtlas3D !== false && isModelFile(f))) : [];
+  const medias = state.settings.useAtlasPlayer !== false ? local.filter((f) => isMediaFile(f) && (!AMBIGUOUS[f.ext] || f.binaryTwin)) : [];
   // Photoshop files open as a plain picture, until the Photoshop helper (a one-time download) is installed: then they open
   // in Dogfile PSD with their layers. "Edit layers" in the menu offers the download.
   const psdFiles = state.settings.useAtlasPsd !== false ? local.filter(isPsdFile) : [];
@@ -87,7 +90,7 @@ export async function openItems(items, { pane = state.activePane, newTab = false
     }
     if (f.archive) { openArchiveEntry(f); continue; }
     if (f.recycle) continue;
-    if (KINDS.archive.includes(f.ext) && state.settings.browseArchives !== false && !newWindow) { navigate(t, `atlas:zip|${f.path}|`); continue; }
+    if (KINDS.archive.includes(f.ext) && (!AMBIGUOUS[f.ext] || f.binaryTwin) && state.settings.browseArchives !== false && !newWindow) { navigate(t, `atlas:zip|${f.path}|`); continue; }
     if (f.ext === 'lnk' || f.isLink) {
       const target = await api('fs:readLink', f.path);
       if (target && (await api('fs:isDir', target))) { navigate(t, target); continue; }
@@ -1394,6 +1397,7 @@ export function buildItemsMenu(t, items) {
       allDirs && { label: 'Open terminal here', icon: 'terminal', run: () => openTerminalHere(real[0].path) },
       { label: 'Calculate size', icon: 'chart', run: () => C('analyzeSelection') },
       one && !one.isDir && /^(pdf|jpe?g|png|heic|heif|webp|tiff?|bmp|docx|odt|txt|rtf)$/i.test(one.ext || '') && { label: 'Remind me before it’s due or expires…', icon: 'bell', simple: true, run: () => import('./reminders.js').then((m) => m.remindAbout(one)) },
+      real.some((i) => !i.isDir && !i.archive && !i.mtp) && { label: 'What is this?', icon: 'search', simple: true, run: () => C('whatIsThis') },
       real.length > 1 && { label: 'Batch tools…', icon: 'sliders', simple: true, run: () => C('batchTools') },
       { label: 'Set a reminder…', icon: 'bell', simple: true, run: () => import('./reminders.js').then((m) => m.setReminder(real)) },
       one && { label: 'Versions…', icon: 'history', run: () => import('./history.js').then((m) => m.versionsDialog(one.path)) },

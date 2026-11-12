@@ -1062,7 +1062,13 @@ export function renderView(i) {
     el.inner.querySelector('[data-act=reconnect]').onclick = () => import('./network.js').then((m) => m.reconnect(t.path).then((ok) => ok && loadTab(t)));
     return;
   }
-  if (t.error) { el.inner.style.height = '100%'; el.inner.innerHTML = `<div class="empty-state">${icon('info')}<div>${esc(t.error)}</div>${t.error === 'Access denied' && IS_WIN() ? '<button class="btn" data-act="admin">Open in Windows Explorer</button>' : ''}</div>`; el.inner.querySelector('[data-act]')?.addEventListener('click', () => api('shell:showInExplorer', t.path)); return; }
+  if (t.error) { el.inner.style.height = '100%'; el.inner.innerHTML = `<div class="empty-state">${icon('info')}<div>${esc(t.error)}</div>${t.error === 'Access denied' && IS_WIN() ? '<button class="btn" data-act="admin">Open in Windows Explorer</button>' : ''}${t.path.startsWith('atlas:zip|') ? '<div class="row-inline" style="display:flex;gap:8px"><button class="btn" data-act="own">Open with its own program</button><button class="btn" data-act="back">Back to the folder</button></div>' : ''}</div>`;
+    el.inner.querySelector('[data-act="admin"]')?.addEventListener('click', () => api('shell:showInExplorer', t.path));
+    // an archive Dogfile can't read here (a rare kind, or one that needs 7-Zip): the program that owns it, or back out
+    const arc = t.path.startsWith('atlas:zip|') ? t.path.split('|')[1] : '';
+    el.inner.querySelector('[data-act="own"]')?.addEventListener('click', () => api('shell:open', arc).catch((e) => toast(`Couldn’t open it: ${errText(e)}`, { error: true })));
+    el.inner.querySelector('[data-act="back"]')?.addEventListener('click', () => navigate(t, dirname(arc), { select: arc }));
+    return; }
   const L = layoutFor(t, el);
   el.layout = L;
   el.inner.style.height = L.total + 'px';
@@ -1827,12 +1833,14 @@ function wirePane(el) {
   attachDropTarget(body, (e) => {
     const hit = itemFromEvent(el, e);
     const t = paneTab(el.idx);
+    // a built-in app on show here (Notepad, Office, 3D, PSD…): the files are handed to it; it decides what a drop means
+    if (t?.app && t.app !== 'web') return { app: t };
     if (hit && hit.it.isDir && !hit.it.virtual) return hit.it.path;
     if (hit && !hit.it.isDir && ['exe', 'bat', 'cmd'].includes(hit.it.ext)) return { exe: hit.it.path };
     if (hit && !hit.it.isDir && !hit.it.virtual && !hit.it.archive && KINDS.archive.includes(hit.it.ext)) return { archive: hit.it.path };
     if (hit && hit.it.isDir && hit.it.archive) return hit.it.path;
     return t.path && (!isVirtual(t.path) || isMtp(t.path) || isRemote(t.path) || t.path.startsWith('atlas:zip|')) ? t.path : null;
-  }, (e) => { const hit = itemFromEvent(el, e); return hit?.cell || null; });
+  }, (e) => { const hit = itemFromEvent(el, e); return hit?.cell || null; }, { leave: () => { const t = paneTab(el.idx); if (t?.app) import('./apptabs.js').then((m) => m.appDragFiles(t, 'leave', 0, 0)); } });
 
   body.addEventListener('keydown', (e) => onPaneKey(el, e));
 
@@ -2046,9 +2054,9 @@ window.atlas?.on?.('drag:ended', ({ x, y, paths }) => {
 
 export function attachDropTarget(node, resolveDir, hiliteFn, opts = {}) {
   registerDropTarget(node, {
-    hover: (e) => (resolveDir(e) ? (hiliteFn ? hiliteFn(e) || node : node) : null),
+    hover: (e) => { const d = resolveDir(e); if (d?.app) import('./apptabs.js').then((m) => m.appDragFiles(d.app, 'over', e.clientX, e.clientY)); return d ? (hiliteFn ? hiliteFn(e) || node : node) : null; },
     drop: (e, paths) => runDrop(e, resolveDir(e), paths),
-    op: (e, paths) => { const dir = resolveDir(e); if (typeof dir === 'object') return dir.exe ? 'Open with' : 'Add to archive'; if (typeof dir === 'string' && paths.every((p) => samePath(dirname(p), dir))) return ''; return typeof dir === 'string' && sameRoot(paths[0], dir) ? 'Move' : 'Copy'; },
+    op: (e, paths) => { const dir = resolveDir(e); if (typeof dir === 'object') return dir.app ? 'Open here' : dir.exe ? 'Open with' : 'Add to archive'; if (typeof dir === 'string' && paths.every((p) => samePath(dirname(p), dir))) return ''; return typeof dir === 'string' && sameRoot(paths[0], dir) ? 'Move' : 'Copy'; },
     enter: opts.enter, leave: opts.leave,
   });
   let last = null;
@@ -2088,6 +2096,7 @@ export function attachDropTarget(node, resolveDir, hiliteFn, opts = {}) {
 }
 async function runDrop(e, dir, paths) {
     if (!dir || !paths?.length) return;
+    if (typeof dir === 'object' && dir.app) { import('./apptabs.js').then((m) => m.appDropFiles(dir.app, paths, e.clientX, e.clientY)); return; }
     if (typeof dir === 'object' && dir.exe) { api('shell:launch', dir.exe, paths); return; }
     // dropping onto an archive (or into an open archive) adds the files to it
     const zipT = typeof dir === 'object' && dir.archive ? { arc: dir.archive, inner: '' } : typeof dir === 'string' && dir.startsWith('atlas:zip|') ? A.arcOf(dir) : null;

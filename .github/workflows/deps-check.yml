@@ -1,13 +1,10 @@
 # Builds Dogfile.exe the way the release does and checks what it needs from outside Windows: the Microsoft Store refuses a
 # package whose programs need software that is neither inside it nor part of Windows (MSVCP140.dll was missing). Also packs the
-# Store manifest, so a wrong dependency declaration shows up here and not at submission. Started by hand (Actions > deps-check)
-# or by a change to the build flags or the Store manifest.
+# Store manifest, so a wrong dependency declaration shows up here and not at submission. Started by hand (Actions > deps-check); the
+# release build (workflow app) runs the same dependency check on every build.
 name: deps-check
 on:
   workflow_dispatch:
-  push:
-    branches: [store-dependencies]
-    paths: ['.cargo/**', 'Cargo.lock', 'build/store/**', 'build/ci/check-deps.mjs', '.github/workflows/deps-check.yml']
 permissions:
   contents: read
 jobs:

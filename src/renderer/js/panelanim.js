@@ -197,6 +197,7 @@ export async function animatePanel(name, el, show, apply, { edge = PANELS[name]?
     const D = horiz ? rect.width : rect.height;
     const time = dur || (mode === 'slide' ? 260 : Math.round(Math.min(560, 380 + D * 0.4)));
     const step = (p) => { L.render(p); size(D * clamp(p)); };
+    document.body.classList.add('panel-moving'); // the file view re-flows on every frame of this, so the files move with the panel
     if (show) {
       await play(step, 0, 1, time);
     } else {
@@ -210,7 +211,7 @@ export async function animatePanel(name, el, show, apply, { edge = PANELS[name]?
     await frame();
     L.layer.remove();
     window.dispatchEvent(new Event('resize'));
-  } finally { busy.delete(el); }
+  } finally { busy.delete(el); document.body.classList.remove('panel-moving'); }
 }
 
 /** a body class that shows or hides a panel, animated when it changes */

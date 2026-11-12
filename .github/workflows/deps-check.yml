@@ -29,6 +29,10 @@ jobs:
             Write-Output "::error title=build::$errs"
             $tail = (Get-Content build.log | Select-Object -Last 40) -join '%0A'
             Write-Output "::error title=build-tail::$tail"
+            # the short format hides the linker's own words: run the last step again in full and keep what the linker said
+            cargo build --release -p dogfile 2>&1 | Out-File -Encoding utf8 link.log
+            $lnk = (Get-Content link.log | Select-String -Pattern 'LNK\d+|mismatch|MT_Static|MD_Dynamic|RuntimeLibrary' | Select-Object -First 40) -join '%0A'
+            Write-Output "::error title=linker::$lnk"
           }
           exit $code
       - name: What Dogfile.exe needs from outside Windows

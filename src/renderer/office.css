@@ -143,3 +143,7 @@ body.pdf-marking .textLayer { pointer-events: none; }
   .sl-slide { box-shadow: none !important; }
 }
 html.embedded #of-bar { display: none !important; }
+
+.of-note { display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: var(--hover, rgba(128,128,128,.12)); border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.of-readonly { display: flex; flex-direction: column; min-height: 0; flex: 1; overflow: auto; }
+.of-readonly .pv-doc { flex: 1; }

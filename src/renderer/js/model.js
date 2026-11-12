@@ -408,12 +408,19 @@ async function importMap(ch) {
   if (!(await requirePro('model3d'))) return;
   const f = await api('dialog:openFiles', { title: `Choose a picture for ${CH.find((x) => x[0] === ch)[1]}`, filters: IMG_FILTER });
   if (!f?.length) return;
+  await useMap(ch, f[0]);
+}
+/** a picture (from the dialog, or dragged from a folder) as one map of the chosen material(s) */
+async function useMap(ch, path) {
+  if (!M.cur || M.cur.lines) return;
+  if (!(await requirePro('model3d'))) return;
   busy('Loading the picture…');
   try {
-    const tex = await loadTexture(f[0], ch);
+    const tex = await loadTexture(path, ch);
     for (const e of targets()) { const per = (M.cur.picks[e.mat.uuid] ||= {}); per[ch]?.dispose?.(); per[ch] = tex; if (ch === 'map') delete per.color; }
     chanOn[ch] = true; P.textures = true;
     resetPreviews(); applyMaterials(); renderSide();
+    osd(`${CH.find((x) => x[0] === ch)[1]}: ${nameOf(path)}`);
   } catch (e) { toast(`Couldn’t use this picture: ${e.message}`, { error: true }); }
   busy(null);
 }
@@ -542,7 +549,7 @@ function renderSide() {
         h('button', { class: 'icon-btn small', title: 'Choose a picture…', html: icon('image'), onclick: () => importMap(ch) }),
         h('button', { class: 'icon-btn small', title: 'No picture', html: icon('close'), disabled: !here.length, onclick: () => clearMap(ch) }),
         h('button', { class: 'icon-btn small', title: 'Back to the file’s own', html: icon('undo'), disabled: !picked, onclick: () => originalMap(ch) }));
-      return h('div', { class: 'md-chan' + (chanOn[ch] ? '' : ' off') }, ...kids);
+      return h('div', { class: 'md-chan' + (chanOn[ch] ? '' : ' off'), 'data-ch': ch }, ...kids);
     });
     const mv = h('select', { class: 'md-sel', onchange: () => { mapView = mv.value; resetPreviews(); applyMapView(); renderBar(); need(); } },
       h('option', { value: 'none', selected: mapView === 'none' }, 'Everything together'), ...CH.map(([k, l]) => h('option', { value: k, selected: mapView === k }, `${l} only`)));
@@ -769,7 +776,30 @@ async function boot() {
 }
 onMain('model:open', ({ files, autoPlaylist }) => setQueue(files, { autoPlaylist: autoPlaylist || files.length === 1 }));
 onMain('settings:changed', (s) => { settings = { ...settings, ...s }; applyMediaTheme(); });
-onHost({ open: (m) => setQueue(m.files, { autoPlaylist: m.autoPlaylist || m.files.length === 1, append: !!m.append }), cmd: (id) => ({ frame: () => frame('iso'), wire: () => { P.wire = !P.wire; renderBar(); need(); }, textures: () => { P.textures = !P.textures; applyMaterials(); renderBar(); }, snapshot, play: togglePlay }[id]?.()), settings: (s) => { settings = { ...settings, ...s }; applyMediaTheme(); } });
+// files dragged in from a folder pane: a model loads; a picture becomes the map of the row it is dropped on (or the base color)
+const PIC_EXT = /\.(png|jpe?g|webp|bmp|gif|tga|dds|psd|tiff?|exr|hdr|avif)$/i;
+const chanAt = (x, y) => document.elementFromPoint(x, y)?.closest?.('.md-chan')?.dataset.ch || null;
+function lightMap(ch) { document.querySelectorAll('.md-chan.drop-map').forEach((n) => { if (n.dataset.ch !== ch) n.classList.remove('drop-map'); }); if (ch) document.querySelector(`.md-chan[data-ch="${ch}"]`)?.classList.add('drop-map'); }
+async function dropFiles(m) {
+  lightMap(null);
+  const D = await import('./dropin.js');
+  const models = [], pics = [], bad = [];
+  for (const p of m.paths || []) {
+    if (isModel(p)) models.push(p);
+    else if (PIC_EXT.test(p)) pics.push(p);
+    else bad.push({ path: p, app: await D.appForDeep(p) });
+  }
+  const real = bad.filter((b) => b.app !== 'model');
+  if (real.length) await D.unsupportedDialog('model', real);
+  if (models.length) setQueue(models, { autoPlaylist: models.length === 1 });
+  if (pics.length) {
+    if (!M.cur || M.cur.lines) { if (!models.length) toast(M.cur ? 'This kind of model has no textures' : 'Open a 3D model first, then drop a picture on one of its maps', { error: true }); return; }
+    const ch = chanAt(m.x, m.y) || 'map';
+    await useMap(ch, pics[0]);
+    if (pics.length > 1) toast(`Used ${nameOf(pics[0])}. Drop the others one at a time on the map you want.`);
+  }
+}
+onHost({ dropFiles, dragFiles: (m) => lightMap(m.phase === 'leave' ? null : chanAt(m.x, m.y)), open: (m) => setQueue(m.files, { autoPlaylist: m.autoPlaylist || m.files.length === 1, append: !!m.append }), cmd: (id) => ({ frame: () => frame('iso'), wire: () => { P.wire = !P.wire; renderBar(); need(); }, textures: () => { P.textures = !P.textures; applyMaterials(); renderBar(); }, snapshot, play: togglePlay }[id]?.()), settings: (s) => { settings = { ...settings, ...s }; applyMediaTheme(); } });
 onAsk(async (op) => {
   if (op === 'context') return { ok: true, name: M.cur ? nameOf(M.cur.path) : '', path: M.cur?.path || '', triangles: M.cur?.info.tris, materials: M.cur?.mats.length, animations: M.cur?.anim?.clips.length || 0 };
   return { ok: false, msg: `I can’t do “${op}” in Dogfile 3D yet` };

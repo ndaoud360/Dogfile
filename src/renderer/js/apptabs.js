@@ -101,6 +101,21 @@ function ensureHost() {
   (document.getElementById('main') || document.body).append(host);
 }
 export function post(t, msg) { const f = frames.get(t.id); f?.contentWindow?.postMessage({ ...msg, atlasHost: true }, '*'); }
+/** files dragged from a folder over an app tab: the app is told where the pointer is (frame coordinates) so it can light up the right spot */
+export function appDragFiles(t, phase, x, y) {
+  const f = frames.get(t.id);
+  if (!f) return;
+  const r = f.getBoundingClientRect();
+  post(t, { type: 'dragFiles', phase, x: x - r.left, y: y - r.top });
+}
+export function appDropFiles(t, paths, x, y) {
+  const f = frames.get(t.id);
+  if (!f) return false;
+  const r = f.getBoundingClientRect();
+  if (state.panes[state.activePane] !== t.id) { const i = state.panes.slice(0, paneCount()).indexOf(t.id); if (i >= 0) { state.activePane = i; bus.emit('activePane'); } }
+  post(t, { type: 'dropFiles', paths, x: x - r.left, y: y - r.top });
+  return true;
+}
 export function appCmd(id, arg) { const t = activeAppTab(); if (t) post(t, { type: 'cmd', id, arg }); }
 export function activeAppTab() { const t = tabById(state.panes[state.activePane]); return isAppTab(t) ? t : null; }
 

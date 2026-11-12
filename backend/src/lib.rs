@@ -33,6 +33,7 @@ pub mod versions;
 pub mod ai;
 pub mod imgmeta;
 pub mod imgdec;
+pub mod filetype;
 pub mod netdiscover;
 pub mod remote;
 pub mod reminders;

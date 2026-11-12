@@ -230,6 +230,7 @@ def('connections', 'Server connections (NAS, SFTP, FTP, WebDAV)…', { icon: 'se
 def('addConnection', 'Add a server connection…', { icon: 'server', cat: 'Tools', run: () => import('./network.js').then((m) => m.editConnection(null)) });
 def('phoneTransfer', 'Phone transfer…', { icon: 'phone', cat: 'Tools', run: () => import('./phonelink.js').then((m) => m.openPhoneTransfer()) });
 def('sendToPhone', 'Send to phone', { icon: 'phone', cat: 'Tools', run: () => { const t = activeTab(); const p = selectedItems(t).filter((i) => !i.mtp && !i.virtual).map((i) => i.path); return import('./phonelink.js').then((m) => (p.length ? m.sendToPhone(p) : m.openPhoneTransfer())); } });
+def('whatIsThis', 'What is this? (identify a file and fix its extension)…', { icon: 'search', cat: 'Tools', run: () => import('./whatis.js').then((m) => m.whatIsThis()) });
 def('batchTools', 'Batch tools…', { icon: 'sliders', cat: 'Tools', run: () => import('./batch.js').then((m) => m.openBatchTools()) });
 def('batchPictures', 'Batch pictures: resize, convert, watermark…', { icon: 'image', cat: 'Tools', run: () => import('./batch.js').then((m) => m.batchPictures()) });
 def('batchDates', 'Batch dates and attributes…', { icon: 'clock', cat: 'Tools', run: () => import('./batch.js').then((m) => m.batchDates()) });

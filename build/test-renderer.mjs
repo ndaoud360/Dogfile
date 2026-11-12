@@ -200,5 +200,38 @@ const sc = await import('../src/renderer/js/stems-core.js');
   eq(buttonsFor(['image'], { webButtons: [{ name: 'a', url: 'https://a', for: ['any'] }, { name: 'p', url: 'https://p', for: ['image'] }] }).map((b) => b.name).join(), 'p,a', 'web: buttons made for the thing come first');
 }
 
+// ---------- 4. the file types people expect to open ----------
+// Every extension in the list below must open in the right built-in app, or be named in OS_ONLY: those are
+// handed to the program Windows has for them ("Open with" always works for the rest).
+{
+  const L = {
+    player: '3ga 3gpa aa aa3 at3 aac ac3 aif aiff aifc amr ape caf caff dss dts flac gsm m4a m4b m4r mka mlp mp1 mp2 mp3 ogg oga oma opus ra w64 wav wma wv xa xma 8svx act aea apc au aud g722 htk ircam mpa mpc paf fap pvf qcp shn snd sol son sph nist spx str tak tta voc vqf 3g2 3gp asf avi bik cam ml20 divx dvr-ms f4v flv gxf hevc m2t m2ts m2v m4v mk3d mkv mov mp4 mpg mpeg mts mxf nsv nut nuv ogm ogv pmf pmp rm rmvb thp tp trp vob webm wmv wtv xesc xmv 4xm amv anim anm bfi bmv c93 cak cmv cpk cdxl dct dfa drc duk dv dxa fli flc flic gdv h263 h264 jv k3g skm lvf lxf mad mmv mv mv8 mve mvi p64 pva qt rl2 roq rpl san snm sfd smk tgq tgv tmv vc1 vid vmd vp3 vp5 vp6 vp7 vqa vsr wve yop',
+    photos: 'apng avif bmp cin dds dib dpx emf exr gif heic heif ico cur jls jp2 jpc jpx jpg jpeg jfif jxl jxr pbm png svg tga targa tiff tif webp wmf bw pcx pgm pix pam pnm ppm ptx rgb rgba sgi wbmp xbm xpm 3fr ari arw bay cr2 cr3 crw dcr dng erf fff iiq kc2 kdc mdc mef mos mrw nef nrw orf pef raf raw rw2 rwl sr2 srf srw x3f',
+    office: 'docm docx dotm dotx odt ott rtf pdf fods ods ots xls xlt xlsm xlsx xltx xltm odp potm potx ppsx pptm pptx',
+    notepad: 'txt csv tsv html htm xhtml a2l adb ads ahk as asm asp aspx au3 bas bat bpk bpr c cbl cfg cfm cgi clp cmake cmd conf config cpp cs csh css cxx dart dfm dpk dpr eba erl ex exw f f2k f90 f95 for go gql graphql h haml hpp hs inc inf ini iss iwb java js json kix kt kts kx lhs lisp log lua m markdown md mkd ml mm nsh nsi nsl ob2 pas php pl pm pod prg ps1 py r rb rbw rc rs sas sass scala scm scss sh sql ss st sty swift tcl tex toml tsx v vb vhdl xml xsd xsl xslt yaml yml',
+    archive: '7z apk arj bz2 bzip2 cab cbr cbz chm cpio deb deskthemepack dmg gz gzip hfs iso jar lha lzh lzma pk3 pk4 pkz rar rpm tar taz tbz tbz2 tgz txz war wim xar xz z zip zipx',
+  };
+  const OS_ONLY = 'doc dot epub wpd wp wp5 wp6 wps wpt oxps xps pot pps ppt vdw vdx vsd vsdm vsdx vss vssx vst vstm vstx vsx vtx mpp mpt mpx dat eml emlx msg oft mht mhtml aai dcm dicom dcx dfont emz jng ora pcd pes sfw svgz wmz cdg miff mvg ttf txd xface dd';
+  const route = (e) => {
+    const it = { name: 'x.' + e, ext: e, isDir: false };
+    const r = [];
+    if (/^(psd|psb)$/.test(e)) r.push('psd');
+    if (core.isOfficeFile(it) && !core.isTextFile(it)) r.push('office');
+    if (core.isModelFile(it)) r.push('3d');
+    if (core.isImageFile(it)) r.push('photos');
+    if (core.isTextFile(it)) r.push('notepad');
+    if (core.isMediaFile(it)) r.push('player');
+    if (core.KINDS.archive.includes(e)) r.push('archive');
+    return r;
+  };
+  for (const [app, list] of Object.entries(L)) for (const e of list.split(' ')) ok(route(e).includes(app), `.${e} opens in ${app}`, route(e));
+  for (const e of OS_ONLY.split(' ')) ok(route(e).length === 0, `.${e} is left to the program Windows has for it`, route(e));
+  // psd / psb: the layers app when its helper is there, otherwise Photos
+  for (const e of ['psd', 'psb']) ok(route(e).includes('photos'), `.${e} still shows flat in Photos`, route(e));
+  // names that two kinds of file share are told apart by what is inside the file (actions.js asks the back end)
+  for (const e of ['ts', 'vhd']) ok(route(e).length >= 2, `.${e} is shared by two kinds of file`, route(e));
+  ok(readFileSync(join(dir, 'actions.js'), 'utf8').includes("AMBIGUOUS = { ts: 'ts', vhd: 'vhd' }"), 'opening .ts / .vhd looks inside the file first', 0);
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

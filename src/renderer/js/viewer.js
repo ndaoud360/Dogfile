@@ -62,6 +62,7 @@ async function show(i, { fade = false } = {}) {
   $('vw-count').textContent = `${i + 1} / ${V.list.length}`;
   const next = V.layer === 'a' ? $('img-b') : $('img-a');
   const cur = V.layer === 'a' ? $('img-a') : $('img-b');
+  document.getElementById('vw-fail')?.remove();
   loadingOn(it.name);
   const src = await srcFor(it.path);
   if (seq !== V.seq) return;
@@ -81,8 +82,15 @@ async function show(i, { fade = false } = {}) {
     renderInfo(); renderQueue(); preload();
     tellHost({ type: 'state', kind: 'photo' });
   };
-  next.onerror = () => { if (seq === V.seq) { loadingOff(); osd(`Can't show ${it.name}`); } };
+  next.onerror = () => { if (seq === V.seq) { loadingOff(); osd(`Can't show ${it.name}`); showFail(it); } };
   next.src = src;
+}
+// a picture none of the ways of showing it can open (a rare kind): say so, and offer the program Windows has for it
+function showFail(it) {
+  document.getElementById('vw-fail')?.remove();
+  const box = h('div', { id: 'vw-fail' }, h('div', { class: 'err-title' }, 'Can’t show this picture here'), h('div', { class: 'err-msg' }, it.name),
+    h('div', { class: 'row-inline' }, h('button', { class: 'btn small primary', onclick: () => openDefault(it.path) }, 'Open with its own program'), h('button', { class: 'btn small', onclick: () => box.remove() }, 'Close')));
+  $('vw-stage').append(box);
 }
 function preload() { for (const d of [1, -1]) { const it = V.list[(V.idx + d + V.list.length) % V.list.length]; if (it) srcFor(it.path).then((s) => { const im = new Image(); im.src = s; }); } }
 const curImg = () => (V.layer === 'a' ? $('img-a') : $('img-b'));
@@ -1005,7 +1013,15 @@ async function boot() {
 }
 onMain('viewer:open', ({ files, autoPlaylist, slideshow }) => setQueue(files, { autoPlaylist: autoPlaylist || files.length === 1, slideshow }));
 onMain('settings:changed', (s) => { settings = { ...settings, ...s }; applyMediaTheme(); vwFeatures?.reload(); });
-onHost({ open: (m) => setQueue(m.files, { autoPlaylist: m.autoPlaylist || m.files.length === 1, append: !!m.append, slideshow: !!m.slideshow }), cmd, settings: (s) => { settings = { ...settings, ...s }; applyMediaTheme(); vwFeatures?.reload(); } });
+// files dragged in from a folder pane: pictures open here, anything else gets the "can't open here" pop-up
+async function dropFiles(m) {
+  const D = await import('./dropin.js');
+  const ok = [], bad = [];
+  for (const p of m.paths || []) { const a = await D.appForDeep(p); if (a === 'viewer' || a === 'psd') ok.push(p); else bad.push({ path: p, app: a }); }
+  if (bad.length) await D.unsupportedDialog('viewer', bad);
+  if (ok.length) setQueue(ok, { autoPlaylist: ok.length === 1 });
+}
+onHost({ dropFiles, open: (m) => setQueue(m.files, { autoPlaylist: m.autoPlaylist || m.files.length === 1, append: !!m.append, slideshow: !!m.slideshow }), cmd, settings: (s) => { settings = { ...settings, ...s }; applyMediaTheme(); vwFeatures?.reload(); } });
 // the assistant: "erase everything and apply sepia", "resize to 1920 wide", "crop to square", "save a copy as PNG"
 onAsk(async (op, a) => {
   const it = V.list[V.idx];

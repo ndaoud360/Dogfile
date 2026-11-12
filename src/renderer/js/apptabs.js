@@ -137,6 +137,9 @@ function applyFrames() {
       f.classList.toggle('active', i === state.activePane);
       webLayout(id, true);
     }
+    // a web page's native view can't follow a panel as it animates (it lags and gets cut off): panels open straight away while one is on show
+    const webOn = [...frames].some(([id, f]) => tabById(id)?.app === 'web' && f.style.display !== 'none');
+    if (document.body.classList.contains('web-visible') !== webOn) document.body.classList.toggle('web-visible', webOn);
   }
 }
 // the web pane's native views sit above everything the window draws: tell the page when its pane is hidden, and when

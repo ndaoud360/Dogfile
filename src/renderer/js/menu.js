@@ -1,5 +1,5 @@
 // Context / dropdown menus with submenus, async items, checkmarks, shortcut hints and keyboard nav.
-import { h, esc } from './core.js';
+import { h, esc, bus } from './core.js';
 import { icon } from './icons.js';
 import { proForLabel, starHtml } from './pro-marks.js';
 
@@ -92,6 +92,7 @@ export async function showMenu(items, x, y, opts = {}) {
   document.body.append(el);
   placeAt(el, x, y, opts.alignRight);
   stack.push({ el, onClose: opts.onClose });
+  bus.emit('coverNow'); // a web page's native view would sit over the menu: take it off right now, not 90 ms later
   el.focus({ preventScroll: true });
   if (opts.selectFirst) setActive(0);
   return el;

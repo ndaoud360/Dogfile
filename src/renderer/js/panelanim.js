@@ -18,6 +18,8 @@ const reduced = () => document.body.classList.contains('reduce-motion') || match
 /** how this panel animates: 'fold' (default), 'slide' or 'none' */
 export function panelMode(name) {
   if (reduced()) return 'none';
+  // a web page's native view can't follow a panel as it animates (it lags and gets cut off): open straight away over a page
+  if (name !== 'sidebar' && document.body.classList.contains('web-visible')) return 'none';
   const m = state.settings.panelAnims?.[name];
   if (m === 'slide' || m === 'none' || m === 'fold') return m;
   // the old on/off switch for the sidebar fold

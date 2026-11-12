@@ -1008,7 +1008,7 @@ async function showAnalysis(force = false) {
     tellHost({ type: 'state', kind: 'audio', path: it.path, analysis: a });
   };
   if (cached) return put(cached);
-  if (!sys.ffmpeg) return;
+  if (!sys.ffmpeg && !force) return; // opening a song never asks; pressing BPM & key does (analyzeAudio offers the download)
   box.append(h('span', { class: 'av-chip dim' }, h('span', { class: 'av-spin' }), 'Detecting BPM & key…'));
   try { put(await analyzeAudio(it.path, { force })); } catch (e) { if (P.item === it) box.innerHTML = `<span class="av-chip dim">${esc(e.message)}</span>`; }
 }

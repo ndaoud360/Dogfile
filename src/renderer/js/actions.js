@@ -1394,6 +1394,8 @@ export function buildItemsMenu(t, items) {
       allDirs && { label: 'Open terminal here', icon: 'terminal', run: () => openTerminalHere(real[0].path) },
       { label: 'Calculate size', icon: 'chart', run: () => C('analyzeSelection') },
       one && !one.isDir && /^(pdf|jpe?g|png|heic|heif|webp|tiff?|bmp|docx|odt|txt|rtf)$/i.test(one.ext || '') && { label: 'Remind me before it’s due or expires…', icon: 'bell', simple: true, run: () => import('./reminders.js').then((m) => m.remindAbout(one)) },
+      real.length > 1 && { label: 'Batch tools…', icon: 'sliders', simple: true, run: () => C('batchTools') },
+      { label: 'Set a reminder…', icon: 'bell', simple: true, run: () => import('./reminders.js').then((m) => m.setReminder(real)) },
       one && { label: 'Versions…', icon: 'history', run: () => import('./history.js').then((m) => m.versionsDialog(one.path)) },
       { label: 'Create checksum file…', icon: 'shieldCheck', run: () => import('./history.js').then((m) => m.createChecksums(real)) },
       one && /\.(sha256|sha1|md5)$/i.test(one.name) && { label: 'Verify checksums', icon: 'shieldCheck', run: () => import('./history.js').then((m) => m.verifyChecksums(one.path)) },

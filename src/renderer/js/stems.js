@@ -113,6 +113,54 @@ async function writeParts(path, parts) {
   await api('fs:finishPart', path);
 }
 
+// ---------- a whole folder or album, one song after another ----------
+/**
+ * Separate many songs with one loaded model. For each song it writes, next to it (or into `outDir`), a vocals file and an
+ * instrumental file (everything but the vocals) as WAV, or all six parts when `allParts` is on.
+ * `ctl`: { cancelled(), onSong(index, total, name), onPart(k, n), onDone(path, outputs), onFail(path, message) }.
+ */
+export async function separateBatch(paths, { allParts = false, outDir = '' } = {}, ctl = {}) {
+  if (!requirePro('stems')) return { done: 0, failed: 0 };
+  if (!(await ensureModels(['stems']))) return { done: 0, failed: 0 };
+  let engine = makeEngine(), done = 0, failed = 0;
+  try {
+    ctl.onSong?.(0, paths.length, 'Loading the model…');
+    await engine.init(() => {});
+    for (let i = 0; i < paths.length; i++) {
+      if (ctl.cancelled?.()) break;
+      const path = paths[i], file = path.split(/[\\/]/).pop(), song = file.replace(/\.[^.]+$/, '');
+      ctl.onSong?.(i, paths.length, file);
+      try {
+        const audio = await decodeSong(path);
+        if (audio.duration > MAX_SECONDS) throw new Error(`longer than ${MAX_SECONDS / 60} minutes`);
+        const [left, right] = toStereo(Array.from({ length: Math.min(2, audio.numberOfChannels) }, (_, k) => audio.getChannelData(k)));
+        const result = await separate(left, right, engine.run, { cancelled: () => ctl.cancelled?.(), onProgress: (k, n) => ctl.onPart?.(k, n) });
+        if (ctl.cancelled?.()) break;
+        const dir = outDir || path.replace(/[\\/][^\\/]*$/, '');
+        const wav = (pair) => encodeWav(pair[0], pair[1]);
+        const outs = [];
+        const put = async (label, pair) => {
+          const target = await api('fs:uniqueName', dir, `${safeName(song)} (${label}).wav`, 'number');
+          await writeParts(target, [wav(pair)]);
+          outs.push(target);
+        };
+        if (allParts) for (const s of STEMS) await put(s.label.toLowerCase(), result[s.key]);
+        else {
+          await put('vocals', result.vocals);
+          const gains = Object.fromEntries(STEMS.map((s) => [s.key, s.key === 'vocals' ? 0 : 1]));
+          const [l, r] = mixdown(Object.fromEntries(STEMS.map((s) => [s.key, result[s.key]])), gains, audio.length);
+          await put('instrumental', [l, r]);
+        }
+        done++; ctl.onDone?.(path, outs);
+      } catch (e) {
+        if (/Stopped/.test(e.message || '')) break;
+        failed++; ctl.onFail?.(path, errText(e));
+      }
+    }
+  } finally { engine.stop(); }
+  return { done, failed };
+}
+
 // ---------- the window ----------
 export async function openStems({ path, time = 0 }) {
   if (!requirePro('stems')) return;

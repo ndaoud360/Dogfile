@@ -1687,7 +1687,8 @@ function wirePane(el) {
     const it = t?.shown[+cell.dataset.ix];
     if (it && !it.isDir && !it.virtual) {
       // files: size, type and date right away
-      const tip = `${it.name}\nSize: ${fmtSize(it.size)}${it.size >= 1024 ? ` (${(it.size || 0).toLocaleString()} bytes)` : ''}\nType: ${typeLabel(it)}${it.mtime ? `\nModified: ${fmtDate(it.mtime, 'locale')}` : ''}`;
+      const note = state.tags.notes?.[IS_WIN() ? it.path.toLowerCase() : it.path];
+      const tip = `${it.name}\nSize: ${fmtSize(it.size)}${it.size >= 1024 ? ` (${(it.size || 0).toLocaleString()} bytes)` : ''}\nType: ${typeLabel(it)}${it.mtime ? `\nModified: ${fmtDate(it.mtime, 'locale')}` : ''}${note ? `\nNote: ${note.length > 300 ? note.slice(0, 300) + '…' : note}` : ''}`;
       cell.title = tip; cell.querySelectorAll('[title]').forEach((x) => (x.title = tip));
       return;
     }

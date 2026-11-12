@@ -703,15 +703,39 @@ fn days_left(it: &Value) -> Option<i64> {
     Some(parse_iso(it["date"].as_str()?)? - today())
 }
 /// send what's due now: each chosen interval once, and once on the day / when it has passed
+/// Which reminder is due now: the smallest lead time reached ("0" is the day itself or after) that hasn't been sent yet.
+/// Returns the new list of sent leads (everything above the mark counts as sent, so old ones don't arrive in a burst).
+fn next_notified(ints: &[i64], notified: &[i64], left: i64) -> Option<Vec<i64>> {
+    let mut marks: Vec<i64> = ints.iter().copied().filter(|&i| left <= i).collect();
+    if left <= 0 {
+        marks.push(0);
+    }
+    let mark = *marks.iter().min()?;
+    if notified.contains(&mark) {
+        return None;
+    }
+    // don't send one for a date long gone that was only just found
+    if left < -30 {
+        return None;
+    }
+    let mut n = notified.to_vec();
+    n.extend(marks.iter().copied());
+    n.sort_unstable();
+    n.dedup();
+    Some(n)
+}
+
 pub fn check() {
     // demo mode: your documents aren't read or shown
     if crate::demo::active() {
         return;
     }
-    if !enabled() {
+    // your own reminders (what = "custom") need only Pro; the ones Dogfile found in your documents also need the scan switched on
+    if !crate::license::pro() {
         return;
     }
-    let ints = intervals();
+    let scanning = enabled();
+    let global = intervals();
     let mut due: Vec<(Value, i64)> = vec![];
     {
         let mut d = db().lock();
@@ -725,26 +749,18 @@ pub fn check() {
             if it["snoozed"].as_u64().map(|s| s > now).unwrap_or(false) {
                 continue;
             }
+            let custom = it["what"].as_str() == Some("custom");
+            if !custom && !scanning {
+                continue;
+            }
+            // a reminder of your own can pick its own lead times
+            let ints: Vec<i64> = match it["intervals"].as_array().filter(|_| custom) {
+                Some(a) => a.iter().filter_map(|x| x.as_i64()).filter(|d| (0..=730).contains(d)).collect(),
+                None => global.clone(),
+            };
             let Some(left) = days_left(it) else { continue };
             let notified: Vec<i64> = it["notified"].as_array().map(|a| a.iter().filter_map(|x| x.as_i64()).collect()).unwrap_or_default();
-            // the smallest interval reached that hasn't been sent; "0" is the day itself (or after)
-            let mut marks: Vec<i64> = ints.iter().copied().filter(|&i| left <= i).collect();
-            if left <= 0 {
-                marks.push(0);
-            }
-            let Some(&mark) = marks.iter().min() else { continue };
-            if notified.contains(&mark) {
-                continue;
-            }
-            // don't send one for a date long gone that was only just found
-            if left < -30 {
-                continue;
-            }
-            let mut n = notified.clone();
-            // everything above this mark counts as sent too (no burst of old reminders)
-            n.extend(marks.iter().copied());
-            n.sort_unstable();
-            n.dedup();
+            let Some(n) = next_notified(&ints, &notified, left) else { continue };
             it["notified"] = json!(n);
             if it["snoozed"].is_u64() {
                 it["snoozed"] = Value::Null;
@@ -853,9 +869,19 @@ fn title_text(label: &str, due: bool, left: i64, lang: &str) -> String {
 fn notify_one(it: &Value, left: i64) {
     let lang = ui_lang();
     let label = kind_name(it["kind"].as_str().unwrap_or("document"), it["kindLabel"].as_str().unwrap_or("Document"), lang);
-    let title = title_text(&label, it["what"].as_str() == Some("due"), left, lang);
+    let custom = it["what"].as_str() == Some("custom");
+    let title = if custom {
+        // your own reminder: what you wrote is the title
+        it["note"].as_str().filter(|s| !s.is_empty()).unwrap_or(it["name"].as_str().unwrap_or("Reminder")).to_string()
+    } else {
+        title_text(&label, it["what"].as_str() == Some("due"), left, lang)
+    };
     let (y, m, d) = civil_from_days(parse_iso(it["date"].as_str().unwrap_or("")).unwrap_or(0));
-    let body = format!("{} · {}", it["note"].as_str().filter(|s| !s.is_empty()).or(it["name"].as_str()).unwrap_or(""), format_date(y, m, d, lang));
+    let body = if custom {
+        format!("{} · {} ({})", it["name"].as_str().unwrap_or(""), when_text(left, lang), format_date(y, m, d, lang))
+    } else {
+        format!("{} · {}", it["note"].as_str().filter(|s| !s.is_empty()).or(it["name"].as_str()).unwrap_or(""), format_date(y, m, d, lang))
+    };
     let id = it["id"].as_str().unwrap_or("").to_string();
     events::broadcast("reminders:due", json!({ "id": id, "title": title, "body": body }));
     #[cfg(windows)]
@@ -1052,7 +1078,9 @@ pub fn add(a: &Args) -> R {
     }
     let mut d = db().lock();
     load(&mut d);
-    d.items.retain(|x| path.is_empty() || x["path"].as_str() != Some(&path));
+    if v["what"].as_str() != Some("custom") {
+        d.items.retain(|x| path.is_empty() || x["path"].as_str() != Some(&path) || x["what"].as_str() == Some("custom"));
+    }
     v["id"] = json!(uid());
     if v["name"].as_str().unwrap_or("").is_empty() {
         v["name"] = json!(Path::new(&path).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default());
@@ -1081,7 +1109,7 @@ pub fn update(a: &Args) -> R {
     let Some(it) = d.items.iter_mut().find(|x| x["id"].as_str() == Some(&id)) else { return Err("That reminder is gone".into()) };
     if let Some(o) = patch.as_object() {
         for (k, v) in o {
-            if ["date", "note", "kind", "kindLabel", "what", "dismissed"].contains(&k.as_str()) {
+            if ["date", "note", "kind", "kindLabel", "what", "dismissed", "intervals"].contains(&k.as_str()) {
                 if k == "date" && parse_iso(v.as_str().unwrap_or("")).is_none() {
                     return Err("That isn't a date".into());
                 }
@@ -1150,6 +1178,20 @@ mod tests {
     use super::*;
     fn d(s: &str) -> i64 {
         parse_iso(s).unwrap()
+    }
+    #[test]
+    fn own_reminder_leads() {
+        // "a week before, the day before, on the day" = 7, 1, 0
+        let ints = [7, 1, 0];
+        assert_eq!(next_notified(&ints, &[], 10), None); // too early
+        assert_eq!(next_notified(&ints, &[], 7), Some(vec![7]));
+        assert_eq!(next_notified(&ints, &[7], 6), None); // already sent
+        assert_eq!(next_notified(&ints, &[7], 1), Some(vec![1, 7]));
+        assert_eq!(next_notified(&ints, &[1, 7], 0), Some(vec![0, 1, 7]));
+        assert_eq!(next_notified(&ints, &[0, 1, 7], -3), None); // all sent
+        assert_eq!(next_notified(&ints, &[], 3), Some(vec![7])); // found late: one reminder, not three
+        assert_eq!(next_notified(&[], &[], 0), Some(vec![0])); // no leads chosen: still the day itself
+        assert_eq!(next_notified(&ints, &[], -60), None); // long gone
     }
     #[test]
     fn calendar() {

@@ -1080,6 +1080,25 @@ export function renderView(i) {
   paintRows(el, t);
 }
 
+// Tiles that move because the pane got wider or narrower (the sidebar folding, a panel opening, a window resize) or
+// because the order changed slide from where they appear to be to their new place, instead of snapping there. Each
+// new step starts from wherever the tile is on screen right now, so a long fold glides as one movement.
+const GLIDE_VIEWS = new Set(['grid', 'gallery', 'list']);
+function glideTiles(moved, view) {
+  if (!moved.length) return;
+  const glide = GLIDE_VIEWS.has(view) && moved.length <= 600 && !document.body.classList.contains('reduce-motion');
+  const before = glide ? moved.map((m) => m.rec.node.getBoundingClientRect()) : null; // where each one is drawn now (running glides included)
+  for (const m of moved) { if (glide) m.rec.node.getAnimations().forEach((a) => a.cancel()); m.rec.node.setAttribute('style', m.style); m.rec.style = m.style; }
+  if (!glide) return;
+  const after = moved.map((m) => m.rec.node.getBoundingClientRect());
+  moved.forEach((m, i) => {
+    const dx = before[i].left - after[i].left, dy = before[i].top - after[i].top;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+    if (Math.abs(dx) > 1600 || Math.abs(dy) > 1600) return; // a long way (re-sorted far off screen): no need to fly
+    m.rec.node.animate([{ translate: `${dx}px ${dy}px` }, { translate: '0 0' }], { duration: 240, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  });
+}
+
 function paintRows(el, t) {
   const L = el.layout;
   if (!L) return;
@@ -1092,6 +1111,7 @@ function paintRows(el, t) {
   const prev = el._cells || new Map();
   const next = new Map();
   const fresh = [];
+  const moved = []; // recycled tiles whose place changed: they glide there instead of jumping
   const put = (key, html) => {
     const old = prev.get(key);
     // the thumbnail part is ignored when comparing, so a tile whose image finished loading is kept as-is; so is
@@ -1102,7 +1122,7 @@ function paintRows(el, t) {
     // the picture part is ignored, except when the way pictures are chosen changed (Windows icons on/off, an icon theme)
     const sig = html.replace(/<!--T-->[\s\S]*?<!--\/T-->/, '').replace(/^(<div\b[^>]*?)\sstyle="[^"]*"/, '$1') + '|' + artEpoch();
     if (old && old.sig === sig && old.node.parentNode === el.inner) {
-      if (style != null && old.style !== style) { old.node.setAttribute('style', style); old.style = style; }
+      if (style != null && old.style !== style) moved.push({ rec: old, style });
       next.set(key, old); prev.delete(key); return;
     }
     const tpl = document.createElement('template');
@@ -1129,6 +1149,7 @@ function paintRows(el, t) {
   const keep = new Set([...next.values()].map((v) => v.node));
   for (const n of [...el.inner.children]) if (!keep.has(n)) n.remove();
   for (const n of fresh) el.inner.appendChild(n);
+  glideTiles(moved, t.view);
   el._cells = next;
   if (fresh.length) hydrateImages(el, t, fresh);
 }
@@ -1632,7 +1653,18 @@ function wirePane(el) {
     clearTimeout(el._st); el._st = setTimeout(() => (el._userScrolled = false), 300);
   }, { passive: true });
 
-  new ResizeObserver(debounce(() => { const t = paneTab(el.idx); if (t && t.view !== 'columns') renderView(el.idx); }, 30)).observe(scroller);
+  // re-flow while the pane is still changing size (a sidebar folding), a few times a second, and once more when it settles:
+  // waiting for it to stop made every tile jump to its new place only after the movement had finished
+  let rzTimer = 0, rzLast = 0;
+  const reflow = () => { rzTimer = 0; rzLast = performance.now(); const t = paneTab(el.idx); if (t && t.view !== 'columns') renderView(el.idx); };
+  new ResizeObserver(() => {
+    if (document.body.classList.contains('folding')) { // steady beat while folding: never starved by the next frame's resize
+      if (!rzTimer) rzTimer = setTimeout(reflow, Math.max(0, 60 - (performance.now() - rzLast)));
+      return;
+    }
+    clearTimeout(rzTimer);
+    rzTimer = setTimeout(reflow, 30);
+  }).observe(scroller);
 
   // Ctrl+wheel resizes thumbnails
   scroller.addEventListener('wheel', (e) => {

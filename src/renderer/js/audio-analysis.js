@@ -19,12 +19,15 @@ export async function analyzeAudio(path, { force = false } = {}) {
   const st = await api('fs:stat', path).catch(() => null);
   const sig = st ? `v2|${st.size}|${Math.round(st.mtime)}` : '';
   if (!force && c[path] && c[path].sig === sig) return c[path];
-  // reading the audio needs the media engine: offer the download if it isn't here (one question however many files wait)
-  if (!sys.ffmpeg) {
+  // reading the audio needs the media engine: when it isn't here the program says so, and we offer the download
+  // (one question however many files wait) and ask again
+  const get = () => fetch(`/media/pcm?p=${encodeURIComponent(path)}&ss=0&t=360`);
+  let r = await get();
+  if (r.status === 412) {
     if (!(await ensureComponent('ffmpeg', 'Finding the BPM and key'))) throw new Error('Needs the media engine (not downloaded)');
     sys.ffmpeg = true;
+    r = await get();
   }
-  const r = await fetch(`/media/pcm?p=${encodeURIComponent(path)}&ss=0&t=360`);
   if (!r.ok) throw new Error('Could not decode this audio');
   const buf = await r.arrayBuffer();
   if (buf.byteLength < 22050 * 4 * 5) throw new Error('Audio is too short to analyze');

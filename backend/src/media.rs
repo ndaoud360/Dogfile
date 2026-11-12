@@ -351,6 +351,7 @@ pub async fn handle(route: &str, req: &Req) -> Resp {
             img("image/png", run_buffer(&args, 30000).await, "max-age=600")
         }
         "pcm" => {
+            if !available() { return Resp::text(412, "NEEDS_PART:ffmpeg"); } // the interface offers the download and asks again
             let ss = qf("ss", 0.0);
             let t = qf("t", 360.0);
             let sr = q.get("sr").filter(|s| ["16000", "22050", "44100", "48000"].contains(&s.as_str())).cloned().unwrap_or("22050".into());

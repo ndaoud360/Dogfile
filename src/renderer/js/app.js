@@ -365,10 +365,22 @@ function refitRibbon() {
     if (!o || !g.animate) continue;
     const dx = o.x - g.getBoundingClientRect().left, changed = o.folded !== g.classList.contains('folded');
     if (Math.abs(dx) < 1 && !changed) continue;
-    g.animate([{ transform: `translateX(${dx}px)`, opacity: changed ? 0 : 1 }, { transform: 'none', opacity: 1 }], { duration: 260, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    g.animate([{ transform: `translateX(${dx}px)`, opacity: changed ? 0 : 1 }, { transform: 'none', opacity: 1 }], { duration: 180, easing: 'cubic-bezier(.2,.8,.2,1)' });
   }
 }
 window.addEventListener('resize', debounce(refitRibbon, 150));
+// while a panel or the sidebar moves, the ribbon's width changes on every frame: its groups regroup and glide with it, in step,
+// not after the movement has finished
+{
+  let rbRaf = false, rbW = 0;
+  const live = () => document.body.classList.contains('folding') || document.body.classList.contains('panel-moving');
+  new ResizeObserver((es) => {
+    const w = Math.round(es[0].contentRect.width);
+    if (w === rbW) return;
+    rbW = w;
+    if (live() && !rbRaf) { rbRaf = true; requestAnimationFrame(() => { rbRaf = false; refitRibbon(); }); }
+  }).observe($('ribbon'));
+}
 // the sidebar opened or closed: the ribbon has a new width (refit it once the browser is idle)
 bus.on('sidebarToggled', () => { const r = $('ribbon'); const go = () => refitRibbon(); (window.requestIdleCallback || setTimeout)(go, { timeout: 500 }); });
 

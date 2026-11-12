@@ -1095,7 +1095,7 @@ function glideTiles(moved, view) {
     const dx = before[i].left - after[i].left, dy = before[i].top - after[i].top;
     if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
     if (Math.abs(dx) > 1600 || Math.abs(dy) > 1600) return; // a long way (re-sorted far off screen): no need to fly
-    m.rec.node.animate([{ translate: `${dx}px ${dy}px` }, { translate: '0 0' }], { duration: 260, easing: 'cubic-bezier(.3,.6,.3,1)' });
+    m.rec.node.animate([{ translate: `${dx}px ${dy}px` }, { translate: '0 0' }], { duration: 180, easing: 'cubic-bezier(.3,.6,.3,1)' });
   });
 }
 
@@ -1658,7 +1658,7 @@ function wirePane(el) {
   let rzTimer = 0, rzRaf = false;
   const reflow = () => { rzTimer = 0; const t = paneTab(el.idx); if (t && t.view !== 'columns') renderView(el.idx); };
   new ResizeObserver(() => {
-    if (document.body.classList.contains('folding')) { // while folding, re-flow on every frame so the tiles start moving at once
+    if (document.body.classList.contains('folding') || document.body.classList.contains('panel-moving')) { // while folding, re-flow on every frame so the tiles start moving at once
       if (!rzRaf) { rzRaf = true; requestAnimationFrame(() => { rzRaf = false; reflow(); }); }
       return;
     }

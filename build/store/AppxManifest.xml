@@ -16,6 +16,11 @@
   </Properties>
   <Dependencies>
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+    <!-- The Visual C++ runtime, from Microsoft's own framework package: the Store installs it with Dogfile. Dogfile.exe
+         has the runtime linked in (.cargo/config.toml), but the parts it downloads later (the assistant's engine, llama-server)
+         are built with Microsoft's compiler and load MSVCP140.dll / VCRUNTIME140.dll / VCOMP140.dll, and those programs
+         start inside this package, so they find the runtime there. Declared here so the certification sees it. -->
+    <PackageDependency Name="Microsoft.VCLibs.140.00.UWPDesktop" MinVersion="14.0.30704.0" Publisher="CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US" />
   </Dependencies>
   <Resources>
     <Resource Language="en-us" />

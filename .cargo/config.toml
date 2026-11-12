@@ -6,3 +6,14 @@ GGML_AVX2 = "ON"
 GGML_FMA = "ON"
 GGML_F16C = "ON"
 GGML_BMI2 = "ON"
+LLAMA_STATIC_CRT = "1"
+# CMake (newer versions) picks the runtime from this setting and ignores the /MT that LLAMA_STATIC_CRT asks for: without it the
+# first build linked llama.cpp against the DLL runtime (LNK2038: MT_StaticRelease vs MD_DynamicRelease).
+CMAKE_MSVC_RUNTIME_LIBRARY = "MultiThreaded"
+
+# The Visual C++ runtime (VCRUNTIME140.dll, MSVCP140.dll…) is linked into Dogfile.exe on Windows, so nothing has to be
+# installed beside it and the Microsoft Store doesn't find an undeclared dependency ("MSVCP140.DLL was not found").
+# llama.cpp (C++) is compiled the same way (LLAMA_STATIC_CRT); the C++ code of other crates follows crt-static by itself.
+# build/ci/check-deps.mjs lists what each program still needs from outside, and CI fails when it isn't only Windows.
+[target.'cfg(all(windows, target_env = "msvc"))']
+rustflags = ["-C", "target-feature=+crt-static"]

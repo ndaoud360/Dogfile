@@ -1,0 +1,73 @@
+# Builds Dogfile.exe the way the release does and checks what it needs from outside Windows: the Microsoft Store refuses a
+# package whose programs need software that is neither inside it nor part of Windows (MSVCP140.dll was missing). Also packs the
+# Store manifest, so a wrong dependency declaration shows up here and not at submission. Started by hand (Actions > deps-check); the
+# release build (workflow app) runs the same dependency check on every build.
+name: deps-check
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Rust toolchain
+        run: rustup toolchain install stable --profile minimal && rustup default stable
+      - name: The reader works
+        run: node build/ci/check-deps.mjs --selftest
+      - name: Build Dogfile.exe (release, the assistant's engine included)
+        shell: pwsh
+        run: |
+          cargo build --release -p dogfile --message-format=short 2>&1 | Tee-Object -FilePath build.log
+          $code = $LASTEXITCODE
+          if ($code -ne 0) {
+            $errs = (Get-Content build.log | Select-String -Pattern '(^|: )error|LNK\d+|CMake Error' | Select-Object -First 60) -join '%0A'
+            Write-Output "::error title=build::$errs"
+            $tail = (Get-Content build.log | Select-Object -Last 40) -join '%0A'
+            Write-Output "::error title=build-tail::$tail"
+            # the short format hides the linker's own words: run the last step again in full and keep what the linker said
+            cargo build --release -p dogfile 2>&1 | Out-File -Encoding utf8 link.log
+            $lnk = (Get-Content link.log | Select-String -Pattern 'LNK\d+|mismatch|MT_Static|MD_Dynamic|RuntimeLibrary' | Select-Object -First 40) -join '%0A'
+            Write-Output "::error title=linker::$lnk"
+          }
+          exit $code
+      - name: What Dogfile.exe needs from outside Windows
+        shell: pwsh
+        run: |
+          $r = node build/ci/check-deps.mjs target/release/dogfile.exe --all 2>&1 | Out-String
+          $code = $LASTEXITCODE
+          Write-Output "::notice title=dependencies::$($r -replace "[`r`n]+",'%0A')"
+          $r | Out-Host
+          if ($code -ne 0) { Write-Output "::error title=dependencies::$($r -replace "[`r`n]+",'%0A')"; exit 1 }
+      - name: Does it start? (a short run without the interface check)
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          # it must at least start and stay up on a machine without a Visual C++ redistributable of its own choosing
+          New-Item -ItemType File -Force target/release/portable.txt | Out-Null
+          $p = Start-Process -FilePath target/release/dogfile.exe -PassThru
+          Start-Sleep -Seconds 12
+          $alive = -not $p.HasExited
+          if ($alive) { Stop-Process -Id $p.Id -Force }
+          Get-Process msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force
+          Write-Output "::notice title=starts::stayed running for 12 s: $alive"
+      - name: Pack the Store manifest (checks the dependency declaration)
+        shell: pwsh
+        run: |
+          $st = "$env:RUNNER_TEMP/store"; New-Item -ItemType Directory -Force "$st/assets" | Out-Null
+          Copy-Item target/release/dogfile.exe "$st/Dogfile.exe"
+          Add-Type -AssemblyName System.Drawing
+          $src = [System.Drawing.Image]::FromFile((Resolve-Path app/icons/icon.png))
+          foreach ($l in @(@('StoreLogo', 50, 50), @('Square150x150Logo', 150, 150), @('Square44x44Logo', 44, 44), @('Wide310x150Logo', 310, 150))) {
+            $bmp = New-Object System.Drawing.Bitmap $l[1], $l[2]; $g = [System.Drawing.Graphics]::FromImage($bmp)
+            $sz = [math]::Min($l[1], $l[2]); $g.DrawImage($src, [int](($l[1] - $sz) / 2), [int](($l[2] - $sz) / 2), $sz, $sz); $bmp.Save("$st/assets/$($l[0]).png"); $g.Dispose(); $bmp.Dispose()
+          }
+          (Get-Content build/store/AppxManifest.xml -Raw).Replace('{IDENTITY_NAME}', 'Dogfile.Dogfile').Replace('{PUBLISHER}', 'CN=Dogfile').Replace('{PUBLISHER_NAME}', 'Dogfile').Replace('{VERSION}', '2.2.0').Replace('{ARCH}', 'x64') | Set-Content "$st/AppxManifest.xml" -Encoding utf8
+          $makeappx = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter makeappx.exe | Where-Object { $_.FullName -like '*\x64\*' } | Select-Object -First 1
+          & $makeappx.FullName pack /o /d $st /p "$env:RUNNER_TEMP/test.msix" 2>&1 | Out-Host
+          if ($LASTEXITCODE -ne 0) { Write-Output "::error title=manifest::makeappx refused the Store manifest"; exit 1 }
+          $r = node build/ci/check-deps.mjs $st --all 2>&1 | Out-String
+          $code = $LASTEXITCODE
+          Write-Output "::notice title=store-deps::$($r -replace "[`r`n]+",'%0A')"
+          if ($code -ne 0) { exit 1 }

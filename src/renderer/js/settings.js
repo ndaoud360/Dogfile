@@ -373,6 +373,7 @@ export async function openSettings(section = 'general', opts = {}) {
         row('Server connections', h('button', { class: 'btn small', onclick: () => import('./network.js').then((m) => m.connectionsDialog()) }, 'Manage…'), 'NAS, shared folders, SFTP, FTP and WebDAV. Passwords stay encrypted on this PC.'),
         row('Folder automations', h('button', { class: 'btn small', onclick: () => import('./rules.js').then((m) => m.automationsManager()) }, 'Manage…'), 'Rules that tidy new files in a folder.'),
         row('Document reminders', h('button', { class: 'btn small', onclick: () => import('./reminders.js').then((m) => m.openReminders()) }, 'Open…'), 'Finds expiry and due dates in your documents and reminds you in time.'),
+        row('My default watermark', h('button', { class: 'btn small', onclick: () => import('./watermark.js').then((m) => m.watermarkDialog()) }, 'Set up…'), 'Put on pictures in the photo editor, or on many at once from Batch tools.'),
         group('Music'),
         row('AcoustID key (song identification)', text('acoustidKey', 'paste your free key'), 'Lets the tag editor recognize songs by sound. Get a free key at acoustid.org.'),
       );

@@ -12,7 +12,7 @@ const KINDS = [
   ['card', 'Bank card', 'lock'], ['insurance', 'Insurance', 'shieldCheck'], ['registration', 'Vehicle registration', 'page'],
   ['warranty', 'Warranty', 'shield'], ['lease', 'Lease / contract', 'page'], ['subscription', 'Subscription / membership', 'repeat'],
   ['certificate', 'Certificate', 'star'], ['prescription', 'Prescription', 'note'], ['bill', 'Bill / invoice', 'page'],
-  ['ticket', 'Ticket / booking', 'calendar'], ['document', 'Document', 'page'],
+  ['ticket', 'Ticket / booking', 'calendar'], ['document', 'Document', 'page'], ['custom', 'My reminder', 'bell'],
 ];
 const kindIcon = (k) => (KINDS.find((x) => x[0] === k) || KINDS.at(-1))[2];
 export const INTERVALS = [180, 90, 60, 30, 25, 14, 10, 7, 5, 3, 1, 0];
@@ -41,7 +41,7 @@ async function setCfg(patch) {
 const fmtDay = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); };
 export function leftText(n, what = 'expires') {
   if (n == null) return '';
-  const verb = what === 'due' ? 'Due' : n < 0 ? 'Expired' : 'Expires';
+  const verb = what === 'custom' ? 'Reminder' : what === 'due' ? 'Due' : n < 0 ? 'Expired' : 'Expires';
   if (n === 0) return `${verb} today`;
   if (n === 1) return `${verb} tomorrow`;
   if (n === -1) return `${verb} yesterday`;
@@ -55,7 +55,7 @@ let dlg = null; // the open reminders window's close()
 /** the reminders window; `focusId` scrolls to one */
 export async function openReminders(focusId) {
   if (dlg) { dlg(null); dlg = null; }
-  let tab = remCfg().enabled ? 'list' : 'settings';
+  let tab = 'list';
   let data = null;
   let filter = 'upcoming';
   const body = h('div', { class: 'rem' });
@@ -84,10 +84,10 @@ export async function openReminders(focusId) {
     main.append(h('div', { class: 'row-inline rem-tools' },
       ...[['upcoming', 'Coming up'], ['all', 'Everything (incl. done)']].map(([k, l]) => h('button', { class: 'chip' + (filter === k ? ' on' : ''), onclick: () => { filter = k; draw(); } }, l)),
       h('span', { style: { flex: '1' } }),
-      h('button', { class: 'btn small', onclick: () => remindAbout(null) }, 'Add one…')));
+      h('button', { class: 'btn small', onclick: () => setReminder([]) }, 'New reminder…')));
     if (!items.length) {
       main.append(h('div', { class: 'rem-empty' },
-        h('div', { class: 'hint' }, remCfg().enabled
+        h('div', { class: 'hint' }, !remCfg().enabled && !(data?.items || []).length ? 'Nothing yet. Add your own reminder for any file or folder with “New reminder…”, or turn on Settings to have Dogfile find documents that expire.' : remCfg().enabled
           ? (data?.scan?.running ? 'Nothing found yet. Still reading…' : 'Nothing found yet. When something like a passport scan or a bill shows up in a watched folder, it lands here.')
           : 'Turn this on and Dogfile finds documents that expire and reminds you before they do.')));
       return;
@@ -196,6 +196,43 @@ export async function remindAbout(item) {
         const left = Math.round((new Date(date.value + 'T00:00') - new Date(new Date().toDateString())) / 864e5);
         const first = Math.max(-1, ...remCfg().intervals.filter((d) => d <= left));
         toast(first > 1 ? `I’ll remind you ${first} days before` : first === 1 ? 'I’ll remind you the day before' : 'I’ll remind you on the day');
+      } catch (e) { toast(e.message, { error: true }); return false; }
+      close();
+    } }],
+  });
+}
+
+const LEADS = [[7, '1 week before'], [3, '3 days before'], [1, 'The day before'], [0, 'On the day']];
+/**
+ * "Set a reminder…": your own reminder on any files or folders (or none), with a date and what it's for. Everything you pick
+ * gets the same date and words, one reminder each; the notification says what you wrote.
+ */
+export async function setReminder(items = []) {
+  if (!requirePro('reminders')) return;
+  const date = h('input', { type: 'date', class: 'input', value: '' });
+  const what = h('input', { class: 'input', placeholder: 'What is it for? (e.g. “Send the signed lease”)', spellcheck: 'false', maxlength: 120 });
+  what.addEventListener('keydown', (e) => e.stopPropagation());
+  const leads = new Set([1, 0]);
+  const chips = h('div', { class: 'rem-leads' }, ...LEADS.map(([d, l]) => {
+    const b = h('button', { class: 'chip' + (leads.has(d) ? ' on' : ''), type: 'button', onclick: () => { leads.has(d) ? leads.delete(d) : leads.add(d); b.classList.toggle('on', leads.has(d)); } }, l);
+    return b;
+  }));
+  const shown = items.slice(0, 4);
+  const list = items.length ? h('div', { class: 'rem-file-line stack' },
+    ...shown.map((it) => h('div', { class: 'rem-file-line' }, h('span', { html: icon(it.isDir ? 'folder' : 'page') }), h('b', {}, it.name))),
+    items.length > shown.length ? h('div', { class: 'hint' }, `and ${items.length - shown.length} more`) : null) : h('div', { class: 'hint' }, 'Not tied to a file: just a reminder.');
+  const body = h('div', { class: 'stack rem-add' }, list, what, h('div', { class: 'row-inline' }, h('label', { class: 'hint' }, 'Date'), date), h('div', { class: 'hint' }, 'Remind me'), chips);
+  setTimeout(() => what.focus(), 60);
+  modal({
+    title: items.length > 1 ? `Set a reminder for ${items.length} items` : 'Set a reminder', body, width: 480,
+    buttons: [{ label: 'Cancel' }, { label: 'Set reminder', primary: true, run: async (close) => {
+      if (!what.value.trim()) { toast('Write what the reminder is for', { error: true }); return false; }
+      if (!date.value) { toast('Pick a date', { error: true }); return false; }
+      if (!leads.size) { toast('Pick when to be reminded', { error: true }); return false; }
+      try {
+        const base = { kind: 'custom', kindLabel: 'My reminder', date: date.value, what: 'custom', note: what.value.trim(), intervals: [...leads].sort((a, b) => b - a) };
+        for (const it of items.length ? items : [null]) await api('reminders:add', { ...base, path: it?.path || '', name: it?.name || what.value.trim() });
+        toast(items.length > 1 ? `${items.length} reminders set for ${fmtDay(date.value)}` : `Reminder set for ${fmtDay(date.value)}`);
       } catch (e) { toast(e.message, { error: true }); return false; }
       close();
     } }],

@@ -11,6 +11,7 @@ function applyMediaTheme() {
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyMediaTheme());
 import { readExif } from './exif.js';
+import { getWatermark, saveWatermark, watermarkControls, watermarkImage, drawWatermark, markBox } from './watermark.js';
 import { ensureComponent } from './components.js';
 import { requirePro, initLicense } from './license.js';
 import { EMBED, pendingFiles, onHost, tellHost, showInFiles, setTitle, onLeave, onWindowClose, onAsk } from './embed.js';
@@ -387,8 +388,71 @@ function drawCanvas() {
   g.filter = 'none';
   if (E.adj.vignette > 0) { g.save(); g.translate(G.x, G.y); vignette(g, G.dw, G.dh, E.adj.vignette / 100); g.restore(); }
   if (E.tool === 'crop') positionCrop();
+  if (E.tool === 'watermark' && E.wm) drawWmOverlay(g, G);
   renderBar();
 }
+// ---- watermark: the mark on the picture, with handles to move, resize and turn it ----
+const WM_ROT_GAP = 30;
+function wmGeometry(G) {
+  const wm = E.wm;
+  const g = E.work.getContext('2d');
+  const b = markBox(g, E.work.width, wm, E.wmImg);
+  return { cx: G.x + wm.cx * G.dw, cy: G.y + wm.cy * G.dh, w: b.w * G.s, h: b.h * G.s, rot: (wm.rot * Math.PI) / 180 };
+}
+function drawWmOverlay(g, G) {
+  const wm = E.wm;
+  g.save();
+  g.beginPath(); g.rect(G.x, G.y, G.dw, G.dh); g.clip();
+  g.translate(G.x, G.y); g.scale(G.s, G.s);
+  drawWatermark(g, E.work.width, E.work.height, wm, E.wmImg);
+  g.restore();
+  const m = wmGeometry(G);
+  g.save();
+  g.translate(m.cx, m.cy); g.rotate(m.rot);
+  g.strokeStyle = '#0a84ff'; g.lineWidth = 1.5; g.setLineDash([5, 4]);
+  g.strokeRect(-m.w / 2 - 4, -m.h / 2 - 4, m.w + 8, m.h + 8);
+  g.setLineDash([]); g.fillStyle = '#fff';
+  g.beginPath(); g.arc(m.w / 2 + 4, m.h / 2 + 4, 6, 0, 7); g.fill(); g.stroke();
+  g.beginPath(); g.moveTo(0, -m.h / 2 - 4); g.lineTo(0, -m.h / 2 - 4 - WM_ROT_GAP); g.stroke();
+  g.beginPath(); g.arc(0, -m.h / 2 - 4 - WM_ROT_GAP, 6, 0, 7); g.fill(); g.stroke();
+  g.restore();
+}
+function applyWatermark() {
+  if (!E?.wm) return;
+  bakeAdjust(); pushHistory();
+  const g = E.work.getContext('2d'); g.save(); g.setTransform(1, 0, 0, 1, 0, 0);
+  drawWatermark(g, E.work.width, E.work.height, E.wm, E.wmImg);
+  g.restore();
+  E.dirty = true; drawCanvas(); osd('Watermark added');
+}
+(() => {
+  const c = $('vw-canvas');
+  let mode = null, start = null;
+  const local = (e) => { const r = c.getBoundingClientRect(); const G = E.lastG || geom(); return { x: (e.clientX - r.left) * (G.cw || r.width) / r.width, y: (e.clientY - r.top) * (G.ch || r.height) / r.height, G }; };
+  // the pointer in the mark's own (turned) frame
+  const inMark = (p, m) => { const dx = p.x - m.cx, dy = p.y - m.cy, cs = Math.cos(-m.rot), sn = Math.sin(-m.rot); return { x: dx * cs - dy * sn, y: dx * sn + dy * cs }; };
+  c.addEventListener('pointerdown', (e) => {
+    if (!E || E.tool !== 'watermark' || !E.wm || e.button !== 0) return;
+    const { x, y, G } = local(e); const p = { x, y }; const m = wmGeometry(G); const q = inMark(p, m);
+    const near = (ax, ay) => Math.hypot(q.x - ax, q.y - ay) < 14;
+    if (near(0, -m.h / 2 - 4 - WM_ROT_GAP)) mode = 'rot';
+    else if (near(m.w / 2 + 4, m.h / 2 + 4)) mode = 'size';
+    else if (Math.abs(q.x) <= m.w / 2 + 8 && Math.abs(q.y) <= m.h / 2 + 8) mode = 'move';
+    else return;
+    start = { p, m, wm: { ...E.wm }, G };
+    c.setPointerCapture(e.pointerId); e.preventDefault(); e.stopPropagation();
+  }, true);
+  c.addEventListener('pointermove', (e) => {
+    if (!mode || !E?.wm) return;
+    const { x, y } = local(e); const { m, wm, G } = start;
+    if (mode === 'move') { E.wm.cx = Math.min(1.2, Math.max(-0.2, wm.cx + (x - start.p.x) / G.dw)); E.wm.cy = Math.min(1.2, Math.max(-0.2, wm.cy + (y - start.p.y) / G.dh)); }
+    else if (mode === 'size') { const d0 = Math.hypot(start.p.x - m.cx, start.p.y - m.cy) || 1, d1 = Math.hypot(x - m.cx, y - m.cy); E.wm.size = Math.round(Math.min(90, Math.max(3, wm.size * (d1 / d0))) * 10) / 10; }
+    else if (mode === 'rot') { let deg = (Math.atan2(y - m.cy, x - m.cx) * 180) / Math.PI + 90; if (deg > 180) deg -= 360; if (!e.shiftKey && Math.abs(deg) < 4) deg = 0; E.wm.rot = Math.round(deg); }
+    E.wmCtl?.set({ size: E.wm.size, rot: E.wm.rot });
+    drawCanvas();
+  });
+  c.addEventListener('pointerup', () => { mode = null; });
+})();
 
 // ---- crop ----
 function startCrop() {
@@ -596,7 +660,7 @@ function renderTools() {
   if (!E) { box.innerHTML = ''; return; }
   box.innerHTML = '';
   const tabs = h('div', { class: 'seg vw-seg' });
-  for (const [k, l, ic] of [['adjust', 'Adjust', 'sliders'], ['filters', 'Filters', 'palette'], ['crop', 'Crop', 'treemap'], ['rotate', 'Rotate', 'refresh'], ['draw', 'Draw', 'rename'], ['resize', 'Resize', 'zoomIn']]) {
+  for (const [k, l, ic] of [['adjust', 'Adjust', 'sliders'], ['filters', 'Filters', 'palette'], ['crop', 'Crop', 'treemap'], ['rotate', 'Rotate', 'refresh'], ['draw', 'Draw', 'rename'], ['resize', 'Resize', 'zoomIn'], ['watermark', 'Watermark', 'image']]) {
     const b = h('button', { class: 'seg-btn' + (E.tool === k ? ' on' : ''), title: l, html: `${icon(ic)}<span>${l}</span>` });
     b.onclick = () => { if (E.tool === 'crop' && k !== 'crop') { E.crop = null; document.body.classList.remove('cropping'); } if (k !== 'adjust' && k !== 'filters') bakeAdjust(); E.tool = k; document.body.classList.toggle('drawing', k === 'draw'); renderTools(); if (k === 'crop') startCrop(); drawCanvas(); };
     tabs.append(b);
@@ -644,6 +708,15 @@ function renderTools() {
     const size = h('input', { type: 'range', min: '1', max: '60', value: String(E.draw.size) }); size.oninput = () => (E.draw.size = +size.value);
     const op = h('input', { type: 'range', min: '10', max: '100', value: String(E.draw.opacity) }); op.oninput = () => (E.draw.opacity = +op.value);
     panel.append(modes, h('div', { class: 'field-label' }, 'Color'), h('div', { class: 'row-inline' }, col, sw), h('div', { class: 'field-label' }, 'Size'), size, h('div', { class: 'field-label' }, 'Opacity'), op, h('div', { class: 'hint' }, E.draw.mode === 'text' ? 'Click on the photo where the text should go.' : E.draw.mode === 'eraser' ? 'Erases your drawing back to the photo.' : 'Draw directly on the photo.'), h('div', { class: 'row-inline', style: { marginTop: '10px' } }, h('button', { class: 'btn small', onclick: clearDrawing }, 'Clear drawing')));
+  } else if (E.tool === 'watermark') {
+    if (!E.wm) { E.wm = getWatermark(); watermarkImage(E.wm).then((i) => { E.wmImg = i; drawCanvas(); }).catch(() => {}); }
+    const ctl = watermarkControls(E.wm, (w) => { E.wm = { ...w, cx: E.wm.cx, cy: E.wm.cy }; if (w.kind === 'image') watermarkImage(w).then((i) => { E.wmImg = i; drawCanvas(); }).catch((e) => toast(e.message, { error: true })); drawCanvas(); });
+    E.wmCtl = ctl;
+    panel.append(h('div', { class: 'hint' }, 'Drag the mark to move it, a corner to resize it, the round handle to turn it.'), ctl.el,
+      h('div', { class: 'row-inline wrap' },
+        h('button', { class: 'btn small primary', onclick: applyWatermark }, 'Add to picture'),
+        h('button', { class: 'btn small', title: 'Use this mark, in this place, size and turn, for every picture you add a watermark to', onclick: () => { saveWatermark(E.wm); toast('Saved as your default watermark'); } }, 'Save as my default'),
+        h('button', { class: 'btn small', title: 'Go back to your saved default', onclick: () => { E.wm = getWatermark(); E.wmImg = null; watermarkImage(E.wm).then((i) => { E.wmImg = i; drawCanvas(); }).catch(() => {}); renderTools(); drawCanvas(); } }, 'Use my default')));
   } else if (E.tool === 'resize') {
     const w = h('input', { class: 'input small', type: 'number', value: String(E.work.width) });
     const hh = h('input', { class: 'input small', type: 'number', value: String(E.work.height) });

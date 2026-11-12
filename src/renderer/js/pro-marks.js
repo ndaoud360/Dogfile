@@ -19,13 +19,15 @@ export const FEATURES = {
   timetravel: 'Time travel',
   stems: 'The stem separator',
   proUtilities: 'Dogfile Pro utilities',
+  batch: 'The batch tools',
 };
-export const PLURAL = new Set(['panes', 'dupes', 'space', 'automation', 'versions', 'remote', 'features', 'reminders', 'model3d']);
+export const PLURAL = new Set(['batch', 'panes', 'dupes', 'space', 'automation', 'versions', 'remote', 'features', 'reminders', 'model3d']);
 export const PRO_COMMANDS = {
   assistant: 'assistant', aiModels: 'assistant',
   layout3: 'panes', layout4: 'panes',
   compare: 'compare',
   batchRename: 'rename',
+  batchTools: 'batch', packFolders: 'batch', flattenFolders: 'batch', batchPictures: 'batch', batchDates: 'batch', zipEach: 'batch', extractEach: 'batch', docsToText: 'batch', findReplaceFiles: 'batch', batchStems: 'batch', batchTags: 'batch',
   dupes: 'dupes', similarImages: 'dupes', similarMedia: 'dupes',
   analyze: 'space', analyzeSelection: 'space', cleanup: 'space',
   declutter: 'automation', startMacro: 'automation', macros: 'automation', folderRules: 'automation', automations: 'automation',
@@ -36,7 +38,7 @@ export const PRO_COMMANDS = {
   extractAudio: 'proUtilities', createGif: 'proUtilities', minifyCode: 'proUtilities', diffChecker: 'proUtilities',
   removeImageBackground: 'proUtilities', translateText: 'proUtilities',
   features: 'features', createFeature: 'features', featureStore: 'features',
-  reminders: 'reminders', remindAbout: 'reminders',
+  reminders: 'reminders', remindAbout: 'reminders', setReminder: 'reminders',
   photoDetails: 'metadata', removeExif: 'metadata', removeLocation: 'metadata',
   timeTravel: 'timetravel',
 };

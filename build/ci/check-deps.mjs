@@ -11,6 +11,7 @@
 //   node build/ci/check-deps.mjs dist/Dogfile
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const RUNTIME = /^(vcruntime\d+(_\d+|_threads)?|msvcp\d+(_\d+|_atomic_wait|_codecvt_ids)?|msvcr\d+|vcomp\d+|concrt\d+|vccorlib\d+|libomp\d*(\.\w+)?|mfc\d+\w*)\.dll$/i;
 // DLLs every Windows 10/11 has (the list is long on purpose: a missing name here is a false alarm, never a hidden dependency)
@@ -95,7 +96,7 @@ if (process.argv.includes('--selftest')) {
   if (JSON.stringify(got) !== JSON.stringify(['KERNEL32.dll', 'MSVCP140.dll'])) { console.error('selftest: read', got); process.exit(1); }
   if (!RUNTIME.test('MSVCP140.dll') || !RUNTIME.test('VCRUNTIME140_1.dll') || !RUNTIME.test('VCOMP140.DLL') || RUNTIME.test('KERNEL32.dll') || RUNTIME.test('ucrtbase.dll') || RUNTIME.test('api-ms-win-crt-runtime-l1-1-0.dll')) { console.error('selftest: runtime names'); process.exit(1); }
   console.log('check-deps selftest ok');
-} else if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)) {
+} else if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
   const args = process.argv.slice(2);
   const allowRuntime = args.includes('--allow-runtime');
   const paths = args.filter((a) => !a.startsWith('--'));
@@ -108,5 +109,6 @@ if (process.argv.includes('--selftest')) {
     console.log(`${x.kind.padEnd(8)} ${x.dll.padEnd(28)} ${[...new Set(x.from)].slice(0, 6).join(', ')}${x.from.length > 6 ? ', …' : ''}`);
   }
   console.log(`${r.files} program files read, ${r.rows.filter((x) => x.kind === 'windows').length} imports are part of Windows, ${r.bad} problem${r.bad === 1 ? '' : 's'}`);
+  if (!r.files) { console.error('no .exe or .dll found: nothing was checked'); process.exit(1); }
   process.exit(r.bad ? 1 : 0);
 }

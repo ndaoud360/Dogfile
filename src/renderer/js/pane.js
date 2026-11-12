@@ -1095,7 +1095,7 @@ function glideTiles(moved, view) {
     const dx = before[i].left - after[i].left, dy = before[i].top - after[i].top;
     if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
     if (Math.abs(dx) > 1600 || Math.abs(dy) > 1600) return; // a long way (re-sorted far off screen): no need to fly
-    m.rec.node.animate([{ translate: `${dx}px ${dy}px` }, { translate: '0 0' }], { duration: 240, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    m.rec.node.animate([{ translate: `${dx}px ${dy}px` }, { translate: '0 0' }], { duration: 420, easing: 'cubic-bezier(.45,.05,.25,1)' });
   });
 }
 

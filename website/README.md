@@ -102,6 +102,16 @@ Microsoft Store in a new tab (see "Things to fill in"). After buying Pro, the th
 page shows the serial number, a Download Free button for anyone who doesn't have the app yet, and the steps to
 activate: Settings > License > Enter serial number.
 
+## Sections you can edit
+
+The home page's **Batch Tools** window and the **More Built In** cards are plain HTML and CSS (search `id="batch"` and
+`id="extras"` in `index.html`), not screenshots, so they stay sharp and nothing needs re-shooting when a feature changes.
+The Free vs Pro table in `download.html` and the two lists under **What Else Can Dogfile Do?** (`id="more"`) should list
+the same features: when a feature is added to the app, add it to all three places. A feature that needs Pro is marked
+Pro there exactly as in the app (`src/renderer/js/pro-marks.js` is the list).
+
+The Microsoft Store promotional image is built from this site's own styles and screenshot: see `build/store/promo`.
+
 ## Comparison table
 
 The "What Dogfile Has That Others Don't" table compares Dogfile with Directory Opus, OneCommander and Total Commander, from

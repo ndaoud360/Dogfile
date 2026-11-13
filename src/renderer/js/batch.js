@@ -606,6 +606,8 @@ export async function batchStems(given = sel()) {
 // The window
 // ======================================================================
 export const TOOLS = [
+  { id: 'rename', icon: 'rename', title: 'Rename Studio', text: 'Rename many at once: find and replace, numbering, case, prefix and suffix, with a live preview', run: (s) => A.batchRename(s), fits: (s) => s.length > 0 },
+  { id: 'whatis', icon: 'search', title: 'What is this?', text: 'Look inside a file with no (or a wrong) extension and say what it is', run: (s) => import('./whatis.js').then((m) => m.whatIsThis(s)), fits: (s) => s.some((i) => !i.isDir) },
   { id: 'pictures', icon: 'image', title: 'Pictures', text: 'Make smaller, change type, compress, take off camera details, add your watermark', run: batchPictures, fits: (s) => s.some((i) => isImageFile(i)) },
   { id: 'dates', icon: 'clock', title: 'Dates and attributes', text: 'Move dates later or earlier; read-only and hidden', run: batchDates, fits: (s) => s.length > 0 },
   { id: 'pack', icon: 'folder', title: 'Pack into folders', text: 'By type, kind, date, topic or first letter', run: packIntoFolders, fits: (s) => s.some((i) => !i.isDir) },

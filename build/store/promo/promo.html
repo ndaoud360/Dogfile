@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dogfile, Store promotional image</title>
+<!-- Microsoft Store hero art, 16:9. Drawn at 1920x1080 and rendered at 2x (render.mjs) to 3840x2160.
+     Uses the website's own stylesheet, fonts and screenshot so it looks like dogfileio.vercel.app. -->
+<link rel="stylesheet" href="../../../website/assets/css/site.css">
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+  .art { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+  .glow { position: absolute; inset: 0; filter: blur(110px) saturate(1.25); opacity: .34; }
+  .glow i { position: absolute; border-radius: 50%; }
+  .glow i:nth-child(1) { width: 760px; height: 700px; left: -120px; top: 80px; background: var(--a1); }
+  .glow i:nth-child(2) { width: 760px; height: 640px; left: 640px; top: 420px; background: var(--a2); opacity: .8; }
+  .glow i:nth-child(3) { width: 820px; height: 640px; left: 1240px; top: -120px; background: var(--a3); }
+  .top { position: absolute; left: 0; right: 0; top: 58px; display: grid; justify-items: center; text-align: center; }
+  .lockup { display: inline-flex; align-items: center; gap: 30px; color: var(--ink); }
+  .lockup img { width: 92px; height: 92px; border-radius: 24px; box-shadow: 0 10px 26px -10px rgba(20,22,27,.55); }
+  .lockup img.wm { width: auto; height: 76px; border-radius: 0; box-shadow: none; margin-top: 2px; }
+  h1 { margin-top: 34px; font-size: 70px; line-height: 1.06; letter-spacing: -0.035em; }
+  h1 .soft { color: var(--ink-3); }
+  .sub { margin-top: 20px; font: 500 29px/1.3 var(--f-body); color: var(--ink-2); letter-spacing: -.005em; }
+  .sub b { font-weight: 500; color: var(--ink-3); padding: 0 .55em; }
+  .stage { position: absolute; left: 0; right: 0; top: 398px; }
+  .win { position: relative; width: 1380px; margin: 0 auto; border-radius: 18px; background: var(--bg-2);
+         box-shadow: 0 3px 8px rgba(16,20,30,.10), 0 60px 110px -34px rgba(16,20,40,.55); }
+  .win img { width: 100%; border-radius: 18px; }
+  .win::after { content: ""; position: absolute; inset: 0; border-radius: 18px; box-shadow: inset 0 0 0 1.5px var(--line-2); }
+  .chip { font-size: 21px; padding: 15px 22px 15px 15px; border-radius: 20px; gap: 15px; box-shadow: 0 2px 4px rgba(16,20,30,.06), 0 22px 44px -16px rgba(16,20,30,.32); }
+  .chip small { font-size: 16px; }
+  .chip .ftype { min-width: 58px; height: 58px; border-radius: 14px; font-size: 15px; }
+  .chip { right: auto !important; bottom: auto !important; }
+  .chip.c3 { left: 70px; top: 455px; }
+  .chip.c2 { left: 1366px; top: 214px; }
+  .chip.c4 { left: 1450px; top: 566px; }
+</style>
+</head>
+<body>
+<div class="art">
+  <div class="glow" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="top">
+    <div class="lockup"><img src="logo.png" alt=""><img class="wm" src="wordmark.svg" alt="Dogfile"></div>
+    <h1>A File Browser That Does Everything <span class="soft">and More</span></h1>
+    <div class="sub">Tabs<b>·</b>Split panes<b>·</b>Instant search<b>·</b>AI Assistant<b>·</b>Built-in apps</div>
+  </div>
+  <div class="stage">
+    <div class="win"><img src="../../../website/assets/img/hero-light.webp" alt="" width="2400" height="1499"></div>
+    <div class="chip c2"><span class="ftype mp3">MP3</span><span><b>Neon Coast.mp3</b><small>Lyrics from the .lrc file</small></span></div>
+    <div class="chip c3"><span class="ftype xlsx">XLSX</span><span><b>Budget 2026.xlsx</b><small>Opens in Dogfile Office</small></span></div>
+    <div class="chip c4"><span class="ftype glb">3D</span><span><b>DamagedHelmet.gltf</b><small>Opens in Dogfile 3D</small></span></div>
+  </div>
+</div>
+</body>
+</html>

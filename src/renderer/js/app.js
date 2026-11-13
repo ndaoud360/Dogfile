@@ -248,10 +248,9 @@ const R = {
   ],
   organize: [
     ['Sort & tidy', [['declutter', 'Tidy up', true], ['multiverse', 'Multiverse', true], ['selfDestruct', 'Self-destruct', true], ['folderRules', 'Automate this folder'], ['automations', 'All automations']]],
-    ['Rename', [['batchRename', 'Rename Studio', true]]],
     ['Compress', [['quickZip', 'Zip', true], ['compress', 'Compress…'], ['extract'], ['extractTo']]],
     ['Find', [['dupes', 'Duplicates', true], ['similarImages', 'Similar pictures'], ['similarMedia', 'Similar media'], ['semanticSearch', 'Search by meaning'], ['newCollection', 'New collection']]],
-    ['Batch', [['batchTools', 'Batch tools', true], ['whatIsThis', 'What is this?'], ['packFolders', 'Pack into folders'], ['flattenFolders', 'Flatten'], ['zipEach', 'Zip each'], ['extractEach', 'Extract each']]],
+    ['Batch', [['batchTools', 'Batch tools', true]]],
     ['Folder', [['folderNote', 'Folder note'], ['createShortcut'], ['symlink']]],
     ['Share', [['sendToPhone', 'Send to phone'], ['copyPath', 'Copy path'], ['copyName'], ['addToShelf', 'Add to Drop Shelf']]],
   ],
@@ -322,6 +321,8 @@ function ribbonGroup(gname, entries) {
   const asItems = () => entries.map((e) => (e.menu ? { label: e.label, icon: e.icon, submenu: e.menu } : { label: e.label, icon: e.icon, pro: e.pro, checked: e.on || undefined, disabled: e.disabled || undefined, run: () => { e.run(); after(); } }));
   g._name = gname; g._items = asItems;
   g._fold = () => {
+    // a group that is a single button stays that button: a drop-down with one thing in it only costs a click
+    if (entries.length === 1 && !entries[0].menu) return;
     g.innerHTML = '';
     g.classList.add('folded');
     // a folded group of Pro features keeps its star

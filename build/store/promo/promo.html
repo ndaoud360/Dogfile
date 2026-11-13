@@ -15,8 +15,9 @@
   .glow i:nth-child(2) { width: 760px; height: 640px; left: 640px; top: 420px; background: var(--a2); opacity: .8; }
   .glow i:nth-child(3) { width: 820px; height: 640px; left: 1240px; top: -120px; background: var(--a3); }
   .top { position: absolute; left: 0; right: 0; top: 58px; display: grid; justify-items: center; text-align: center; }
-  .lockup { display: inline-flex; align-items: center; gap: 22px; font: 700 92px/1 var(--f-display); letter-spacing: -0.03em; color: var(--ink); }
+  .lockup { display: inline-flex; align-items: center; gap: 30px; color: var(--ink); }
   .lockup img { width: 92px; height: 92px; border-radius: 24px; box-shadow: 0 10px 26px -10px rgba(20,22,27,.55); }
+  .lockup img.wm { width: auto; height: 76px; border-radius: 0; box-shadow: none; margin-top: 2px; }
   h1 { margin-top: 34px; font-size: 70px; line-height: 1.06; letter-spacing: -0.035em; }
   h1 .soft { color: var(--ink-3); }
   .sub { margin-top: 20px; font: 500 29px/1.3 var(--f-body); color: var(--ink-2); letter-spacing: -.005em; }
@@ -39,7 +40,7 @@
 <div class="art">
   <div class="glow" aria-hidden="true"><i></i><i></i><i></i></div>
   <div class="top">
-    <div class="lockup"><img src="logo.png" alt=""><span>Dogfile</span></div>
+    <div class="lockup"><img src="logo.png" alt=""><img class="wm" src="wordmark.svg" alt="Dogfile"></div>
     <h1>A File Browser That Does Everything <span class="soft">and More</span></h1>
     <div class="sub">Tabs<b>·</b>Split panes<b>·</b>Instant search<b>·</b>AI Assistant<b>·</b>Built-in apps</div>
   </div>

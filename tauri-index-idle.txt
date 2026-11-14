@@ -1,0 +1,8 @@
+dogfile                pid   7228: private working set    67.2 MB, working set   105.2 MB
+msedgewebview2         pid    508: private working set    14.9 MB, working set    87.4 MB
+msedgewebview2#1       pid   3432: private working set     1.7 MB, working set    12.3 MB
+msedgewebview2#2       pid   8540: private working set     3.6 MB, working set    23.0 MB
+msedgewebview2#3       pid   4028: private working set     4.8 MB, working set    31.4 MB
+msedgewebview2#4       pid    728: private working set     1.9 MB, working set    16.3 MB
+msedgewebview2#5       pid   5912: private working set    28.5 MB, working set    77.5 MB
+tauri-index-idle: 7 processes, private working set (Task Manager 'Memory') 122.6 MB, working set 353.1 MB, private bytes 195.2 MB, CPU while idle 0.27 s over 10 s

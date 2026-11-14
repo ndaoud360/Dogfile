@@ -63,7 +63,7 @@ jobs:
             $bmp = New-Object System.Drawing.Bitmap $l[1], $l[2]; $g = [System.Drawing.Graphics]::FromImage($bmp)
             $sz = [math]::Min($l[1], $l[2]); $g.DrawImage($src, [int](($l[1] - $sz) / 2), [int](($l[2] - $sz) / 2), $sz, $sz); $bmp.Save("$st/assets/$($l[0]).png"); $g.Dispose(); $bmp.Dispose()
           }
-          (Get-Content build/store/AppxManifest.xml -Raw).Replace('{IDENTITY_NAME}', 'Dogfile.Dogfile').Replace('{PUBLISHER}', 'CN=Dogfile').Replace('{PUBLISHER_NAME}', 'Dogfile').Replace('{VERSION}', '2.2.0').Replace('{ARCH}', 'x64') | Set-Content "$st/AppxManifest.xml" -Encoding utf8
+          (Get-Content build/store/AppxManifest.xml -Raw).Replace('{IDENTITY_NAME}', 'Dogfile.Dogfile').Replace('{PUBLISHER}', 'CN=Dogfile').Replace('{PUBLISHER_NAME}', 'Dogfile').Replace('{VERSION}', '2.2.1').Replace('{ARCH}', 'x64') | Set-Content "$st/AppxManifest.xml" -Encoding utf8
           $makeappx = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter makeappx.exe | Where-Object { $_.FullName -like '*\x64\*' } | Select-Object -First 1
           & $makeappx.FullName pack /o /d $st /p "$env:RUNNER_TEMP/test.msix" 2>&1 | Out-Host
           if ($LASTEXITCODE -ne 0) { Write-Output "::error title=manifest::makeappx refused the Store manifest"; exit 1 }
